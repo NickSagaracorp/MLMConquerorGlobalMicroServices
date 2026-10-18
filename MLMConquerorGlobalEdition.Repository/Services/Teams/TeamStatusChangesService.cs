@@ -64,8 +64,12 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
                 .Where(h => h.ChangedAt >= start && h.ChangedAt < end)
                 .Select(h => h.MemberId));
 
+        // El nodo binario de quien mira: se pasa como parametro (revision, menor 7), no se guarda como estado.
+        var dualViewer = scope == StatusChangesScope.DualTeam
+            ? await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct)
+            : null;
         var query = scope == StatusChangesScope.DualTeam
-            ? await DualTeamQueryAsync(memberId, changedIds, ct)
+            ? DualTeamQuery(dualViewer, changedIds)
             : await EnrollmentQueryAsync(memberId, changedIds, scope == StatusChangesScope.Customers, ct);
 
         if (query is null)
@@ -76,7 +80,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
 
         var page = await query.ToGridResultAsync(request, SearchableFields, ct: ct);
         var rows = page.Items as List<TeamStatusChangeView> ?? page.Items.ToList();
-        await EnrichAsync(rows, memberId, scope, ct);
+        await EnrichAsync(rows, memberId, scope, dualViewer, ct);
         page.Items = rows;
         return Result<PagedResult<TeamStatusChangeView>>.Success(page);
     }
@@ -118,12 +122,10 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
     /// clave compacta (Plan P, DualSubtree.Under). Antes se comparaba el prefijo de la ruta de texto fila a fila:
     /// no indexable y con error 8152 en rutas de mas de 4.000 caracteres.
     /// </summary>
-    private async Task<IQueryable<TeamStatusChangeView>?> DualTeamQueryAsync(
-        string memberId, IQueryable<string> changedIds, CancellationToken ct)
+    private IQueryable<TeamStatusChangeView>? DualTeamQuery(
+        Domain.Entities.Tree.DualTeamEntity? node, IQueryable<string> changedIds)
     {
-        var node = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
         if (node is null) return null;
-        _dualViewer = node;
 
         return
             from id in changedIds
@@ -141,10 +143,8 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             };
     }
 
-    /// <summary>El nodo del que se pidio el Dual Team (para sacar la pierna de cada fila de su clave).</summary>
-    private Domain.Entities.Tree.DualTeamEntity? _dualViewer;
-
-    private async Task EnrichAsync(List<TeamStatusChangeView> rows, string viewerId, StatusChangesScope scope, CancellationToken ct)
+    private async Task EnrichAsync(List<TeamStatusChangeView> rows, string viewerId, StatusChangesScope scope,
+        Domain.Entities.Tree.DualTeamEntity? dualViewer, CancellationToken ct)
     {
         if (rows.Count == 0) return;
         var ids = rows.Select(r => r.MemberId).ToList();
@@ -192,13 +192,13 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
 
         // La pierna de cada fila: por su clave (inorden) o, sin claves (InMemory), por adyacencia.
         var legs = new Dictionary<string, TreeSide>();
-        if (scope == StatusChangesScope.DualTeam && _dualViewer is not null)
+        if (scope == StatusChangesScope.DualTeam && dualViewer is not null)
         {
-            if (_dualViewer.BinaryPath is not null && rows.All(r => r.DualKey is not null))
-                foreach (var r in rows) legs[r.MemberId] = DualSubtree.LegOf(_dualViewer, r.DualKey!);
+            if (dualViewer.BinaryPath is not null && rows.All(r => r.DualKey is not null))
+                foreach (var r in rows) legs[r.MemberId] = DualSubtree.LegOf(dualViewer, r.DualKey!);
             else
                 foreach (var side in new[] { TreeSide.Left, TreeSide.Right })
-                    foreach (var id in (await DualSubtree.Leg(_db, _dualViewer, side).AsNoTracking()
+                    foreach (var id in (await DualSubtree.Leg(_db, dualViewer, side).AsNoTracking()
                                  .Select(d => d.MemberId).ToListAsync(ct)).Intersect(ids))
                         legs[id] = side;
         }

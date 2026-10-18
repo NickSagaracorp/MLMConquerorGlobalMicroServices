@@ -32,10 +32,10 @@ namespace MLMConquerorGlobalEdition.BizCenter.Services;
 /// inscribiste—. Cada ruta se cierra contra el árbol que ella misma recorre; usar el otro dejaría
 /// pasar exactamente a quien la pantalla no enseña.
 ///
-/// LA CONTENCIÓN SE MIRA, en el binario, POR <c>HierarchyPath</c> (y en el de patrocinio por <c>Node</c>, Plan M), que es como ya la miran
-/// <c>GetAvailableNodesHandler</c>, <c>GetCarBonusBranchAsync</c> y el recalculador de piernas: la
-/// ruta de un descendiente empieza por la de su ancestro. No se recorre la cadena de padres a
-/// mano —eso serían N consultas y una respuesta distinta a la del resto del sistema—.
+/// LA CONTENCIÓN SE MIRA, en el binario, POR LA CLAVE COMPACTA <c>BinaryPath</c> (Plan P: el descendiente cae en
+/// el rango de su ancestro, <c>DualBinaryPath.Contains</c>, lo mismo que usa <c>DualSubtree</c>), y en el de
+/// patrocinio por <c>Node</c> (Plan M). Ya no por el prefijo de <c>HierarchyPath</c>, que falla con rutas de más de
+/// 4.000 caracteres. Solo sin claves (InMemory, pruebas de lógica) se sube por la cadena de padres.
 ///
 /// FALLA CERRADO en todos los caminos: sin identidad de miembro, con un identificador vacío, o si
 /// el que llama no está en el árbol, la respuesta es que NO.
