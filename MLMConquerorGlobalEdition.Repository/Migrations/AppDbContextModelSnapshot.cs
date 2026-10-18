@@ -16120,6 +16120,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ParentMemberId"), new[] { "MemberId", "Side", "IsDeleted" });
 
+                    b.HasIndex("ParentMemberId", "Side")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DualTeamTree_ParentMemberId_Side")
+                        .HasFilter("[IsDeleted] = 0 AND [ParentMemberId] IS NOT NULL");
+
                     b.HasIndex(new[] { "MemberId" }, "IX_DualTeamTree_MemberId_Lookup");
 
                     b.ToTable("DualTeamTree");
