@@ -85,7 +85,8 @@ public class GetAdminPendingPlacementsHandler
             nameCache.TryGetValue(member.SponsorMemberId ?? "", out var sponsorName);
             nameCache.TryGetValue(node?.ParentMemberId ?? "", out var parentName);
 
-            var isPlaced           = node != null;
+            // Plan P (decision de Nick): una raiz provisional (nodo sin padre) sigue pendiente de colocar.
+            var isPlaced           = node != null && node.ParentMemberId != null;
             var opportunitiesUsed  = log?.UnplacementCount ?? 0;
             var firstPlacedAt      = log?.FirstPlacementDate;
             var isBlocked          = opportunitiesUsed >= MaxPlacementOpportunities;

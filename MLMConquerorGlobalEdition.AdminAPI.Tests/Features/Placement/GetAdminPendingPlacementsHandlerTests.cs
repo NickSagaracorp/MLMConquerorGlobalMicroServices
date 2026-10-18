@@ -154,6 +154,27 @@ public class GetAdminPendingPlacementsHandlerTests
         dto.IsBlocked.Should().BeTrue();
         dto.PlacementStatus.Should().Be("Blocked");
     }
+
+    /// <summary>
+    /// Decision de Nick (2026-10-18): una raiz provisional (tiene nodo con su equipo pero no tiene padre) sigue
+    /// pendiente de colocar; si saliera como colocada, nadie podria colocarla desde la pantalla.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ProvisionalRoot_IsStillPending()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.MemberProfiles.Add(BuildProfile("amb-001", "sponsor-001", enrolledDaysAgo: 5));
+        db.DualTeamTree.Add(new DualTeamEntity
+        {
+            MemberId = "amb-001", ParentMemberId = null, Side = TreeSide.Left, HierarchyPath = "/amb-001/",
+            CreationDate = FixedNow, LastUpdateDate = FixedNow, CreatedBy = "seed", LastUpdateBy = "seed"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateHandler(db).Handle(new GetAdminPendingPlacementsQuery(), CancellationToken.None);
+
+        result.Value!.Single(p => p.MemberId == "amb-001").IsAlreadyPlaced.Should().BeFalse();
+    }
 }
 
 file static class MockExtensions
