@@ -46,13 +46,21 @@ El sistema tiene que soportar **millones de miembros**. Las mediciones en la bas
 El legacy MWR Life usaba `hierarchyid`. El sistema nuevo lo había sustituido por una ruta de texto. Se recupera.
 
 - Se añade a `GenealogyTree` una columna `hierarchyid`. Lleva un índice en profundidad y, si alguna consulta lo necesita, otro en anchura por nivel.
-- Las consultas de equipo pasan a `IsDescendantOf` o a un rango sobre esa columna. Así leen solo las filas del equipo, sea de diez personas o de un millón.
+- Las consultas de equipo leen un **rango del índice en profundidad**: desde el nodo del miembro hasta su hermano siguiente (`GenealogySubtree.Under` y `CurrentUnder`, este último solo con el nodo vigente de cada miembro). Así leen solo las filas del equipo, sea de diez personas o de un millón.
+  - **No se usa `IsDescendantOf` como filtro.** Medido en el Plan M: con parámetro, SQL Server no lo convierte en *seek* y estima una fila para cualquier equipo; contar 119.400 filas tardaba 9 s frente a 46 ms con el rango. Una regla de pruebas lo prohíbe.
+  - El rango es exacto porque los ordinales son siempre enteros; lo garantiza el CHECK `CK_GenealogyTree_Node_OrdinalesEnteros`.
+  - Las consultas del equipo llevan `OPTION (RECOMPILE)` (interceptor `RecompileTaggedQueriesInterceptor`), para que un equipo pequeño y uno de cien mil no compartan plan.
+  - SQL Server no admite índices filtrados sobre `hierarchyid`: el índice único es `(Node, NodeNullKey)`.
+  - Las altas bajo un mismo patrocinador se serializan con `sp_getapplock` (`GenealogyChildrenGate`).
 - **Por qué cabe:** el árbol de inscripción es **ancho y poco profundo**. Cada patrocinador tiene muchos inscritos directos, así que la profundidad se mide en decenas de niveles, aunque haya millones de miembros. Un `hierarchyid` de ese tamaño ocupa decenas de bytes, muy por debajo del máximo de 892.
 - **Cómo se mantiene:** el alta, las colocaciones y los seeders tienen que escribir el nodo. Una prueba de regla vigila a todo el código que escribe en el árbol, igual que hoy `RutasConBarraFinalTests` vigila las rutas. Las colocaciones que mueven un subárbol recalculan sus nodos con `GetReparentedValue`.
 - **Transición en dos pasos:**
   1. Plan M: se añade el nodo, se rellena y todas las consultas pasan a usarlo.
   2. Un plan posterior retira `HierarchyPath`, cuando nada dependa de ella.
-- El cálculo inicial para millones de filas puede hacerse en la migración o en un proceso idempotente aparte. El Plan M decide cuál, según lo que tarde.
+- El cálculo inicial es un script aparte, idempotente y que aguanta un corte (`Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`): nivel a nivel, por lotes, y termina con error si queda algún nodo sin `Node` o incoherente. Se despliega en una sola ventana con los servicios parados: migraciones (`sqlcmd -b -I`) → relleno → arranque. En local tarda unos 35 s.
+- **Fallar cerrado:** si un miembro no tiene `Node`, los cálculos que persisten puntos de equipo no escriben nada y lo registran, en vez de escribir 0.
+
+**Resultado** (base local, equipo de AMB-700829 con 119.403 personas): Actividad 6 ms, Clientes 233 ms, Eventos 798 ms, Mi equipo 592 ms, comprobación de `OrderNo` 1 ms.
 
 ### D4. Árbol binario: `hierarchyid` solo si la profundidad lo permite
 
@@ -113,6 +121,8 @@ Se revisan las consultas de reportes (Plan J), del procesador recurrente de Bill
 
 - **Formato de `MemberId`.** El código `AMB-######` tiene seis dígitos, así que se agota en 1.000.000 de miembros. Con el objetivo de millones hay que ampliar el formato (más dígitos o un prefijo distinto) antes de llegar a ese volumen.
 - **Huecos repetidos en el binario** (ver D6): además de bloquear RCSI, son un error de datos que afecta a los puntos de pierna y a las comisiones binarias.
+- **Equipos binarios de más de 20.000 nodos y la raíz** siguen leyéndose por `HierarchyPath`, que no tiene índice. También van por la ruta el Mi equipo binario del Admin, `NetworkController` y las colocaciones. El bono de coche carga en memoria a todos los miembros activos. Nada de esto escala a millones; queda para un plan aparte.
+- **Webhook de pagos sin autenticación:** `WebhooksController` no comprueba firma ni origen; cualquiera puede marcar un pedido como pagado. Existía antes del Plan M; necesita plan propio.
 
 ## 5. Lo que queda fuera
 
