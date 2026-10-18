@@ -17,8 +17,8 @@ public class SinRutaEnElBinarioTests
     private static readonly Regex RutaEnFiltro = new(
         @"\bHierarchyPath\s*\.\s*(StartsWith|Contains|IndexOf|EndsWith)\s*\(|EF\s*\.\s*Functions\s*\.\s*Like\s*\(\s*\w+\s*\.\s*HierarchyPath|HierarchyPath\s+LIKE\b|\b(path|ruta|prefix|pathPrefix|rutaObjetivo|dualPath|floatPrefix|oldPrefix)\s*\.\s*StartsWith\s*\(",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex Comentario = new(@"//.*$|/\*.*?\*/", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex ComentarioSql = new(@"--.*$|/\*.*?\*/", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex Comentario = new(@"//[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);   // revision I2: sin Singleline (se comia el resto del fichero)
+    private static readonly Regex ComentarioSql = new(@"--[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);   // revision I2: sin Singleline
     private static readonly Regex NombraElBinario = new(@"\bDualTeam(Tree|Entity)\b", RegexOptions.Compiled);
 
     /// <summary>Excepciones con nombre y motivo.</summary>
@@ -60,6 +60,21 @@ public class SinRutaEnElBinarioTests
         }
 
         hallazgos.Should().BeEmpty("el binario se acota con la clave compacta (DualSubtree), no con un prefijo de HierarchyPath");
+    }
+
+    /// <summary>Revision I2: un filtro por la ruta puesto despues de un comentario tambien se ve.</summary>
+    [Fact]
+    public void Detecta_un_filtro_puesto_despues_de_un_comentario()
+    {
+        var cs = @"// un comentario
+var a = 1;
+var q = db.DualTeamTree.Where(d => d.HierarchyPath.StartsWith(p))";
+        var sentencias = Comentario.Replace(cs, string.Empty).Split(';');
+        sentencias.Any(x => NombraElBinario.IsMatch(x) && RutaEnFiltro.IsMatch(x)).Should().BeTrue();
+        var sql = @"-- un comentario
+SELECT 1;
+SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
+        ComentarioSql.Replace(sql, string.Empty).Split(';').Any(x => NombraElBinario.IsMatch(x) && RutaEnFiltro.IsMatch(x)).Should().BeTrue();
     }
 
     [Theory]

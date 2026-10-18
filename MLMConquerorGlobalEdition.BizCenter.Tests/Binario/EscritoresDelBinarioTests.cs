@@ -23,6 +23,8 @@ public class EscritoresDelBinarioTests
     {
         ["MLMConquerorGlobalEdition.Repository/Queries/DualTeamNodes.cs"] =
             "el unico que construye nodos y reescribe posicion y claves (altas, raices, movimientos y retiradas)",
+        ["MLMConquerorGlobalEdition.Repository/Context/AppDbContext.cs"] =
+            "declara el DbSet (DualTeamTree => Set<DualTeamEntity>()); no escribe",
         ["MLMConquerorGlobalEdition.Repository/Services/Teams/LegPointMaintenance.cs"] =
             "solo puntos y contadores de pierna (UPDATE de LeftLeg*/RightLeg*), no la estructura",
         ["MLMConquerorGlobalEdition.Repository/Services/Teams/PlacementService.cs"] =
@@ -55,8 +57,8 @@ public class EscritoresDelBinarioTests
     private static readonly Regex EscrituraSql = new(
         @"\b(INSERT|UPDATE|DELETE|MERGE)\b[^;]{0,600}?\bDualTeamTree\b|DestinationTableName\s*=\s*""[^""]*DualTeamTree",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex ComentarioCs = new(@"//.*$|/\*.*?\*/", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex ComentarioSql = new(@"--.*$|/\*.*?\*/", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex ComentarioCs = new(@"//[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);   // revision I2: sin Singleline (se comia el resto del fichero)
+    private static readonly Regex ComentarioSql = new(@"--[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);   // revision I2: sin Singleline
 
     private static IEnumerable<string> Ficheros(string raiz)
     {
@@ -137,6 +139,25 @@ public class EscritoresDelBinarioTests
     {
         const string codigo = "var n = db.DualTeamTree.First(); n.ParentMemberId = otro;";
         (NombraElBinario.IsMatch(codigo) && Asignacion.IsMatch(codigo)).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Revision I2: quitar un comentario no puede borrar el resto del fichero. Con Singleline, "//.*$" se comia
+    /// desde el primer comentario hasta el final y la regla no veia ningun escritor posterior.
+    /// </summary>
+    [Fact]
+    public void Detecta_un_escritor_puesto_despues_de_un_comentario()
+    {
+        var cs = @"// un comentario
+var a = 1; /* otro */
+_db.DualTeamTree.Add(nodo);
+";
+        EscrituraEf.IsMatch(ComentarioCs.Replace(cs, string.Empty)).Should().BeTrue();
+        var sql = @"-- un comentario
+SELECT 1;
+UPDATE DualTeamTree SET Side = 1;
+";
+        EscrituraSql.IsMatch(ComentarioSql.Replace(sql, string.Empty)).Should().BeTrue();
     }
 
     private static string Corto(string s) => s.Length > 120 ? s[..120] + "…" : s;
