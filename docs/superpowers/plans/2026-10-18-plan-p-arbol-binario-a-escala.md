@@ -1,5 +1,12 @@
 # Plan P: árbol binario a escala
 
+## Decisiones de Nick (2026-10-18)
+
+- **Quién se queda el hueco.** Cuando un hueco tiene varios hijos, se lo queda **el más antiguo por (CreationDate, Id)** (responde a P1, segunda parte).
+- **Adónde van los demás.** Cada intruso baja **con su subárbol** a la hoja más profunda de la misma pierna, según la regla de derrame del motor (responde a P1, primera parte).
+- **Base local.** **Se repara**; no se regenera (responde a P8).
+- **`DevSeedController`.** Exige SuperAdmin **también en Development**, salvo el arranque inicial del superadmin si no existe ninguno. Ese caso queda cerrado en cuanto exista uno (responde a P6).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Que el binario (`DualTeamTree`) aguante equipos de 400.000 nodos o más debajo de un miembro, con la vista puesta en millones. Eso exige tres cosas:
@@ -860,6 +867,51 @@ Se pone `[DevelopmentOnly]` en `DevSeedController` y se quitan los `if (!_env.Is
 
 ---
 
+### Bloque A: desviaciones y notas de la implementación (2026-10-18)
+
+**Estado.** Las tareas 1 a 8 están hechas en la rama, salvo dos pasos que quedan para Nick, con los servicios parados: la reparación en modo aplicar sobre la base local (Tarea 3, Paso 4) y la aplicación local de `HuecoUnicoDelBinario` (Tarea 5, Paso 4). Orden: `01` con `SoloInforme=0`, `02` y después la migración. **No se debe arrancar ningún servicio con este código antes de reparar.** Los ocho `Program.cs` aplican migraciones al arrancar, y la guarda 51048 haría fallar el arranque (falla cerrada, que es lo buscado).
+
+- **RCSI ya está activo en local** (`is_read_committed_snapshot_on = 1`, lo activó el coordinador a mitad de la tanda). La exclusión sale solo del applock del hueco y del índice único, nunca de que una lectura espere. La prueba `Con_RCSI_la_exclusion_sale_del_candado_y_no_de_una_lectura_que_espera` exige RCSI, hace coincidir dos colocaciones justo antes de guardar y está comprobada en rojo sin el candado. Usa la regla b (lado derecho del patrocinador): con la regla a, el índice único de `DualTeamLegFrontiers.SponsorMemberId` serializaba las dos colocaciones por casualidad y escondía el fallo.
+- **`PlaceAsync` con la transacción de quien llama.** Si ya hay una transacción abierta (las pruebas que lo deshacen todo, o un manejador), trabaja dentro de ella con un punto de guardado. En vez de `ChangeTracker.Clear()`, al deshacer suelta del seguimiento solo las entidades que añadió, para no tirar los cambios de quien llama; al confirmar también las suelta, para que una tanda larga no acumule entidades.
+- **Reintentos de `PlaceAsync`: 50, no 5,** con una espera de 2 a 20 ms al azar. Los derrames de varios patrocinadores convergen en la misma cola, y con N escritores sobre ella en cada ronda gana uno. Con 5 intentos, la prueba de 40 colocaciones simultáneas agotaba los reintentos (`PLACEMENT_CONFLICT`). También reintenta ante cualquier violación de índice único (hueco, miembro o fila de cola) y ante un interbloqueo (1205), siempre que la transacción sea suya.
+- **`IPlacementService.PlaceAsync(…, PlacementAudit, …)`.** Es una sobrecarga nueva, para que `RunAutoPlacementHandler` siga firmando `AutoPlaced` / «Admin-triggered auto-placement» con el administrador. Además, `RunAutoPlacementHandler` sigue saltándose a un miembro cuyo patrocinador no está en el árbol (el motor lo crearía como raíz nueva) y coloca por fecha de alta.
+- **`LegPointMaintenance` solo en SQL Server.** `PlaceAsync` la omite fuera de un proveedor relacional (InMemory), igual que el candado, para que el motor real sirva en las pruebas de lógica.
+- **La cola sin caché sin resultado falla** (`InvalidOperationException`) en vez de devolver el patrocinador. Devolverlo habría vuelto a apuntar a un hueco ocupado.
+- **SignupAPI: se mantiene el tope de 1.500 bytes de `HierarchyPath`** hasta que la Tarea 9 traiga el límite real. Quitarlo antes de tener la clave compacta dejaba sin ningún límite. La búsqueda del hueco va por `ParentMemberId` nivel a nivel y se detiene en el primer nivel con hueco (no hace falta CTE). No baja por nodos que superan el tope.
+- **BizCenter y Admin: comprobaciones repetidas dentro del candado.** Además del hueco, se vuelven a comprobar el destino y la referencia circular sobre las entidades **recargadas** (`ReloadAsync`): con otra consulta, una entidad ya rastreada no se refresca. El admin toma el árbol en exclusivo también cuando el miembro tiene descendientes flotando bajo `/{miembro}/`, porque eso reescribe rutas.
+- **Retiradas.** Las tres (Admin, BizCenter y SignupAPI Unplace) tienen su prueba de que esperan a una colocación en curso.
+- **Recalculador de piernas determinista.** `DualTeamPointsRecalculator` y la suma de `RemovePlacementHandler` eligen el hijo de cada lado por `(CreationDate, Id)`. Ojo: `AuditInterceptor` pone `CreationDate = Now` al insertar, así que las filas de un mismo `SaveChanges` empatan y decide el `Id`.
+- **Script de reparación (`01`).**
+  - Calcula sobre una copia en una tabla temporal (`#a`) en vez de sobre `DualTeamTree`.
+  - `SoloInforme=1` no escribe ni bloquea la tabla real: con 11 servicios contra la base local, la simulación en una transacción del plan habría retenido candados exclusivos sobre 140.000 filas durante minutos.
+  - `SoloInforme=0` toma `dual-tree` en exclusivo (dueño `Session`) durante todo el script. Tras calcular cada hueco, escribe en `DualTeamTree` las filas que ese hueco cambió, en su propia transacción, y comprueba que el número de filas casa (51051).
+  - El destino es siempre una hoja: el nodo más profundo de un subárbol lo es, así que la búsqueda filtra hojas en vez de nodos con menos de 2 hijos.
+  - En modo aplicar, la guarda de 12.000 niveles se comprueba lote a lote, antes de escribir. Los lotes anteriores quedan confirmados y coherentes; por eso primero se ejecuta `SoloInforme`.
+- **Lista blanca de bases.** `01` y `02` admiten `MLMConquerorGlobalEditionDb` y la base de ensayo `MLMConquerorGlobalEditionDb_PlanPEnsayo`.
+- **`02`.**
+  - Se niega a ejecutarse si quedan huecos (51052).
+  - Toma un solo `MemberStatistics` por miembro.
+  - Vacía `DualTeamLegFrontiers`. Hasta la Tarea 14, el motor reconstruye cada cola con una consulta en el primer derrame de cada patrocinador.
+- **Índice único: pruebas de SQL Server.** `SqlServerHuecoUnicoTests` se salta, con su motivo, en una base sin el índice (la local, hasta la reparación). Se ejecutó en verde contra la base de ensayo reparada. La prueba de modelo `HuecoUnicoModeloTests` corre siempre.
+- **`DevSeedController`.**
+  - Lleva `[DevelopmentOnly]` (filtro de recurso) y `[Authorize(Roles = "SuperAdmin")]`.
+  - `seed-superadmin` es `[AllowAnonymous]`, pero responde 401 sin sesión y 403 con otro rol en cuanto existe un SuperAdmin.
+  - El filtro corre después del middleware de autorización: fuera de Development, una petición anónima recibe 401 y no 404. En ningún caso se ejecuta nada.
+- **Resultados medidos (2026-10-18).**
+  - **`SoloInforme` en la base local** (sin escribir nada, 14 min 40 s, con los 11 servicios corriendo).
+    - Antes: 119.433 nodos, 939 huecos, 45.182 filas en huecos, 44.243 intrusos (44.119 `rank-climb`, 116 `placement-service`, 5 `AMB-…` y 3 `system`), profundidad 934, 308 MB de rutas, 0 huérfanos y 3 raíces.
+    - Después: 939 lotes, 44.243 intrusos movidos y **94.726 filas** cambian de ruta, padre o lado. **La profundidad máxima resultante es 8.223**, muy por encima de la cota inferior de ≈1.481 del diagnóstico, aunque bajo la guarda de 12.000.
+    - Las rutas pasan de **308 MB a 2.290 MB**, y la más larga tiene 90.454 caracteres.
+    - Quedan 0 huecos, 0 rutas incoherentes, 0 huérfanos y 3 raíces.
+  - **Ensayo** (`MLMConquerorGlobalEditionDb_PlanPEnsayo`, restaurada de una copia `COPY_ONLY`, ya borrada junto con su backup).
+    - La migración antes de reparar se detiene con 51048 y no aplica nada.
+    - `01` aplicado: 939 lotes, 115.955 filas escritas (algunas filas se escriben en varios lotes), 17 min 46 s. El mismo resultado que la simulación. Una segunda pasada da Lotes = 0.
+    - `02`: 101.758 piernas y 100.911 `DualTeamPoints` cambian, 2.118 colas vaciadas, 73 s. Una segunda pasada no cambia nada.
+    - Después la migración se aplica y crea el índice.
+    - Verificación: 0 duplicados y 0 huérfanos. Las 119.433 filas se alcanzan exactamente una vez desde las raíces, así que no hay ciclos. Rutas, piernas y `DualTeamPoints` coherentes.
+    - Las pruebas `Binario` de BizCenter (24, ninguna saltada), las de SQL de AdminAPI y las de colocación de Signups pasan en verde contra el ensayo.
+- **Tarea 21 (R7) no se hace en esta tanda.** En local, `PaymentHistories` tiene 22.769 filas y 0 repetidas por `(GatewayName, GatewayTransactionId)`.
+
 ## Bloque B: clave de ruta compacta
 
 ### Tarea 9: `DualBinaryPath` (codificación) y su demostración
@@ -1640,7 +1692,7 @@ El orden importa: el índice único no se crea si quedan huecos, el relleno exig
 | Id | Riesgo | Mitigación |
 |---|---|---|
 | P-R1 | **Profundidad.** La regla de la cadena más profunda hace crecer la profundidad con cada derrame (hoy 934 con 119.000 nodos). La clave admite 13.567 niveles. Con millones de miembros en una sola pierna puede agotarse. | `DualTreeTooDeepException` hace fallar la colocación de forma cerrada. Se registra un aviso a partir de 12.000 (`DualBinaryPath.WarnDepth`). El Bloque D mide los bytes de la clave a 5.000 niveles. A largo plazo, la decisión es de Nick (P4). |
-| P-R2 | La reparación con la regla del motor puede dejar el árbol más profundo de lo previsto (la cota inferior es ≈ 1.481 niveles). | El modo `SoloInforme` y la guarda 51044 (> 12.000). Alternativa en P1. |
+| P-R2 | La reparación con la regla del motor puede dejar el árbol más profundo de lo previsto (la cota inferior es ≈ 1.481 niveles). **Medido en local: 8.223 niveles y 2.290 MB de rutas** (antes 934 y 308 MB). | El modo `SoloInforme` y la guarda 51044 (> 12.000). Alternativa en P1. |
 | P-R3 | `PlaceBulkAsync` de uno en uno es más lento que en bloques de 1.000. | Se mide en el Bloque D. Cada colocación es O(1) con la caché más una subida de O(profundidad). Si no basta, se paraleliza por patrocinador, porque el candado por hueco lo permite. |
 | P-R4 | La clave de `UX_DualTeamTree_ParentMemberId_Side` se declara de 1.804 bytes (`nvarchar(900)`). | Los ids reales tienen menos de 20 caracteres. Se acepta el aviso de SQL Server. Acotar `MemberId`/`ParentMemberId` a `nvarchar(100)` queda para otro plan. |
 | P-R5 | `RekeySubtreeAsync` rellena cualquier fila con `BinaryPath` nulo. | Solo se despliega después del relleno (ventana única). Queda anotado en el código. |
