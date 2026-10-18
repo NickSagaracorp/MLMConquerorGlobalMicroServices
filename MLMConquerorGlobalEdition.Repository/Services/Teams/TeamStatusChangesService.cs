@@ -114,30 +114,21 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
     }
 
     /// <summary>
-    /// Dual Team: los MemberId del rango se cruzan con su nodo binario más reciente y solo sobre
-    /// esas filas se comprueba el prefijo binario, que no es indexable (J17).
+    /// Dual Team: los MemberId del rango se cruzan con el subarbol binario del miembro, que es el rango de su
+    /// clave compacta (Plan P, DualSubtree.Under). Antes se comparaba el prefijo de la ruta de texto fila a fila:
+    /// no indexable y con error 8152 en rutas de mas de 4.000 caracteres.
     /// </summary>
     private async Task<IQueryable<TeamStatusChangeView>?> DualTeamQueryAsync(
         string memberId, IQueryable<string> changedIds, CancellationToken ct)
     {
-        var path = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.MemberId == memberId)
-            .OrderByDescending(d => d.CreationDate)
-            .Select(d => d.HierarchyPath)
-            .FirstOrDefaultAsync(ct);
-        if (string.IsNullOrEmpty(path)) return null;
-        var prefix = TreePrefix.Of(path);
+        var node = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
+        if (node is null) return null;
+        _dualViewer = node;
 
         return
             from id in changedIds
             join m in _db.MemberProfiles.AsNoTracking() on id equals m.MemberId
-            where m.MemberId != memberId
-            let dualPath = _db.DualTeamTree
-                .Where(d => d.MemberId == m.MemberId)
-                .OrderByDescending(d => d.CreationDate)
-                .Select(d => d.HierarchyPath)
-                .FirstOrDefault()
-            where dualPath != null && dualPath.StartsWith(prefix)
+            join d in DualSubtree.Under(_db, node).AsNoTracking() on m.MemberId equals d.MemberId
             select new TeamStatusChangeView
             {
                 MemberId        = m.MemberId,
@@ -146,9 +137,12 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
                 EnrollDate      = m.EnrollDate,
                 AccountStatus   = m.Status.ToString(),
                 SponsorMemberId = m.SponsorMemberId,
-                DualPath        = dualPath
+                DualKey         = d.BinaryPath
             };
     }
+
+    /// <summary>El nodo del que se pidio el Dual Team (para sacar la pierna de cada fila de su clave).</summary>
+    private Domain.Entities.Tree.DualTeamEntity? _dualViewer;
 
     private async Task EnrichAsync(List<TeamStatusChangeView> rows, string viewerId, StatusChangesScope scope, CancellationToken ct)
     {
@@ -196,14 +190,18 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             .Select(m => new { m.MemberId, FullName = m.FirstName + " " + m.LastName })
             .ToDictionaryAsync(m => m.MemberId, m => m.FullName, ct);
 
-        var legs = scope == StatusChangesScope.DualTeam
-            ? (await _db.DualTeamTree.AsNoTracking()
-                    .Where(d => d.ParentMemberId == viewerId)
-                    .Select(d => new { d.MemberId, d.Side })
-                    .ToListAsync(ct))
-                .GroupBy(d => d.MemberId)
-                .ToDictionary(g => g.Key, g => g.First().Side)
-            : new Dictionary<string, TreeSide>();
+        // La pierna de cada fila: por su clave (inorden) o, sin claves (InMemory), por adyacencia.
+        var legs = new Dictionary<string, TreeSide>();
+        if (scope == StatusChangesScope.DualTeam && _dualViewer is not null)
+        {
+            if (_dualViewer.BinaryPath is not null && rows.All(r => r.DualKey is not null))
+                foreach (var r in rows) legs[r.MemberId] = DualSubtree.LegOf(_dualViewer, r.DualKey!);
+            else
+                foreach (var side in new[] { TreeSide.Left, TreeSide.Right })
+                    foreach (var id in (await DualSubtree.Leg(_db, _dualViewer, side).AsNoTracking()
+                                 .Select(d => d.MemberId).ToListAsync(ct)).Intersect(ids))
+                        legs[id] = side;
+        }
 
         foreach (var row in rows)
         {
@@ -224,15 +222,11 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             row.DualUplineMemberId = uplines.GetValueOrDefault(row.MemberId);
             row.DualUplineFullName = names.GetValueOrDefault(row.DualUplineMemberId ?? string.Empty);
 
-            if (scope == StatusChangesScope.DualTeam && row.DualPath is not null)
-            {
-                var segments = row.DualPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                var at       = Array.IndexOf(segments, viewerId);
-                var gateway  = at >= 0 && at + 1 < segments.Length ? segments[at + 1] : null;
-                row.Leg      = gateway is not null && legs.TryGetValue(gateway, out var side) ? side.ToString() : null;
-            }
+            if (scope == StatusChangesScope.DualTeam)
+                row.Leg = legs.TryGetValue(row.MemberId, out var side) ? side.ToString() : null;
 
             row.DualPath = null; // nunca sale del servidor
+            row.DualKey  = null;
         }
     }
 

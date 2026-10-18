@@ -31,4 +31,7 @@ public sealed class TeamStatusChangeView
     /// <summary>Ruta binaria, solo para calcular la pierna en el servidor. Nunca sale (se anula y no se serializa).</summary>
     [JsonIgnore]
     public string?   DualPath                  { get; set; }
+    /// <summary>Plan P: la clave compacta del nodo binario, solo dentro del servidor (para sacar la pierna).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte[]?   DualKey                   { get; set; }
 }

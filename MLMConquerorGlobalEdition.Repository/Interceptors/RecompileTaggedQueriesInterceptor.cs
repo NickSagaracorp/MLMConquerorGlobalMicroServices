@@ -6,7 +6,8 @@ namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 
 /// <summary>
 /// Plan M: añade OPTION (RECOMPILE) a las consultas que llevan <see cref="GenealogySubtree.RecompileTag"/>
-/// (todas las que pasan por GenealogySubtree.Under). El mismo SQL del equipo sirve a un equipo de 30
+/// (todas las que pasan por GenealogySubtree.Under) y <see cref="DualSubtree.RecompileTag"/> (el rango de la
+/// clave compacta del binario, Plan P). El mismo SQL del equipo sirve a un equipo de 30
 /// personas y a uno de 119.400: con el plan en caché del pequeño (bucles anidados), el grande tardaba
 /// 3–6 s; compilado para su rango, 73 ms. Recompilar cuesta milisegundos; un plan equivocado, segundos.
 /// Va en AppDbContext.OnConfiguring, como los demás interceptores, para que ningún anfitrión lo olvide.
@@ -17,7 +18,8 @@ public sealed class RecompileTaggedQueriesInterceptor : DbCommandInterceptor
 
     /// <summary>El texto del comando con la pista al final si lleva la etiqueta y aún no la tiene.</summary>
     public static string Apply(string commandText) =>
-        commandText.Contains(GenealogySubtree.RecompileTag, StringComparison.Ordinal)
+        (commandText.Contains(GenealogySubtree.RecompileTag, StringComparison.Ordinal)
+         || commandText.Contains(DualSubtree.RecompileTag, StringComparison.Ordinal))
         && !commandText.TrimEnd().EndsWith(Hint, StringComparison.Ordinal)
             ? commandText.TrimEnd().TrimEnd(';') + "\n" + Hint
             : commandText;

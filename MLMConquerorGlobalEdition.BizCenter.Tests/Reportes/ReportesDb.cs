@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Domain.Services;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -161,19 +162,45 @@ public static class ReportesDb
         return nodo;
     }
 
+    /// <summary>
+    /// Un nodo del binario. Plan P: con su clave compacta, calculada desde el padre si ya esta sembrado en este
+    /// contexto (o con un ordinal de raiz nuevo si es raiz); sin padre sembrado, sin clave.
+    /// </summary>
     public static DualTeamEntity NodoBinario(AppDbContext db, string memberId, string? padre, string ruta, TreeSide lado)
     {
+        byte[]? clave = null;
+        int? prof = null;
+        if (padre is null)
+        {
+            clave = DualBinaryPath.Root(OrdinalDeRaiz(db));
+            prof = 0;
+        }
+        else if (db.DualTeamTree.Local.FirstOrDefault(n => n.MemberId == padre) is { BinaryPath: not null } p)
+        {
+            clave = DualBinaryPath.Child(p.BinaryPath, lado);
+            prof = p.Depth + 1;
+        }
         var nodo = new DualTeamEntity
         {
             MemberId       = memberId,
             ParentMemberId = padre,
             HierarchyPath  = ruta,
             Side           = lado,
+            BinaryPath     = clave,
+            Depth          = prof,
             CreatedBy      = "prueba"
         };
         db.DualTeamTree.Add(nodo);
         return nodo;
     }
+
+    private static int _ordinalEnMemoria = 1_000_000;
+
+    /// <summary>Un ordinal de raiz que no choca con ninguno real: la secuencia en SQL Server, un contador en InMemory.</summary>
+    public static int OrdinalDeRaiz(AppDbContext db) =>
+        db.Database.IsSqlServer()
+            ? db.Database.SqlQuery<int>($"SELECT NEXT VALUE FOR dbo.DualTeamRootOrdinal AS [Value]").ToList()[0]
+            : Interlocked.Increment(ref _ordinalEnMemoria);
 
     public static MembershipSubscription Suscripcion(
         AppDbContext db, string memberId, int nivel, MembershipStatus estado, DateTime inicio)

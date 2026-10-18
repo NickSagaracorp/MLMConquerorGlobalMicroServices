@@ -81,27 +81,25 @@ public class AdminMemberDualTeamController : ControllerBase
         [FromQuery] string? search   = null,
         CancellationToken ct = default)
     {
-        // 1. Get all dual team members under this member via HierarchyPath
+        // 1. Plan P: el subarbol binario es el rango de la clave compacta del nodo (DualSubtree.Under)
         var rootNode = await _db.DualTeamTree.AsNoTracking()
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
 
         if (rootNode is null)
             return Ok(ApiResponse<PagedResult<DualTeamMemberDto>>.Ok(new PagedResult<DualTeamMemberDto>()));
 
-        var pathPrefix = TreePrefix.Of(rootNode.HierarchyPath);
-        var rootDepth  = pathPrefix.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+        var rootDepth = rootNode.Depth ?? 0;
 
         // 2. Page the binary subtree at the DB (join DualTeamTree subtree → profiles), instead
         //    of loading ALL ~120k subtree nodes into memory + Contains(allIds). Only the page's
         //    rows (≤ pageSize) are materialized; level/leg come from the page rows' own paths.
         var baseQuery =
-            from d in _db.DualTeamTree.AsNoTracking()
-            where d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId
+            from d in DualSubtree.Under(_db, rootNode).AsNoTracking()
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
             select new
             {
                 m.MemberId, m.FirstName, m.LastName, m.Country, m.SponsorMemberId, m.Status, m.CreationDate,
-                d.HierarchyPath, d.ParentMemberId, d.Side, d.LeftLegPoints, d.RightLegPoints
+                d.Depth, d.ParentMemberId, d.Side, d.LeftLegPoints, d.RightLegPoints
             };
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -127,7 +125,7 @@ public class AdminMemberDualTeamController : ControllerBase
 
         var levelMap = pageRows.ToDictionary(
             x => x.MemberId,
-            x => x.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length - rootDepth);
+            x => (x.Depth ?? 0) - rootDepth);
         var nodeMap = pageRows.ToDictionary(
             x => x.MemberId,
             x => new { x.ParentMemberId, x.Side, x.LeftLegPoints, x.RightLegPoints });

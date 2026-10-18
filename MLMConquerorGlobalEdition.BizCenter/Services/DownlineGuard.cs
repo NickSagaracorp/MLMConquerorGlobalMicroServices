@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Domain.Services;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -79,25 +80,26 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerNodoBinarioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            // El nodo más reciente del que mira (R8) y un prefijo que acaba en "/" (TreePrefix).
-            var ruta = await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.MemberId == propio)
-                .OrderByDescending(d => d.CreationDate)
-                .Select(d => d.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
+            // Plan P: por la clave compacta. El objetivo esta en mi red si su clave cae en el rango de la mia
+            // (DualBinaryPath.Contains); antes se comparaba el prefijo de la ruta de texto.
+            // El nodo mas reciente de cada uno (R8: no uno antiguo que quedara en mi red).
+            var mio = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == propio)
+                .OrderByDescending(d => d.CreationDate).ThenByDescending(d => d.Id).FirstOrDefaultAsync(ct);
+            var suyo = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == objetivo)
+                .OrderByDescending(d => d.CreationDate).ThenByDescending(d => d.Id).FirstOrDefaultAsync(ct);
+            if (mio is null || suyo is null) return false;
+            if (mio.BinaryPath is not null && suyo.BinaryPath is not null)
+                return DualBinaryPath.Contains(mio.BinaryPath, suyo.BinaryPath);
 
-            if (string.IsNullOrEmpty(ruta)) return false;
-            var raiz = TreePrefix.Of(ruta);
-
-            // R8 también sobre el objetivo: cuenta su nodo más reciente, no uno antiguo que quedara
-            // bajo mi prefijo.
-            var rutaObjetivo = await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.MemberId == objetivo)
-                .OrderByDescending(d => d.CreationDate)
-                .Select(d => d.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
-
-            return rutaObjetivo is not null && rutaObjetivo.StartsWith(raiz, StringComparison.Ordinal);
+            // Sin claves (InMemory, pruebas de logica): subir por ParentMemberId desde el objetivo.
+            var vistos = new HashSet<string>();
+            for (var actual = suyo; actual is not null && vistos.Add(actual.MemberId);)
+            {
+                if (actual.MemberId == mio.MemberId) return true;
+                var padre = actual.ParentMemberId;
+                actual = padre is null ? null : await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == padre, ct);
+            }
+            return false;
         });
 
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
