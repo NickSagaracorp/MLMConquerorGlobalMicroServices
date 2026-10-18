@@ -1,10 +1,14 @@
 /*
-Plan P, Tarea 3. Repara los huecos repetidos del binario (DualTeamTree): en cada (ParentMemberId, Side) con
-varios hijos vivos, el mas antiguo por (CreationDate, Id) se queda el hueco y los demas (intrusos) bajan CON
-SU SUBARBOL a la hoja mas profunda de la misma pierna, la regla c de derrame del motor (decisiones de Nick,
-2026-10-18). Empates de profundidad por (CreationDate, Id). Intrusos de un hueco por (CreationDate, Id): el
-primero cuelga de la hoja mas profunda del subarbol del que se queda; cada siguiente, de la hoja mas
-profunda del subarbol del anterior (el nodo mas profundo de un subarbol siempre es una hoja).
+Plan P, Tarea 3. Repara los huecos repetidos del binario (DualTeamTree). Que hace exactamente (decisiones de
+Nick, 2026-10-18):
+  - En cada hueco (P, lado) con varios hijos vivos se queda el mas antiguo por (CreationDate, Id), K.
+  - Los demas (intrusos), por (CreationDate, Id), bajan CON SU SUBARBOL, sin cambiar su forma, dentro de la
+    misma pierna (P, lado), que tras quedarse K es el subarbol de K. El primero cuelga de la hoja mas profunda
+    del subarbol de K; cada siguiente, de la hoja mas profunda del subarbol del anterior. Una hoja no tiene
+    hijos, asi que cuelgan siempre por la izquierda. Empates de profundidad por (CreationDate, Id).
+  - Es el derrame de la regla c de DualTeamPlacementRules aplicado como si P fuera el patrocinador y ese lado su
+    lado preferido. NO es la cola del patrocinador real de cada intruso ni el hueco libre mas cercano: es lo que
+    mantiene la cadena mas profunda (por eso la profundidad pasa de 934 a 8.223 en local).
 
 Como trabaja:
   - Copia los nodos vivos a una tabla de trabajo (#a) y calcula ahi cada movimiento: la tabla real no se
@@ -46,6 +50,8 @@ DECLARE @simular bit = CASE N'$(SoloInforme)' WHEN N'1' THEN 1 ELSE 0 END;
 DECLARE @inicio datetime2 = SYSDATETIME();
 DECLARE @LimiteProfundidad int = 12000;
 
+BEGIN TRY
+
 IF @simular = 0
 BEGIN
     DECLARE @candado int;
@@ -84,6 +90,14 @@ CREATE TABLE #h (
 INSERT INTO #h (ParentMemberId, Side, Hijos)
 SELECT ParentMemberId, Side, COUNT(*) FROM #a
 WHERE ParentMemberId IS NOT NULL GROUP BY ParentMemberId, Side HAVING COUNT(*) > 1;
+
+-- Antes de mover nada, el arbol tiene que estar sano salvo por los huecos: rutas coherentes con el padre y sin
+-- huerfanos. Si no, la reparacion reescribiria rutas a partir de datos rotos.
+IF EXISTS (SELECT 1 FROM #a c JOIN #a p ON p.MemberId = c.ParentMemberId WHERE c.HierarchyPath <> p.HierarchyPath + c.MemberId + N'/')
+   OR EXISTS (SELECT 1 FROM #a WHERE ParentMemberId IS NULL AND HierarchyPath <> N'/' + MemberId + N'/')
+    THROW 51063, N'Hay rutas incoherentes con su padre: revisar antes de reparar (no se ha tocado nada).', 1;
+IF EXISTS (SELECT 1 FROM #a c WHERE c.ParentMemberId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM #a p WHERE p.MemberId = c.ParentMemberId))
+    THROW 51064, N'Hay nodos huerfanos (su padre no existe): revisar antes de reparar (no se ha tocado nada).', 1;
 
 -- Informe antes
 SELECT 'antes' AS Fase,
@@ -253,3 +267,10 @@ BEGIN
         THROW 51044, N'La reparacion dejaria mas de 12.000 niveles (limite de BinaryPath 13.567): decide Nick la regla.', 1;
     PRINT 'Simulacion: nada se ha guardado.';
 END
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK;
+    IF APPLOCK_MODE(N'public', N'dual-tree', N'Session') <> N'NoLock'
+        EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
+    THROW;
+END CATCH

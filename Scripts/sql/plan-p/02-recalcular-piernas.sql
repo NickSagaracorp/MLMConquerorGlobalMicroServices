@@ -9,7 +9,7 @@ Vacia DualTeamLegFrontiers (la cola cacheada por patrocinador): la reparacion ca
 profunda de cada pierna. El motor la reconstruye solo, con una consulta, en el primer derrame de cada
 patrocinador; la Tarea 14 la reconstruye de una vez.
 
-Escribe por tandas de 20.000 filas, una transaccion por tanda. Idempotente: una segunda ejecucion no cambia
+Escribe por tandas de 20.000 filas, una transaccion por tanda, con 'dual-tree' en exclusivo durante todo el script. Idempotente: una segunda ejecucion no cambia
 ninguna fila. Se niega a ejecutarse si quedan huecos repetidos (las piernas no estarian bien definidas).
 
 SOLO base local o la base de ensayo del Plan P, con los servicios parados.
@@ -33,6 +33,12 @@ GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 DECLARE @inicio datetime2 = SYSDATETIME();
+
+BEGIN TRY
+DECLARE @candado int;
+EXEC @candado = sp_getapplock @Resource = N'dual-tree', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
+IF @candado < 0
+    THROW 51065, N'Hay escrituras del binario en curso (dual-tree ocupado): parar los servicios.', 1;
 
 IF OBJECT_ID('tempdb..#n') IS NOT NULL DROP TABLE #n;
 SELECT CAST(d.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId,
@@ -82,8 +88,17 @@ DELETE FROM DualTeamLegFrontiers;
 DECLARE @colas int = @@ROWCOUNT;
 COMMIT;
 
+EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
+
 SELECT (SELECT COUNT(*) FROM #n) AS NodosRecalculados,
        @piernas AS PiernasCambiadas,
        @estadisticas AS DualTeamPointsCambiados,
        @colas AS ColasVaciadas,
        DATEDIFF(second, @inicio, SYSDATETIME()) AS Segundos;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK;
+    IF APPLOCK_MODE(N'public', N'dual-tree', N'Session') <> N'NoLock'
+        EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
+    THROW;
+END CATCH

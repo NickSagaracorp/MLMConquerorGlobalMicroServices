@@ -1,4 +1,15 @@
-﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+/*
+  NOTA (Plan P, 2026-10-18): este script idempotente esta DESACTUALIZADO. Se genero hace muchas migraciones
+  (la ultima que incluye es de la epoca de "Rank engine processing") y NO contiene, entre otras,
+  HuecoUnicoDelBinario (indice unico UX_DualTeamTree_ParentMemberId_Side con la guarda 51048) ni
+  ClaveCompactaDelBinario (BinaryPath, Depth, contadores de pierna, secuencia DualTeamRootOrdinal, funcion
+  dbo.DualChildKey e indice UX_DualTeamTree_BinaryPath). No se usa en el despliegue del Plan P. Para un
+  despliegue por script, regenerarlo con:
+    dotnet ef migrations script --idempotent --project MLMConquerorGlobalEdition.Repository
+           --startup-project MLMConquerorGlobalEdition.AdminAPI -o DeploymentScripts/migrate-rds.sql
+  y seguir el orden de docs/superpowers/plans/2026-10-18-plan-p-arbol-binario-a-escala.md («Despliegue»).
+*/
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,
