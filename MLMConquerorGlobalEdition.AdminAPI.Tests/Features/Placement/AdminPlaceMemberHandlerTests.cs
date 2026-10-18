@@ -238,4 +238,49 @@ public class AdminPlaceMemberHandlerTests
 
         result.ErrorCode.Should().Be("ROOT_CANNOT_BE_PLACED");
     }
+
+    /// <summary>
+    /// Revision C1 del Plan P: el admin retira a X, que tiene equipo (C con 10 puntos y D con 5 bajo C); sus hijos esperan
+    /// flotando. Al volver a colocar a X, el volumen de su equipo tiene que sumarse a X y a su linea nueva. Antes, al
+    /// recolgar a C se restaba por la linea nueva (X ya existia) lo mismo que luego se sumaba: neto 0, y X pasaba por
+    /// piernas negativas.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ReplacingARemovedMemberWithTeam_AddsTheTeamVolume()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        foreach (var id in new[] { "amb-x", "amb-c", "amb-d" }) db.MemberProfiles.Add(BuildProfile(id));
+        db.MemberStatistics.AddRange(
+            new MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity { MemberId = "amb-x", PersonalPoints = 1, CreatedBy = "seed" },
+            new MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity { MemberId = "amb-c", PersonalPoints = 10, CreatedBy = "seed" },
+            new MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity { MemberId = "amb-d", PersonalPoints = 5, CreatedBy = "seed" });
+        db.DualTeamTree.AddRange(
+            BuildNode("parent-001", null, TreeSide.Left, "/parent-001/"),
+            BuildNode("parent-002", null, TreeSide.Left, "/parent-002/"),
+            BuildNode("amb-x", "parent-001", TreeSide.Left, "/parent-001/amb-x/"),
+            BuildNode("amb-c", "amb-x", TreeSide.Left, "/parent-001/amb-x/amb-c/"),
+            BuildNode("amb-d", "amb-c", TreeSide.Left, "/parent-001/amb-x/amb-c/amb-d/"));
+        await db.SaveChangesAsync();
+        foreach (var (id, l, n) in new[] { ("parent-001", 16m, 3), ("amb-x", 15m, 2), ("amb-c", 5m, 1) })
+        {
+            var nodo = db.DualTeamTree.First(d => d.MemberId == id);
+            nodo.LeftLegPoints = l; nodo.LeftLegCount = n;
+        }
+        await db.SaveChangesAsync();
+
+        (await new MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminRemovePlacement.AdminRemovePlacementHandler(
+            db, CurrentUser().Object, Clock().Object).Handle(new MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminRemovePlacement.AdminRemovePlacementCommand("amb-x"), CancellationToken.None))
+            .IsSuccess.Should().BeTrue();
+        db.DualTeamTree.First(d => d.MemberId == "parent-001").LeftLegPoints.Should().Be(0);
+
+        var result = await CreateHandler(db).Handle(new AdminPlaceMemberCommand("amb-x", "parent-002", "Right"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue(result.Error);
+        var x = db.DualTeamTree.First(d => d.MemberId == "amb-x");
+        (x.LeftLegPoints, x.LeftLegCount).Should().Be((15m, 2), "el equipo de X vuelve con X");
+        var p2 = db.DualTeamTree.First(d => d.MemberId == "parent-002");
+        (p2.RightLegPoints, p2.RightLegCount).Should().Be((16m, 3), "X y su equipo suben a la linea nueva");
+        db.DualTeamTree.Where(d => d.MemberId.StartsWith("amb") || d.MemberId.StartsWith("parent")).ToList()
+            .Should().OnlyContain(d => d.LeftLegPoints >= 0 && d.RightLegPoints >= 0 && d.LeftLegCount >= 0 && d.RightLegCount >= 0);
+    }
 }

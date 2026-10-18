@@ -134,10 +134,7 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
                 _db.Entry(nuevo).State = EntityState.Detached;
 
                 // Member was previously unplaced — their descendants are floating. Re-attach them to the new position.
-                var colocado = await _db.DualTeamTree.AsNoTracking().FirstAsync(d => d.MemberId == command.MemberToPlaceId, ct);
-                foreach (var hijo in await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberToPlaceId, ct))
-                    await DualTeamNodes.MoveSubtreeAsync(_db, hijo.MemberId,
-                        new DualTeamDestination.UnderParent(colocado, hijo.Side), adjustLegs: true, now, _currentUser.UserId, ct);
+                await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberToPlaceId, floating, now, _currentUser.UserId, ct);
             }
 
             var prevLog = await _db.PlacementLogs.AsNoTracking()

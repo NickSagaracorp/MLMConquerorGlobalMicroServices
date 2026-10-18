@@ -1,7 +1,9 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Services;
@@ -80,6 +82,7 @@ public static class DualTeamNodes
         DateTime now, string createdBy, CancellationToken ct = default)
     {
         var (key, depth) = await KeyOfAsync(db, parent, ct);
+        AvisarSiHondo(db, memberId, depth + 1);
         return new DualTeamEntity
         {
             MemberId = memberId, ParentMemberId = parent.MemberId, Side = side,
@@ -126,9 +129,11 @@ public static class DualTeamNodes
                 break;
         }
 
-        var oldParentExists = oldParent is not null
-            && await db.DualTeamTree.AsNoTracking().AnyAsync(d => d.MemberId == oldParent, ct);
-        if (adjustLegs && oldParentExists)
+        // Revision C1: solo se resta de la linea vieja si el subarbol cuelga DE VERDAD de su padre, por la clave. Un
+        // hijo flotante de una retirada del admin apunta a su padre por ParentMemberId, pero por la clave sigue bajo
+        // la raiz virtual: si el padre acaba de recibir nodo, restar por adyacencia quitaba de la linea nueva lo que
+        // despues se sumaba (neto 0, con piernas negativas por el camino).
+        if (adjustLegs && await HangsFromParentByKeyAsync(db, oldParent, oldKey, ct))
             await LegPointMaintenance.ApplySubtreeAsync(db, rootId, -1, ct);
 
         if (db.Database.IsSqlServer())
@@ -138,6 +143,15 @@ public static class DualTeamNodes
 
         if (adjustLegs && newParentId is not null && to is DualTeamDestination.UnderParent)
             await LegPointMaintenance.ApplySubtreeAsync(db, rootId, +1, ct);
+
+        var maxima = await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == rootId).Select(d => d.Depth).FirstOrDefaultAsync(ct) ?? 0;
+        if (db.Database.IsSqlServer())
+        {
+            // La hoja mas honda del subarbol movido (un Index Seek sobre el rango de su clave nueva).
+            maxima = await DualSubtree.Under(db, new DualTeamEntity { MemberId = rootId, BinaryPath = newKey })
+                .Select(d => d.Depth).MaxAsync(ct) ?? maxima;
+        }
+        AvisarSiHondo(db, rootId, maxima);
 
         await InvalidateFrontiersAsync(db, new[] { oldParent, newParentId }, ct);
         await ReloadTrackedAsync(db, ct);
@@ -177,6 +191,33 @@ public static class DualTeamNodes
         db.DualTeamTree.Remove(fila);
         await db.SaveChangesAsync(ct);
         return true;
+    }
+
+    /// <summary>
+    /// Revision I1: tras dar nodo a <paramref name="memberId"/>, recuelga bajo el a los hijos que lo esperaban de una
+    /// retirada del admin (<paramref name="floating"/>, leidos con <see cref="FloatingChildrenAsync"/> ANTES de crear su
+    /// nodo), cada uno por su lado y con su subarbol: claves, rutas y piernas (su volumen sube a la linea nueva).
+    /// Exige dual-tree en exclusivo, asi que quien coloca a un miembro con flotantes toma el exclusivo desde el
+    /// principio. La llaman todos los caminos que crean la hoja: motor, BizCenter, admin y SignupAPI.
+    /// </summary>
+    public static async Task ReattachFloatingChildrenAsync(AppDbContext db, string memberId, IReadOnlyList<DualTeamEntity> floating,
+        DateTime now, string by, CancellationToken ct = default)
+    {
+        if (floating.Count == 0) return;
+        await RequireTreeExclusiveAsync(db, ct);
+        var nodo = await db.DualTeamTree.AsNoTracking().FirstAsync(d => d.MemberId == memberId, ct);
+        foreach (var hijo in floating)
+            await MoveSubtreeAsync(db, hijo.MemberId, new DualTeamDestination.UnderParent(nodo, hijo.Side), adjustLegs: true, now, by, ct);
+    }
+
+    /// <summary>¿Cuelga <paramref name="key"/> de verdad de <paramref name="parentId"/>, por la clave (no solo por ParentMemberId)?</summary>
+    private static async Task<bool> HangsFromParentByKeyAsync(AppDbContext db, string? parentId, byte[] key, CancellationToken ct)
+    {
+        if (parentId is null) return false;
+        var padre = await db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == parentId, ct);
+        if (padre is null) return false;
+        var (pk, _) = await KeyOfAsync(db, padre, ct);
+        return DualBinaryPath.SqlCompare(pk, key) != 0 && DualBinaryPath.Contains(pk, key);
     }
 
     /// <summary>
@@ -256,8 +297,17 @@ public static class DualTeamNodes
         }
         finally
         {
-            await using var borrar = new SqlCommand("DROP TABLE #mv", conn, tx);
-            await borrar.ExecuteNonQueryAsync(CancellationToken.None);
+            // Revision (menor 2): si la transaccion murio (un 1205), este DROP fallaria y taparia la excepcion original,
+            // que es la que PlacementService reconoce para reintentar. Se borra solo si existe y su error se traga:
+            // la tabla temporal muere con la sesion de todos modos.
+            try
+            {
+                await using var borrar = new SqlCommand("IF OBJECT_ID('tempdb..#mv') IS NOT NULL DROP TABLE #mv", conn, tx);
+                await borrar.ExecuteNonQueryAsync(CancellationToken.None);
+            }
+            catch (Exception)
+            {
+            }
         }
     }
 
@@ -320,6 +370,18 @@ public static class DualTeamNodes
         node.BinaryPath = cadena[^1].BinaryPath;
         node.Depth = cadena[^1].Depth;
         return (node.BinaryPath!, node.Depth!.Value);
+    }
+
+    /// <summary>
+    /// Riesgo P-R1: por encima de DualBinaryPath.WarnDepth (12.000) niveles queda poco margen hasta el limite de la
+    /// clave (13.567, donde la colocacion falla cerrada). Se avisa en el log de la aplicacion (el del contexto).
+    /// </summary>
+    private static void AvisarSiHondo(AppDbContext db, string memberId, int profundidad)
+    {
+        if (profundidad <= DualBinaryPath.WarnDepth) return;
+        db.GetService<ILoggerFactory>().CreateLogger("MLMConquerorGlobalEdition.DualTeamNodes").LogWarning(
+            "Dual tree: {MemberId} quedo a {Depth} niveles (aviso a partir de {WarnDepth}; limite de la clave {MaxDepth}).",
+            memberId, profundidad, DualBinaryPath.WarnDepth, DualBinaryPath.MaxDepth);
     }
 
     private static async Task RequireTreeExclusiveAsync(AppDbContext db, CancellationToken ct)
