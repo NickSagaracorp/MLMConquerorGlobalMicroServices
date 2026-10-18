@@ -423,4 +423,54 @@ public class EvaluateRankHandlerTests
 
         cache.Verify(c => c.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    /// <summary>
+    /// Revision I3 del Plan P: tras la reparacion el binario tiene hasta 8.223 niveles. Encolar un aviso por cada
+    /// ascendiente de los dos arboles serian miles de trabajos por cada subida de rango (y por el barrido nocturno).
+    /// El aviso a la linea queda acotado: el patrocinador y la linea de inscripcion hasta
+    /// EvaluateRankHandler.UplineNotificationLevels niveles, mas el padre directo en el binario.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenRankAchieved_UplineNotificationsAreBounded()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1, personalPointsReq: 0));
+        // 500 ascendientes en el binario y 50 en el arbol de inscripcion.
+        var binario = "/" + string.Join("/", Enumerable.Range(0, 500).Select(i => $"BIN-{i:000}")) + "/AMB-001/";
+        await db.DualTeamTree.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity
+        {
+            MemberId = "AMB-001", ParentMemberId = "BIN-499", Side = TreeSide.Left, HierarchyPath = binario,
+            CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        var inscripcion = "/" + string.Join("/", Enumerable.Range(0, 50).Select(i => $"ENR-{i:00}")) + "/AMB-001/";
+        await db.GenealogyTree.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Tree.GenealogyEntity
+        {
+            MemberId = "AMB-001", ParentMemberId = "ENR-49", HierarchyPath = inscripcion, Level = 50,
+            Node = Microsoft.EntityFrameworkCore.HierarchyId.Parse("/1/"), CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
+
+        var jobs = BuildJobs();
+        var avisados = new List<string>();
+        jobs.Setup(c => c.Create(It.IsAny<Hangfire.Common.Job>(), It.IsAny<Hangfire.States.IState>()))
+            .Callback<Hangfire.Common.Job, Hangfire.States.IState>((j, _) =>
+            {
+                if (j.Method.Name == "NotifyUplineRankAchievedAsync") avisados.Add((string)j.Args[0]);
+            })
+            .Returns("test-job-id");
+        var handler = new EvaluateRankHandler(db, BuildClock().Object, BuildUser().Object, BuildQualification(db),
+            BuildCache().Object, jobs.Object);
+
+        var result = await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);
+
+        result.Value!.RankAchieved.Should().BeTrue();
+        avisados.Count.Should().BeLessThanOrEqualTo(EvaluateRankHandler.UplineNotificationLevels + 1);
+        avisados.Should().Contain("ENR-49", "el patrocinador siempre se entera");
+        avisados.Should().Contain("ENR-40").And.NotContain("ENR-39", "la linea de inscripcion, hasta 10 niveles");
+        avisados.Should().Contain("BIN-499", "el padre directo en el binario");
+        avisados.Should().NotContain("BIN-000");
+        avisados.Should().OnlyHaveUniqueItems();
+    }
 }

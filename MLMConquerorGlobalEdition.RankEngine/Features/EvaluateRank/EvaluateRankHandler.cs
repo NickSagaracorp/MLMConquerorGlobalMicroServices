@@ -21,6 +21,12 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     private readonly ICurrentUserService _currentUser;
     private readonly IRankQualificationService _qualification;
     private readonly ICacheService _cache;
+    /// <summary>
+    /// Plan P (revision I3): cuantos niveles de la linea de inscripcion reciben el aviso «alguien de tu equipo subio
+    /// de rango». Con el binario a 8.000 niveles, avisar a cada ascendiente eran miles de trabajos por subida.
+    /// </summary>
+    public const int UplineNotificationLevels = 10;
+
     private readonly IBackgroundJobClient _jobs;
 
     public EvaluateRankHandler(
@@ -224,8 +230,15 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     }
 
     /// <summary>
-    /// Collects all unique ancestor MemberIds from both the enrollment tree and the
-    /// dual-team tree, deduplicated. Pure computation — no notifications fired here.
+    /// A quien se avisa de que alguien de su equipo subio de rango (un push por persona). Plan P (revision I3): antes
+    /// era cada ascendiente de los dos arboles, y tras la reparacion el binario tiene hasta 8.223 niveles: miles de
+    /// trabajos por cada subida, multiplicados por el barrido nocturno. Ahora, acotado:
+    /// <list type="bullet">
+    /// <item>la linea de inscripcion (el patrocinador primero) hasta <see cref="UplineNotificationLevels"/> niveles:
+    /// es la relacion de patrocinio, la de quien acompana al miembro;</item>
+    /// <item>el padre directo en el binario (quien lo tiene colocado debajo).</item>
+    /// </list>
+    /// Sin duplicados. Lee los ascendientes de la ruta (no la filtra) y solo el final de la del binario.
     /// </summary>
     private async Task<List<string>> ComputeAllUplinesAsync(string memberId, CancellationToken ct)
     {
@@ -233,14 +246,20 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             .AsNoTracking()
             .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
-        var dualTeamNode = await _db.DualTeamTree
+        var dualParent = await _db.DualTeamTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.MemberId == memberId && !d.IsDeleted, ct);
+            .Where(d => d.MemberId == memberId && !d.IsDeleted)
+            .Select(d => d.ParentMemberId)
+            .FirstOrDefaultAsync(ct);
 
-        var genealogyUplines = ParseAncestors(genealogyNode?.HierarchyPath, memberId);
-        var dualTeamUplines  = ParseAncestors(dualTeamNode?.HierarchyPath, memberId);
+        var enrollmentLine = ParseAncestors(genealogyNode?.HierarchyPath, memberId)
+            .Reverse()                          // del patrocinador hacia arriba
+            .Take(UplineNotificationLevels);
 
-        return genealogyUplines.Union(dualTeamUplines).ToList();
+        var result = enrollmentLine.ToList();
+        if (!string.IsNullOrEmpty(dualParent) && !result.Contains(dualParent))
+            result.Add(dualParent);
+        return result;
     }
 
     /// <summary>
