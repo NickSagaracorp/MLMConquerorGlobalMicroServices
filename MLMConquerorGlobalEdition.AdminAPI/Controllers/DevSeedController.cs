@@ -298,7 +298,13 @@ public class DevSeedController : ControllerBase
         var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
             return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", result.Errors.Select(e => e.Description))));
-        await _userManager.AddToRoleAsync(user, "SuperAdmin");
+        // Revision (menor 6): nunca se confirma un usuario sin rol. Si no se le puede dar, se deshace todo.
+        var rol = await _userManager.AddToRoleAsync(user, "SuperAdmin");
+        if (!rol.Succeeded)
+        {
+            await tx.RollbackAsync(ct);
+            return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", rol.Errors.Select(e => e.Description))));
+        }
         await tx.CommitAsync(ct);
 
         return Ok(ApiResponse<SeedResultDto>.Ok(new SeedResultDto($"SuperAdmin '{request.Email}' created successfully.")));

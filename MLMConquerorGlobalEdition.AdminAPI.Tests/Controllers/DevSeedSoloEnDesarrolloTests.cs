@@ -180,4 +180,18 @@ public class DevSeedSoloEnDesarrolloTests
         users.Verify(u => u.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
         users.Verify(u => u.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
     }
+
+    /// <summary>Revision (menor 6): si no se puede dar el rol, no se confirma un usuario sin rol: error y nada guardado.</summary>
+    [Fact]
+    public async Task Sin_superadmin_si_falla_dar_el_rol_no_se_confirma_el_usuario()
+    {
+        var (c, users) = Controlador(0, Anonimo());
+        users.Setup(u => u.AddToRoleAsync(It.IsAny<ApplicationUser>(), "SuperAdmin"))
+             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "sin rol" }));
+
+        var r = await c.SeedSuperAdmin(new DevSeedController.SeedRequest("sa@x.test", "Secreta!1"), CancellationToken.None);
+
+        r.Result.Should().NotBeOfType<OkObjectResult>();
+        r.Result.Should().BeAssignableTo<ObjectResult>().Which.StatusCode.Should().BeGreaterThanOrEqualTo(400);
+    }
 }
