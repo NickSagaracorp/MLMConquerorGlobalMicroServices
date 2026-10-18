@@ -38,7 +38,7 @@ public class PlacementController : ControllerBase
     {
         if (!User.CanActOnMember(memberId)) return Ajeno();
 
-        var result = await _mediator.Send(new PlaceMemberCommand(memberId, request.PlaceUnderMemberId, request.Side), ct);
+        var result = await _mediator.Send(new PlaceMemberCommand(memberId, request.PlaceUnderMemberId, request.Side, CallerIdentity.IsStaff(User)), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<bool>.Ok(true, "Member placed successfully."));

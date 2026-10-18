@@ -53,12 +53,14 @@ public class DualTeamPlacementRulesTests
     }
 
     [Fact]
-    public void Decide_WhenSponsorFullButNoCachedTail_FallsBackToSponsor()
+    public void Decide_WhenSponsorFullButNoTail_Throws()
     {
-        // Defensive: spill requested with no frontier → parent defaults to sponsor.
-        var d = DualTeamPlacementRules.Decide(Sponsor, sponsorHasLeftChild: true, sponsorHasRightChild: true, deepestNodeId: null, deepestNodeHasLeftChild: false);
-        d.ParentMemberId.Should().Be(Sponsor);
-        d.IsSpill.Should().BeTrue();
+        // Plan P: un derrame sin cola no tiene destino. La version anterior caia en el patrocinador,
+        // es decir en su hueco izquierdo YA OCUPADO, y repetia el hueco (diagnostico-huecos-binario.md,
+        // §1.2 fallo 1). La prueba que habia aqui daba ese comportamiento por bueno.
+        var act = () => DualTeamPlacementRules.Decide(Sponsor, sponsorHasLeftChild: true, sponsorHasRightChild: true,
+                                                      deepestNodeId: null, deepestNodeHasLeftChild: false);
+        act.Should().Throw<InvalidOperationException>();
     }
 
     // ── PreferredSide ────────────────────────────────────────────────────────

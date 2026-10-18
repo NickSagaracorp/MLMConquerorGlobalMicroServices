@@ -23,6 +23,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("DualTeamRootOrdinal");
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.AnnualFeePayment", b =>
                 {
                     b.Property<string>("Id")
@@ -16063,6 +16065,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<byte[]>("BinaryPath")
+                        .HasMaxLength(1700)
+                        .HasColumnType("varbinary(1700)");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -16075,6 +16081,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Depth")
+                        .HasColumnType("int");
 
                     b.Property<string>("HierarchyPath")
                         .IsRequired()
@@ -16089,6 +16098,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<DateTime>("LastUpdateDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("LeftLegCount")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("LeftLegPoints")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
@@ -16099,6 +16111,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("ParentMemberId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("RightLegCount")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("RightLegPoints")
                         .HasPrecision(18, 4)
@@ -16112,6 +16127,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BinaryPath")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DualTeamTree_BinaryPath")
+                        .HasFilter("[IsDeleted] = 0 AND [BinaryPath] IS NOT NULL");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("BinaryPath"), new[] { "MemberId", "Depth", "ParentMemberId", "Side" });
+
                     b.HasIndex("MemberId")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
@@ -16119,6 +16141,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("ParentMemberId");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ParentMemberId"), new[] { "MemberId", "Side", "IsDeleted" });
+
+                    b.HasIndex("ParentMemberId", "Side")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DualTeamTree_ParentMemberId_Side")
+                        .HasFilter("[IsDeleted] = 0 AND [ParentMemberId] IS NOT NULL");
 
                     b.HasIndex(new[] { "MemberId" }, "IX_DualTeamTree_MemberId_Lookup");
 

@@ -2,7 +2,6 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.PlaceMember;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
@@ -30,17 +29,11 @@ public class PlaceMemberHandlerTests
         return m;
     }
 
-    private static Mock<IDualTeamPointsRecalculator> NullLegPoints()
-    {
-        var m = new Mock<IDualTeamPointsRecalculator>();
-        m.Setup(r => r.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-         .Returns(Task.CompletedTask);
-        return m;
-    }
-
     private static MemberProfile BuildMember(string memberId, DateTime enrollDate) => new()
     {
         MemberId = memberId,
+        // Revision I8: el destino tiene que ser el patrocinador o su red; en estas pruebas, AMB-000001.
+        SponsorMemberId = memberId == "AMB-000001" ? null : "AMB-000001",
         FirstName = "Test",
         LastName = "Member",
         MemberType = MemberType.Ambassador,
@@ -54,7 +47,7 @@ public class PlaceMemberHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("NON-EXISTENT", "AMB-000001", "Left"), CancellationToken.None);
@@ -71,7 +64,7 @@ public class PlaceMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-000002", enrollDate));
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         Func<Task> act = () => handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -87,56 +80,13 @@ public class PlaceMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-000002", enrollDate));
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "NON-EXISTENT-PARENT", "Left"), CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("PARENT_MEMBER_NOT_FOUND");
-    }
-
-    /// <summary>
-    /// Sprint-15 Bug B — depth-guard test. If every candidate node in the BFS
-    /// has a HierarchyPath already past the 1500-byte safety cap, the handler
-    /// must refuse the placement with NO_AVAILABLE_SLOT rather than push the
-    /// SQL nonclustered index over its 1700-byte limit (the exact failure mode
-    /// that surfaced in the 88-signup load test). We synthesize a path long
-    /// enough to trigger the guard by padding the member ID with filler.
-    /// </summary>
-    [Fact]
-    public async Task Handle_WhenAllCandidatesExceedHierarchyDepthCap_ReturnsFailure()
-    {
-        await using var db = InMemoryDbHelper.Create();
-        var enrollDate = FixedNow.AddDays(-5);
-
-        // Synthesize a parent with a HierarchyPath already over the 1500-byte cap
-        // by giving it a fake long ID — proves the guard would prevent even a
-        // direct placement under it.
-        var longId = "AMB-DEEP-" + new string('X', 1500);
-        var longParentPath = $"/{longId}/";
-
-        await db.MemberProfiles.AddRangeAsync(
-            BuildMember("AMB-000002", enrollDate),
-            BuildMember(longId, FixedNow.AddDays(-60))
-        );
-        await db.DualTeamTree.AddAsync(new DualTeamEntity {
-            MemberId       = longId,
-            ParentMemberId = null,
-            Side           = TreeSide.Left,
-            HierarchyPath  = longParentPath,
-            CreatedBy      = "seed",
-            LastUpdateDate = FixedNow
-        });
-        await db.SaveChangesAsync();
-
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
-
-        var result = await handler.Handle(
-            new PlaceMemberCommand("AMB-000002", longId, "Left"), CancellationToken.None);
-
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("NO_AVAILABLE_SLOT");
     }
 
     /// <summary>
@@ -165,7 +115,7 @@ public class PlaceMemberHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -200,7 +150,7 @@ public class PlaceMemberHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Right"), CancellationToken.None);
@@ -233,7 +183,7 @@ public class PlaceMemberHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -269,7 +219,7 @@ public class PlaceMemberHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -284,32 +234,85 @@ public class PlaceMemberHandlerTests
     }
 
     /// <summary>
-    /// Sprint-15 Bug C verification — every successful placement must invoke
-    /// the shared <see cref="IDualTeamPointsRecalculator"/> with the actual
-    /// PARENT id we placed under (BFS may have chosen a deeper parent than
-    /// the originally requested PlaceUnderMemberId).
+    /// Plan P (revision I3): ya no hay tope de 1.500 caracteres de ruta (comparaba caracteres, no bytes). El limite
+    /// real es la clave compacta: un padre con una ruta muy larga se puede usar.
     /// </summary>
     [Fact]
-    public async Task Handle_WhenSuccessful_InvokesLegPointsRecalculator()
+    public async Task Handle_WhenParentPathIsVeryLong_StillPlaces()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var longId = "AMB-DEEP-" + new string('X', 1500);
+        await db.MemberProfiles.AddRangeAsync(
+            BuildMember("AMB-000002", FixedNow.AddDays(-5)),
+            BuildMember(longId, FixedNow.AddDays(-60)));
+        await db.DualTeamTree.AddAsync(new DualTeamEntity {
+            MemberId = longId, ParentMemberId = null, Side = TreeSide.Left,
+            HierarchyPath = $"/{longId}/", CreatedBy = "seed", LastUpdateDate = FixedNow });
+        await db.SaveChangesAsync();
+
+        var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
+            .Handle(new PlaceMemberCommand("AMB-000002", longId, "Left", ByStaff: true), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue(result.Error);
+        db.DualTeamTree.First(n => n.MemberId == "AMB-000002").ParentMemberId.Should().Be(longId);
+    }
+
+    /// <summary>Plan P (C2): las piernas suben de forma incremental con los puntos del colocado.</summary>
+    [Fact]
+    public async Task Handle_WhenSuccessful_AddsThePointsToTheParentLeg()
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MemberProfiles.AddRangeAsync(
             BuildMember("AMB-000002", FixedNow.AddDays(-5)),
-            BuildMember("AMB-000001", FixedNow.AddDays(-60))
-        );
+            BuildMember("AMB-000001", FixedNow.AddDays(-60)));
+        await db.MemberStatistics.AddAsync(new MemberStatisticEntity { MemberId = "AMB-000002", PersonalPoints = 40, CreatedBy = "seed" });
         await db.DualTeamTree.AddAsync(new DualTeamEntity {
             MemberId = "AMB-000001", ParentMemberId = null, Side = TreeSide.Left,
             HierarchyPath = "/AMB-000001/", CreatedBy = "seed", LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 
-        var legPoints = NullLegPoints();
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, legPoints.Object);
+        var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
+            .Handle(new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
 
-        var result = await handler.Handle(
-            new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
+        result.IsSuccess.Should().BeTrue(result.Error);
+        var padre = db.DualTeamTree.First(n => n.MemberId == "AMB-000001");
+        padre.LeftLegPoints.Should().Be(40);
+        padre.LeftLegCount.Should().Be(1);
+    }
 
-        result.IsSuccess.Should().BeTrue();
-        legPoints.Verify(r => r.RecalculateForUplinesAsync(
-            "AMB-000001", It.IsAny<CancellationToken>()), Times.Once);
+    /// <summary>Revision I8: no se puede colgar bajo un nodo que no es del patrocinador ni de su red.</summary>
+    [Fact]
+    public async Task Handle_WhenTargetIsOutsideTheSponsorNetwork_IsRejected()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddRangeAsync(
+            BuildMember("AMB-000002", FixedNow.AddDays(-5)),
+            BuildMember("AMB-000001", FixedNow.AddDays(-60)),
+            BuildMember("AMB-AJENO", FixedNow.AddDays(-60)));
+        await db.SaveChangesAsync();
+
+        var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
+            .Handle(new PlaceMemberCommand("AMB-000002", "AMB-AJENO", "Left"), CancellationToken.None);
+
+        result.ErrorCode.Should().Be("PLACEMENT_TARGET_NOT_ALLOWED");
+    }
+
+    /// <summary>Un nodo que ya tiene padre sigue siendo ALREADY_PLACED.</summary>
+    [Fact]
+    public async Task Handle_WhenNodeHasAParent_IsAlreadyPlaced()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddRangeAsync(
+            BuildMember("AMB-000002", FixedNow.AddDays(-5)),
+            BuildMember("AMB-000001", FixedNow.AddDays(-60)));
+        await db.DualTeamTree.AddRangeAsync(
+            new DualTeamEntity { MemberId = "AMB-000001", Side = TreeSide.Left, HierarchyPath = "/AMB-000001/", CreatedBy = "seed", LastUpdateDate = FixedNow },
+            new DualTeamEntity { MemberId = "AMB-000002", ParentMemberId = "AMB-000001", Side = TreeSide.Left, HierarchyPath = "/AMB-000001/AMB-000002/", CreatedBy = "seed", LastUpdateDate = FixedNow });
+        await db.SaveChangesAsync();
+
+        var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
+            .Handle(new PlaceMemberCommand("AMB-000002", "AMB-000001", "Right"), CancellationToken.None);
+
+        result.ErrorCode.Should().Be("ALREADY_PLACED");
     }
 }

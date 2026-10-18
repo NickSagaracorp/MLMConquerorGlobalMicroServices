@@ -140,17 +140,13 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Placement qualified members in dual tree subtree
         if (dualNode is not null)
         {
-            var dualSubtreePath = TreePrefix.Of(dualNode.HierarchyPath);
-            var dualSubtreeMembers = await _db.DualTeamTree
-                .AsNoTracking()
-                .Where(d => d.HierarchyPath.StartsWith(dualSubtreePath) && d.MemberId != memberId)
-                .Select(d => d.MemberId)
-                .ToListAsync(ct);
-
-            placementQualifiedCount = await _db.MembershipSubscriptions
-                .AsNoTracking()
-                .CountAsync(s => dualSubtreeMembers.Contains(s.MemberId)
-                    && s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active, ct);
+            // Plan P: una sola consulta, el rango de la clave compacta unido a las suscripciones activas (antes,
+            // la lista de ids por prefijo de la ruta y luego Contains: no escala y falla con rutas largas).
+            placementQualifiedCount = await (
+                from s in _db.MembershipSubscriptions.AsNoTracking()
+                join d in DualSubtree.Under(_db, dualNode).AsNoTracking() on s.MemberId equals d.MemberId
+                where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
+                select s.Id).CountAsync(ct);
         }
 
         // Direct sponsored members

@@ -1,4 +1,4 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using MediatR;
@@ -97,13 +97,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 
-// Sprint-15 follow-up: shared dual-team leg-points recalculator. AdminAPI's
-// AdminPlaceMember / AdminRemovePlacement handlers previously had local broken
-// implementations (counted nodes instead of summing PersonalPoints). They now
-// delegate to the single source of truth shared with SignupAPI + BizCenter.
-builder.Services.AddScoped<
-    MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
-    MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
+// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
 
 // ── Billing routing + high-volume planner (preview endpoint) ─────────────
 // Note: Billing services bind to the sibling `MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider`

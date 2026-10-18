@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Domain.Services;
 
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
@@ -35,6 +36,22 @@ public class DualTeamConfiguration : IEntityTypeConfiguration<DualTeamEntity>
         // Plan M (M10): la CTE de DualSubtree y LegPointMaintenance buscan por ParentMemberId y leen
         // MemberId, Side e IsDeleted; incluidas, cada paso es un seek sin ir a la tabla.
         builder.HasIndex(x => x.ParentMemberId).IncludeProperties(x => new { x.MemberId, x.Side, x.IsDeleted });
+        // Plan P: un hijo vivo por hueco. Es la red de DualTeamGate (que serializa por hueco) y lo que hace
+        // segura la colocacion con o sin RCSI. Filtrado: un nodo borrado no ocupa el hueco y las raices
+        // (ParentMemberId NULL) no cuentan. La clave se declara de 1.804 bytes (nvarchar(900) + int) y SQL
+        // Server avisa del limite de 1.700; los ids reales tienen menos de 20 caracteres (Plan P, riesgo P-R4).
+        builder.HasIndex(x => new { x.ParentMemberId, x.Side })
+            .IsUnique()
+            .HasDatabaseName("UX_DualTeamTree_ParentMemberId_Side")
+            .HasFilter("[IsDeleted] = 0 AND [ParentMemberId] IS NOT NULL");
+        // Plan P (Bloque B): clave compacta. El subarbol de un nodo es el rango (Lo, Hi) de este indice
+        // (DualBinaryPath). 8.223 niveles ocupan 1.032 bytes; el maximo (13.567) llena los 1.700.
+        builder.Property(x => x.BinaryPath).HasMaxLength(DualBinaryPath.MaxBytes);   // varbinary(1700)
+        builder.HasIndex(x => x.BinaryPath)
+            .IsUnique()
+            .HasDatabaseName("UX_DualTeamTree_BinaryPath")
+            .HasFilter("[IsDeleted] = 0 AND [BinaryPath] IS NOT NULL")
+            .IncludeProperties(x => new { x.MemberId, x.Depth, x.ParentMemberId, x.Side });
         builder.HasQueryFilter(x => !x.IsDeleted);
     }
 }

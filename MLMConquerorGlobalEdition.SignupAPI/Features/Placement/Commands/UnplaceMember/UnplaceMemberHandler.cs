@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -23,7 +24,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
     {
         var now = _dateTime.Now;
 
-        var node = await _db.DualTeamTree.FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
+        var node = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
         if (node is null)
             return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
 
@@ -44,7 +45,33 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
                 throw new UnplacementWindowExpiredException();
         }
 
-        _db.DualTeamTree.Remove(node);
+        // Plan P: el borrado va en una transaccion con el arbol en exclusivo: espera a las colocaciones en curso
+        // (una colocacion bajo este nodo dejaria un hijo colgando de un nodo borrado) y vuelve a leer el nodo.
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+        }
+        catch (DualTeamBusyException ex)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("PLACEMENT_BUSY", ex.Message);
+        }
+        if (!await _db.DualTeamTree.AnyAsync(x => x.MemberId == command.MemberId, ct))
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
+        }
+
+        // Revision I7: la baja del propio miembro no deja huerfanos. Con equipo debajo se rechaza (la retirada con
+        // equipo es del BizCenter o del admin, que saben que hacer con los hijos). DualTeamNodes resta el nodo de
+        // las piernas de su linea ascendente (antes no se restaba) y lo borra.
+        if (!await DualTeamNodes.RemoveAsync(_db, command.MemberId, DualTeamChildrenOnRemoval.Reject, now, command.RequestedByMemberId, ct))
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("HAS_DOWNLINE",
+                $"Member '{command.MemberId}' has members placed below; ask your sponsor or an admin to move them first.");
+        }
 
         var unplacementLog = new PlacementLog
         {
@@ -60,6 +87,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
 
         await _db.PlacementLogs.AddAsync(unplacementLog, ct);
         await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         return Result<bool>.Success(true);
     }

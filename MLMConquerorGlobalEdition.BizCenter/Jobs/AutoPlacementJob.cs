@@ -57,18 +57,9 @@ public class AutoPlacementJob
         // Members whose placement window has expired and are still unplaced
         var windowCutoff = now.AddDays(-PlacementWindowDays);
 
-        var unplacedQuery = db.MemberProfiles
-            .AsNoTracking()
-            .Where(m => !m.IsDeleted && m.SponsorMemberId != null);
-
-        if (!ignoreWindow)
-            unplacedQuery = unplacedQuery.Where(m => m.EnrollDate <= windowCutoff);
-
-        // Exclude members already in the dual tree.
-        var unplaced = await unplacedQuery
-            .Where(m => !db.DualTeamTree.Any(d => d.MemberId == m.MemberId))
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync();
+        // Plan P: los pendientes salen de un unico sitio (PendingPlacements): sin nodo, o raiz provisional con
+        // equipo cuyo patrocinador ya esta en el binario (mismo plazo y mismas reglas), por fecha de alta.
+        var unplaced = await PendingPlacements.Query(db, ignoreWindow ? null : windowCutoff).ToListAsync();
 
         if (unplaced.Count == 0)
         {
@@ -76,9 +67,10 @@ public class AutoPlacementJob
             return 0;
         }
 
-        // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe,
-        // O(1) slot finding via the frontier cache, and one deferred incremental leg-point pass.
-        var pairs = unplaced.Select(m => (m.MemberId, m.SponsorMemberId!)).ToList();
+        // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe.
+        // Plan P: PlaceBulkAsync coloca de uno en uno bajo el candado del hueco (DualTeamGate), con su
+        // transaccion y su subida de puntos por miembro; ya no guarda estado en memoria entre miembros.
+        var pairs = unplaced.Select(m => (m.MemberId, m.SponsorMemberId)).ToList();
         var result = await placement.PlaceBulkAsync(pairs);
 
         if (!result.IsSuccess)

@@ -14,6 +14,8 @@ public sealed class SqlServerFactAttribute : FactAttribute
     {
         if (!SqlServerReportes.Reachable)
             Skip = "SQL Server no alcanzable (define MLM_TEST_SQLSERVER para usar otra instancia).";
+        else if (!SqlServerReportes.Migrada)
+            Skip = "La base no tiene la migracion ClaveCompactaDelBinario del Plan P (se aplica tras reparar el binario): define MLM_TEST_SQLSERVER con una base migrada.";
     }
 }
 
@@ -53,6 +55,29 @@ public static class SqlServerReportes
     });
 
     public static bool Reachable => LazyReachable.Value;
+
+    /// <summary>
+    /// Plan P: el modelo ya tiene las columnas de la clave compacta del binario. Contra una base sin la migracion
+    /// ClaveCompactaDelBinario (la local hasta que se repara), cualquier consulta de EF sobre DualTeamTree falla
+    /// por columna inexistente: las pruebas se saltan con este motivo en vez de fallar.
+    /// </summary>
+    private static readonly Lazy<bool> LazyMigrada = new(() =>
+    {
+        try
+        {
+            using var c = new SqlConnection(ConnectionString);
+            c.Open();
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM __EFMigrationsHistory WHERE MigrationId LIKE '%[_]ClaveCompactaDelBinario'", c);
+            return (int)cmd.ExecuteScalar()! > 0;
+        }
+        catch (SqlException)
+        {
+            return false;
+        }
+    });
+
+    public static bool Migrada => LazyMigrada.Value;
 
     public static AppDbContext Db() =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(ConnectionString).Options);

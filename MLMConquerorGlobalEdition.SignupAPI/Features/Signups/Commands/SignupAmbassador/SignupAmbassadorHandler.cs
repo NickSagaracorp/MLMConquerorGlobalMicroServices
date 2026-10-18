@@ -282,18 +282,8 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         // create a binary node for them at signup time.
         if (string.IsNullOrEmpty(sponsorMemberId))
         {
-            var dualTeamRoot = new DualTeamEntity
-            {
-                MemberId       = memberId,
-                ParentMemberId = null,
-                HierarchyPath  = $"/{memberId}/",
-                Side           = TreeSide.Left,
-                LeftLegPoints  = 0,
-                RightLegPoints = 0,
-                CreatedBy      = req.Email,
-                CreationDate   = now,
-                LastUpdateDate = now
-            };
+            // Plan P: la raiz la construye DualTeamNodes (clave compacta con ordinal propio).
+            var dualTeamRoot = await DualTeamNodes.RootAsync(_db, memberId, now, req.Email, ct);
             await _db.DualTeamTree.AddAsync(dualTeamRoot, ct);
         }
 

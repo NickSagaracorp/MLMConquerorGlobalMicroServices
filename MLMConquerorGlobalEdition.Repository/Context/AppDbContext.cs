@@ -190,6 +190,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
+        // Plan P: un ordinal por raiz del binario (los 4 primeros bytes de DualTeamEntity.BinaryPath).
+        modelBuilder.HasSequence<int>("DualTeamRootOrdinal").StartsAt(1);
+
         // Plan M (R11): fuera de SQL Server (InMemory en las pruebas) no hay hierarchyid; Node se guarda
         // como su texto ("/1/2/") y IsDescendantOf/GetAncestor se evalúan en memoria con la misma semántica.
         if (!Database.IsSqlServer())

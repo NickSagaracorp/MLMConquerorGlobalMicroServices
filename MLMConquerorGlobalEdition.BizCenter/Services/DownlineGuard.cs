@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Domain.Services;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -31,10 +32,10 @@ namespace MLMConquerorGlobalEdition.BizCenter.Services;
 /// inscribiste—. Cada ruta se cierra contra el árbol que ella misma recorre; usar el otro dejaría
 /// pasar exactamente a quien la pantalla no enseña.
 ///
-/// LA CONTENCIÓN SE MIRA, en el binario, POR <c>HierarchyPath</c> (y en el de patrocinio por <c>Node</c>, Plan M), que es como ya la miran
-/// <c>GetAvailableNodesHandler</c>, <c>GetCarBonusBranchAsync</c> y el recalculador de piernas: la
-/// ruta de un descendiente empieza por la de su ancestro. No se recorre la cadena de padres a
-/// mano —eso serían N consultas y una respuesta distinta a la del resto del sistema—.
+/// LA CONTENCIÓN SE MIRA, en el binario, POR LA CLAVE COMPACTA <c>BinaryPath</c> (Plan P: el descendiente cae en
+/// el rango de su ancestro, <c>DualBinaryPath.Contains</c>, lo mismo que usa <c>DualSubtree</c>), y en el de
+/// patrocinio por <c>Node</c> (Plan M). Ya no por el prefijo de <c>HierarchyPath</c>, que falla con rutas de más de
+/// 4.000 caracteres. Solo sin claves (InMemory, pruebas de lógica) se sube por la cadena de padres.
 ///
 /// FALLA CERRADO en todos los caminos: sin identidad de miembro, con un identificador vacío, o si
 /// el que llama no está en el árbol, la respuesta es que NO.
@@ -79,25 +80,26 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerNodoBinarioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            // El nodo más reciente del que mira (R8) y un prefijo que acaba en "/" (TreePrefix).
-            var ruta = await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.MemberId == propio)
-                .OrderByDescending(d => d.CreationDate)
-                .Select(d => d.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
+            // Plan P: por la clave compacta. El objetivo esta en mi red si su clave cae en el rango de la mia
+            // (DualBinaryPath.Contains); antes se comparaba el prefijo de la ruta de texto.
+            // El nodo mas reciente de cada uno (R8: no uno antiguo que quedara en mi red).
+            var mio = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == propio)
+                .OrderByDescending(d => d.CreationDate).ThenByDescending(d => d.Id).FirstOrDefaultAsync(ct);
+            var suyo = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == objetivo)
+                .OrderByDescending(d => d.CreationDate).ThenByDescending(d => d.Id).FirstOrDefaultAsync(ct);
+            if (mio is null || suyo is null) return false;
+            if (mio.BinaryPath is not null && suyo.BinaryPath is not null)
+                return DualBinaryPath.Contains(mio.BinaryPath, suyo.BinaryPath);
 
-            if (string.IsNullOrEmpty(ruta)) return false;
-            var raiz = TreePrefix.Of(ruta);
-
-            // R8 también sobre el objetivo: cuenta su nodo más reciente, no uno antiguo que quedara
-            // bajo mi prefijo.
-            var rutaObjetivo = await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.MemberId == objetivo)
-                .OrderByDescending(d => d.CreationDate)
-                .Select(d => d.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
-
-            return rutaObjetivo is not null && rutaObjetivo.StartsWith(raiz, StringComparison.Ordinal);
+            // Sin claves (InMemory, pruebas de logica): subir por ParentMemberId desde el objetivo.
+            var vistos = new HashSet<string>();
+            for (var actual = suyo; actual is not null && vistos.Add(actual.MemberId);)
+            {
+                if (actual.MemberId == mio.MemberId) return true;
+                var padre = actual.ParentMemberId;
+                actual = padre is null ? null : await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == padre, ct);
+            }
+            return false;
         });
 
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>

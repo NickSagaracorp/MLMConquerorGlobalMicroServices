@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.Filters;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -15,11 +17,15 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
-/// Development-only endpoint to seed the initial SuperAdmin user.
-/// Disabled automatically in Production via the env check.
+/// Development-only endpoints (seeding and data fixes).
+/// Plan P (decision de Nick, 2026-10-18): fuera de Development no responde (<see cref="DevelopmentOnlyAttribute"/>,
+/// un solo filtro en vez de una comprobacion por accion) y, tambien en Development, exige SuperAdmin. La unica
+/// accion anonima es el arranque del primer superadmin, que se cierra en cuanto existe uno.
 /// </summary>
 [ApiController]
 [Route("api/v1/dev")]
+[DevelopmentOnly]
+[Authorize(Roles = "SuperAdmin")]
 public class DevSeedController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -56,22 +62,16 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<BulkPlacementOutcome>>> PlaceBulk(
         [FromBody] PlaceBulkRequest? request, CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
-        var query = _db.MemberProfiles.AsNoTracking()
-            .Where(m => !m.IsDeleted && m.SponsorMemberId != null)
-            .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId));
+        // Plan P: los mismos pendientes que AutoPlacementJob (PendingPlacements), sin plazo y por fecha de alta.
+        var query = PendingPlacements.Query(_db);
 
         if (request?.SponsorIds is { Count: > 0 } sponsors)
-            query = query.Where(m => sponsors.Contains(m.SponsorMemberId!));
+            query = query.Where(m => sponsors.Contains(m.SponsorMemberId));
 
-        var pairs = await query
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync(ct);
+        var pairs = await query.ToListAsync(ct);
 
         var result = await _placement.PlaceBulkAsync(
-            pairs.Select(p => (p.MemberId, p.SponsorMemberId!)).ToList(), ct);
+            pairs.Select(p => (p.MemberId, p.SponsorMemberId)).ToList(), ct);
 
         return result.IsSuccess
             ? Ok(ApiResponse<BulkPlacementOutcome>.Ok(result.Value!))
@@ -86,9 +86,6 @@ public class DevSeedController : ControllerBase
     [HttpPost("backfill-frontier")]
     public async Task<ActionResult<ApiResponse<int>>> BackfillFrontier(CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         // Rebuild the frontier cache from the live tree. We compute it in memory rather than
         // via a path-prefix SQL join: HierarchyPath is now nvarchar(max) and unindexed (see
         // migration MakeHierarchyPathUnboundedDropPathIndex), so a per-leg-root
@@ -97,7 +94,7 @@ public class DevSeedController : ControllerBase
         // pass propagates each node's deepest descendant up to all its ancestors in O(N).
         var nodes = await _db.DualTeamTree.AsNoTracking()
             .Where(d => !d.IsDeleted)
-            .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.HierarchyPath })
+            .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.Depth })
             .ToListAsync(ct);
 
         // depth = slash count, matching DualTeamPlacementRules.Depth so DeepestDepth lines up
@@ -114,7 +111,7 @@ public class DevSeedController : ControllerBase
         {
             parentOf[n.MemberId] = n.ParentMemberId;
             sideOf[n.MemberId] = n.Side;
-            deepest[n.MemberId] = (n.MemberId, Depth(n.HierarchyPath));
+            deepest[n.MemberId] = (n.MemberId, (n.Depth ?? 0));
             if (n.ParentMemberId is not null)
             {
                 var slot = childSides.GetValueOrDefault(n.ParentMemberId);
@@ -126,7 +123,7 @@ public class DevSeedController : ControllerBase
 
         // Propagate deepest-descendant up the tree. Processing in descending depth guarantees
         // every node is finalized before its (shallower) parent, so one pass suffices.
-        foreach (var n in nodes.OrderByDescending(x => Depth(x.HierarchyPath)))
+        foreach (var n in nodes.OrderByDescending(x => (x.Depth ?? 0)))
         {
             if (n.ParentMemberId is null) continue;
             var cur = deepest[n.MemberId];
@@ -174,14 +171,19 @@ public class DevSeedController : ControllerBase
         return Ok(ApiResponse<int>.Ok(affected));
     }
 
-    /// <summary>POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.</summary>
+    /// <summary>
+    /// POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.
+    /// Plan P: anonimo solo mientras no exista ningun SuperAdmin, desde loopback y solo para crear un usuario nuevo
+    /// (BootstrapFirstSuperAdminAsync); despues, solo un SuperAdmin puede usarlo (401 sin sesion, 403 con otro rol).
+    /// </summary>
     [HttpPost("seed-superadmin")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<SeedResultDto>>> SeedSuperAdmin(
         [FromBody] SeedRequest request,
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
+        if (!User.IsInRole("SuperAdmin"))
+            return await BootstrapFirstSuperAdminAsync(request, ct);
 
         var roles = new[]
         {
@@ -241,6 +243,73 @@ public class DevSeedController : ControllerBase
             new SeedResultDto($"SuperAdmin '{request.Email}' created successfully.")));
     }
 
+    private static readonly string[] SeedRoles =
+    {
+        "SuperAdmin", "Admin", "CommissionManager", "BillingManager",
+        "SupportManager", "SupportLevel1", "SupportLevel2", "SupportLevel3",
+        "IT", "Ambassador", "Member"
+    };
+
+    /// <summary>
+    /// Decision de Nick (2026-10-18): el arranque de una base sin ningun SuperAdmin. Solo desde la propia maquina
+    /// (loopback), solo crea un usuario NUEVO (nunca toca una cuenta existente) y nunca actua si ya existe algun
+    /// SuperAdmin. La comprobacion y el alta van en una transaccion serializable con un candado de aplicacion: dos
+    /// llamadas a la vez no pueden crear dos (TOCTOU). UserManager usa el mismo AppDbContext, asi que la
+    /// transaccion cubre tambien sus escrituras.
+    /// </summary>
+    private async Task<ActionResult<ApiResponse<SeedResultDto>>> BootstrapFirstSuperAdminAsync(SeedRequest request, CancellationToken ct)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress;
+        if (ip is null || !System.Net.IPAddress.IsLoopback(ip))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<SeedResultDto>.Fail("FORBIDDEN", "The first SuperAdmin can only be seeded from this machine."));
+
+        await using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        if (_db.Database.IsSqlServer())
+        {
+            var r = await _db.Database.SqlQuery<int>(
+                $"DECLARE @r int; EXEC @r = sp_getapplock @Resource = 'dev-seed-superadmin', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; SELECT @r AS [Value]")
+                .ToListAsync(ct);
+            if (r.Count != 1 || r[0] < 0)
+                return StatusCode(StatusCodes.Status409Conflict,
+                    ApiResponse<SeedResultDto>.Fail("BUSY", "Another seed is in progress."));
+        }
+
+        if ((await _userManager.GetUsersInRoleAsync("SuperAdmin")).Count > 0)
+            return User.Identity?.IsAuthenticated == true ? Forbid() : Unauthorized();
+
+        foreach (var role in SeedRoles)
+            if (!await _roleManager.RoleExistsAsync(role))
+                await _roleManager.CreateAsync(new IdentityRole(role));
+
+        if (await _userManager.FindByEmailAsync(request.Email) is not null)
+            return Conflict(ApiResponse<SeedResultDto>.Fail("USER_EXISTS",
+                "The bootstrap only creates a new user; it never changes an existing account."));
+
+        var user = new ApplicationUser
+        {
+            UserName       = request.Email,
+            Email          = request.Email,
+            EmailConfirmed = true,
+            IsActive       = true,
+            CreationDate   = _dateTime.Now,
+            CreatedBy      = "DevSeed"
+        };
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", result.Errors.Select(e => e.Description))));
+        // Revision (menor 6): nunca se confirma un usuario sin rol. Si no se le puede dar, se deshace todo.
+        var rol = await _userManager.AddToRoleAsync(user, "SuperAdmin");
+        if (!rol.Succeeded)
+        {
+            await tx.RollbackAsync(ct);
+            return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", rol.Errors.Select(e => e.Description))));
+        }
+        await tx.CommitAsync(ct);
+
+        return Ok(ApiResponse<SeedResultDto>.Ok(new SeedResultDto($"SuperAdmin '{request.Email}' created successfully.")));
+    }
+
     /// <summary>
     /// POST /api/v1/dev/fix-membership-status
     /// One-time fix: activates all subscriptions whose member profile is Active but subscription is still Pending,
@@ -250,9 +319,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<FixMembershipResultDto>>> FixMembershipStatus(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var now = _dateTime.Now;
 
         // Load active member IDs
@@ -309,8 +375,6 @@ public class DevSeedController : ControllerBase
     [HttpGet("subscription-stats")]
     public async Task<IActionResult> SubscriptionStats(CancellationToken ct)
     {
-        if (!_env.IsDevelopment()) return NotFound();
-
         var all = await _db.MembershipSubscriptions
             .AsNoTracking()
             .Select(s => new { s.MemberId, Status = s.SubscriptionStatus.ToString(), s.StartDate, s.EndDate, s.RenewalDate })
@@ -357,9 +421,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<FixMemberOrdersResultDto>>> FixMemberOrders(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var now = _dateTime.Now;
 
         var activeMemberIds = await _db.MemberProfiles
@@ -401,24 +462,19 @@ public class DevSeedController : ControllerBase
     [HttpPost("force-place-all")]
     public async Task<IActionResult> ForcePlaceAll(CancellationToken ct)
     {
-        if (!_env.IsDevelopment()) return NotFound();
-
         // Superseded by place-bulk: this now delegates to the single IPlacementService
         // authority instead of the old bespoke raw-insert logic (which raced the
         // AutoPlacementJob and produced the duplicate / side-collided rows the
         // placement-engine redesign fixed). Kept as an alias so existing dev scripts
         // that POST force-place-all still work, but they get the correct engine.
-        var pairs = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => !m.IsDeleted && m.SponsorMemberId != null && m.Status == MemberAccountStatus.Active)
-            .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId))
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync(ct);
+        var activos = _db.MemberProfiles.AsNoTracking().Where(m => m.Status == MemberAccountStatus.Active).Select(m => m.MemberId);
+        var pairs = await PendingPlacements.Query(_db).Where(p => activos.Contains(p.MemberId)).ToListAsync(ct);
 
         if (pairs.Count == 0)
             return Ok(ApiResponse<ForcePlaceResultDto>.Ok(new ForcePlaceResultDto(0, "All members are already placed.")));
 
         var result = await _placement.PlaceBulkAsync(
-            pairs.Select(p => (p.MemberId, p.SponsorMemberId!)).ToList(), ct);
+            pairs.Select(p => (p.MemberId, p.SponsorMemberId)).ToList(), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<ForcePlaceResultDto>.Fail(result.ErrorCode!, result.Error!));
@@ -438,9 +494,6 @@ public class DevSeedController : ControllerBase
         [FromBody] ActivateUserRequest request,
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null)
             return NotFound(ApiResponse<SeedResultDto>.Fail("NOT_FOUND", $"No user found with email '{request.Email}'."));
@@ -503,9 +556,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<RespaceRankResultDto>>> RespaceRankAchievements(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var sortOrderByRank = await _db.RankDefinitions.AsNoTracking()
             .ToDictionaryAsync(r => r.Id, r => r.SortOrder, ct);
 
@@ -560,9 +610,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<SeedPayoutWalletsResultDto>>> SeedPayoutWallets(
         [FromBody] SeedPayoutWalletsRequest? request, CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var count = request?.Count is > 0 ? request.Count.Value : 500;
         var minTotal = request?.MinTotal ?? 25m;
 

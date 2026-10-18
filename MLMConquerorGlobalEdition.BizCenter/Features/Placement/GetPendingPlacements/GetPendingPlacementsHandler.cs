@@ -34,7 +34,7 @@ public class GetPendingPlacementsHandler
         GetPendingPlacementsQuery request, CancellationToken ct)
     {
         var sponsorMemberId = _currentUser.MemberId;
-        var now             = _clock.UtcNow;
+        var now             = _clock.Now;   // hora del servidor, como EnrollDate
         var windowCutoff    = now.AddDays(-PlacementWindowDays);
 
         // All members directly sponsored (enrolled) by this ambassador
@@ -84,7 +84,8 @@ public class GetPendingPlacementsHandler
             dualNodes.TryGetValue(member.MemberId, out var node);
             logByMember.TryGetValue(member.MemberId, out var log);
 
-            var isPlaced            = node != null;
+            // Plan P (decision de Nick): una raiz provisional (nodo sin padre) sigue pendiente de colocar.
+            var isPlaced            = node != null && node.ParentMemberId != null;
             var opportunitiesUsed   = log?.UnplacementCount ?? 0;
             var firstPlacedAt       = log?.FirstPlacementDate;
             var isBlocked           = opportunitiesUsed >= MaxPlacementOpportunities;

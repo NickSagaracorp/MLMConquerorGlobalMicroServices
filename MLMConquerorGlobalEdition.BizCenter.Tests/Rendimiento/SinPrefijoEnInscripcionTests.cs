@@ -7,7 +7,8 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 /// Regla del Plan M (M16): ninguna consulta del árbol de INSCRIPCIÓN filtra por la ruta de texto
 /// (HierarchyPath.StartsWith/Contains, o una ruta leída del árbol con StartsWith). El equipo se
 /// acota con Node (GenealogySubtree). Se mira por sentencia (hasta el ';') que nombre GenealogyTree,
-/// sin comentarios. El binario (DualTeamTree) no entra: sigue con su ruta o con DualSubtree.
+/// sin comentarios. El binario (DualTeamTree) tiene su propia regla desde el Plan P: SinRutaEnElBinarioTests
+/// (acotado por la clave compacta, DualSubtree).
 /// </summary>
 public class SinPrefijoEnInscripcionTests
 {

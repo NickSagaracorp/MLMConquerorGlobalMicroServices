@@ -117,9 +117,8 @@ public class GetAvailableNodesHandler
                     IsLeftAvailable  = !leftOccupied,
                     IsRightAvailable = !rightOccupied,
                     ParentMemberId   = node?.ParentMemberId,
-                    Depth            = node != null
-                        ? node.HierarchyPath.Count(c => c == '/') - 1
-                        : 0
+                    // Plan P: la profundidad mantenida por la clave (antes, contando '/' de la ruta, mas el 1 de la raiz).
+                    Depth            = node != null ? (node.Depth ?? 0) + 1 : 0
                 };
             })
             .OrderBy(n => n.Depth)

@@ -1,4 +1,4 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -105,11 +105,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 
-// Sprint-15 Bug C: shared dual-team leg-points recalculator (also injected
-// by SignupAPI). Both placement handlers route through this so leg points stay
-// consistent regardless of which service did the placement.
-builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
-                            MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
+// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
 

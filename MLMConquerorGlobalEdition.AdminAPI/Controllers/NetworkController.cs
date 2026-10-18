@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
-using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -38,11 +37,20 @@ public class NetworkController : ControllerBase
         if (root is null)
             return NotFound(ApiResponse<object>.Fail("NODE_NOT_FOUND", $"Member '{memberId}' not found in dual team tree."));
 
-        // Load a subtree using the HierarchyPath prefix — much more efficient than recursive queries
-        var pathPrefix = TreePrefix.Of(root.HierarchyPath);
-        var allNodes = await _db.DualTeamTree.AsNoTracking()
-            .Where(n => n.HierarchyPath.StartsWith(pathPrefix))
-            .ToListAsync(ct);
+        // Plan P (revision I5): solo los niveles pedidos, bajando por ParentMemberId (un seek por nivel, como
+        // mucho 2^6 nodos), nunca el subarbol entero. Los conteos de pierna son columnas mantenidas
+        // (LeftLegCount/RightLegCount), no un recuento en memoria.
+        var allNodes = new List<MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity> { root };
+        var nivel = new List<string> { root.MemberId };
+        for (var i = 0; i < depth && nivel.Count > 0; i++)
+        {
+            var actual = nivel;
+            var hijos = await _db.DualTeamTree.AsNoTracking()
+                .Where(n => n.ParentMemberId != null && actual.Contains(n.ParentMemberId))
+                .ToListAsync(ct);
+            allNodes.AddRange(hijos);
+            nivel = hijos.Select(h => h.MemberId).ToList();
+        }
 
         // Load member names in a single query
         var memberIds = allNodes.Select(n => n.MemberId).Distinct().ToList();
@@ -71,13 +79,10 @@ public class NetworkController : ControllerBase
             decimal leftPts = node?.LeftLegPoints ?? 0;
             decimal rightPts = node?.RightLegPoints ?? 0;
 
-            // Count descendants per side
             var leftChildren = allNodes.Where(n => n.ParentMemberId == mid && n.Side == TreeSide.Left).ToList();
             var rightChildren = allNodes.Where(n => n.ParentMemberId == mid && n.Side == TreeSide.Right).ToList();
-
-            // Count total in each leg
-            int leftCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && leftChildren.Any(lc => n.HierarchyPath.StartsWith(TreePrefix.Of(lc.HierarchyPath))));
-            int rightCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && rightChildren.Any(rc => n.HierarchyPath.StartsWith(TreePrefix.Of(rc.HierarchyPath))));
+            int leftCount = node?.LeftLegCount ?? 0;
+            int rightCount = node?.RightLegCount ?? 0;
 
             BinaryNodeDto? leftNode = null;
             BinaryNodeDto? rightNode = null;

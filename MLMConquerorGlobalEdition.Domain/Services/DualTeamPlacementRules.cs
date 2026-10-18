@@ -36,9 +36,12 @@ public static class DualTeamPlacementRules
         if (!sponsorHasLeftChild) return new SlotDecision(sponsorMemberId, TreeSide.Left, false);
         if (!sponsorHasRightChild) return new SlotDecision(sponsorMemberId, TreeSide.Right, false);
 
-        var parent = deepestNodeId ?? sponsorMemberId;
+        // Plan P: un derrame exige la cola ya resuelta. Antes caia en el patrocinador y repetia su hueco
+        // izquierdo, que ya estaba ocupado (diagnostico-huecos-binario.md §1.2, fallo 1).
+        if (deepestNodeId is null)
+            throw new InvalidOperationException("Spill without a resolved leg tail.");
         var side = deepestNodeHasLeftChild ? TreeSide.Right : TreeSide.Left;
-        return new SlotDecision(parent, side, true);
+        return new SlotDecision(deepestNodeId, side, true);
     }
 
     /// <summary>

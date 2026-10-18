@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.BizCenter.Services.IDateTimeProvider;
 
@@ -31,7 +32,8 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
     public async Task<Result<RemovePlacementResult>> Handle(
         RemovePlacementCommand command, CancellationToken ct)
     {
-        var now     = _clock.UtcNow;
+        // Hora del servidor (la regla del proyecto), como FirstPlacementDate.
+        var now     = _clock.Now;
         var isAdmin = _currentUser.IsAdmin;
 
         var member = await _db.MemberProfiles
@@ -42,7 +44,7 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
             return Result<RemovePlacementResult>.Failure("MEMBER_NOT_FOUND",
                 "El miembro no existe.");
 
-        var node = await _db.DualTeamTree
+        var node = await _db.DualTeamTree.AsNoTracking()
             .FirstOrDefaultAsync(d => d.MemberId == command.MemberToRemoveId, ct);
 
         if (node is null)
@@ -71,19 +73,18 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            _db.DualTeamTree.Remove(node);
-
-            var directChildren = await _db.DualTeamTree
-                .Where(d => d.ParentMemberId == command.MemberToRemoveId)
-                .ToListAsync(ct);
-
-            foreach (var child in directChildren)
+            // Plan P: una retirada reescribe el arbol: arbol en exclusivo (espera a las colocaciones en curso y
+            // las detiene). DualTeamNodes resta el subarbol de la linea ascendente de forma incremental (C2: el
+            // recalculo por ruta era O(profundidad x N) con el arbol bloqueado), deja a cada hijo como raiz
+            // provisional con su equipo y borra el nodo.
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            if (!await _db.DualTeamTree.AnyAsync(d => d.MemberId == command.MemberToRemoveId, ct))
             {
-                child.ParentMemberId = null;
-                child.HierarchyPath  = $"/{child.MemberId}/";
-                child.LastUpdateDate = now;
-                child.LastUpdateBy   = _currentUser.UserId;
+                await tx.RollbackAsync(ct);
+                return Result<RemovePlacementResult>.Failure("NOT_PLACED",
+                    "El miembro no tiene placement asignado en el Dual Team.");
             }
+            await DualTeamNodes.RemoveAsync(_db, command.MemberToRemoveId, DualTeamChildrenOnRemoval.Roots, now, _currentUser.UserId, ct);
 
             var removalLog = new PlacementLog
             {
@@ -100,10 +101,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
 
             _db.PlacementLogs.Add(removalLog);
             await _db.SaveChangesAsync(ct);
-
-            if (!string.IsNullOrEmpty(parentMemberId))
-                await RecalculateUplineAsync(parentMemberId, ct);
-
             await tx.CommitAsync(ct);
 
             var remaining = Math.Max(0, MaxPlacementOpportunities - (opportunitiesUsed + 1));
@@ -113,56 +110,16 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
                 remaining
             ));
         }
+        catch (DualTeamBusyException)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<RemovePlacementResult>.Failure("PLACEMENT_BUSY",
+                "Hay otra colocacion en curso en el arbol. Intentalo de nuevo en unos segundos.");
+        }
         catch (Exception)
         {
             await tx.RollbackAsync(ct);
             throw;
         }
-    }
-
-    private async Task RecalculateUplineAsync(string startMemberId, CancellationToken ct)
-    {
-        var current = startMemberId;
-        while (!string.IsNullOrEmpty(current))
-        {
-            var n = await _db.DualTeamTree.FirstOrDefaultAsync(d => d.MemberId == current, ct);
-            if (n is null) break;
-
-            var leftTotal  = await SumSubtreePointsAsync(current, Domain.Enums.TreeSide.Left,  ct);
-            var rightTotal = await SumSubtreePointsAsync(current, Domain.Enums.TreeSide.Right, ct);
-            n.LeftLegPoints  = leftTotal;
-            n.RightLegPoints = rightTotal;
-            n.LastUpdateDate = _clock.UtcNow;
-            n.LastUpdateBy   = "system";
-
-            var stats = await _db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == current, ct);
-            if (stats is not null)
-                stats.DualTeamPoints = (int)(leftTotal + rightTotal);
-
-            current = n.ParentMemberId;
-        }
-        await _db.SaveChangesAsync(ct);
-    }
-
-    /// <summary>
-    /// Sum of PersonalPoints across the leg subtree (including the leg-root member).
-    /// </summary>
-    private async Task<decimal> SumSubtreePointsAsync(
-        string parentId, Domain.Enums.TreeSide side, CancellationToken ct)
-    {
-        var child = await _db.DualTeamTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == parentId && d.Side == side, ct);
-
-        if (child is null) return 0m;
-
-        var total = await (
-            from d in _db.DualTeamTree.AsNoTracking()
-            join s in _db.MemberStatistics.AsNoTracking() on d.MemberId equals s.MemberId
-            where d.HierarchyPath.StartsWith(child.HierarchyPath)
-            select (decimal?)s.PersonalPoints
-        ).SumAsync(ct);
-
-        return total ?? 0m;
     }
 }
