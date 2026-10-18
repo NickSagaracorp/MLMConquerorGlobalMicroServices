@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -68,9 +69,36 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
             return Result<string>.Failure("CIRCULAR_REFERENCE",
                 "No se puede realizar este placement: generaría una referencia circular en el árbol.");
 
+        // Plan P: si se mueve un subarbol (el miembro esta en el arbol o tiene descendientes flotando bajo
+        // /{miembro}/) se reescriben rutas y se toma el arbol en exclusivo; un alta simple toma solo su hueco.
+        var floatPrefixCheck = $"/{command.MemberToPlaceId}/";
+        var rewritesPaths = existingNode is not null
+            || await _db.DualTeamTree.AnyAsync(d => d.HierarchyPath.StartsWith(floatPrefixCheck), ct);
+
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            if (rewritesPaths)
+                await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            else
+                await DualTeamGate.EnterSlotAsync(_db, command.TargetParentMemberId, side, ct);
+
+            // Con el candado: el hueco y las rutas se vuelven a leer (la comprobacion de arriba es solo un
+            // atajo; otro escritor pudo ocuparlo o mover el destino mientras tanto).
+            if (await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct))
+            {
+                await tx.RollbackAsync(ct);
+                return SlotOccupied(command);
+            }
+            if (targetParent is not null) await _db.Entry(targetParent).ReloadAsync(ct);
+            if (existingNode is not null) await _db.Entry(existingNode).ReloadAsync(ct);
+            if (targetParent is not null && targetParent.HierarchyPath.StartsWith(existingNode?.HierarchyPath ?? floatPrefixCheck))
+            {
+                await tx.RollbackAsync(ct);
+                return Result<string>.Failure("CIRCULAR_REFERENCE",
+                    "No se puede realizar este placement: generaría una referencia circular en el árbol.");
+            }
+
             // Auto-create the parent as a root node if it doesn't exist in the dual tree yet.
             // This happens on first placement under an ambassador who was never placed themselves.
             if (targetParent is null)
@@ -170,10 +198,26 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
             return Result<string>.Success(
                 $"Placement de {member.FirstName} {member.LastName} completado exitosamente.");
         }
+        catch (DbUpdateException ex) when (DualTeamSlotTaken.Is(ex))
+        {
+            // La red del indice unico de hueco: otro escritor lo ocupo a la vez.
+            await tx.RollbackAsync(ct);
+            return SlotOccupied(command);
+        }
+        catch (DualTeamBusyException)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.Failure("PLACEMENT_BUSY",
+                "Hay otra colocacion en curso en esta parte del arbol. Intentalo de nuevo en unos segundos.");
+        }
         catch
         {
             await tx.RollbackAsync(ct);
             throw;
         }
     }
+
+    private static Result<string> SlotOccupied(AdminPlaceMemberCommand command) =>
+        Result<string>.Failure("SLOT_OCCUPIED",
+            $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}.");
 }
