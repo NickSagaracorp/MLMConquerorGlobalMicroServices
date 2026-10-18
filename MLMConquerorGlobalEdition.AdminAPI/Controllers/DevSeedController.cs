@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.Filters;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -15,11 +17,15 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
-/// Development-only endpoint to seed the initial SuperAdmin user.
-/// Disabled automatically in Production via the env check.
+/// Development-only endpoints (seeding and data fixes).
+/// Plan P (decision de Nick, 2026-10-18): fuera de Development no responde (<see cref="DevelopmentOnlyAttribute"/>,
+/// un solo filtro en vez de una comprobacion por accion) y, tambien en Development, exige SuperAdmin. La unica
+/// accion anonima es el arranque del primer superadmin, que se cierra en cuanto existe uno.
 /// </summary>
 [ApiController]
 [Route("api/v1/dev")]
+[DevelopmentOnly]
+[Authorize(Roles = "SuperAdmin")]
 public class DevSeedController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -56,9 +62,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<BulkPlacementOutcome>>> PlaceBulk(
         [FromBody] PlaceBulkRequest? request, CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var query = _db.MemberProfiles.AsNoTracking()
             .Where(m => !m.IsDeleted && m.SponsorMemberId != null)
             .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId));
@@ -86,9 +89,6 @@ public class DevSeedController : ControllerBase
     [HttpPost("backfill-frontier")]
     public async Task<ActionResult<ApiResponse<int>>> BackfillFrontier(CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         // Rebuild the frontier cache from the live tree. We compute it in memory rather than
         // via a path-prefix SQL join: HierarchyPath is now nvarchar(max) and unindexed (see
         // migration MakeHierarchyPathUnboundedDropPathIndex), so a per-leg-root
@@ -174,14 +174,19 @@ public class DevSeedController : ControllerBase
         return Ok(ApiResponse<int>.Ok(affected));
     }
 
-    /// <summary>POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.</summary>
+    /// <summary>
+    /// POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.
+    /// Plan P: anonimo solo mientras no exista ningun SuperAdmin (el arranque de una base vacia); despues, solo
+    /// un SuperAdmin puede usarlo (401 sin sesion, 403 con otro rol), igual que el resto del controlador.
+    /// </summary>
     [HttpPost("seed-superadmin")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<SeedResultDto>>> SeedSuperAdmin(
         [FromBody] SeedRequest request,
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
+        if (!User.IsInRole("SuperAdmin") && (await _userManager.GetUsersInRoleAsync("SuperAdmin")).Count > 0)
+            return User.Identity?.IsAuthenticated == true ? Forbid() : Unauthorized();
 
         var roles = new[]
         {
@@ -250,9 +255,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<FixMembershipResultDto>>> FixMembershipStatus(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var now = _dateTime.Now;
 
         // Load active member IDs
@@ -309,8 +311,6 @@ public class DevSeedController : ControllerBase
     [HttpGet("subscription-stats")]
     public async Task<IActionResult> SubscriptionStats(CancellationToken ct)
     {
-        if (!_env.IsDevelopment()) return NotFound();
-
         var all = await _db.MembershipSubscriptions
             .AsNoTracking()
             .Select(s => new { s.MemberId, Status = s.SubscriptionStatus.ToString(), s.StartDate, s.EndDate, s.RenewalDate })
@@ -357,9 +357,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<FixMemberOrdersResultDto>>> FixMemberOrders(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var now = _dateTime.Now;
 
         var activeMemberIds = await _db.MemberProfiles
@@ -401,8 +398,6 @@ public class DevSeedController : ControllerBase
     [HttpPost("force-place-all")]
     public async Task<IActionResult> ForcePlaceAll(CancellationToken ct)
     {
-        if (!_env.IsDevelopment()) return NotFound();
-
         // Superseded by place-bulk: this now delegates to the single IPlacementService
         // authority instead of the old bespoke raw-insert logic (which raced the
         // AutoPlacementJob and produced the duplicate / side-collided rows the
@@ -438,9 +433,6 @@ public class DevSeedController : ControllerBase
         [FromBody] ActivateUserRequest request,
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null)
             return NotFound(ApiResponse<SeedResultDto>.Fail("NOT_FOUND", $"No user found with email '{request.Email}'."));
@@ -503,9 +495,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<RespaceRankResultDto>>> RespaceRankAchievements(
         CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var sortOrderByRank = await _db.RankDefinitions.AsNoTracking()
             .ToDictionaryAsync(r => r.Id, r => r.SortOrder, ct);
 
@@ -560,9 +549,6 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<SeedPayoutWalletsResultDto>>> SeedPayoutWallets(
         [FromBody] SeedPayoutWalletsRequest? request, CancellationToken ct)
     {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
         var count = request?.Count is > 0 ? request.Count.Value : 500;
         var minTotal = request?.MinTotal ?? 25m;
 
