@@ -1,4 +1,3 @@
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -26,41 +25,10 @@ public class HuecoUnicoModeloTests
     }
 }
 
-/// <summary>
-/// Se salta (con su motivo, no se da por buena) si la base no tiene aun el indice: en la base local de
-/// desarrollo no se aplica hasta reparar los huecos con los servicios parados (Plan P, Tarea 3 y 5).
-/// Se ejecuta contra una base reparada con MLM_TEST_SQLSERVER.
-/// </summary>
-public sealed class SqlServerConHuecoUnicoFactAttribute : FactAttribute
-{
-    public SqlServerConHuecoUnicoFactAttribute()
-    {
-        if (!SqlServerReportes.Reachable)
-        {
-            Skip = "SQL Server no alcanzable (define MLM_TEST_SQLSERVER para usar otra instancia).";
-            return;
-        }
-        try
-        {
-            using var c = new SqlConnection(SqlServerReportes.ConnectionString);
-            c.Open();
-            using var cmd = new SqlCommand(
-                "SELECT COUNT(*) FROM sys.indexes WHERE name = @n AND object_id = OBJECT_ID('DualTeamTree')", c);
-            cmd.Parameters.AddWithValue("@n", DualTeamSlotTaken.IndexName);
-            if ((int)cmd.ExecuteScalar()! == 0)
-                Skip = $"{DualTeamSlotTaken.IndexName} no esta aplicado en esta base (se aplica tras la reparacion, Plan P Tarea 5).";
-        }
-        catch (SqlException ex)
-        {
-            Skip = "No se pudo comprobar el indice: " + ex.Message;
-        }
-    }
-}
-
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerHuecoUnicoTests
 {
-    [SqlServerConHuecoUnicoFact]
+    [SqlServerFact]
     public async Task Dos_hijos_vivos_en_el_mismo_hueco_violan_el_indice()
     {
         var x = BinarioDb.Prefijo("PPU");
@@ -80,7 +48,7 @@ public class SqlServerHuecoUnicoTests
         await tx.RollbackAsync();
     }
 
-    [SqlServerConHuecoUnicoFact]
+    [SqlServerFact]
     public async Task Un_hijo_borrado_no_ocupa_el_hueco()
     {
         var x = BinarioDb.Prefijo("PPU");

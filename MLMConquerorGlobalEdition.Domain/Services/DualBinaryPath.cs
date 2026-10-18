@@ -73,6 +73,33 @@ public static class DualBinaryPath
         return side == TreeSide.Left ? (lo, key.ToArray()) : (key.ToArray(), hi);
     }
 
+    /// <summary>
+    /// La clave de <paramref name="key"/> cuando su subarbol, cuya raiz tenia <paramref name="oldRoot"/>, pasa a
+    /// colgar con la clave <paramref name="newRoot"/>: los bits de camino por debajo de la raiz del subarbol se
+    /// copian tal cual detras de la clave nueva. O(profundidad), sin claves intermedias.
+    /// </summary>
+    public static byte[] Rebase(ReadOnlySpan<byte> key, ReadOnlySpan<byte> oldRoot, ReadOnlySpan<byte> newRoot)
+    {
+        var dk = Depth(key);
+        var d0 = Depth(oldRoot);
+        var d1 = Depth(newRoot);
+        if (dk < d0 || !Contains(oldRoot.ToArray(), key.ToArray()))
+            throw new ArgumentException("The key is not inside the old subtree.", nameof(key));
+        var nd = d1 + (dk - d0);
+        if (nd > MaxDepth) throw new DualTreeTooDeepException(nd);
+
+        var k = new byte[RootBytes + nd / 8 + 1];
+        newRoot.CopyTo(k);
+        SetBit(k, d1, false);                   // el terminador de la raiz nueva deja de serlo
+        for (var i = 0; i < dk - d0; i++)
+            if (GetBit(key, d0 + i)) SetBit(k, d1 + i, true);
+        SetBit(k, nd, true);
+        return k;
+    }
+
+    private static bool GetBit(ReadOnlySpan<byte> k, int pathBit) =>
+        (k[RootBytes + pathBit / 8] & (0x80 >> (pathBit % 8))) != 0;
+
     /// <summary>¿Esta <paramref name="candidate"/> en el subarbol de <paramref name="root"/> (el incluido)?</summary>
     public static bool Contains(byte[] root, byte[] candidate)
     {

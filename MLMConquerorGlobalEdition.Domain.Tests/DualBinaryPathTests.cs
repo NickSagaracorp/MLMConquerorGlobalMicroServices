@@ -152,4 +152,47 @@ public class DualBinaryPathTests
                 DualBinaryPath.SqlCompare(ordenadas[i - 1], ordenadas[i]).Should().BeLessThan(0, "no hay dos claves iguales para SQL Server");
         }
     }
+
+    [Fact]
+    public void Rebase_lleva_un_descendiente_a_la_nueva_posicion_de_su_subarbol()
+    {
+        // B en /raiz1/R/L, con descendiente B-L-R-R. B pasa a /raiz9/L/L/L (otra raiz, otra profundidad).
+        var bViejo = DualBinaryPath.Child(DualBinaryPath.Child(DualBinaryPath.Root(1), R), L);
+        var d = bViejo;
+        foreach (var l in new[] { L, R, R }) d = DualBinaryPath.Child(d, l);
+        var bNuevo = DualBinaryPath.Root(9);
+        foreach (var l in new[] { L, L, L }) bNuevo = DualBinaryPath.Child(bNuevo, l);
+        var esperado = bNuevo;
+        foreach (var l in new[] { L, R, R }) esperado = DualBinaryPath.Child(esperado, l);
+
+        Hex(DualBinaryPath.Rebase(d, bViejo, bNuevo)).Should().Be(Hex(esperado));
+        Hex(DualBinaryPath.Rebase(bViejo, bViejo, bNuevo)).Should().Be(Hex(bNuevo));
+    }
+
+    [Fact]
+    public void Rebase_de_una_clave_fuera_del_subarbol_lanza()
+    {
+        var a = DualBinaryPath.Child(DualBinaryPath.Root(1), L);
+        var b = DualBinaryPath.Child(DualBinaryPath.Root(1), R);
+        var act = () => DualBinaryPath.Rebase(b, a, DualBinaryPath.Root(2));
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Rebase_profundo_conserva_la_forma()
+    {
+        var azar = new Random(7);
+        var viejo = DualBinaryPath.Root(3);
+        for (var i = 0; i < 500; i++) viejo = DualBinaryPath.Child(viejo, azar.Next(2) == 0 ? L : R);
+        var lados = Enumerable.Range(0, 3000).Select(_ => azar.Next(2) == 0 ? L : R).ToList();
+        var d = viejo;
+        foreach (var l in lados) d = DualBinaryPath.Child(d, l);
+        var nuevo = DualBinaryPath.Root(4);
+        for (var i = 0; i < 4000; i++) nuevo = DualBinaryPath.Child(nuevo, R);
+        var esperado = nuevo;
+        foreach (var l in lados) esperado = DualBinaryPath.Child(esperado, l);
+
+        Hex(DualBinaryPath.Rebase(d, viejo, nuevo)).Should().Be(Hex(esperado));
+        DualBinaryPath.Depth(DualBinaryPath.Rebase(d, viejo, nuevo)).Should().Be(7000);
+    }
 }
