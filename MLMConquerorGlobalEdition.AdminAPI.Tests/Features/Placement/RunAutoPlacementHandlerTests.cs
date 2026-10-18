@@ -186,4 +186,28 @@ public class RunAutoPlacementHandlerTests
         result.Value!.PlacedCount.Should().Be(2);
         result.Value.PlacedMemberIds.Should().Contain("amb-001").And.Contain("amb-002");
     }
+
+    // Plan P: dos patrocinados del mismo patrocinador, que ya tiene hijo izquierdo, en la misma ejecucion.
+    // La version anterior leia con AsNoTracking dentro del bucle y guardaba una sola vez al final: los dos
+    // iban a la derecha del patrocinador (diagnostico-huecos-binario.md §2, el fallo de dab8b9e).
+    [Fact]
+    public async Task Handle_TwoSponsoredWithLeftTaken_DoesNotRepeatASlot()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.MemberProfiles.AddRange(
+            BuildProfile("amb-001", "sponsor-001", enrolledDaysAgo: 35),
+            BuildProfile("amb-002", "sponsor-001", enrolledDaysAgo: 40));
+        db.DualTeamTree.AddRange(
+            BuildNode("sponsor-001"),
+            BuildNode("existing-left", "sponsor-001", TreeSide.Left, "/sponsor-001/existing-left/"));
+        await db.SaveChangesAsync();
+
+        var result = await CreateHandler(db).Handle(new RunAutoPlacementCommand(), CancellationToken.None);
+
+        result.Value!.PlacedCount.Should().Be(2);
+        db.DualTeamTree.Count(d => d.ParentMemberId == "sponsor-001" && d.Side == TreeSide.Left).Should().Be(1);
+        db.DualTeamTree.Count(d => d.ParentMemberId == "sponsor-001" && d.Side == TreeSide.Right).Should().Be(1);
+        db.DualTeamTree.Where(d => d.ParentMemberId != null).AsEnumerable()
+            .GroupBy(d => (d.ParentMemberId, d.Side)).Should().OnlyContain(g => g.Count() == 1);
+    }
 }
