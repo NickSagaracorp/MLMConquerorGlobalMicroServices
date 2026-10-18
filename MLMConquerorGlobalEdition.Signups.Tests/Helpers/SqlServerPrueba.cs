@@ -40,6 +40,6 @@ public static class SqlServerTestDb
 
     public static bool Reachable => LazyReachable.Value;
 
-    public static AppDbContext Db() =>
-        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(ConnectionString).Options);
+    public static AppDbContext Db(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptores) =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(ConnectionString).AddInterceptors(interceptores).Options);
 }
