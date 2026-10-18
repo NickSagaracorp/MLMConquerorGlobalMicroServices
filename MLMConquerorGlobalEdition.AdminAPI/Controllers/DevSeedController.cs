@@ -173,8 +173,8 @@ public class DevSeedController : ControllerBase
 
     /// <summary>
     /// POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.
-    /// Plan P: anonimo solo mientras no exista ningun SuperAdmin (el arranque de una base vacia); despues, solo
-    /// un SuperAdmin puede usarlo (401 sin sesion, 403 con otro rol), igual que el resto del controlador.
+    /// Plan P: anonimo solo mientras no exista ningun SuperAdmin, desde loopback y solo para crear un usuario nuevo
+    /// (BootstrapFirstSuperAdminAsync); despues, solo un SuperAdmin puede usarlo (401 sin sesion, 403 con otro rol).
     /// </summary>
     [HttpPost("seed-superadmin")]
     [AllowAnonymous]
@@ -182,8 +182,8 @@ public class DevSeedController : ControllerBase
         [FromBody] SeedRequest request,
         CancellationToken ct)
     {
-        if (!User.IsInRole("SuperAdmin") && (await _userManager.GetUsersInRoleAsync("SuperAdmin")).Count > 0)
-            return User.Identity?.IsAuthenticated == true ? Forbid() : Unauthorized();
+        if (!User.IsInRole("SuperAdmin"))
+            return await BootstrapFirstSuperAdminAsync(request, ct);
 
         var roles = new[]
         {
@@ -241,6 +241,67 @@ public class DevSeedController : ControllerBase
 
         return Ok(ApiResponse<SeedResultDto>.Ok(
             new SeedResultDto($"SuperAdmin '{request.Email}' created successfully.")));
+    }
+
+    private static readonly string[] SeedRoles =
+    {
+        "SuperAdmin", "Admin", "CommissionManager", "BillingManager",
+        "SupportManager", "SupportLevel1", "SupportLevel2", "SupportLevel3",
+        "IT", "Ambassador", "Member"
+    };
+
+    /// <summary>
+    /// Decision de Nick (2026-10-18): el arranque de una base sin ningun SuperAdmin. Solo desde la propia maquina
+    /// (loopback), solo crea un usuario NUEVO (nunca toca una cuenta existente) y nunca actua si ya existe algun
+    /// SuperAdmin. La comprobacion y el alta van en una transaccion serializable con un candado de aplicacion: dos
+    /// llamadas a la vez no pueden crear dos (TOCTOU). UserManager usa el mismo AppDbContext, asi que la
+    /// transaccion cubre tambien sus escrituras.
+    /// </summary>
+    private async Task<ActionResult<ApiResponse<SeedResultDto>>> BootstrapFirstSuperAdminAsync(SeedRequest request, CancellationToken ct)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress;
+        if (ip is null || !System.Net.IPAddress.IsLoopback(ip))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<SeedResultDto>.Fail("FORBIDDEN", "The first SuperAdmin can only be seeded from this machine."));
+
+        await using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        if (_db.Database.IsSqlServer())
+        {
+            var r = await _db.Database.SqlQuery<int>(
+                $"DECLARE @r int; EXEC @r = sp_getapplock @Resource = 'dev-seed-superadmin', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; SELECT @r AS [Value]")
+                .ToListAsync(ct);
+            if (r.Count != 1 || r[0] < 0)
+                return StatusCode(StatusCodes.Status409Conflict,
+                    ApiResponse<SeedResultDto>.Fail("BUSY", "Another seed is in progress."));
+        }
+
+        if ((await _userManager.GetUsersInRoleAsync("SuperAdmin")).Count > 0)
+            return User.Identity?.IsAuthenticated == true ? Forbid() : Unauthorized();
+
+        foreach (var role in SeedRoles)
+            if (!await _roleManager.RoleExistsAsync(role))
+                await _roleManager.CreateAsync(new IdentityRole(role));
+
+        if (await _userManager.FindByEmailAsync(request.Email) is not null)
+            return Conflict(ApiResponse<SeedResultDto>.Fail("USER_EXISTS",
+                "The bootstrap only creates a new user; it never changes an existing account."));
+
+        var user = new ApplicationUser
+        {
+            UserName       = request.Email,
+            Email          = request.Email,
+            EmailConfirmed = true,
+            IsActive       = true,
+            CreationDate   = _dateTime.Now,
+            CreatedBy      = "DevSeed"
+        };
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", result.Errors.Select(e => e.Description))));
+        await _userManager.AddToRoleAsync(user, "SuperAdmin");
+        await tx.CommitAsync(ct);
+
+        return Ok(ApiResponse<SeedResultDto>.Ok(new SeedResultDto($"SuperAdmin '{request.Email}' created successfully.")));
     }
 
     /// <summary>

@@ -78,12 +78,16 @@ public class DevSeedSoloEnDesarrolloTests
     // ── Arranque del superadmin ─────────────────────────────────────────────
 
     private static (DevSeedController Controller, Mock<UserManager<ApplicationUser>> Users) Controlador(
-        int superAdminsExistentes, ClaimsPrincipal usuario)
+        int superAdminsExistentes, ClaimsPrincipal usuario, string ip = "127.0.0.1", ApplicationUser? existente = null)
     {
         var users = UserManagerHelper.Create();
         users.Setup(u => u.GetUsersInRoleAsync("SuperAdmin"))
              .ReturnsAsync(Enumerable.Range(0, superAdminsExistentes).Select(i => new ApplicationUser { Email = $"sa{i}@x.test" }).ToList());
-        users.Setup(u => u.FindByEmailAsync(It.IsAny<string>())).ReturnsAsync((ApplicationUser?)null);
+        users.Setup(u => u.FindByEmailAsync(It.IsAny<string>())).ReturnsAsync(existente);
+        users.Setup(u => u.GeneratePasswordResetTokenAsync(It.IsAny<ApplicationUser>())).ReturnsAsync("token");
+        users.Setup(u => u.ResetPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(IdentityResult.Success);
+        users.Setup(u => u.IsInRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>())).ReturnsAsync(false);
+        users.Setup(u => u.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
         users.Setup(u => u.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>())).ReturnsAsync(IdentityResult.Success);
         users.Setup(u => u.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>())).ReturnsAsync(IdentityResult.Success);
 
@@ -98,9 +102,16 @@ public class DevSeedSoloEnDesarrolloTests
         var c = new DevSeedController(users.Object, roles.Object, env.Object, reloj.Object,
             InMemoryDbHelper.Create(), Mock.Of<IPlacementService>())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = usuario } }
+            ControllerContext = new ControllerContext { HttpContext = Http(usuario, ip) }
         };
         return (c, users);
+    }
+
+    private static DefaultHttpContext Http(ClaimsPrincipal usuario, string ip)
+    {
+        var http = new DefaultHttpContext { User = usuario };
+        http.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(ip);
+        return http;
     }
 
     private static ClaimsPrincipal Anonimo() => new(new ClaimsIdentity());
@@ -143,5 +154,30 @@ public class DevSeedSoloEnDesarrolloTests
         var r = await c.SeedSuperAdmin(new DevSeedController.SeedRequest("otro@x.test", "Secreta!1"), CancellationToken.None);
         r.Result.Should().BeOfType<OkObjectResult>();
         users.Verify(u => u.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Once);
+    }
+
+    /// <summary>Decision de Nick (2026-10-18): el arranque anonimo solo desde la propia maquina (loopback).</summary>
+    [Fact]
+    public async Task Sin_superadmin_el_arranque_anonimo_desde_fuera_de_la_maquina_se_rechaza()
+    {
+        var (c, users) = Controlador(0, Anonimo(), ip: "10.20.30.40");
+        var r = await c.SeedSuperAdmin(new DevSeedController.SeedRequest("sa@x.test", "Secreta!1"), CancellationToken.None);
+        r.Result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        users.Verify(u => u.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Decision de Nick (2026-10-18): el arranque anonimo solo crea un usuario NUEVO. Nunca toca una cuenta que ya
+    /// existe (antes le restablecia la contrasena y le daba SuperAdmin a cualquier correo).
+    /// </summary>
+    [Fact]
+    public async Task Sin_superadmin_el_arranque_anonimo_no_toca_una_cuenta_existente()
+    {
+        var (c, users) = Controlador(0, Anonimo(), existente: new ApplicationUser { Email = "alguien@x.test" });
+        var r = await c.SeedSuperAdmin(new DevSeedController.SeedRequest("alguien@x.test", "Secreta!1"), CancellationToken.None);
+        r.Result.Should().BeOfType<ConflictObjectResult>();
+        users.Verify(u => u.ResetPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        users.Verify(u => u.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+        users.Verify(u => u.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
     }
 }
