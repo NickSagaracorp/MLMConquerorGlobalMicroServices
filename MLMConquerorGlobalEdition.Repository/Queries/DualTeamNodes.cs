@@ -48,7 +48,9 @@ public enum DualTeamChildrenOnRemoval
 /// <c>dual-tree</c> en exclusivo (DualTeamGate.EnterTreeExclusiveAsync) y lo comprueban. Las claves del
 /// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; la ruta de texto, con un
 /// SUBSTRING en SQL; las piernas, de forma incremental (LegPointMaintenance.ApplySubtreeAsync); y se vacian las
-/// colas de derrame de los ascendientes viejos y nuevos, que pueden haber dejado de ser la hoja mas profunda.</item>
+/// colas de derrame que apuntaban al punto donde se engancha o se suelta el subarbol. Las demas no hace falta
+/// tocarlas: el motor valida la cola al leerla por la clave (sigue en la pierna, existe y tiene hueco) y la rehace
+/// si no (recorrer los 8.000 ascendientes para vaciar las suyas costaba casi un segundo por movimiento).</item>
 /// </list>
 /// Fuera de SQL Server (InMemory, pruebas de logica) hace lo mismo con entidades; si un nodo sembrado sin clave
 /// la necesita, se la calcula por adyacencia. En SQL Server, un nodo sin clave es un error (relleno pendiente).
@@ -157,7 +159,7 @@ public static class DualTeamNodes
 
         if (node.ParentMemberId is not null)
             await LegPointMaintenance.ApplySubtreeAsync(db, memberId, -1, ct);
-        await InvalidateFrontiersAsync(db, new[] { node.ParentMemberId }, ct);
+        await InvalidateFrontiersAsync(db, new[] { node.ParentMemberId, memberId }, ct);
 
         if (children == DualTeamChildrenOnRemoval.Floating && hijos.Count > 0)
         {
@@ -171,9 +173,6 @@ public static class DualTeamNodes
                 await MoveSubtreeAsync(db, h.MemberId, new DualTeamDestination.NewRoot(), adjustLegs: false, now, by, ct);
         }
 
-        // Su propia cola y las colas que acababan en el.
-        var colas = await db.DualTeamLegFrontiers.Where(f => f.SponsorMemberId == memberId || f.DeepestMemberId == memberId).ToListAsync(ct);
-        db.DualTeamLegFrontiers.RemoveRange(colas);
         var fila = await db.DualTeamTree.FirstAsync(d => d.MemberId == memberId, ct);
         db.DualTeamTree.Remove(fila);
         await db.SaveChangesAsync(ct);
@@ -190,39 +189,19 @@ public static class DualTeamNodes
             .OrderBy(d => d.Side).ToListAsync(ct);
 
     /// <summary>
-    /// Vacia las colas de derrame de los ascendientes de <paramref name="startIds"/> (ellos incluidos): tras mover
-    /// o retirar un subarbol pueden haber dejado de apuntar a la hoja mas profunda de su pierna. El motor las
-    /// reconstruye con una consulta en el siguiente derrame de cada patrocinador.
+    /// Vacia las colas de derrame que dependian de los nodos <paramref name="ids"/> (un punto de enganche o de suelta):
+    /// la cola del propio nodo y las que acababan en el. El resto se valida al leerla (PlacementService).
     /// </summary>
-    public static async Task InvalidateFrontiersAsync(AppDbContext db, IEnumerable<string?> startIds, CancellationToken ct = default)
+    public static async Task InvalidateFrontiersAsync(AppDbContext db, IEnumerable<string?> ids, CancellationToken ct = default)
     {
-        foreach (var start in startIds.Where(s => s is not null).Distinct())
-        {
-            if (db.Database.IsSqlServer())
-            {
-                await db.Database.ExecuteSqlInterpolatedAsync($"""
-                    WITH up AS (
-                        SELECT d.MemberId, d.ParentMemberId FROM DualTeamTree d WHERE d.MemberId = {start} AND d.IsDeleted = 0
-                        UNION ALL
-                        SELECT p.MemberId, p.ParentMemberId FROM up JOIN DualTeamTree p ON p.MemberId = up.ParentMemberId AND p.IsDeleted = 0)
-                    DELETE f FROM DualTeamLegFrontiers f JOIN up ON up.MemberId = f.SponsorMemberId
-                    OPTION (MAXRECURSION 0)
-                    """, ct);
-            }
-            else
-            {
-                var ids = new List<string>();
-                var actual = await db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == start, ct);
-                while (actual is not null && !ids.Contains(actual.MemberId))
-                {
-                    ids.Add(actual.MemberId);
-                    var padre = actual.ParentMemberId;
-                    actual = padre is null ? null : await db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == padre, ct);
-                }
-                db.DualTeamLegFrontiers.RemoveRange(await db.DualTeamLegFrontiers.Where(f => ids.Contains(f.SponsorMemberId)).ToListAsync(ct));
-                await db.SaveChangesAsync(ct);
-            }
-        }
+        var lista = ids.Where(i => i is not null).Select(i => i!).Distinct().ToList();
+        if (lista.Count == 0) return;
+        var colas = await db.DualTeamLegFrontiers
+            .Where(f => lista.Contains(f.SponsorMemberId) || (f.DeepestMemberId != null && lista.Contains(f.DeepestMemberId)))
+            .ToListAsync(ct);
+        if (colas.Count == 0) return;
+        db.DualTeamLegFrontiers.RemoveRange(colas);
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task RewriteSubtreeSqlAsync(AppDbContext db, DualTeamEntity root, byte[] oldKey, byte[] newKey,
