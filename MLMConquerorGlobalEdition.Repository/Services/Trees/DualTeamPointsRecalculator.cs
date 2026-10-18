@@ -60,7 +60,11 @@ public class DualTeamPointsRecalculator : IDualTeamPointsRecalculator
     {
         var child = await _db.DualTeamTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == parentMemberId && d.Side == side, ct);
+            // Plan P: con un hueco repetido, el que se lo queda es el mas antiguo por (CreationDate, Id),
+            // la misma regla que la reparacion; sin orden, salia uno cualquiera y los puntos no se repetian.
+            .Where(d => d.ParentMemberId == parentMemberId && d.Side == side)
+            .OrderBy(d => d.CreationDate).ThenBy(d => d.Id)
+            .FirstOrDefaultAsync(ct);
 
         if (child is null) return 0m;
 
