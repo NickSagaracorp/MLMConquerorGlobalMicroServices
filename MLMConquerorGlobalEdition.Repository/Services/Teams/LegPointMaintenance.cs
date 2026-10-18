@@ -99,7 +99,7 @@ INTO #deltas
 FROM walk
 WHERE ParentMemberId IS NOT NULL
 GROUP BY ParentMemberId, Side
-OPTION (MAXRECURSION 0);
+OPTION (MAXRECURSION 0, MAXDOP 1);
 
 UPDATE d
 SET LeftLegPoints  = d.LeftLegPoints  + COALESCE(l.D, 0),
@@ -109,13 +109,15 @@ SET LeftLegPoints  = d.LeftLegPoints  + COALESCE(l.D, 0),
 FROM DualTeamTree d
 LEFT JOIN #deltas l ON l.TargetId = d.MemberId AND l.Side = 0
 LEFT JOIN #deltas r ON r.TargetId = d.MemberId AND r.Side = 1
-WHERE d.IsDeleted = 0 AND d.MemberId IN (SELECT TargetId FROM #deltas);
+WHERE d.IsDeleted = 0 AND d.MemberId IN (SELECT TargetId FROM #deltas)
+OPTION (MAXDOP 1);
 
 UPDATE s
 SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int)
 FROM MemberStatistics s
 JOIN DualTeamTree d ON d.MemberId = s.MemberId AND d.IsDeleted = 0
-WHERE d.MemberId IN (SELECT TargetId FROM #deltas);
+WHERE d.MemberId IN (SELECT TargetId FROM #deltas)
+OPTION (MAXDOP 1);
 
 DROP TABLE #deltas;";
 

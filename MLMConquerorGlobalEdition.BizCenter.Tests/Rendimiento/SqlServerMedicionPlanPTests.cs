@@ -110,4 +110,113 @@ public class SqlServerMedicionPlanPTests
         await tx.RollbackAsync();
         new[] { t1, t2, t3 }.Should().OnlyContain(t => t < Objetivo);
     }
+
+    /// <summary>
+    /// Revision C1 e I1 sobre los datos reales: un nodo profundo con equipo se retira como lo hace el admin (su equipo
+    /// queda flotando) y se vuelve a colocar en el mismo sitio. Las piernas de toda su linea (mas de 8.000 ascendientes)
+    /// y las suyas vuelven exactamente a su valor, y su equipo vuelve bajo el por la clave. Todo en una transaccion que
+    /// se deshace.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Retirar_y_recolocar_un_nodo_profundo_con_equipo_deja_las_piernas_igual()
+    {
+        await using var db = SqlServerReportes.Db();
+        db.Database.SetCommandTimeout(600);   // deshacer reescribe rutas largas
+        // Un nodo a mas de 4.000 niveles, con padre y con un equipo de 2 a 50 nodos.
+        var x = await db.DualTeamTree.AsNoTracking()
+            .Where(d => d.Depth > 4000 && d.ParentMemberId != null && d.LeftLegCount + d.RightLegCount >= 2 && d.LeftLegCount + d.RightLegCount <= 50)
+            .OrderBy(d => d.Depth).ThenBy(d => d.Id).FirstAsync();
+        var linea = await LineaAsync(db, x.MemberId);
+        var antes = await db.DualTeamTree.AsNoTracking().Where(d => linea.Contains(d.MemberId))
+            .ToDictionaryAsync(d => d.MemberId, d => (d.LeftLegPoints, d.RightLegPoints, d.LeftLegCount, d.RightLegCount));
+        var equipo = await DualSubtree.Under(db, x).CountAsync();
+        _salida.WriteLine($"Nodo {x.MemberId} a profundidad {x.Depth}, {equipo} en su equipo, {linea.Count - 1} ascendientes");
+
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var t = await MideAsync("Retirar (admin) y recolocar en el mismo sitio un nodo profundo con equipo", async () =>
+        {
+            await DualTeamGate.EnterTreeExclusiveAsync(db);
+            (await DualTeamNodes.RemoveAsync(db, x.MemberId, DualTeamChildrenOnRemoval.Floating, DateTime.Now, "medicion")).Should().BeTrue();
+            var flotantes = await DualTeamNodes.FloatingChildrenAsync(db, x.MemberId);
+            var padre = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == x.ParentMemberId);
+            var nuevo = await DualTeamNodes.ChildAsync(db, padre, x.MemberId, x.Side, DateTime.Now, "medicion");
+            db.DualTeamTree.Add(nuevo);
+            await db.SaveChangesAsync();
+            await LegPointMaintenance.ApplyIncrementalAsync(db, new[] { x.MemberId });
+            await DualTeamNodes.ReattachFloatingChildrenAsync(db, x.MemberId, flotantes, DateTime.Now, "medicion");
+        });
+
+        var despues = await db.DualTeamTree.AsNoTracking().Where(d => linea.Contains(d.MemberId))
+            .ToDictionaryAsync(d => d.MemberId, d => (d.LeftLegPoints, d.RightLegPoints, d.LeftLegCount, d.RightLegCount));
+        var nodoX = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == x.MemberId);
+        var equipoDespues = await DualSubtree.Under(db, nodoX).CountAsync();
+        await tx.RollbackAsync();
+
+        equipoDespues.Should().Be(equipo, "su equipo vuelve bajo el por la clave");
+        despues.Should().BeEquivalentTo(antes, "la linea entera y el propio nodo quedan como estaban");
+        t.Should().BeLessThan(TimeSpan.FromSeconds(10));
+    }
+
+    private static async Task<List<string>> LineaAsync(Repository.Context.AppDbContext db, string memberId)
+    {
+        var linea = new List<string>();
+        for (var actual = memberId; actual is not null;)
+        {
+            linea.Add(actual);
+            var id = actual;
+            actual = await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == id).Select(d => d.ParentMemberId).FirstOrDefaultAsync();
+        }
+        return linea;
+    }
+
+    /// <summary>
+    /// 10 colocaciones simultaneas en el mismo arbol a mas de 8.000 niveles (bajo 10 nodos distintos de la cadena mas
+    /// honda, que comparten casi toda su linea): ninguna falla ni se agota, con p50 y p95. Se retiran al terminar.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Diez_colocaciones_simultaneas_a_gran_profundidad()
+    {
+        string x;
+        List<string> patrocinadores;
+        await using (var db = SqlServerReportes.Db())
+        {
+            x = BinarioDb.Prefijo("MD10");
+            // Nodos a mas de 8.000 niveles con algun hueco libre (la cadena honda): cada colocacion va a su hueco, pero
+            // todas suben piernas por casi la misma linea de 8.000 ascendientes, que es donde compiten.
+            patrocinadores = await db.DualTeamTree.AsNoTracking()
+                .Where(d => d.Depth > 8000 && db.DualTeamTree.Count(k => k.ParentMemberId == d.MemberId) < 2)
+                .OrderByDescending(d => d.Depth).ThenBy(d => d.Id).Select(d => d.MemberId).Take(10).ToListAsync();
+        }
+        patrocinadores.Should().HaveCount(10);
+        var tiempos = new System.Collections.Concurrent.ConcurrentBag<double>();
+        try
+        {
+            var resultados = await Task.WhenAll(patrocinadores.Select((sp, i) => Task.Run(async () =>
+            {
+                await using var db = SqlServerReportes.Db();
+                var c = Stopwatch.StartNew();
+                var r = await new PlacementService(db, new Reloj()).PlaceAsync($"{x}{i:00}", sp);
+                c.Stop();
+                tiempos.Add(c.Elapsed.TotalMilliseconds);
+                return r;
+            })));
+
+            var orden = tiempos.OrderBy(t => t).ToList();
+            double P(double q) => orden[(int)Math.Ceiling(q * orden.Count) - 1];
+            _salida.WriteLine($"10 colocaciones simultaneas a mas de 8.000 niveles: p50 {P(0.5):0} ms, p95 {P(0.95):0} ms, max {orden[^1]:0} ms");
+            resultados.Should().OnlyContain(r => r.IsSuccess, string.Join("; ", resultados.Where(r => !r.IsSuccess).Select(r => r.Error)));
+            resultados.Should().OnlyContain(r => r.Value!.Depth > 8000);
+        }
+        finally
+        {
+            // Se retiran (restando sus piernas) para dejar la copia como estaba.
+            await using var db = SqlServerReportes.Db();
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await DualTeamGate.EnterTreeExclusiveAsync(db);
+            foreach (var id in await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).Select(d => d.MemberId).ToListAsync())
+                await DualTeamNodes.RemoveAsync(db, id, DualTeamChildrenOnRemoval.Reject, DateTime.Now, "medicion");
+            await tx.CommitAsync();
+            await BinarioDb.LimpiarAsync(x);
+        }
+    }
 }
