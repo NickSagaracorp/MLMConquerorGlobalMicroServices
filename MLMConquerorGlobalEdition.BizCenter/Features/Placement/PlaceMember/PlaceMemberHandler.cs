@@ -155,6 +155,14 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 await tx.RollbackAsync(ct);
                 return Circular();
             }
+            // Revision (menor 5): con el arbol en exclusivo se repite: entre la comprobacion de fuera y el candado pudo
+            // colocarse debajo alguno de sus patrocinados.
+            if (tipo == Tipo.Movimiento && await HasOwnEnrolledDownlineAsync(nodoAhora!, ct))
+            {
+                await tx.RollbackAsync(ct);
+                return Result<PlaceMemberResult>.Failure("HAS_OWN_DOWNLINE",
+                    "No se puede mover a este ambassador porque ya tiene downline propio en la estructura Dual Team.");
+            }
 
             if (tipo == Tipo.Hoja)
             {

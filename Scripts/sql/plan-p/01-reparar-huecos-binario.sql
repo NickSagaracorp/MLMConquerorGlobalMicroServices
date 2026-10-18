@@ -96,8 +96,13 @@ WHERE ParentMemberId IS NOT NULL GROUP BY ParentMemberId, Side HAVING COUNT(*) >
 IF EXISTS (SELECT 1 FROM #a c JOIN #a p ON p.MemberId = c.ParentMemberId WHERE c.HierarchyPath <> p.HierarchyPath + c.MemberId + N'/')
    OR EXISTS (SELECT 1 FROM #a WHERE ParentMemberId IS NULL AND HierarchyPath <> N'/' + MemberId + N'/')
     THROW 51063, N'Hay rutas incoherentes con su padre: revisar antes de reparar (no se ha tocado nada).', 1;
-IF EXISTS (SELECT 1 FROM #a c WHERE c.ParentMemberId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM #a p WHERE p.MemberId = c.ParentMemberId))
-    THROW 51064, N'Hay nodos huerfanos (su padre no existe): revisar antes de reparar (no se ha tocado nada).', 1;
+-- Un hijo cuyo padre no tiene nodo es legitimo si el padre se retiro (PlacementLog 'Removed' del admin o 'Unplaced'):
+-- espera flotando a que su padre vuelva a colocarse, y 03 le da una raiz virtual. Cualquier otro es un huerfano roto.
+IF EXISTS (SELECT 1 FROM #a c
+           WHERE c.ParentMemberId IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM #a p WHERE p.MemberId = c.ParentMemberId)
+             AND NOT EXISTS (SELECT 1 FROM PlacementLogs l WHERE l.MemberId = c.ParentMemberId AND l.Action IN (N'Removed', N'Unplaced')))
+    THROW 51064, N'Hay nodos huerfanos (su padre no existe ni consta retirado): revisar antes de reparar (no se ha tocado nada).', 1;
 
 -- Informe antes
 SELECT 'antes' AS Fase,

@@ -33,6 +33,12 @@ IF COL_LENGTH(N'dbo.DualTeamTree', N'BinaryPath') IS NULL OR OBJECT_ID(N'dbo.Dua
 IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NOT NULL
            GROUP BY ParentMemberId, Side HAVING COUNT(*) > 1)
     THROW 51052, N'Hay huecos repetidos: primero 01-reparar-huecos-binario.sql.', 1;
+-- La misma regla que 01: un hijo sin padre con nodo solo es legitimo si su padre consta retirado.
+IF EXISTS (SELECT 1 FROM DualTeamTree c
+           WHERE c.IsDeleted = 0 AND c.ParentMemberId IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM DualTeamTree p WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0)
+             AND NOT EXISTS (SELECT 1 FROM PlacementLogs l WHERE l.MemberId = c.ParentMemberId AND l.Action IN (N'Removed', N'Unplaced')))
+    THROW 51066, N'Hay nodos huerfanos (su padre no existe ni consta retirado): revisar antes del relleno.', 1;
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -126,6 +132,10 @@ BEGIN TRY
     END
 
     EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
+
+    -- Revision (menor 4): el codigo nuevo exige que todo nodo tenga clave; si queda alguno, se falla aqui.
+    IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND BinaryPath IS NULL)
+        THROW 51067, N'Quedan nodos sin clave al terminar el relleno (un ciclo o un padre sin clave): revisar antes de arrancar.', 1;
 
     SELECT (SELECT COUNT(*) FROM DualTeamTree WHERE IsDeleted = 0) AS Nodos,
            @raices AS RaicesNuevas,
