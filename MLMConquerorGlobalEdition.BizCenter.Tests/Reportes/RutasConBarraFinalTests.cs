@@ -21,7 +21,6 @@ public class RutasConBarraFinalTests
     {
         ["MLMConquerorGlobalEdition.AdminAPI/Features/Placement/AdminPlaceMember/AdminPlaceMemberHandler.cs"]         = 4,
         ["MLMConquerorGlobalEdition.AdminAPI/Features/Placement/AdminRemovePlacement/AdminRemovePlacementHandler.cs"] = 1,
-        ["MLMConquerorGlobalEdition.AdminAPI/Features/Placement/RunAutoPlacement/RunAutoPlacementHandler.cs"]         = 1,
         ["MLMConquerorGlobalEdition.BizCenter/Features/Placement/PlaceMember/PlaceMemberHandler.cs"]                  = 2,
         ["MLMConquerorGlobalEdition.BizCenter/Features/Placement/RemovePlacement/RemovePlacementHandler.cs"]          = 1,
         ["MLMConquerorGlobalEdition.Repository/Seeders/RootAmbassadorSeeder.cs"]                                     = 2,
