@@ -164,4 +164,29 @@ public class MemberStatisticSnapshotJobTests : IDisposable
             It.IsAny<Exception?>(),
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
+
+    /// <summary>Revisión M-i: muchos miembros sin Node dan UN error con el recuento y unos ejemplos, no uno por miembro.</summary>
+    [Fact]
+    public async Task ExecuteAsync_VariosSinNode_UnSoloErrorConElRecuento()
+    {
+        for (var i = 1; i <= 7; i++)
+        {
+            var g = Geno($"S{i}", null, $"/S{i}/");
+            g.Node = null;
+            await _db.GenealogyTree.AddAsync(g);
+            await _db.MemberStatistics.AddAsync(Stat($"S{i}", enrollmentPoints: 5));
+        }
+        await _db.SaveChangesAsync();
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<MemberStatisticSnapshotJob>>();
+
+        await new MemberStatisticSnapshotJob(_db, _dateTime.Object, logger.Object, new EnrollmentTeamPointsService(_db))
+            .ExecuteAsync(default);
+
+        logger.Verify(l => l.Log(
+            Microsoft.Extensions.Logging.LogLevel.Error,
+            It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("7") && v.ToString()!.Contains("S1")),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
 }
