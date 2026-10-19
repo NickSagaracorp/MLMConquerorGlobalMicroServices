@@ -1575,7 +1575,7 @@ Excepciones con nombre y motivo: `Repository/Queries/DualTeamNodes.cs`, que **es
 - Create: `Scripts/sql/plan-p/escala/00-crear-bd-escala.sql`
 - Create: `Scripts/sql/plan-p/escala/01-generar-binario.sql`
 
-- [ ] **Paso 1.** `00-crear-bd-escala.sql`. Se ejecuta contra `master` y exige `-v Confirmo=ESCALA` y que la máquina sea la local:
+- [x] **Paso 1.** `00-crear-bd-escala.sql`. Se ejecuta contra `master` y exige `-v Confirmo=ESCALA` y que la máquina sea la local:
 
 ```sql
 IF N'$(Confirmo)' <> N'ESCALA' THROW 51060, N'Ejecutar con -v Confirmo=ESCALA.', 1;
@@ -1586,7 +1586,7 @@ ALTER DATABASE MLMConquerorGlobalEditionDb_Escala SET RECOVERY SIMPLE;
 
 Después se aplican las migraciones a esa base, y **solo** a esa: `dotnet ef database update … --connection "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;…"`.
 
-- [ ] **Paso 2.** `01-generar-binario.sql` exige `DB_NAME() = N'MLMConquerorGlobalEditionDb_Escala'` (51062) y recibe `-v Nodos=400000` o `1000000`.
+- [x] **Paso 2.** `01-generar-binario.sql` exige `DB_NAME() = N'MLMConquerorGlobalEditionDb_Escala'` (51062) y recibe `-v Nodos=400000` o `1000000`.
   - **Forma, que imita lo que produce la regla de la cadena más profunda.** Una raíz `ESC-0`. Bajo su pierna izquierda, un miembro `ESC-M` (el que se mide) con N nodos debajo, formados por:
     - una **columna** de 5.000 niveles por la izquierda (la cadena de derrames);
     - de cada nodo de la columna, por la derecha, un **subárbol completo** hasta completar N.
@@ -1596,7 +1596,7 @@ Después se aplican las migraciones a esa base, y **solo** a esa: `dotnet ef dat
   - Al final, `03-relleno-clave-binario.sql` y `04-colas-y-contadores.sql`, con sus cerrojos de base adaptados a `_Escala` mediante `-v Base=ESCALA`, que los dos aceptan (lista blanca de dos nombres).
   - **Informe:** nodos, profundidad máxima, bytes máximos de la clave y tamaño de `UX_DualTeamTree_BinaryPath` (`sys.dm_db_partition_stats`).
 
-- [ ] **Paso 3.** Generar 400.000 y anotar los tiempos. Commit: `Plan P: base de escala y generador sintetico del binario`.
+- [x] **Paso 3.** Generar 400.000 y anotar los tiempos. Commit: `Plan P: base de escala y generador sintetico del binario`.
 
 ### Tarea 19: mediciones con objetivo
 
@@ -1616,10 +1616,156 @@ Un atributo `[EscalaFact]` salta la prueba si no está definida `MLM_ESCALA_SQLS
 | Cola sin caché | `ResolveDeepestAsync` con `DualTeamLegFrontiers` vacía | < 2 s; si no, documentar que la caché es obligatoria y que `04` la reconstruye |
 | 1.000.000 | Repetir las cuatro primeras con `Nodos=1000000` | < 2 s |
 
-- [ ] **Paso 1.** Escribir las pruebas con el objetivo como aserción (en rojo si no se cumple).
-- [ ] **Paso 2.** Ejecutar con 400.000 y con 1.000.000, y escribir los resultados en una sección «Resultados medidos» de este plan, como en el Plan M.
-- [ ] **Paso 3.** **Plan B si el conteo pasa de 2 s:** Mi equipo muestra `LeftLegCount + RightLegCount` del propio miembro (exacto por construcción) en vez de contar el rango, y solo cuenta el rango cuando hay un filtro.
-- [ ] **Paso 4.** Commit: `Plan P: mediciones del binario con 400.000 y 1.000.000 nodos`.
+- [x] **Paso 1.** Escribir las pruebas con el objetivo como aserción (en rojo si no se cumple).
+- [x] **Paso 2.** Ejecutar con 400.000 y con 1.000.000, y escribir los resultados en una sección «Resultados medidos» de este plan, como en el Plan M.
+- [x] **Paso 3.** **Plan B si el conteo pasa de 2 s:** Mi equipo muestra `LeftLegCount + RightLegCount` del propio miembro (exacto por construcción) en vez de contar el rango, y solo cuenta el rango cuando hay un filtro.
+- [x] **Paso 4.** Commit: `Plan P: mediciones del binario con 400.000 y 1.000.000 nodos`.
+
+### Bloque D: implementación, resultados medidos y desviaciones (2026-10-18, cuarta tanda)
+
+**Estado.** Tareas 18 y 19 hechas en la rama `plan-p-bloque-d-escala`. Se generó y midió la base de escala con 400.000 y con 1.000.000 de nodos y después se borró (ver «Cómo regenerarla»). No se tocó la base local salvo consultas de solo lectura (contraste de altas, `DBCC CLONEDATABASE` del esquema y copia de catálogos). El único cambio de código de producción es el «Plan B» del conteo de Mi equipo del Dual Team (Paso 3 de la Tarea 19), hecho con TDD.
+
+**Decisiones de Nick para esta tanda:** la columna de derrames tiene **8.500 niveles** (la base local tiene 8.223); las altas son **completas**, no filas sueltas; cada medición se repite 3 veces y cuenta la mediana; el objetivo es una aserción; lo que no cumple se anota con su propuesta y no se arregla aquí si la solución es grande (P-R9 y P4 siguen pendientes de Nick).
+
+#### Desviaciones
+
+- **La base no se crea con `dotnet ef database update`.** La cadena de migraciones no se puede aplicar desde cero: `20260405130705_HelpdeskModule` vuelve a crear `AspNetRoles`, `AspNetUsers` y otras tablas que ya creó `20260320004824_AddIdentityAndAuth` (error 2714). `00-crear-bd-escala.sql` clona el esquema de la base local con `DBCC CLONEDATABASE … WITH NO_STATISTICS, NO_QUERYSTORE` (solo lee; copia tablas, índices, secuencias, funciones y vistas, sin datos) y copia de la local, en solo lectura, los catálogos (productos, niveles, rangos, roles, países, pasarelas, plantillas, parámetros) y `__EFMigrationsHistory`. Después, `dotnet ef database update --connection …_Escala` dice «No migrations were applied». Queda anotado como deuda: **una base nueva no se puede crear con las migraciones** (afecta a cualquier entorno nuevo).
+- **`-v Confirmo=ESCALA` en vez de `-v Base=ESCALA`** en 03 y 04. `sqlcmd` falla si una variable del script no se define, así que añadir `$(Base)` habría roto la invocación de siempre (`-v Confirmo=LOCAL`). `Confirmo` admite `ESCALA` **solo** cuando `DB_NAME()` es `MLMConquerorGlobalEditionDb_Escala`; `LOCAL` sigue valiendo solo en la local y en la de ensayo. Los demás cerrojos no cambian.
+- **Altas completas, no filas mínimas** (cambio de alcance de Nick). El generador imita fila a fila un alta real pagada por Entrax y colocada después por el motor (ver «Qué deja un alta real»). No hay columna obligatoria vacía; la comparación de nulos contra `AMB-934756` (solo lectura) solo encuentra diferencias que no vienen del alta: `LastLoginAt` y `RefreshToken` (el alta real inició sesión después) y `MemberProfiles.State` (las sintéticas son de Florida).
+- **Generador por fases en paralelo.** `01-generar-altas.ps1` orquesta los ficheros de `escala/altas/` sobre tablas de trabajo del esquema `escala` (que `z-cerrar.sql` borra): preparación en serie y después, a la vez, identidad → pedidos → cobros, inscripción → las tres tablas por ascendiente, y el binario. Las tres tablas por ascendiente se cargan con un `INSERT … WITH (TABLOCK)` por tabla sobre la tabla vacía y sus índices no agrupados desactivados.
+- **Forma de la inscripción.** Media de 1,47 inscritos por patrocinador (de 0 a 10; 45 % ninguno) y una rama larga de 400 niveles colgada del nodo más hondo: la rama más larga tiene 428 niveles con 400.000 y unos 440 con 1.000.000, pero la media es de 26. Una primera versión con media 1,03 (todos a cientos de niveles) daba más de 200 millones de filas por tabla de ascendientes con 1.000.000 y más de hora y media de carga en esta máquina; no es realista (en la base local los niveles son de 2 a 5).
+- **ESC-P lo inscribe ESC-2** (la cabeza de la columna binaria), no ESC-M: ESC-M solo tiene hijo izquierdo, así que colocar a ESC-P bajo ESC-M lo pondría a su derecha libre (profundidad 2), no a 8.500 niveles. Lo mismo para la «cola sin caché»: se mide con ESC-2. (En la base de 400.000, generada antes del cambio, el patrocinador de ESC-P constaba como ESC-M; la prueba pasa ESC-2 de forma explícita.)
+- **Contraseña de los usuarios sintéticos:** un hash V3 de Identity generado para esta base (`Escala2026!`), no copiado de ningún usuario.
+- **Fast Start, historiales de estado y monederos** no se generan (ver la tabla siguiente).
+- **Tiempo de espera de comando.** Las operaciones medidas usan 30 s, el de EF por defecto (ningún servicio lo cambia), para que un «se agotaría en producción» se vea. El movimiento de ESC-P y la tanda de 1.000 usan uno largo para conocer su duración real, y la aserción la compara con los 30 s.
+
+#### Qué deja un alta real (contraste del 2026-10-18)
+
+Sacado del código del alta (`SignupAmbassadorHandler`, `SelectProductsHandler`, `CompleteSignupHandler`, `SignupActivationService`, `EntraxSignupSettlement`) y contrastado **en solo lectura** con cuatro altas de la base local: tres de Entrax de punta a punta (`AMB-934756`, `AMB-387001`, `AMB-806020`, del 16-10) y una del generador antiguo ya colocada (`AMB-135968`). La lista es la del alta pagada por Entrax, el único cobro del alta que deja `PaymentHistories`.
+
+| Tabla | Filas por alta | Quién la escribe | Notas |
+|---|---|---|---|
+| `SignupRiskFingerprints` | 1 | controlador, antes del manejador | `Flow = 0`, sin `MemberId` ni `OrderId`, `CreatedBy = anonymous-signup` |
+| `AspNetUsers` | 1 | `UserManager.CreateAsync` | `MemberProfileId = MemberId` (no `MemberProfiles.Id`); `IsActive` y `EmailConfirmed` a 1 al activar; hash V3 |
+| `AspNetUserRoles` | 1 | `AddToRoleAsync` | rol `Ambassador` |
+| `MemberProfiles` | 1 | alta; activación | `Status` 5 → 1; `UserId` es un Guid propio, distinto de `AspNetUsers.Id` |
+| `GenealogyTree` | 1 | alta | `Node = padre.GetDescendant(último hermano, null)`, `HierarchyPath = ruta del patrocinador + MemberId/`, `Level = padre + 1` |
+| `Orders` | 1 | alta; productos; activación | `Status` 1 → 3 (Entrax) → 4; `OrderNo` de `OrderNumberHelper` |
+| `OrderDetails` | 2 | productos | membresía (VIP, Elite o Turbo) y Lifestyle Ambassador; `UnitPrice = SetupFee + MonthlyFee` |
+| `MembershipSubscriptions` | 1 | alta; activación | `SubscriptionStatus` 2 → 1, `EndDate = RenewalDate = activación + 1 mes` |
+| `SubscriptionBillingStates` | 1 | `RecurringBillingEnrollmentService` | plan 1 (Travel Advantage), siguiente cobro a 30 días, `Purpose = 1` |
+| `EntraxPayments` | 1 | checkout y liquidación | `Status = 2`, `Consumed = 1` |
+| `EntraxApiCalls` | 3 a 6 | cliente de Entrax | `CreateQr`, `GetPayment` y `Callback` (las de la base local repiten el callback) |
+| `PaymentHistories` | 1 | liquidación Entrax | `GatewayName = Entrax`, `TransactionStatus = 3` |
+| `CommissionCountDowns` | 1 | alta | `MemberId = MemberProfiles.UserId`, `MemberId1 = MemberProfiles.Id`; ventanas de 7, 14 y 21 días |
+| `CommissionEarnings` | 2 (Elite) | `SponsorBonusService` | al patrocinador directo: Member Bonus y Builder Bonus del nivel (Elite: tipos 2 y 34, 40 y 60) |
+| `MemberStatistics` | 1 | complete | `PersonalPoints = EnrollmentPoints = Products.QualificationPoins` |
+| `RankEvaluationQueue` | **1 por ascendiente** | alta | el patrocinador y todos los suyos hasta la raíz; los procesa `RankEvaluationSweepJob` |
+| `MemberStatisticDeltas` | **1 por ascendiente** | activación | los aplica `ApplyMemberStatisticDeltasJob` (`IsApplied = 1`) |
+| `MemberNotifications` | **1 por ascendiente** | alta (push sin esperar) | `DOWNLINE_ENROLLED`; se guarda aunque no se envíe |
+| `DualTeamTree` | 1 | al colocar (motor o PlaceMember) | no en el alta si tiene patrocinador |
+| `PlacementLogs` | 1 | al colocar | `Placed`, `Placement engine` |
+
+**Lo que el código dice y la base no confirma:** `StatusHistoryInterceptor` debería dejar una fila en `MemberStatusHistories` y dos en `MembershipStatusHistories` por alta, pero las altas de Entrax del 16-10 no tienen ninguna (y `MemberStatusHistories` no recibe filas desde abril). El generador sigue a la base: no las escribe. Queda anotado para revisar el interceptor.
+
+**Lo que no se escribe en el alta:** `PointDeltaEvents`, `CommissionTriggerQueues` y `WalletHistories` (solo la facturación recurrente). `Wallets` solo si el país tiene `CountryPayoutDefaults` (hoy solo `AG`; las altas sintéticas son de `US`). `MemberStatisticHistories` la escribe el trabajo mensual de instantáneas, no el alta. El Fast Start depende de que el patrocinador tenga otra alta Elite o Turbo en su ventana: el generador no lo simula.
+
+**Hallazgo de escala del propio alta:** cada alta escribe tres filas **por cada ascendiente de inscripción** (cola de rango, delta de estadísticas y notificación), sin tope. Con la forma generada (media de 26 ascendientes, rama más larga de unos 430), las 450.000 altas dejan 11,7 millones de filas en cada una de esas tablas, y un alta al fondo de la rama larga escribe unas 1.300 filas en su transacción. Es el mismo patrón que I3 corrigió para los avisos de rango en la línea binaria, ahora en la línea de inscripción y en el alta. Propuesta (sin implementar): acotar la cola y las notificaciones a unos niveles, como I3, y aplicar los deltas por agregados.
+
+#### Generación
+
+| | 400.000 | 1.000.000 |
+|---|---|---|
+| Altas generadas (con ESC-0, ESC-M y las 50.000 de ESC-P) | 450.002 | 1.050.002 |
+| Profundidad máxima del binario / clave más larga | 8.506 / 1.068 B | 8.507 / 1.068 B |
+| Rama más larga de inscripción / filas por ascendiente (cada una de las 3 tablas) | 428 / 11,7 millones | 430 / 29,4 millones |
+| Preparación (árboles y altas en tablas de trabajo) | 3 min | 6,5 min |
+| Identidad → pedidos → cobros (en serie) | 3 min → 6 min → 9 min ¹ | 12 min → 39 min → 50 min |
+| Inscripción y pares (alta, ascendiente) | 3 min | 10 min |
+| Tablas por ascendiente (las tres a la vez) | 6 a 8 min | 28 a 34 min |
+| Binario (DualTeamTree y PlacementLogs) | 22 min ² | 66 min |
+|  3 relleno de la clave /  4 contadores y colas | 1,6 min / 1 min | 19 min / 17 min |
+| Estadísticas (sp_updatestats) | 1 min | 15 min |
+| **Total de la generación** | **29 min** | **2 h 40 min** |
+| Verificación ( 2-verificar-escala.sql) | 6 min | 17 min |
+| Base resultante (datos) | 48 GB | 125 GB |
+
+¹ Con 400.000, b, c y d terminaron antes que el binario. ² El binario de 400.000 perdió unos 18 minutos en la columna por un índice que faltaba en la tabla de trabajo de las piernas (cada eslabón recorría la tabla); se añadió durante la ejecución y ya está en -preparar.sql. Con 1.000.000 el camino crítico es identidad → pedidos → cobros (1 h 42 min): inserciones con claves Guid al azar en índices agrupados, en paralelo con otras cuatro cargas, sobre un SSD QLC.
+
+**La generación de 1.000.000 pasa de una hora.** Se optimizó antes de esperar: de una sola sesión en serie (estimada en más de 5 h con la primera forma de inscripción) a fases en paralelo, cargas con TABLOCK sobre tablas vacías e índices desactivados, inserción del binario por pasos y no nodo a nodo, y una forma de inscripción realista. Lo que queda: insertar ordenado por la clave agrupada (Id) en c-pedidos y d-cobros, partir d-cobros en dos sesiones, y escribir la ruta de texto del binario (66 GB con 1.000.000) es la mitad del volumen; sin ella, todo bajaría a la mitad.
+
+#### Resultados medidos
+
+Mediana de 3 ejecuciones (la primera calienta). Máquina: portátil Intel i7-1255U (2 núcleos de rendimiento y 8 de eficiencia), 64 GB, NVMe, SQL Server 2022 Developer, con los 11 servicios corriendo contra la base local.
+
+Las cifras son milisegundos salvo que se diga otra cosa. ✅ cumple el objetivo; ❌ no lo cumple. ESC-M tiene a todo el binario debajo (400.000 o 1.000.000 en su pierna izquierda) y 450.000 o 1.050.000 en su equipo de inscripción.
+
+| Medición | Objetivo | 400.000 | 1.000.000 |
+|---|---|---|---|
+| Mi equipo binario: conteo (rango de la clave) | < 2 s | 124 ✅ | 4.074 ❌ |
+| Mi equipo binario: primera página (servicio; orden por defecto, fecha de alta) | < 2 s | 2.089 ❌ | 9.731 ❌ |
+| Mi equipo binario: página 1.000 (servicio) | < 2 s | 2.792 ❌ | 10.966 ❌ |
+| Mi equipo binario: página 1.000 por la clave (BinaryPath > @ultima) | < 2 s | 50 ✅ | 406 ✅ |
+| Mi equipo binario con búsqueda por nombre («Lucia Diaz», 1 de cada 100) | < 2 s | 4.313 ❌ | 18.510 ❌ |
+| Puntos y contadores de pierna de ESC-M (lectura) | < 50 ms | 1 ✅ | 2 ✅ |
+| Colocar una hoja a 8.507 niveles (sube por 8.506 ascendientes) | < 2 s | 1.549 ✅ | 3.457 ❌ |
+| Visualizador del admin, 6 niveles | < 2 s | 60 ✅ | 89 ✅ |
+| Cola sin caché (derrame de ESC-2 con su DualTeamLegFrontiers vacía) | < 2 s | 8.631 ❌ | 12.479 ❌ |
+| 10 colocaciones simultáneas en la misma línea profunda (P-R9) | p95 < 2 s y sin agotar el tiempo | p50 8.311, p95 14.249, ninguna falla ❌ | p50 14.997, p95 29.682; **alguna se agota a los 30 s** ❌ |
+| Colocar la raíz provisional ESC-P (50.000) a 8.508 niveles (P-R6) | < 30 s (tiempo de espera de producción) | 126.621 ❌ | 227.134 ❌ |
+| Colocaciones normales mientras se mueve ESC-P (5 por repetición) | ninguna falla | 13 de 15 fallan con PLACEMENT_BUSY a los 15 s ❌ | 13 de 15 fallan con PLACEMENT_BUSY a los 15 s ❌ |
+| PlaceBulkAsync con 1.000 pendientes (P-R3), por colocación | < 2 s | 779 (779 s en total) ✅ | 759 (759 s en total) ✅ |
+| Mi equipo de inscripción: conteo (CurrentUnder) | < 2 s | 468 ✅ | 2.776 ❌ |
+| Mi equipo de inscripción: primera página | < 2 s | 1.049 ✅ | 4.545 ❌ |
+| Mi equipo de inscripción: página 1.000 | < 2 s | 1.868 ✅ | 7.082 ❌ |
+| Reporte de Actividad, 3 meses | < 2 s | 5.344 ❌ | más de 30 s (se agota) ❌ |
+| Reporte de Clientes de todo el equipo | < 2 s | 4.883 ❌ | 24.231 ❌ |
+| Reporte de Eventos (todo el equipo, 200 inscritos) | < 2 s | 1.457 ✅ | 7.163 ❌ |
+| Progreso de rango de ESC-M (GetRankProgressHandler completo) | < 2 s | más de 30 s (se agota) ❌ | más de 30 s (se agota) ❌ |
+| Tamaño de UX_DualTeamTree_BinaryPath | — | 489 MB | 1.200 MB |
+| Tamaño de DualTeamTree (índice agrupado, con la ruta de texto) | — | 29,7 GB | 77,9 GB |
+| de ello, HierarchyPath del binario | — | 23,5 GB | 65,8 GB |
+| Clave más larga | < 1.700 B | 1.068 B ✅ | 1.068 B ✅ |
+| Alta real por la API (SignupAPI → Entrax falso → activación), 3 altas | — | 0,9 s (7 s la primera, en frío) | 0,8 s (7,9 s la primera, en frío) |
+| Inicio de sesión de un usuario sintético (esc-5@example.com) | funciona | 200 con token; contraseña mala → 401 ✅ | 200 con token; contraseña mala → 401 ✅ |
+
+Notas de lectura:
+- **Con 1.000.000 la base (125 GB) no cabe en memoria (64 GB) y el disco es un SSD QLC**, así que parte de la diferencia con 400.000 es lectura de disco. En las consultas de «todo el equipo», además, el equipo de ESC-M es el 95 % de la tabla y el optimizador recorre la tabla en vez del índice: es el peor caso real (el patrocinador de arriba), no el de un miembro medio.
+- **Desglose del movimiento de ESC-P** (400.000, medido aparte con la base en reposo): reescribir la ruta de texto de los 50.000 nodos (cada una pasa a ~75.000 caracteres) cuesta 75 s; la clave y la profundidad, 8 s; el resto (las dos subidas de piernas por 8.500 ascendientes, leer y reescribir claves) unos 40 s.
+- **PlaceBulkAsync** se midió dentro de una transacción que se deshace al final (en producción cada colocación confirma); los patrocinadores son 1 de cada 397 del equipo de inscripción, así que caen a profundidades repartidas (media ~4.250). Ninguna falló.
+- **El progreso de rango** se agota en GetRankProgressHandler.cs:127-137: carga en memoria los MemberId de todo el equipo de inscripción (450.000 o 1.050.000) y los pasa a un Contains. La parte binaria (una consulta por la clave) no es el problema.
+
+#### Lo que no cumple y qué se propone
+
+Ninguna se implementa en esta tanda salvo el «Plan B» del conteo, que el plan pedía (Paso 3 de la Tarea 19).
+
+1. **Mi equipo binario, conteo (1.000.000: 4 s).** Plan B, hecho con TDD: sin búsqueda ni filtros el total es LeftLegCount + RightLegCount del nodo (exacto por construcción); con búsqueda o filtros se sigue contando el rango (MiEquipoDualTotalPorContadoresTests). Medido después con 1.000.000: la primera página pasa de 9.731 a 1.692 ms ✅ (el conteo era la mayor parte) y la página 1.000 de 10.966 a 2.323 ms ❌ (queda el orden por fecha, punto 2). Las cifras de 400.000 de la tabla son de antes del Plan B.
+2. **Mi equipo binario, páginas (2 a 11 s).** El orden por defecto es la fecha de alta, que obliga a ordenar todo el rango. Con el orden por la clave y paginación por clave la página 1.000 sale en 50 ms y 406 ms. Es la decisión P7 (orden por estructura por defecto y los demás limitados): se recomienda tomarla.
+3. **Búsqueda por nombre (4 y 18 s).** LIKE '%…%' sobre nombre y apellido concatenados recorre el equipo entero. Propuesta: índice de texto completo sobre MemberProfiles (FirstName, LastName, Email, MemberId) y búsqueda por prefijo (CONTAINS(…, '"lucia*" AND "diaz*"')) dentro del rango.
+4. **Cola sin caché (9 y 12 s).** Confirma que la caché DualTeamLegFrontiers es obligatoria: sin ella, el primer derrame de un patrocinador con una pierna enorme busca la hoja más honda en todo el rango.  4 la reconstruye entera y MoveSubtreeAsync solo vacía las afectadas. Queda documentado; no hace falta más.
+5. **Colocar a 8.500 niveles (1,5 y 3,5 s) y 10 a la vez (p95 14 y 30 s).** Ver P-R9.
+6. **Mover un subárbol de 50.000 (127 y 227 s, bloqueando todas las colocaciones).** Ver P-R6.
+7. **Reportes de inscripción (Actividad, Clientes, Eventos, Mi equipo con 1.000.000).** Son del Plan M y no cambian con el binario; con un equipo de un millón recorren el rango entero. Propuestas: Clientes, partir de los clientes (pocos, índice filtrado por MemberType = 1) y comprobar que cuelgan del equipo, en vez de recorrer el equipo; Actividad, empezar por las altas del rango de fechas (índice MemberProfiles (EnrollDate), que existe) y comprobar el Node; Mi equipo de inscripción, el mismo Plan B (MemberStatistics.EnrollmentTeamSize sin filtros) y orden por Node.
+8. **Progreso de rango (se agota con 450.000).** Sustituir la lista en memoria por una sola consulta (CurrentUnder unido a las suscripciones activas), como ya hace la parte binaria. Es un cambio pequeño; se deja para la tanda que toque el RankEngine.
+9. **El alta escribe una fila por ascendiente en tres tablas** (ver «Qué deja un alta real»): acotar como I3.
+10. **La base nueva no se puede crear con las migraciones** (2714 en HelpdeskModule): rehacer la cadena o generar una migración inicial consolidada.
+
+#### Cómo regenerarla
+
+```powershell
+# 1. Crear la base (clona el esquema de la local, solo lectura) y generar N altas, verificar y dejarla lista:
+powershell -File Scripts/sql/plan-p/escala/01-generar-altas.ps1 -Nodos 400000 -Salida C:\temp\escala-400k.txt -Recrear
+#    (-Recrear borra antes MLMConquerorGlobalEditionDb_Escala, solo esa, y la crea con 00-crear-bd-escala.sql.)
+# 2. Medir:
+$env:MLM_ESCALA_SQLSERVER = "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;Integrated Security=true;TrustServerCertificate=True;Encrypt=True"
+dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --settings MLMConquerorGlobalEdition.BizCenter.Tests/Medicion.runsettings --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
+dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
+dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
+# 3. Borrarla:
+sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Escala SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE MLMConquerorGlobalEditionDb_Escala;"
+```
+
+`02-verificar-escala.sql` (lo lanza el orquestador al final) comprueba, en solo lectura: 0 huecos, 0 huérfanos en los dos árboles, rutas, claves y profundidades coherentes con el padre, piernas y contadores recalculados de abajo arriba iguales a los guardados, `Node` de inscripción hijo directo del padre, patrocinador existente y anterior, el número exacto de filas de cada tabla por alta, y la comparación de nulos con un alta real. Las altas por la API y el inicio de sesión se prueban con SignupAPI en Development apuntado a la base de escala (cadenas `ConnectionStrings__DefaultConnection` y `ConnectionStrings__HangFire` por variable de entorno, Entrax falso, puerto 5999).
 
 ---
 
@@ -1783,15 +1929,15 @@ Las escrituras a más de 8.000 niveles cumplen, pero con poco margen. Su coste c
 
 | Id | Riesgo | Mitigación |
 |---|---|---|
-| P-R1 | **Profundidad** (medido: una colocación a 8.223 niveles tarda 1,6 s y crece con la profundidad, porque sube las piernas por todos los ascendientes). La regla de la cadena más profunda hace crecer la profundidad con cada derrame (hoy 934 con 119.000 nodos). La clave admite 13.567 niveles. Con millones de miembros en una sola pierna puede agotarse. | `DualTreeTooDeepException` hace fallar la colocación de forma cerrada. Se registra un aviso a partir de 12.000 (`DualBinaryPath.WarnDepth`). El Bloque D mide los bytes de la clave a 5.000 niveles. A largo plazo, la decisión es de Nick (P4). |
+| P-R1 | **Profundidad** (medido en local: una colocación a 8.223 niveles tarda 1,6 s y crece con la profundidad, porque sube las piernas por todos los ascendientes). **Bloque D, a 8.507 niveles:** 1,5 s con 400.000 nodos y 3,5 s con 1.000.000 (la base de 125 GB ya no cabe en memoria). La regla de la cadena más profunda hace crecer la profundidad con cada derrame. La clave admite 13.567 niveles; a 8.507 ocupa 1.068 B. Con millones de miembros en una sola pierna puede agotarse. | `DualTreeTooDeepException` hace fallar la colocación de forma cerrada. Se registra un aviso a partir de 12.000 (`DualBinaryPath.WarnDepth`). El coste por colocación es lineal en la profundidad y ya pasa de 2 s con 1.000.000: la cola de deltas de P-R9 lo quita de la colocación; P4 (derrame por anchura) acorta la línea. Decisión de Nick. |
 | P-R2 | La reparación con la regla del motor puede dejar el árbol más profundo de lo previsto (la cota inferior es ≈ 1.481 niveles). **Medido en local: 8.223 niveles y 2.290 MB de rutas** (antes 934 y 308 MB). | El modo `SoloInforme` y la guarda 51044 (> 12.000). Alternativa en P1. |
-| P-R3 | `PlaceBulkAsync` de uno en uno es más lento que en bloques de 1.000. | Se mide en el Bloque D. Cada colocación es O(1) con la caché más una subida de O(profundidad). Si no basta, se paraleliza por patrocinador, porque el candado por hueco lo permite. |
+| P-R3 | `PlaceBulkAsync` de uno en uno es más lento que en bloques de 1.000. | **Medido en el Bloque D:** 1.000 pendientes con patrocinadores repartidos (profundidad media ~4.250) tardan 779 s con 400.000 nodos y 759 s con 1.000.000: unos 0,77 s por colocación, ninguna falla. Cumple el objetivo por colocación (< 2 s), pero una tanda de 1.000 ocupa 13 minutos; el trabajo cada 6 horas lo aguanta. Si hiciera falta más, la cola de deltas de P-R9 bajaría cada colocación a O(1); paralelizar por patrocinador no ayuda, porque todas suben por la misma línea (P-R9). |
 | P-R4 | La clave de `UX_DualTeamTree_ParentMemberId_Side` se declara de 1.804 bytes (`nvarchar(900)`). | Los ids reales tienen menos de 20 caracteres. Se acepta el aviso de SQL Server. Acotar `MemberId`/`ParentMemberId` a `nvarchar(100)` queda para otro plan. |
 | P-R5 | `RekeySubtreeAsync` rellena cualquier fila con `BinaryPath` nulo. | Solo se despliega después del relleno (ventana única). Queda anotado en el código. |
-| P-R6 | Un movimiento de subárbol toma el candado exclusivo del árbol y detiene todas las colocaciones mientras dura. | Los movimientos son raros y manuales. Se mide el de un subárbol de 50.000 nodos en el Bloque D y se anota. |
+| P-R6 | Un movimiento de subárbol toma el candado exclusivo del árbol y detiene todas las colocaciones mientras dura. | **Medido en el Bloque D: no se puede hacer en producción tal como está.** Colocar la raíz provisional ESC-P (50.000 en su equipo) a 8.508 niveles tarda 127 s con 400.000 nodos y 227 s con 1.000.000: cuatro y siete veces el tiempo de espera de comando de producción (30 s), así que fallaría siempre. Mientras dura, 13 de cada 15 colocaciones normales fallan con `PLACEMENT_BUSY` a los 15 s del candado. Desglose (400.000): reescribir la ruta de texto de los 50.000 nodos (de ~20 a ~75.000 caracteres cada una) 75 s; claves y profundidad 8 s; las dos subidas de piernas y el resto, ~40 s. **Propuesta (pendiente de Nick):** dejar de mantener `HierarchyPath` en el binario (los filtros ya van por la clave; quedan al menos `SearchBinarySubtreeAsync` y `GetDeepestNodeAsync`, que trocean la ruta de los pocos nodos que devuelven y pueden reconstruirla por `ParentMemberId`). Sin la ruta, el movimiento bajaría a unos 50 s; para bajar de 30 s, además, mover por tandas fuera de la transacción del candado o encolar el movimiento como trabajo de fondo con aviso al usuario. |
 | P-R7 | La paginación de Mi equipo pasa a ordenarse por `BinaryPath` (inorden). Otros órdenes, como la fecha de alta, con 400.000 nodos obligan a ordenar el rango entero. | El orden por defecto pasa a ser la clave. Los demás quedan disponibles con un aviso de lentitud, o se limitan a equipos de menos de 20.000 (P7). |
 | P-R8 | Huérfanos por adyacencia tras una retirada (hoy 0). | El relleno los trata como raíces flotantes con ordinal propio. Las retiradas los reescriben (Tarea 11). |
-| P-R9 | **Escrituras profundas concurrentes (abierto, pendiente de Nick).** Cada colocación actualiza las piernas de todos sus ascendientes en su transacción. Las que comparten línea se ponen en fila sobre las mismas filas: 10 a la vez a más de 8.000 niveles dan un p95 de unos 11 s. Con más carga, la espera llegaría al tiempo de espera del comando. | Hoy: `MAXDOP 1` y los reintentos de `PlacementService`. Recomendación del revisor, sin implementar: una cola de deltas de pierna que aplique un trabajador, con lo que la colocación solo inserta la hoja y su delta. También P4: derrame por anchura a partir de cierta profundidad, que acorta la línea. |
+| P-R9 | **Escrituras profundas concurrentes (abierto, pendiente de Nick).** Cada colocación actualiza las piernas de todos sus ascendientes en su transacción. Las que comparten línea se ponen en fila sobre las mismas filas. **Medido en el Bloque D, 10 a la vez a ~8.500 niveles:** con 400.000 nodos, p50 8,3 s y p95 14,2 s, ninguna falla; con 1.000.000, p50 15,0 s y p95 29,7 s, y **alguna se agota a los 30 s** (el tiempo de espera de comando de producción). | Hoy: `MAXDOP 1` y los reintentos de `PlacementService`. **Recomendación a la vista de los datos:** implementar la cola de deltas de pierna antes de que un equipo llegue al millón. La colocación solo inserta la hoja y una fila de delta (O(1), sin tocar la línea); un trabajador único aplica los deltas por tandas, agregados por ascendiente (una subida por tanda en vez de una por colocación), así que desaparece la cola sobre las mismas filas y el coste deja de depender de la profundidad. Las piernas quedan con unos segundos de retraso, aceptable para puntos que se pagan en cierres diarios. P4 (derrame por anchura) es complementario: acorta la línea, pero no quita la contención. |
 | P-R10 | **Arranque anónimo detrás de un proxy (abierto, pendiente de Nick).** `seed-superadmin` comprueba el loopback por `RemoteIpAddress`. Detrás de Caddy en la misma máquina, todo llega como loopback. | Sin implementar. Opciones: cabeceras reenviadas con proxies conocidos, o desactivar el endpoint fuera de Development. |
 
 ## Preguntas para Nick
