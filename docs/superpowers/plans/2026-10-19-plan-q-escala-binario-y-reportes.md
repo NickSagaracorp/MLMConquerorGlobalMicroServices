@@ -498,7 +498,7 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 - Create: migración `ColaDeDeltasDePierna`
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SqlServerAscendientesPorClaveTests.cs`
 
-- [ ] **Paso 1.** Prueba en rojo. La función SQL y `DualBinaryPath` dan las mismas claves y lados, incluido el último nivel, que lleva el lado del propio delta:
+- [x] **Paso 1.** Prueba en rojo. La función SQL y `DualBinaryPath` dan las mismas claves y lados, incluido el último nivel, que lleva el lado del propio delta:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -540,9 +540,9 @@ public class SqlServerAscendientesPorClaveTests
 }
 ```
 
-- [ ] **Paso 2.** Ejecutar. **Esperado:** falla con `Invalid object name 'dbo.DualAncestorKeys'`.
+- [x] **Paso 2.** Ejecutar. **Esperado:** falla con `Invalid object name 'dbo.DualAncestorKeys'`.
 
-- [ ] **Paso 3.** Entidad (sin `AuditChanges`: la escribe SQL en bloque y la borra el trabajador; no necesita auditoría ni borrado lógico):
+- [x] **Paso 3.** Entidad (sin `AuditChanges`: la escribe SQL en bloque y la borra el trabajador; no necesita auditoría ni borrado lógico):
 
 ```csharp
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -595,7 +595,7 @@ En `AppDbContext.cs`, junto a la línea 82:
     public DbSet<DualLegDelta> DualLegDeltas => Set<DualLegDelta>();
 ```
 
-- [ ] **Paso 4.** `dotnet ef migrations add ColaDeDeltasDePierna …`. Al final del `Up` generado, añadir las dos funciones, y en el `Down`, `DROP FUNCTION IF EXISTS dbo.DualAncestorKeys; DROP FUNCTION IF EXISTS dbo.Numeros;` antes del `DropTable`. `dbo.Numeros` es una tabla de números en línea, sin datos, así que funciona igual en una base clonada con `DBCC CLONEDATABASE` (que no copia datos) y en una base nueva.
+- [x] **Paso 4.** `dotnet ef migrations add ColaDeDeltasDePierna …`. Al final del `Up` generado, añadir las dos funciones, y en el `Down`, `DROP FUNCTION IF EXISTS dbo.DualAncestorKeys; DROP FUNCTION IF EXISTS dbo.Numeros;` antes del `DropTable`. `dbo.Numeros` es una tabla de números en línea, sin datos, así que funciona igual en una base clonada con `DBCC CLONEDATABASE` (que no copia datos) y en una base nueva.
 
 ```csharp
             // Plan Q: 0..@hasta sin tabla (100.000 como maximo; la clave admite 13.567 niveles).
@@ -633,7 +633,7 @@ SELECT b.J AS Depth,
 FROM b;");
 ```
 
-- [ ] **Paso 5.** Aplicar la migración en local (`dotnet ef database update … --connection …`). La prueba del Paso 1 pasa a verde. Commit: `Plan Q: cola de deltas de pierna y ascendientes por la clave compacta en SQL`.
+- [x] **Paso 5.** Aplicar la migración en local (`dotnet ef database update … --connection …`). La prueba del Paso 1 pasa a verde. Commit: `Plan Q: cola de deltas de pierna y ascendientes por la clave compacta en SQL`.
 
 ### Tarea 6: `LegPointMaintenance` encola y aplica
 

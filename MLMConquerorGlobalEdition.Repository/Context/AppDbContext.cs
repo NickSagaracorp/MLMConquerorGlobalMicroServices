@@ -80,6 +80,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<GenealogyEntity> GenealogyTree => Set<GenealogyEntity>();
     public DbSet<DualTeamEntity> DualTeamTree => Set<DualTeamEntity>();
     public DbSet<DualTeamLegFrontier> DualTeamLegFrontiers => Set<DualTeamLegFrontier>();
+    public DbSet<DualLegDelta> DualLegDeltas => Set<DualLegDelta>();
     public DbSet<PlacementLog> PlacementLogs => Set<PlacementLog>();
     public DbSet<GhostPointEntity> GhostPoints => Set<GhostPointEntity>();
 
