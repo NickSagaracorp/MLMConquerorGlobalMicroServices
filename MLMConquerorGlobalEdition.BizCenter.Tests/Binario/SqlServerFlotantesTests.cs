@@ -49,6 +49,7 @@ public class SqlServerFlotantesTests
     internal static async Task ComprobarAsync(string x)
     {
         await using var db = SqlServerReportes.Db();
+        await LegPointMaintenance.DrainAsync(db);   // Plan Q: la recolocacion solo encola
         var nodos = await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).ToDictionaryAsync(d => d.MemberId[x.Length..]);
         nodos["X"].ParentMemberId.Should().Be($"{x}P");
         (await DualSubtree.Under(db, nodos["X"]).Select(d => d.MemberId).ToListAsync())

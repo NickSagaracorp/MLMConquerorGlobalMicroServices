@@ -142,6 +142,57 @@ public class SqlServerColaDePiernasTests
         finally { await BinarioDb.LimpiarAsync(x); }
     }
 
+    /// <summary>
+    /// Plan Q (al implementar): el admin retira a E con F flotando, despues retira a F (flotante, no cuelga de ninguna
+    /// linea) y E vuelve a colocarse ANTES de vaciar. La retirada de F no puede dejar un -T con arranque en E: subiria
+    /// por el nodo nuevo de E, del que F ya no cuelga.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Retirar_un_flotante_y_recolocar_a_su_padre_antes_de_vaciar_no_resta()
+    {
+        var x = BinarioDb.Prefijo("PQF");
+        try
+        {
+            await using (var db = SqlServerReportes.Db())
+            {
+                await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}B", $"{x}P", TreeSide.Left));   // ya vacia
+                foreach (var (id, pat, pts) in new[] { ("E", "B", 5), ("F", "E", 7) })
+                {
+                    await BinarioDb.SembrarPerfilAsync(db, $"{x}{id}", $"{x}{pat}");
+                    await BinarioDb.PuntosAsync(db, $"{x}{id}", pts);
+                }
+            }
+            await using (var db = SqlServerReportes.Db())
+            {
+                var motor = new PlacementService(db, new Reloj());
+                (await motor.PlaceAsync($"{x}E", $"{x}B")).IsSuccess.Should().BeTrue();
+                (await motor.PlaceAsync($"{x}F", $"{x}E")).IsSuccess.Should().BeTrue();
+                await LegPointMaintenance.DrainAsync(db);
+            }
+            await using (var db = SqlServerReportes.Db())
+            {
+                await using var tx = await db.Database.BeginTransactionAsync();
+                await DualTeamGate.EnterTreeExclusiveAsync(db);
+                (await DualTeamNodes.RemoveAsync(db, $"{x}E", DualTeamChildrenOnRemoval.Floating, DateTime.Now, "plan-q-prueba")).Should().BeTrue();
+                (await DualTeamNodes.RemoveAsync(db, $"{x}F", DualTeamChildrenOnRemoval.Floating, DateTime.Now, "plan-q-prueba")).Should().BeTrue();
+                await tx.CommitAsync();
+            }
+            await using (var db = SqlServerReportes.Db())
+            {
+                var r = await new PlacementService(db, new Reloj()).PlaceAsync($"{x}E", $"{x}B");
+                r.IsSuccess.Should().BeTrue(r.Error);
+            }
+            await using (var db = SqlServerReportes.Db())
+            {
+                await LegPointMaintenance.DrainAsync(db);
+                await PiernasCoherentesAsync(db, x);
+                var p = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == $"{x}P");
+                (p.LeftLegCount, p.LeftLegPoints).Should().Be((2, 5m), "B (0) y E (5); F ya no esta en el arbol");
+            }
+        }
+        finally { await BinarioDb.LimpiarAsync(x); }
+    }
+
     /// <summary>Cada nodo vivo del prefijo: sus contadores y puntos de pierna = el recuento de su rango por la clave.</summary>
     public static async Task PiernasCoherentesAsync(AppDbContext db, string prefijo)
     {

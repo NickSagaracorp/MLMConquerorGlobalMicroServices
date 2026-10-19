@@ -57,6 +57,7 @@ public class SqlServerRaizProvisionalTests
 
             await using (var db = SqlServerReportes.Db())
             {
+                await LegPointMaintenance.DrainAsync(db);   // Plan Q: las colocaciones solo encolan
                 var b = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == $"{x}B");
                 b.ParentMemberId.Should().BeNull("B es raiz provisional");
                 b.LeftLegPoints.Should().Be(60, "los puntos de C y D cuentan para B");
@@ -70,6 +71,7 @@ public class SqlServerRaizProvisionalTests
 
             await using (var lectura = SqlServerReportes.Db())
             {
+                await LegPointMaintenance.DrainAsync(lectura);   // Plan Q: el +T de B esta en la cola
                 var nodos = await lectura.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).ToDictionaryAsync(d => d.MemberId[x.Length..]);
                 // Forma intacta, bajo A por la regla a (A no tenia hijo izquierdo).
                 (nodos["B"].ParentMemberId, nodos["B"].Side).Should().Be(($"{x}A", TreeSide.Left));
@@ -151,6 +153,7 @@ public class SqlServerRaizProvisionalTests
             resultados.Should().OnlyContain(r => r.IsSuccess, string.Join("; ", resultados.Where(r => !r.IsSuccess).Select(r => r.Error)));
             await using var lectura = SqlServerReportes.Db();
             (await BinarioDb.HuecosRepetidosAsync(lectura, x)).Should().Be(0);
+            await LegPointMaintenance.DrainAsync(lectura);   // Plan Q: las colocaciones solo encolan
             var nodos = await lectura.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).ToListAsync();
             nodos.Should().HaveCount(2 + 1 + 8 + 10);
             var porId = nodos.ToDictionary(n => n.MemberId);

@@ -49,7 +49,7 @@ public enum DualTeamChildrenOnRemoval
 /// <item>Movimientos y retiradas: <see cref="MoveSubtreeAsync"/> y <see cref="RemoveAsync"/>; exigen
 /// <c>dual-tree</c> en exclusivo (DualTeamGate.EnterTreeExclusiveAsync) y lo comprueban. Las claves del
 /// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; la ruta de texto, con un
-/// SUBSTRING en SQL; las piernas, de forma incremental (LegPointMaintenance.ApplySubtreeAsync); y se vacian las
+/// SUBSTRING en SQL; las piernas, encolando el subarbol con signo (LegPointMaintenance.EnqueueSubtreeAsync, Plan Q); y se vacian las
 /// colas de derrame que apuntaban al punto donde se engancha o se suelta el subarbol. Las demas no hace falta
 /// tocarlas: el motor valida la cola al leerla por la clave (sigue en la pierna, existe y tiene hueco) y la rehace
 /// si no (recorrer los 8.000 ascendientes para vaciar las suyas costaba casi un segundo por movimiento).</item>
@@ -134,7 +134,7 @@ public static class DualTeamNodes
         // la raiz virtual: si el padre acaba de recibir nodo, restar por adyacencia quitaba de la linea nueva lo que
         // despues se sumaba (neto 0, con piernas negativas por el camino).
         if (adjustLegs && await HangsFromParentByKeyAsync(db, oldParent, oldKey, ct))
-            await LegPointMaintenance.ApplySubtreeAsync(db, rootId, -1, ct);
+            await LegPointMaintenance.EnqueueSubtreeAsync(db, rootId, -1, now, by, ct);
 
         if (db.Database.IsSqlServer())
             await RewriteSubtreeSqlAsync(db, root, oldKey, newKey, newPath, newParentId, newSide, now, by, ct);
@@ -142,7 +142,7 @@ public static class DualTeamNodes
             await RewriteSubtreeInMemoryAsync(db, root, oldKey, newKey, newPath, newParentId, newSide, now, by, ct);
 
         if (adjustLegs && newParentId is not null && to is DualTeamDestination.UnderParent)
-            await LegPointMaintenance.ApplySubtreeAsync(db, rootId, +1, ct);
+            await LegPointMaintenance.EnqueueSubtreeAsync(db, rootId, +1, now, by, ct);
 
         var maxima = await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == rootId).Select(d => d.Depth).FirstOrDefaultAsync(ct) ?? 0;
         if (db.Database.IsSqlServer())
@@ -171,8 +171,19 @@ public static class DualTeamNodes
             .Where(d => d.ParentMemberId == memberId).OrderBy(d => d.Side).ToListAsync(ct);
         if (children == DualTeamChildrenOnRemoval.Reject && hijos.Count > 0) return false;
 
-        if (node.ParentMemberId is not null)
-            await LegPointMaintenance.ApplySubtreeAsync(db, memberId, -1, ct);
+        // Plan Q: como en MoveSubtreeAsync, solo se resta si el nodo cuelga DE VERDAD de su padre, por la clave. Un hijo
+        // flotante (su padre retirado no tiene nodo) no esta en ninguna linea: antes, la subida no encontraba al padre y
+        // no hacia nada; un -T encolado con arranque en el padre esperaria en la cola y, si el padre se volviera a
+        // colocar antes del vaciado, restaria de su nodo nuevo lo que ya no cuelga de el.
+        var (clave, _) = await KeyOfAsync(db, node, ct);
+        if (await HangsFromParentByKeyAsync(db, node.ParentMemberId, clave, ct))
+            await LegPointMaintenance.EnqueueSubtreeAsync(db, memberId, -1, now, by, ct);
+        // Plan Q (revision C1): los pendientes con arranque en este nodo no estan en el -T que se acaba de encolar (sale
+        // de las piernas ya aplicadas). En el valor verdadero se habrian sumado y restado; aqui se descartan. Si se
+        // dejaran, al volver a colocar al mismo miembro antes del vaciado subirian por su nodo nuevo, y su equipo ya
+        // vuelve con su propio +T: contaria dos veces.
+        if (db.Database.IsRelational())
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId = {memberId}", ct);
         await InvalidateFrontiersAsync(db, new[] { node.ParentMemberId, memberId }, ct);
 
         if (children == DualTeamChildrenOnRemoval.Floating && hijos.Count > 0)

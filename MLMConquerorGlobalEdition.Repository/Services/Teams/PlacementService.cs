@@ -159,8 +159,8 @@ public class PlacementService : IPlacementService
             await UpsertFrontierAsync(sponsorMemberId, target, memberId, node.Depth ?? 0, scope, ct);
             await _db.SaveChangesAsync(ct);
 
-            // Subida incremental de puntos y contadores de pierna para la hoja nueva, en la misma transaccion.
-            await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { memberId }, ct);
+            // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+            await LegPointMaintenance.EnqueueLeafAsync(_db, memberId, _clock.Now, audit.CreatedBy, ct);
             await DualTeamNodes.ReattachFloatingChildrenAsync(_db, memberId, flotantes, _clock.Now, audit.CreatedBy, ct);
 
             await scope.CompleteAsync(ct);

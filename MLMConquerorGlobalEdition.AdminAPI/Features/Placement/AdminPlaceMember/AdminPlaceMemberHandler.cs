@@ -130,7 +130,8 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
                 var nuevo = await DualTeamNodes.ChildAsync(_db, targetParent, command.MemberToPlaceId, side, now, _currentUser.UserId, ct);
                 _db.DualTeamTree.Add(nuevo);
                 await _db.SaveChangesAsync(ct);
-                await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { command.MemberToPlaceId }, ct);
+                // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+                await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberToPlaceId, now, _currentUser.UserId, ct);
                 _db.Entry(nuevo).State = EntityState.Detached;
 
                 // Member was previously unplaced — their descendants are floating. Re-attach them to the new position.

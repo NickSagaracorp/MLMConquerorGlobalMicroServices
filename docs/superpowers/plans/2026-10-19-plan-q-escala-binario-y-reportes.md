@@ -1081,7 +1081,7 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanPTests.cs:145`
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SqlServerRaizProvisionalTests.cs`, `SqlServerFlotantesTests.cs`
 
-- [ ] **Paso 1.** Las cuatro colocaciones de hoja, cada una con su reloj y su actor (los mismos que ya pasan a `ChildAsync` en la línea de encima):
+- [x] **Paso 1.** Las cuatro colocaciones de hoja, cada una con su reloj y su actor (los mismos que ya pasan a `ChildAsync` en la línea de encima):
 
 ```csharp
             // PlacementService.cs:163 (el nodo se crea con _clock.Now y audit.CreatedBy en :156)
@@ -1098,7 +1098,7 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
             await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberId, now, command.MemberId, ct);
 ```
 
-- [ ] **Paso 2.** En `DualTeamNodes.MoveSubtreeAsync` (`:137` y `:145`) y `RemoveAsync` (`:174-175`). En la retirada, además, se borran los pendientes con arranque en el nodo retirado, en la misma transacción (que ya tiene `dual-tree` en exclusivo, así que ningún vaciado corre a la vez):
+- [x] **Paso 2.** En `DualTeamNodes.MoveSubtreeAsync` (`:137` y `:145`) y `RemoveAsync` (`:174-175`). En la retirada, además, se borran los pendientes con arranque en el nodo retirado, en la misma transacción (que ya tiene `dual-tree` en exclusivo, así que ningún vaciado corre a la vez):
 
 ```csharp
             await LegPointMaintenance.EnqueueSubtreeAsync(db, rootId, -1, now, by, ct);   // :137
@@ -1117,8 +1117,8 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
             await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId = {memberId}", ct);
 ```
 
-- [ ] **Paso 3.** Retirar `ApplyIncrementalAsync` y `ApplySubtreeAsync`. Hoy, además de las siete llamadas de los Pasos 1 y 2 y de `BinarioDb.SembrarAsync` (Tarea 6, Paso 5), los llaman tres pruebas, que se convierten en el Paso 4. Después, `grep -rn "ApplyIncrementalAsync\|ApplySubtreeAsync" --include=*.cs` no debe dar nada.
-- [ ] **Paso 4.** Las pruebas de SQL Server que escriben piernas o las leen después de escribir.
+- [x] **Paso 3.** Retirar `ApplyIncrementalAsync` y `ApplySubtreeAsync`. Hoy, además de las siete llamadas de los Pasos 1 y 2 y de `BinarioDb.SembrarAsync` (Tarea 6, Paso 5), los llaman tres pruebas, que se convierten en el Paso 4. Después, `grep -rn "ApplyIncrementalAsync\|ApplySubtreeAsync" --include=*.cs` no debe dar nada.
+- [x] **Paso 4.** Las pruebas de SQL Server que escriben piernas o las leen después de escribir.
   - Las tres que llamaban a `ApplyIncrementalAsync` encolan cada hoja y vacían:
 
 ```csharp
@@ -1138,8 +1138,10 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
   - En `BizCenter.Tests/Binario/SqlServerRaizProvisionalTests.cs` y `SqlServerFlotantesTests.cs`, una línea, `await LegPointMaintenance.DrainAsync(db);`, delante de cada lectura de `LeftLegPoints`, `LeftLegCount` o sus derechos (`SqlServerRaizProvisionalTests.cs:62`, `:87`, `:163`; `SqlServerFlotantesTests.cs:56`).
   - `grep -rln "LegPoints\|LegCount\|DualTeamPoints" --include=*.cs *Tests* | xargs grep -l "SqlServerFact\|EscalaFact"` da además `BizCenter.Tests/Binario/EscalaBinarioTests.cs` y `AdminAPI.Tests/Controllers/SqlServerVisualizadorBinarioTests.cs`: solo leen contadores que ya estaban (la base de escala los escribe con `04-contadores-y-colas.sql`; el visualizador elige la raíz por ellos), así que no cambian. `SqlServerClaveCompactaTests.cs` no lee piernas y tampoco cambia.
   - Las de InMemory no cambian: allí se aplica en el acto.
-- [ ] **Paso 5.** `dotnet test` de BizCenter.Tests (`Binario`), AdminAPI.Tests y Signups.Tests, en serie. **Esperado:** todo en verde, incluidas las tres de `SqlServerColaDePiernasTests`.
-- [ ] **Paso 6.** Commit: `Plan Q: las colocaciones, los movimientos y las retiradas del binario encolan sus cambios de pierna`.
+- [x] **Paso 5.** `dotnet test` de BizCenter.Tests (`Binario`), AdminAPI.Tests y Signups.Tests, en serie. **Esperado:** todo en verde, incluidas las tres de `SqlServerColaDePiernasTests`.
+- [x] **Paso 6.** Commit: `Plan Q: las colocaciones, los movimientos y las retiradas del binario encolan sus cambios de pierna`.
+
+> **Desviación (al implementar).** `RemoveAsync` no encola el `−T` si el nodo es un hijo **flotante** (su `ParentMemberId` apunta a un retirado sin nodo): solo lo hace si cuelga de su padre por la clave (`HangsFromParentByKeyAsync`, la misma comprobación que `MoveSubtreeAsync`), y no con `node.ParentMemberId is not null`. Antes, la subida no encontraba al padre y no hacía nada; con la cola, ese `−T` quedaba con arranque en el padre retirado y, si este se volvía a colocar antes del vaciado, restaba de su nodo nuevo un equipo que ya no cuelga de él (piernas negativas). Prueba nueva: `SqlServerColaDePiernasTests.Retirar_un_flotante_y_recolocar_a_su_padre_antes_de_vaciar_no_resta` (en rojo con la condición del plan, en verde con la de la clave). Resultado del Paso 5: Binario 62/62, AdminAPI.Tests 630 (1 saltada), Signups.Tests 1.146.
 
 ### Tarea 8: `ApplyDualLegDeltasJob`
 

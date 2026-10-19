@@ -142,8 +142,11 @@ public class SqlServerMedicionPlanPTests
             var nuevo = await DualTeamNodes.ChildAsync(db, padre, x.MemberId, x.Side, DateTime.Now, "medicion");
             db.DualTeamTree.Add(nuevo);
             await db.SaveChangesAsync();
-            await LegPointMaintenance.ApplyIncrementalAsync(db, new[] { x.MemberId });
+            // Plan Q: dentro de la transaccion de la prueba (que ya tiene dual-tree en exclusivo: el vaciado pide el
+            // compartido al mismo dueno y no se bloquea).
+            await LegPointMaintenance.EnqueueLeafAsync(db, x.MemberId, DateTime.Now, "medicion");
             await DualTeamNodes.ReattachFloatingChildrenAsync(db, x.MemberId, flotantes, DateTime.Now, "medicion");
+            await LegPointMaintenance.DrainAsync(db);   // el -T de la retirada, la hoja y el +T del equipo que vuelve, antes de leer
         });
 
         var despues = await db.DualTeamTree.AsNoTracking().Where(d => linea.Contains(d.MemberId))

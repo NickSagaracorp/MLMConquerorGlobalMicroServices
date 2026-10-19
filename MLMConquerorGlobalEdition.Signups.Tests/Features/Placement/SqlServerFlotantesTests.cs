@@ -72,7 +72,10 @@ internal static class FlotantesComun
         var nd = await DualTeamNodes.ChildAsync(db, nc, $"{x}D", TreeSide.Left, DateTime.Now, "plan-p-prueba");
         db.DualTeamTree.AddRange(p, nx, nc, nd);
         await db.SaveChangesAsync();
-        await LegPointMaintenance.ApplyIncrementalAsync(db, new[] { $"{x}X", $"{x}C", $"{x}D" });
+        // Plan Q: las piernas sembradas se encolan por hoja y se vacian.
+        foreach (var id in new[] { $"{x}X", $"{x}C", $"{x}D" })
+            await LegPointMaintenance.EnqueueLeafAsync(db, id, DateTime.Now, "plan-p-prueba");
+        await LegPointMaintenance.DrainAsync(db);
 
         await using var tx = await db.Database.BeginTransactionAsync();
         await DualTeamGate.EnterTreeExclusiveAsync(db);
@@ -83,6 +86,7 @@ internal static class FlotantesComun
     public static async Task ComprobarAsync(string x)
     {
         await using var db = SqlServerTestDb.Db();
+        await LegPointMaintenance.DrainAsync(db);   // Plan Q: la colocacion del manejador solo encola
         var nodos = await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).ToDictionaryAsync(d => d.MemberId[x.Length..]);
         nodos["X"].ParentMemberId.Should().Be($"{x}P");
         (await DualSubtree.Under(db, nodos["X"]).Select(d => d.MemberId).ToListAsync())
@@ -102,6 +106,7 @@ internal static class FlotantesComun
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamLegFrontiers WHERE SponsorMemberId LIKE {patron} OR DeepestMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM RankEvaluationQueue WHERE TriggerMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PlacementLogs WHERE MemberId LIKE {patron}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamTree WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");

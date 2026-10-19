@@ -144,7 +144,8 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                     var node = await DualTeamNodes.ChildAsync(_db, slot, command.MemberId, side, now, command.MemberId, ct);
                     nuevos.Add(_db.DualTeamTree.Add(node).Entity);
                     await _db.SaveChangesAsync(ct);
-                    await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { command.MemberId }, ct);
+                    // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+                    await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberId, now, command.MemberId, ct);
                     await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberId, flotantes, now, command.MemberId, ct);
                 }
 
