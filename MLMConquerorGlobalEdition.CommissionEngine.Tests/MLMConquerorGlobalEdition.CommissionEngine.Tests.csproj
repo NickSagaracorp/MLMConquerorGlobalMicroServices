@@ -30,4 +30,9 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.CommissionEngine\MLMConquerorGlobalEdition.CommissionEngine.csproj" />
   </ItemGroup>
 
+  <!-- Plan Q: [SqlServerFact] y la base local, en un solo sitio. -->
+  <ItemGroup>
+    <Compile Include="..\MLMConquerorGlobalEdition.BizCenter.Tests\Reportes\SqlServerReportes.cs" Link="SqlServer\SqlServerReportes.cs" />
+  </ItemGroup>
+
 </Project>

@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Features.CalculatePresidentialBonus;
 
@@ -29,6 +30,9 @@ public class CalculatePresidentialBonusHandler
     public async Task<Result<CalculationResultResponse>> Handle(
         CalculatePresidentialBonusCommand command, CancellationToken ct)
     {
+        // Plan Q (DQ1): las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
+        await LegPointMaintenance.DrainAsync(_db, ct: ct, lockTimeoutMs: 120_000);
+
         var now        = _dateTime.Now;
         var monthStart = command.PeriodDate.HasValue
             ? new DateTime(command.PeriodDate.Value.Year, command.PeriodDate.Value.Month, 1)

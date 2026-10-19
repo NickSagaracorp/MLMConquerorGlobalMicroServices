@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 
@@ -50,6 +51,9 @@ public class MemberStatisticSnapshotJob
 
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
+        // Plan Q (DQ1): las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
+        await LegPointMaintenance.DrainAsync(_db, ct: ct, lockTimeoutMs: 120_000);
+
         var now = _dateTime.Now;
         _logger.LogInformation("MemberStatisticSnapshotJob: starting at {Now}.", now);
 

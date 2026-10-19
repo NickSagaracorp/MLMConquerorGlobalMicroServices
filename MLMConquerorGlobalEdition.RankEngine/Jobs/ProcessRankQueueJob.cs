@@ -3,6 +3,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Jobs;
@@ -48,6 +50,18 @@ public class ProcessRankQueueJob
 
         if (entries.Count == 0)
             return;
+
+        // Plan Q (Q-R1): la evaluacion lee las piernas del binario (RankQualificationService). Se vacia antes, acotado a
+        // 5 tandas para no retrasar la cola de rango. Si el arbol esta ocupado por un movimiento, se evalua con lo
+        // aplicado: el vaciado de cada minuto y la siguiente pasada lo ponen al dia.
+        try
+        {
+            await LegPointMaintenance.DrainAsync(_db, maxBatches: 5, ct: ct);
+        }
+        catch (DualTeamBusyException ex)
+        {
+            _logger.LogWarning(ex, "{Job}: piernas sin vaciar, el arbol binario esta ocupado; se evalua con lo aplicado.", JobSource);
+        }
 
         _logger.LogInformation(
             "{Job}: processing {Count} queue entries.", JobSource, entries.Count);

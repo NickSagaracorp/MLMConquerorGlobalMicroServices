@@ -2022,7 +2022,7 @@ public class EscritoresDeSuscripcionesTests
 
 La prueba del residual va en `CommissionEngine.Tests`, que ya referencia `CommissionEngine` (`BizCenter.Tests` no). No hace falta `BinarioDb`: un delta cuyo arranque no tiene nodo vivo se reclama y se descarta al vaciar (Tarea 6), así que basta con mirar si sigue en la cola.
 
-- [ ] **Paso 1.** Enlazar el ayudante de SQL Server en `CommissionEngine.Tests` (el de `RankEngine.Tests` ya lo enlaza la Tarea 1):
+- [x] **Paso 1.** Enlazar el ayudante de SQL Server en `CommissionEngine.Tests` (el de `RankEngine.Tests` ya lo enlaza la Tarea 1):
 
 ```xml
   <!-- Plan Q: [SqlServerFact] y la base local, en un solo sitio. -->
@@ -2031,7 +2031,7 @@ La prueba del residual va en `CommissionEngine.Tests`, que ya referencia `Commis
   </ItemGroup>
 ```
 
-- [ ] **Paso 2.** Prueba en rojo del residual. Todo va en **una transacción que se deshace** (revisión I7): `DrainAsync` trabaja dentro de la transacción de quien llama sin confirmar. Para que el manejador no calcule ni escriba el residual de nadie, la prueba desactiva, dentro de esa transacción, los tipos de comisión: el manejador vacía la cola (primera línea) y devuelve `NO_RESIDUAL_TYPES` sin escribir nada. Se usa además una fecha de periodo pasada (2000-01-01), que nunca choca con `ALREADY_CALCULATED`.
+- [x] **Paso 2.** Prueba en rojo del residual. Todo va en **una transacción que se deshace** (revisión I7): `DrainAsync` trabaja dentro de la transacción de quien llama sin confirmar. Para que el manejador no calcule ni escriba el residual de nadie, la prueba desactiva, dentro de esa transacción, los tipos de comisión: el manejador vacía la cola (primera línea) y devuelve `NO_RESIDUAL_TYPES` sin escribir nada. Se usa además una fecha de periodo pasada (2000-01-01), que nunca choca con `ALREADY_CALCULATED`.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -2088,7 +2088,7 @@ public class SqlServerVaciarAntesDeLeerTests
 }
 ```
 
-- [ ] **Paso 3.** Prueba en rojo de la cola de rango (Q-R1). `RankQualificationService.cs:81-82` lee `LeftLegPoints` y `RightLegPoints`: `ProcessRankQueueJob` vacía antes de evaluar. La evaluación se sustituye por un `IMediator` que falla (el trabajo lo captura y suma un reintento, dentro de la transacción que se deshace):
+- [x] **Paso 3.** Prueba en rojo de la cola de rango (Q-R1). `RankQualificationService.cs:81-82` lee `LeftLegPoints` y `RightLegPoints`: `ProcessRankQueueJob` vacía antes de evaluar. La evaluación se sustituye por un `IMediator` que falla (el trabajo lo captura y suma un reintento, dentro de la transacción que se deshace):
 
 ```csharp
 using MediatR;
@@ -2136,9 +2136,9 @@ public class SqlServerColaDeRangoVaciaPiernasTests
 }
 ```
 
-- [ ] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.CommissionEngine.Tests --filter FullyQualifiedName~SqlServerVaciarAntesDeLeer` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter FullyQualifiedName~SqlServerColaDeRangoVaciaPiernas`. **Esperado:** las dos fallan en la última aserción (el delta sigue en la cola).
+- [x] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.CommissionEngine.Tests --filter FullyQualifiedName~SqlServerVaciarAntesDeLeer` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter FullyQualifiedName~SqlServerColaDeRangoVaciaPiernas`. **Esperado:** las dos fallan en la última aserción (el delta sigue en la cola).
 
-- [ ] **Paso 5.** En el residual, el bono presidencial y la instantánea, como primera línea del método (los tres tienen `_db` y `ct`):
+- [x] **Paso 5.** En el residual, el bono presidencial y la instantánea, como primera línea del método (los tres tienen `_db` y `ct`):
 
 ```csharp
         // Plan Q (DQ1): las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
@@ -2161,7 +2161,9 @@ public class SqlServerColaDeRangoVaciaPiernasTests
 ```
 
   (`using MLMConquerorGlobalEdition.Repository.Queries;` y `using MLMConquerorGlobalEdition.Repository.Services.Teams;` en los ficheros que no los tengan.)
-- [ ] **Paso 6.** En verde, más `dotnet test MLMConquerorGlobalEdition.CommissionEngine.Tests` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` enteros, en serie. Commit: `Plan Q: el residual diario, el bono presidencial, la instantanea y la cola de rango vacian la cola de piernas antes de leer`.
+- [x] **Paso 6.** En verde, más `dotnet test MLMConquerorGlobalEdition.CommissionEngine.Tests` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` enteros, en serie. Commit: `Plan Q: el residual diario, el bono presidencial, la instantanea y la cola de rango vacian la cola de piernas antes de leer`.
+
+> **Resultado (al implementar).** Las dos pruebas fallaron en la última aserción (el delta seguía en la cola) y pasaron con el vaciado. CommissionEngine.Tests 94 y RankEngine.Tests 134 en verde, en serie; las pruebas del trabajo de instantánea de BizCenter.Tests (4) también.
 
 ### Tarea 10: medición rápida local del bloque
 
