@@ -106,7 +106,10 @@ public class DualTeamService : IDualTeamService
                                  || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(DualMyTeamRow.EnrollDate), Direction = "desc" });
 
-        var paged = await MyTeamRows(myNode).ToGridResultAsync(request, DualRowSearchableFields, ct: ct);
+        // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, que el nodo guarda en sus contadores de
+        // pierna (exactos por construccion); contar el rango con 1.000.000 de nodos tardaba 4 s.
+        var paged = await MyTeamRows(myNode).ToGridResultAsync(request, DualRowSearchableFields, ct: ct,
+            unfilteredTotal: myNode.LeftLegCount + myNode.RightLegCount);
 
         var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode, memberId, ct);
         return new PagedResult<DualTeamMyTeamMemberView>

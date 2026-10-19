@@ -29,6 +29,7 @@ IF OBJECT_ID('tempdb..#r') IS NOT NULL DROP TABLE #r;
 CREATE TABLE #r (Comprobacion nvarchar(200) NOT NULL, Valor bigint NOT NULL, Esperado bigint NOT NULL);
 
 -- 1. Binario.
+DECLARE @completa bit = CASE WHEN (SELECT COUNT(*) FROM DualTeamTree) <= 500000 THEN 1 ELSE 0 END;
 INSERT INTO #r SELECT N'binario: huecos repetidos', COUNT(*), 0 FROM (SELECT ParentMemberId, Side FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NOT NULL GROUP BY ParentMemberId, Side HAVING COUNT(*) > 1) x;
 INSERT INTO #r SELECT N'binario: huerfanos', COUNT(*), 0 FROM DualTeamTree c WHERE c.IsDeleted = 0 AND c.ParentMemberId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM DualTeamTree p WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0);
 INSERT INTO #r SELECT N'binario: nodos sin clave', COUNT(*), 0 FROM DualTeamTree WHERE IsDeleted = 0 AND (BinaryPath IS NULL OR Depth IS NULL);
@@ -36,7 +37,11 @@ INSERT INTO #r SELECT N'binario: ruta, clave o profundidad incoherente con el pa
 FROM DualTeamTree c JOIN DualTeamTree p ON p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
 CROSS APPLY dbo.DualChildKey(p.BinaryPath, p.Depth, c.Side) k
 WHERE c.IsDeleted = 0
-  AND (c.HierarchyPath <> CONCAT(p.HierarchyPath, c.MemberId, N'/') OR c.BinaryPath <> k.ChildKey OR c.Depth <> p.Depth + 1);
+  AND (c.BinaryPath <> k.ChildKey OR c.Depth <> p.Depth + 1
+       -- La ruta de texto: completa hasta 500.000 nodos; por encima (decenas de GB de rutas), longitud y ultimo segmento.
+       OR (@completa = 1 AND c.HierarchyPath <> CONCAT(p.HierarchyPath, c.MemberId, N'/'))
+       OR (@completa = 0 AND (DATALENGTH(c.HierarchyPath) <> DATALENGTH(p.HierarchyPath) + 2 * (LEN(c.MemberId) + 1)
+                              OR RIGHT(c.HierarchyPath, LEN(c.MemberId) + 2) <> CONCAT(N'/', c.MemberId, N'/'))));
 INSERT INTO #r SELECT N'binario: raices (ESC-0 y ESC-P)', COUNT(*), 2 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NULL;
 
 IF OBJECT_ID('tempdb..#v') IS NOT NULL DROP TABLE #v;
