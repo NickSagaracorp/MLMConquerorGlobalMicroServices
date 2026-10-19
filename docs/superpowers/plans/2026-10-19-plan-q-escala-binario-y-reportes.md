@@ -11,7 +11,7 @@
 - una base vacía se puede construir con `dotnet ef database update`.
 
 **Architecture:**
-- **Bloque 1. Progreso de rango en SQL.** Los calificados del equipo de inscripción salen de una sola consulta (`CurrentUnder` unido a las suscripciones activas), como ya hace la parte binaria, con un índice filtrado de suscripciones activas.
+- **Bloque 1. Progreso de rango en SQL.** Los calificados del equipo de inscripción salen de una sola consulta (`CurrentUnder` unido a las suscripciones activas), como ya hace la parte binaria, con un índice filtrado de suscripciones activas. Los dos recuentos siguen siendo O(equipo). Por DQ13 pasan a ser contadores mantenidos por las colas de los Bloques 2 y 4 (Tareas 8b y 19b), y el progreso de rango deja de contar ningún equipo.
 - **Bloque 2. Cola de deltas de pierna (decisión P-R9).** Colocar inserta la hoja y una fila en `DualLegDeltas` (punto de arranque, lado, puntos y nodos). Un trabajo de Hangfire (`ApplyDualLegDeltasJob`, cada minuto, como `ApplyMemberStatisticDeltasJob`) agrega los deltas por ascendiente y los aplica de una vez: los ascendientes salen de la clave compacta con la función `dbo.DualAncestorKeys`, sin recursión. Mover o retirar encola el delta negativo en la línea vieja y el positivo en la nueva. Las comisiones y la instantánea vacían la cola antes de leer piernas, y la cola de rango antes de evaluar.
 - **Bloque 3. Sin `HierarchyPath` en el binario.** Los dos lectores que quedan (`SearchBinarySubtreeAsync` y `GetDeepestNodeAsync`) leen el camino por la clave. `DualTeamNodes` deja de escribir la ruta, la columna se elimina con una migración y el espacio se recupera por lotes con `DBCC CLEANTABLE`.
 - **Bloque 4. Alta acotada.** Una sola fila de `MemberStatisticDeltas` por alta (`Scope = SponsorLine`), que el trabajo expande en SQL por los ascendientes del `Node` y aplica con un `MERGE` único. La cola de rango y el aviso `DOWNLINE_ENROLLED` llegan a la línea de patrocinio hasta 10 niveles (`GenealogyUpline.EnrollmentLevels`, la misma cota que I3 del Plan P).
@@ -52,14 +52,32 @@ Nick pidió que el plan decida con criterio. Estas son las decisiones; cualquier
   - la cola de derrame sin caché (punto 7 del Plan P): la caché es obligatoria y `04` la reconstruye;
   - un movimiento grande sigue tomando el árbol en exclusivo (punto 9 del Plan P): se mide cuánto bloquea tras los bloques 2 y 3;
   - las escrituras por ascendiente que no vienen del alta (`UplineAggregator`, `CancelMembershipHandler`, `ProcessScheduledCancellationsJob`).
+- **DQ13. Los calificados del equipo son contadores mantenidos por las colas (Q-R16).** La revisión del Bloque 1 midió que los dos recuentos del progreso de rango (`EnrollmentQualifiedTeamMembers` y `PlacementQualifiedTeamMembers`) son O(equipo): con 1.000.000 (ESC-M) serían 1 a 2 s el de inscripción y unos 1,8 s el binario, aun con el índice cubriente. Así no se llega al objetivo de 1 s. Son solo de pantalla: `ComputeProgress` (`GetRankProgressHandler.cs:180-211`) no los usa y la evaluación de rango no los lee.
+  - **Descartado:** una instantánea nocturna por ascendiente. En el binario no es viable: la suma de profundidades, con piernas de 8.500 niveles, son miles de millones de filas.
+  - **Decidido:** funcionan como los puntos (lo pidió Nick). Cada activación o cancelación suma o resta en los ascendientes, por los mismos mecanismos de deltas:
+    - **binario:** `DualLegDeltas` (Tarea 8b), con `SelfQualified`, `LeftLegQualified` y `RightLegQualified` en `DualTeamTree`;
+    - **inscripción:** `MemberStatisticDeltas` (Tarea 19b), con `EnrollmentQualifiedTeamMembers` en `MemberStatistics`, junto a `EnrollmentTeamSize`.
+  - **Quién encola:** un único componente, `QualifiedTeamDeltas`, desde un interceptor de EF (`QualifiedTeamCountsInterceptor`). Lo recorren todos los escritores de `SubscriptionStatus` por EF sin llamarlo a mano (el inventario, con fichero y línea, está en la Tarea 8b). Una regla prohíbe escribir suscripciones por fuera de EF.
+  - **Qué cuenta:** suscripciones activas (no miembros) y sin mirar `IsDeleted`, como el recuento al vuelo al que sustituye (Q-R21, Q-R27).
+  - **Atraso:** los contadores pasan a ser diferidos como las piernas (Q-R1). El objetivo de 1 s con 1.000.000 se mantiene (Bloque 7).
+- **DQ14. Regla de Nick: el progreso de rango y los reportes del equipo leen estadísticas precalculadas; nada cuenta el equipo al vuelo.** El tamaño de cada equipo está guardado: `EnrollmentTeamSize` en inscripción, y `LeftLegCount + RightLegCount` del nodo en el binario (el código ya tiene el nodo cargado). Todo lo que decide por el tamaño lo lee de ahí:
+  - el límite de 20.000 (`TeamGridLimits`, Tarea 22);
+  - el total sin filtros de las dos rejillas de Mi equipo y de las dos lecturas sin rejilla (Tarea 22: inscripción gana `unfilteredTotal`);
+  - los calificados del progreso de rango (DQ13).
+
+  No queda ninguna elección entre CTE y rango por tamaño: la única CTE de equipo, la de `LegPointMaintenance`, se va en la Tarea 6. Lo que sí se cuenta es el resultado de una búsqueda o de un filtro (texto, fechas, Clientes, Eventos), y por el rango (Tareas 22 a 25): eso no es el tamaño del equipo.
+- **DQ15. `MemberStatistics.DualTeamSize` se mantiene, no se borra.** Hoy vale 0 en todas las filas: nada lo escribe. Pero lo muestra la ficha del miembro en el admin (`GetMemberHandler.cs:85`, `AdminMemberProfile.razor:90`) y la instantánea lo copia al historial (`MemberStatisticSnapshotJob.cs:174`).
+  - **Mantenerlo** cuesta una asignación en el `UPDATE` de estadísticas que el vaciado de piernas ya hace (`DualTeamSize = LeftLegCount + RightLegCount`, junto a `DualTeamPoints`, Tarea 8b) y una tanda en `04-contadores-y-colas.sql`.
+  - **Borrarlo** obligaría a tocar el DTO, la página, la tabla de historial y una migración, y el dato que se enseña hoy (0) es falso.
+  - **El código no decide con él:** lee las piernas del nodo, que son la fuente. `DualTeamSize` es la copia para pantalla e historial.
 
 | Bloque | Tareas | Entrega | Migración | Script |
 |---|---|---|---|---|
 | 0. Línea base | 0 | Medición con 500.000 antes de cambiar nada | — | — |
-| 1. Progreso de rango | 1–3 | Una consulta e índice de activas | `SuscripcionesActivasPorMiembro` | — |
-| 2. Cola de piernas | 4–10 | `DualLegDeltas`, `DualAncestorKeys`, trabajador y vaciados | `ColaDeDeltasDePierna` | — |
+| 1. Progreso de rango | 1–3 (y 3b) | Una consulta e índice de activas; conteo binario por el índice cubriente | `SuscripcionesActivasPorMiembro` | — |
+| 2. Cola de piernas | 4–10 (con 8b) | `DualLegDeltas`, `DualAncestorKeys`, trabajador, vaciados y calificados del binario (DQ13) | `ColaDeDeltasDePierna`, `CalificadosDelBinario` | `04-contadores-y-colas.sql` (Plan P, ampliado) |
 | 3. Sin ruta en el binario | 11–15 | Lectores por la clave y columna eliminada | `RetiraRutaDelBinario` | `03-recuperar-espacio-de-la-ruta.sql` |
-| 4. Alta acotada | 16–20 | Un delta por alta y cota de 10 niveles | `DeltaPorLineaDePatrocinio` | — |
+| 4. Alta acotada | 16–20 (con 19b) | Un delta por alta, cota de 10 niveles y calificados de inscripción (DQ13) | `DeltaPorLineaDePatrocinio`, `CalificadosDeInscripcion` | `04-calificados-de-inscripcion.sql` |
 | 5. Reportes | 21–28 | Nodo único, Actividad, Clientes, Eventos, P7, búsqueda | `UnNodoPorMiembro`, `BusquedaYNivelDeAlta` | `01-nodos-de-inscripcion-repetidos.sql`, `02-nivel-de-alta.sql` |
 | 6. Migraciones | 29–31 | Base vacía migrable y prueba | — | — |
 | 7. Medición | 32–34 | Generador al día, 500.000 y 1.000.000 medidos | — | — |
@@ -82,7 +100,8 @@ Nick pidió que el plan decida con criterio. Estas son las decisiones; cualquier
   - `GenealogyUpline` (cota de la línea de inscripción);
   - `SignupMembershipLevel` (nivel de alta);
   - `MemberNameSearch` (búsqueda por nombre);
-  - `TeamGridLimits` (límites de rejilla).
+  - `TeamGridLimits` (límites de rejilla);
+  - `QualifiedTeamDeltas` (los cambios de suscripciones activas, convertidos en deltas de calificados desde un interceptor; DQ13).
   - En la interfaz, `ServerGridAdaptor` avisa del límite a las dos rejillas de Mi equipo.
 - **Identidad:** los endpoints de Mi equipo y de reportes siguen tomando el miembro del token (`_currentUser.MemberId`). Ninguna tarea añade un `memberId` enviado por el cliente.
 - **Migraciones:** se crean con `dotnet ef migrations add` y se aplican a mano con `--connection` antes de arrancar ningún servicio (los `Program.cs` hacen `MigrateAsync`).
@@ -388,6 +407,8 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 > **Desviación (al implementar).** Con `SqlQueryRaw<string>` EF 10 no traduce el `join` (`Unhandled expression SqlConstantExpression … in SqlNullabilityProcessor`); con `Contains` lo manda como `IN` y el plan es una semiunión hash que recorre todas las activas (mediana de 10 en `sqlcmd -I`: unos 520 ms frente a unos 380 ms del `join`, con la máquina cargada). Por eso la consulta devuelve una fila con nombre (`DualSubtree.DualMemberIdRow`) y se proyecta a `MemberId`: así el `join` se traduce.
 
 > **Medido (2026-10-19, base local, `sqlcmd -I`, AMB-700829).** El conteo da 12.060 con la consulta vieja y con la nueva. El plan nuevo: `Index Seek` sobre `UX_DualTeamTree_BinaryPath` y `Index Scan` de `IX_MembershipSubscriptions_Activas`, sin otros índices de `DualTeamTree`. Diez ejecuciones alternadas, con la máquina cargada (un CommissionEngine en marcha): consulta vieja 645 a 2.001 ms (media 980 a 1.359), nueva 250 a 912 ms (media 378 a 465); sin carga, la nueva dio 174 a 215 ms. El progreso completo con `Medicion.runsettings`, en esas mismas condiciones de carga: medianas 1.465, 1.326 y 1.361 ms (❌ del objetivo local de 1 s). El desglose por consulta (interceptor de duración) fue: calificados de inscripción 507 a 621 ms, calificados del binario 706 a 1.100 ms y todo lo demás menos de 50 ms. Los dos conteos son O(equipo) (Q-R16).
+
+> **Decisión posterior (DQ13).** Con 1.000.000 ninguno de los dos recuentos cabe en 1 s, así que dejan de hacerse al vuelo. Pasan a ser contadores que mantienen las colas: los del binario en la Tarea 8b y los de inscripción en la Tarea 19b. Tras las dos, el manejador lee el nodo binario y una fila de `MemberStatistics`. El objetivo sigue en 1 s con 1.000.000 (Bloque 7).
 
 - [x] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` (132 en verde, sin las de medición) y `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests` (1.114 en verde, incluidas `SinRutaEnElBinarioTests` y `EscritoresDelBinarioTests`). Commit: `Plan Q: progreso de rango con el conteo binario por el indice cubriente y medicion fuera de la suite normal`.
 
@@ -1198,6 +1219,784 @@ RecurringJob.AddOrUpdate<ApplyDualLegDeltasJob>(
 ```
 
 - [ ] **Paso 4.** En verde. Commit: `Plan Q: trabajo recurrente que vacia la cola de piernas del binario`.
+
+### Tarea 8b: calificados del binario mantenidos por la cola (DQ13)
+
+Los calificados del equipo binario (`PlacementQualifiedTeamMembers` del progreso de rango) dejan de contarse al vuelo. Igual que los puntos y los nodos de cada pierna, cada nodo guarda sus suscripciones activas por pierna y la cola de piernas las mantiene. Un cambio de estado de una suscripción hacia o desde `Active` encola `±1` para su miembro, en el mismo guardado y desde un único componente (un interceptor de EF, como el historial de estados).
+
+**Inventario de escritores de `MembershipSubscription.SubscriptionStatus` (2026-10-19, código de `plan-q-escala`).** Todos escriben por el seguimiento de cambios de EF, así que el interceptor los ve sin tocarlos.
+- Crean la suscripción (por defecto es `Active`: `MembershipSubscription.cs:13`):
+  - `SignupAPI/Features/Signups/Commands/SignupMember/SignupMemberHandler.cs:143-149` y `SignupAmbassador/SignupAmbassadorHandler.cs:203-209`: la crean en `Pending`, así que no hay delta;
+  - `Repository/Seeders/RootAmbassadorSeeder.cs:91-97`: en `Active`, +1;
+  - `SignupAPI/Features/Membership/Commands/UpgradeMembership/UpgradeMembershipHandler.cs:65` (la vieja a `Expired`) y `:70-76` (la nueva, `Active`): neto 0 para el miembro, sin fila;
+  - `DowngradeMembership/DowngradeMembershipHandler.cs:42` y `:46-52`: igual, neto 0.
+- Activan (`Pending` → `Active`, +1):
+  - `SignupAPI/Services/SignupActivationService.cs:55`. Es la activación del alta, a la que llaman `CompleteSignupHandler` (tarjeta o token), `ConfirmCryptoPaymentHandler` (cripto), `Services/Entrax/EntraxSignupSettlement.cs` (Entrax) y `SignupUserActivation`;
+  - `AdminAPI/Features/Members/UpdateMemberStatus/UpdateMemberStatusHandler.cs:91`, la activación desde el admin;
+  - `AdminAPI/Controllers/DevSeedController.cs:349` y `:530`, solo en desarrollo.
+- Reactivan (`HoldByBilling`/`Expired` → `Active`, +1): `Billing/Services/Recurring/RecurringBillingProcessor.cs:785` (`LiftTerminalMembershipStatusAsync`, llamado en `:463` y `:625` tras un cobro bueno, también el de la cuota anual).
+- Dejan de estar activas (−1):
+  - `RecurringBillingProcessor.cs:766-768` (`ApplyTerminalMembershipStatusAsync`, a `Expired` o `HoldByBilling`; llamado en `:170` y `:684`);
+  - `SignupAPI/Features/Membership/Commands/CancelMembership/CancelMembershipHandler.cs:52` (a `Cancelled`);
+  - `SignupAPI/Jobs/ProcessScheduledCancellationsJob.cs:91` (a `Cancelled`).
+- Fuera de EF, solo hay dos ficheros, los dos de la base de escala: `Scripts/sql/plan-p/escala/altas/c-pedidos.sql` (el generador inserta las suscripciones; después corren los recálculos) y `Scripts/sql/plan-p/escala/02-verificar-escala.sql` (el `INSERT` es a una tabla temporal). `ExecuteUpdate`, `ExecuteSql` y `UPDATE` en C# ya los prohíbe `EstadosSinInterceptorTests` (Plan J); la regla nueva de esta tarea cubre además los scripts, `INSERT`, `MERGE`, `DELETE` y `SqlBulkCopy`.
+
+**Semántica (extiende DQ2).** Hay dos clases de delta:
+- **De pierna** (`OwnChange = 0`, los de las Tareas 6 y 7). Su `QualifiedCount` se suma a la pierna `Side` del arranque y a cada ascendiente, como `Points` y `NodeCount`.
+- **Propio** (`OwnChange = 1`, los del interceptor). El arranque es el miembro cuya suscripción cambió y `Side` no se usa. Se suma a su `SelfQualified` y, por el lado por el que se baja, a las piernas de cada ascendiente que tenga **al aplicarse**; a sus propias piernas, no.
+- **Un propio sin nodo vivo no se descarta**: espera en la cola hasta que su miembro tenga nodo. Es lo normal: el alta se activa antes de colocarse.
+- **Lo que viaja con un nodo es lo ya aplicado.** Colocar una hoja encola su `SelfQualified`, que vale 0 en un nodo nuevo: su activación llega por su propio delta pendiente. Mover o retirar encola `±(SelfQualified + LeftLegQualified + RightLegQualified)`.
+
+Con eso vale la demostración de DQ2 sin cambios: un propio es un delta más, cuyo arranque es el propio nodo, y nunca se lee en vivo `MembershipSubscriptions`, así que no hay carrera entre un cambio de estado y una colocación.
+- La retirada descarta los pendientes de pierna con arranque en el nodo retirado (C1). Los **propios los conserva**, porque son del miembro y no del nodo, y devuelve a la cola, como propio, su `SelfQualified` ya aplicado: si el miembro se vuelve a colocar, su nodo nuevo lo recibe.
+
+**Files:**
+- Modify: `MLMConquerorGlobalEdition.Domain/Entities/Tree/DualTeamEntity.cs` (`SelfQualified`, `LeftLegQualified`, `RightLegQualified`)
+- Modify: `MLMConquerorGlobalEdition.Domain/Entities/Tree/DualLegDelta.cs` (de la Tarea 5: `QualifiedCount`, `OwnChange`)
+- Create: migración `CalificadosDelBinario`
+- Create: `MLMConquerorGlobalEdition.Repository/Services/Teams/QualifiedTeamDeltas.cs`
+- Create: `MLMConquerorGlobalEdition.Repository/Interceptors/QualifiedTeamCountsInterceptor.cs`
+- Modify: `MLMConquerorGlobalEdition.Repository/Context/AppDbContext.cs:209-212` (registro del interceptor)
+- Modify: `MLMConquerorGlobalEdition.Repository/Services/Teams/LegPointMaintenance.cs` (de la Tarea 6: `EnqueueLeafAsync`, `EnqueueSubtreeAsync` y `ApplyBatchSql`)
+- Modify: `MLMConquerorGlobalEdition.Repository/Queries/DualTeamNodes.cs` (`RemoveAsync`, el borrado de la Tarea 7, Paso 2)
+- Modify: `MLMConquerorGlobalEdition.RankEngine/Features/GetRankProgress/GetRankProgressHandler.cs:135-146`
+- Modify: `Scripts/sql/plan-p/04-contadores-y-colas.sql` (recalcula los calificados y `DualTeamSize` y neutraliza la cola)
+- Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/BinarioDb.cs` (`LimpiarAsync`)
+- Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscritoresDelBinarioTests.cs` (motivo de `LegPointMaintenance`)
+- Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/QualifiedTeamDeltasTests.cs` (InMemory)
+- Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SqlServerCalificadosDelBinarioTests.cs`
+- Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscritoresDeSuscripcionesTests.cs` (regla)
+- Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs` (el manejador lee los contadores)
+
+- [ ] **Paso 1.** Pruebas en rojo, InMemory (`QualifiedTeamDeltasTests`). Pasan por el `AppDbContext` real (`ReportesDb.Nueva()`), que registra el interceptor él mismo:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
+
+namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
+
+/// <summary>Plan Q (DQ13): cada cambio de una suscripcion hacia o desde Active encola un +-1 propio del miembro al guardar.</summary>
+public class QualifiedTeamDeltasTests
+{
+    private static async Task<(AppDbContext Db, MembershipSubscription S)> ConSuscripcionAsync(MembershipStatus estado)
+    {
+        var db = ReportesDb.Nueva();
+        ReportesDb.Miembro(db, "AMB-Q1");
+        var s = ReportesDb.Suscripcion(db, "AMB-Q1", 2, estado, ReportesDb.Base);
+        await db.SaveChangesAsync();
+        return (db, s);
+    }
+
+    private static Task<List<int>> PropiosAsync(AppDbContext db, string memberId) =>
+        db.DualLegDeltas.AsNoTracking().Where(d => d.StartMemberId == memberId && d.OwnChange)
+            .OrderBy(d => d.Id).Select(d => d.QualifiedCount).ToListAsync();
+
+    [Fact]
+    public async Task Crear_una_activa_encola_mas_uno_y_una_pendiente_nada()
+    {
+        var (db, _) = await ConSuscripcionAsync(MembershipStatus.Active);
+        (await PropiosAsync(db, "AMB-Q1")).Should().Equal(1);
+        var (db2, _) = await ConSuscripcionAsync(MembershipStatus.Pending);
+        (await PropiosAsync(db2, "AMB-Q1")).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(MembershipStatus.Pending, MembershipStatus.Active, 1)]          // activacion del alta o del admin
+    [InlineData(MembershipStatus.HoldByBilling, MembershipStatus.Active, 1)]    // reactivacion por cobro
+    [InlineData(MembershipStatus.Active, MembershipStatus.Cancelled, -1)]       // cancelacion
+    [InlineData(MembershipStatus.Active, MembershipStatus.HoldByBilling, -1)]   // 90 dias sin cobro
+    [InlineData(MembershipStatus.Active, MembershipStatus.Expired, -1)]
+    [InlineData(MembershipStatus.Cancelled, MembershipStatus.Expired, 0)]
+    public async Task Un_cambio_de_estado_encola_su_signo(MembershipStatus de, MembershipStatus a, int esperado)
+    {
+        var (db, s) = await ConSuscripcionAsync(de);
+        var antes = (await PropiosAsync(db, "AMB-Q1")).Count;
+        s.SubscriptionStatus = a;
+        await db.SaveChangesAsync();
+        var nuevos = (await PropiosAsync(db, "AMB-Q1")).Skip(antes).ToList();
+        if (esperado == 0) nuevos.Should().BeEmpty(); else nuevos.Should().Equal(esperado);
+    }
+
+    [Fact]
+    public async Task Subir_de_nivel_en_un_guardado_es_neto_cero()
+    {
+        var (db, vieja) = await ConSuscripcionAsync(MembershipStatus.Active);
+        vieja.SubscriptionStatus = MembershipStatus.Expired;                       // UpgradeMembershipHandler.cs:65
+        ReportesDb.Suscripcion(db, "AMB-Q1", 3, MembershipStatus.Active, ReportesDb.Base);   // :70-76
+        await db.SaveChangesAsync();
+        (await PropiosAsync(db, "AMB-Q1")).Should().Equal(1);   // solo el +1 de la primera alta
+    }
+
+    [Fact]
+    public async Task Repetir_el_registro_en_el_mismo_guardado_no_duplica()
+    {
+        var (db, s) = await ConSuscripcionAsync(MembershipStatus.Pending);
+        s.SubscriptionStatus = MembershipStatus.Active;
+        QualifiedTeamDeltas.Record(db, DateTime.Now);   // como un guardado que fallo y se reintenta
+        QualifiedTeamDeltas.Record(db, DateTime.Now);
+        await db.SaveChangesAsync();                    // el interceptor lo registra una tercera vez
+        (await PropiosAsync(db, "AMB-Q1")).Should().Equal(1);
+    }
+}
+```
+
+  **Esperado:** no compila (no existen `OwnChange`, `QualifiedCount` ni `QualifiedTeamDeltas`).
+
+- [ ] **Paso 2.** Pruebas en rojo contra SQL Server (`SqlServerCalificadosDelBinarioTests`). Con `BinarioDb` y prefijo propio, porque el vaciado confirma sus transacciones. `BinarioDb.LimpiarAsync` borra además, antes que los perfiles, el historial y las suscripciones del prefijo:
+
+```csharp
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MembershipStatusHistories WHERE MemberId LIKE {patron}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MembershipSubscriptions WHERE MemberId LIKE {patron}");
+```
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
+
+namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
+
+/// <summary>Plan Q (DQ13): los calificados del binario se mantienen por la cola, con activaciones, colocaciones, movimientos y retiradas.</summary>
+[Collection(SqlServerReportesCollection.Nombre)]
+public class SqlServerCalificadosDelBinarioTests
+{
+    private sealed class Reloj : MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider
+    {
+        public DateTime Now => DateTime.Now;
+        public DateTime UtcNow => DateTime.UtcNow;
+    }
+
+    private static async Task<string> SuscripcionAsync(string memberId, MembershipStatus estado)
+    {
+        await using var db = SqlServerReportes.Db();
+        var s = ReportesDb.Suscripcion(db, memberId, 2, estado, DateTime.Now);
+        await db.SaveChangesAsync();
+        return s.Id;
+    }
+
+    private static async Task EstadoAsync(string id, MembershipStatus estado)
+    {
+        await using var db = SqlServerReportes.Db();
+        (await db.MembershipSubscriptions.SingleAsync(s => s.Id == id)).SubscriptionStatus = estado;
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task<DualTeamEntity> NodoAsync(AppDbContext db, string id) =>
+        await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == id);
+
+    [SqlServerFact]
+    public async Task Activar_y_cancelar_suben_y_bajan_por_la_linea()
+    {
+        var x = BinarioDb.Prefijo("PQK");
+        try
+        {
+            await using (var db = SqlServerReportes.Db())
+            {
+                await BinarioDb.SembrarPerfilesAsync(db, $"{x}P", $"{x}L", $"{x}N");
+                await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left),
+                    ($"{x}N", $"{x}L", TreeSide.Right));
+            }
+            var sus = await SuscripcionAsync($"{x}N", MembershipStatus.Active);
+            await using (var db = SqlServerReportes.Db())
+            {
+                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}N" && d.OwnChange && d.QualifiedCount == 1))
+                    .Should().Be(1, "la activacion solo encola");
+                (await NodoAsync(db, $"{x}P")).LeftLegQualified.Should().Be(0);
+                await LegPointMaintenance.DrainAsync(db);
+                var (p, l, n) = (await NodoAsync(db, $"{x}P"), await NodoAsync(db, $"{x}L"), await NodoAsync(db, $"{x}N"));
+                (p.LeftLegQualified, p.RightLegQualified, l.RightLegQualified, l.LeftLegQualified, n.SelfQualified)
+                    .Should().Be((1, 0, 1, 0, 1));
+                (n.LeftLegQualified + n.RightLegQualified).Should().Be(0, "lo propio no va a las piernas propias");
+            }
+            await EstadoAsync(sus, MembershipStatus.Cancelled);
+            await using (var db = SqlServerReportes.Db())
+            {
+                await LegPointMaintenance.DrainAsync(db);
+                await CalificadosCoherentesAsync(db, x);
+                (await NodoAsync(db, $"{x}P")).LeftLegQualified.Should().Be(0);
+            }
+        }
+        finally { await BinarioDb.LimpiarAsync(x); }
+    }
+
+    [SqlServerFact]
+    public async Task Colocar_con_la_suscripcion_activa_o_sin_ella()
+    {
+        var x = BinarioDb.Prefijo("PQM");
+        try
+        {
+            await using (var db = SqlServerReportes.Db())
+            {
+                await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left));
+                await BinarioDb.SembrarPerfilAsync(db, $"{x}A", $"{x}L");   // activa antes de tener nodo
+                await BinarioDb.SembrarPerfilAsync(db, $"{x}K", $"{x}L");   // pendiente
+            }
+            await SuscripcionAsync($"{x}A", MembershipStatus.Active);
+            await SuscripcionAsync($"{x}K", MembershipStatus.Pending);
+            await using (var db = SqlServerReportes.Db())
+            {
+                await LegPointMaintenance.DrainAsync(db);
+                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}A" && d.OwnChange))
+                    .Should().Be(1, "sin nodo, el propio espera en la cola");
+                var motor = new PlacementService(db, new Reloj());
+                (await motor.PlaceAsync($"{x}A", $"{x}L")).IsSuccess.Should().BeTrue();
+                (await motor.PlaceAsync($"{x}K", $"{x}L")).IsSuccess.Should().BeTrue();
+            }
+            await using (var db = SqlServerReportes.Db())
+            {
+                await LegPointMaintenance.DrainAsync(db);
+                await CalificadosCoherentesAsync(db, x);
+                var p = await NodoAsync(db, $"{x}P");
+                (p.LeftLegQualified, p.LeftLegCount).Should().Be((1, 3), "A cuenta una vez y K no cuenta");
+                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId.StartsWith(x))).Should().Be(0);
+            }
+        }
+        finally { await BinarioDb.LimpiarAsync(x); }
+    }
+
+    /// <summary>
+    /// DQ2 con propios: C se activa dentro de la raiz provisional B (pendiente sin aplicar) y B se coloca; E, activa y con
+    /// el propio aplicado, se retira con su hijo F flotando y F se activa mientras flota; E vuelve a colocarse (F con el).
+    /// Tras vaciar, cada nodo es igual al recuento de su rango.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Con_movimientos_y_retiradas_por_medio_los_calificados_quedan_exactos()
+    {
+        var x = BinarioDb.Prefijo("PQN");
+        try
+        {
+            await using (var db = SqlServerReportes.Db())
+            {
+                await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}A", $"{x}P", TreeSide.Left));
+                foreach (var (id, pat) in new[] { ("B", "A"), ("C", "B"), ("E", "A"), ("F", "E") })
+                    await BinarioDb.SembrarPerfilAsync(db, $"{x}{id}", $"{x}{pat}");
+                var motor = new PlacementService(db, new Reloj());
+                (await motor.PlaceAsync($"{x}C", $"{x}B")).IsSuccess.Should().BeTrue();   // B sigue sin colocar: raiz provisional
+                (await motor.PlaceAsync($"{x}E", $"{x}A")).IsSuccess.Should().BeTrue();
+                (await motor.PlaceAsync($"{x}F", $"{x}E")).IsSuccess.Should().BeTrue();
+            }
+            await SuscripcionAsync($"{x}E", MembershipStatus.Active);
+            await using (var db = SqlServerReportes.Db()) await LegPointMaintenance.DrainAsync(db);   // E aplicado
+            await SuscripcionAsync($"{x}C", MembershipStatus.Active);                                // pendiente
+            await using (var db = SqlServerReportes.Db())
+                (await new PlacementService(db, new Reloj()).PlaceAsync($"{x}B", $"{x}A")).IsSuccess.Should().BeTrue();
+            await using (var db = SqlServerReportes.Db())
+            {
+                await using var tx = await db.Database.BeginTransactionAsync();
+                await DualTeamGate.EnterTreeExclusiveAsync(db);
+                (await DualTeamNodes.RemoveAsync(db, $"{x}E", DualTeamChildrenOnRemoval.Floating, DateTime.Now, "plan-q-prueba")).Should().BeTrue();
+                await tx.CommitAsync();
+                (await db.DualLegDeltas.Where(d => d.StartMemberId == $"{x}E" && d.OwnChange).SumAsync(d => d.QualifiedCount))
+                    .Should().Be(1, "la retirada devuelve a la cola el propio ya aplicado de E");
+            }
+            await SuscripcionAsync($"{x}F", MembershipStatus.Active);   // F se activa mientras flota
+            await using (var db = SqlServerReportes.Db())
+                (await new PlacementService(db, new Reloj()).PlaceAsync($"{x}E", $"{x}A")).IsSuccess.Should().BeTrue();
+            await using (var db = SqlServerReportes.Db())
+            {
+                await LegPointMaintenance.DrainAsync(db);
+                await CalificadosCoherentesAsync(db, x);
+                var p = await NodoAsync(db, $"{x}P");
+                p.LeftLegQualified.Should().Be(3, "C, E y F, cada uno una vez");
+            }
+        }
+        finally { await BinarioDb.LimpiarAsync(x); }
+    }
+
+    /// <summary>
+    /// Cada nodo vivo del prefijo: SelfQualified = sus suscripciones activas y cada pierna = las activas de su rango (el
+    /// recuento al vuelo al que sustituyen, por DualSubtree.Leg). DualTeamSize = LeftLegCount + RightLegCount (DQ15).
+    /// </summary>
+    public static async Task CalificadosCoherentesAsync(AppDbContext db, string prefijo)
+    {
+        var activas = db.MembershipSubscriptions.AsNoTracking().Where(s => s.SubscriptionStatus == MembershipStatus.Active);
+        foreach (var n in await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(prefijo)).ToListAsync())
+        {
+            n.SelfQualified.Should().Be(await activas.CountAsync(s => s.MemberId == n.MemberId), $"{n.MemberId} propio");
+            foreach (var lado in new[] { TreeSide.Left, TreeSide.Right })
+            {
+                var ids = DualSubtree.Leg(db, n, lado).Select(d => d.MemberId);
+                var esperado = await activas.CountAsync(s => ids.Contains(s.MemberId));
+                (lado == TreeSide.Left ? n.LeftLegQualified : n.RightLegQualified).Should().Be(esperado, $"{n.MemberId} pierna {lado}");
+            }
+            var tamano = await db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == n.MemberId)
+                .OrderBy(s => s.Id).Select(s => (int?)s.DualTeamSize).FirstOrDefaultAsync();
+            if (tamano is not null) tamano.Should().Be(n.LeftLegCount + n.RightLegCount, $"{n.MemberId} DualTeamSize");
+        }
+    }
+}
+```
+
+  Y en `RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs`, el manejador lee los contadores del nodo y no une el binario con las suscripciones. El `Capturador` guarda también el texto de cada comando (`public readonly List<string> Textos = new();` y `Textos.Add(c.CommandText);` en `Guardar`):
+
+```csharp
+    [SqlServerFact]
+    public async Task Los_calificados_del_binario_salen_de_los_contadores_del_nodo()
+    {
+        var cap = new Capturador();
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer(SqlServerReportes.ConnectionString).AddInterceptors(cap).Options);
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var r = SqlServerReportes.NuevoId("RB");
+        ReportesDb.Miembro(db, r);
+        var nodo = ReportesDb.NodoBinario(db, r, null, ReportesDb.Ruta(r), Domain.Enums.TreeSide.Left);
+        (nodo.LeftLegQualified, nodo.RightLegQualified) = (4, 3);
+        await db.SaveChangesAsync();
+        cap.Textos.Clear();
+
+        var res = await new GetRankProgressHandler(db, new Reloj(), new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)).Handle(new GetRankProgressQuery(r), CancellationToken.None);
+
+        res.IsSuccess.Should().BeTrue(res.Error);
+        res.Value!.CurrentMetrics.PlacementQualifiedTeamMembers.Should().Be(7);
+        cap.Textos.Should().NotContain(t => t.Contains("DualTeamTree") && t.Contains("MembershipSubscriptions"),
+            "los calificados del binario no se cuentan al vuelo (DQ13)");
+        await tx.RollbackAsync();
+    }
+```
+
+  **Esperado:** no compila; con las columnas, la cola no las mantiene y el manejador sigue contando.
+
+- [ ] **Paso 3.** Entidades. En `DualTeamEntity`, junto a `LeftLegCount` y `RightLegCount`:
+
+```csharp
+    /// <summary>
+    /// Plan Q (DQ13): suscripciones activas del propio miembro YA APLICADAS por la cola. Es lo que viaja con el nodo al
+    /// moverlo o retirarlo; no forma parte de sus piernas.
+    /// </summary>
+    public int SelfQualified { get; set; }
+    /// <summary>Plan Q (DQ13): suscripciones activas de cada pierna, mantenidas por LegPointMaintenance como los puntos.</summary>
+    public int LeftLegQualified { get; set; }
+    public int RightLegQualified { get; set; }
+```
+
+  En `DualLegDelta` (Tarea 5):
+
+```csharp
+    /// <summary>Plan Q (DQ13): cambio de suscripciones activas.</summary>
+    public int QualifiedCount { get; set; }
+    /// <summary>
+    /// Plan Q (DQ13): el cambio es DEL PROPIO StartMemberId (una suscripcion suya se activo o dejo de estarlo): va a su
+    /// SelfQualified y a las piernas de sus ascendientes, no a una pierna suya; Side no se usa. Sin nodo vivo, espera en la
+    /// cola a que lo tenga. Lo escribe solo QualifiedTeamDeltas (y la retirada, con lo ya aplicado).
+    /// </summary>
+    public bool OwnChange { get; set; }
+```
+
+  `dotnet ef migrations add CalificadosDelBinario …`. **Esperado:** el `Up` solo añade cinco columnas `int`/`bit` NOT NULL con valor por defecto 0. Aplicar en local con `--connection`.
+
+- [ ] **Paso 4.** El componente y el interceptor:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Domain.Enums;
+
+namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
+
+/// <summary>
+/// Plan Q (DQ13): el UNICO sitio que traduce un cambio de MembershipSubscription.SubscriptionStatus hacia o desde Active
+/// en deltas de los contadores de calificados del equipo. Lo llama QualifiedTeamCountsInterceptor en cada guardado, asi
+/// que lo recorren todos los escritores por EF (alta, activacion, cancelacion, facturacion, subida y bajada de nivel,
+/// admin y semillas) sin llamarlo a mano. ExecuteUpdate y el SQL crudo no pasan por aqui: lo vigilan
+/// EstadosSinInterceptorTests y EscritoresDeSuscripcionesTests.
+/// Cuenta SUSCRIPCIONES activas (no miembros) y no mira IsDeleted, como el recuento al vuelo al que sustituye (Q-R21).
+/// </summary>
+public static class QualifiedTeamDeltas
+{
+    public const string Actor = "qualified-count";
+
+    /// <summary>El cambio neto de suscripciones activas por miembro en lo que el contexto va a guardar (sin ceros).</summary>
+    public static Dictionary<string, int> NetChanges(DbContext context)
+    {
+        var neto = new Dictionary<string, int>(StringComparer.Ordinal);
+        void Sumar(string memberId, int d) => neto[memberId] = neto.GetValueOrDefault(memberId) + d;
+
+        foreach (var e in context.ChangeTracker.Entries<MembershipSubscription>())
+        {
+            var estado  = e.Property(s => s.SubscriptionStatus);
+            var miembro = e.Property(s => s.MemberId);
+            switch (e.State)
+            {
+                case EntityState.Added:
+                    if (e.Entity.SubscriptionStatus == MembershipStatus.Active) Sumar(e.Entity.MemberId, +1);
+                    break;
+                case EntityState.Deleted:
+                    if (estado.OriginalValue == MembershipStatus.Active) Sumar(miembro.OriginalValue, -1);
+                    break;
+                case EntityState.Modified:
+                {
+                    var antes = estado.OriginalValue == MembershipStatus.Active;
+                    var ahora = e.Entity.SubscriptionStatus == MembershipStatus.Active;
+                    if (antes) Sumar(miembro.OriginalValue, -1);
+                    if (ahora) Sumar(e.Entity.MemberId, +1);
+                    break;
+                }
+            }
+        }
+        return neto.Where(kv => kv.Value != 0).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Anade al contexto, en el mismo guardado, lo que falte para que los deltas propios pendientes de este guardado
+    /// sumen el cambio neto de cada miembro. Idempotente: un guardado que falla y se reintenta no duplica.
+    /// </summary>
+    public static void Record(DbContext context, DateTime now)
+    {
+        var cambios = NetChanges(context);
+        var yaEncolados = context.ChangeTracker.Entries<DualLegDelta>()
+            .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
+            .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Entity.QualifiedCount), StringComparer.Ordinal);
+
+        foreach (var memberId in cambios.Keys.Union(yaEncolados.Keys, StringComparer.Ordinal).ToList())
+        {
+            var falta = cambios.GetValueOrDefault(memberId) - yaEncolados.GetValueOrDefault(memberId);
+            if (falta == 0) continue;
+            context.Set<DualLegDelta>().Add(new DualLegDelta
+            {
+                StartMemberId = memberId, Side = TreeSide.Left, Points = 0, NodeCount = 0,
+                QualifiedCount = falta, OwnChange = true, CreationDate = now, CreatedBy = Actor
+            });
+        }
+    }
+}
+```
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
+
+namespace MLMConquerorGlobalEdition.Repository.Interceptors;
+
+/// <summary>
+/// Plan Q (DQ13): al guardar, los cambios de suscripciones hacia o desde Active encolan los deltas de calificados
+/// (QualifiedTeamDeltas). Va en AppDbContext.OnConfiguring, como StatusHistoryInterceptor, para que ningun anfitrion lo
+/// olvide. Hora de servidor (DateTime.Now).
+/// </summary>
+public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
+{
+    private readonly Func<DateTime> _now;
+
+    public QualifiedTeamCountsInterceptor(Func<DateTime>? now = null) => _now = now ?? (() => DateTime.Now);
+
+    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
+    {
+        if (eventData.Context is { } context) QualifiedTeamDeltas.Record(context, _now());
+        return base.SavingChanges(eventData, result);
+    }
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) QualifiedTeamDeltas.Record(context, _now());
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+}
+```
+
+  En `AppDbContext.OnConfiguring` (`:209-212`), después de `new StatusHistoryInterceptor()`: `new QualifiedTeamCountsInterceptor(),`, con una línea en el comentario de encima: «QualifiedTeamCountsInterceptor (Plan Q), por lo mismo: un anfitrión sin él cambiaría estados sin mover los calificados».
+
+  Las pruebas del Paso 1 pasan a verde.
+
+- [ ] **Paso 5.** `LegPointMaintenance` (Tarea 6).
+  - **Encolar lo ya aplicado.** En `EnqueueLeafAsync` la lista de columnas pasa a `(StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)` y el `SELECT` añade `d.SelfQualified, 0` detrás del `1` de nodos. En un nodo nuevo vale 0: su activación llega por su propio pendiente. En `EnqueueSubtreeAsync`, la misma lista, con `{sign} * (d.SelfQualified + d.LeftLegQualified + d.RightLegQualified), 0` detrás de los nodos.
+  - **`ApplyBatchSql`.** Cambian la elección de arranques, la reclamación, la agregación y los `UPDATE`. El resto queda igual. Un propio sin nodo vivo no se elige ni se reclama: espera.
+
+```sql
+CREATE TABLE #arranques (StartMemberId nvarchar(450) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY);
+WITH a AS (
+    SELECT TOP (@lote) q.StartMemberId, MIN(q.Id) AS Primero
+    FROM DualLegDeltas q
+    WHERE q.Id <= @hasta
+      AND (q.OwnChange = 0 OR EXISTS (SELECT 1 FROM DualTeamTree v
+                                      WHERE v.MemberId = q.StartMemberId AND v.IsDeleted = 0 AND v.BinaryPath IS NOT NULL))
+    GROUP BY q.StartMemberId
+    ORDER BY MIN(q.Id)),
+f AS (
+    SELECT a.StartMemberId,
+           SUM(ISNULL(d.Depth, 0) + 1) OVER (ORDER BY a.Primero ROWS UNBOUNDED PRECEDING) AS Acumulado,
+           ROW_NUMBER() OVER (ORDER BY a.Primero) AS Rn
+    FROM a
+    LEFT JOIN DualTeamTree d ON d.MemberId = a.StartMemberId AND d.IsDeleted = 0)
+INSERT INTO #arranques (StartMemberId)
+SELECT StartMemberId FROM f WHERE Rn = 1 OR Acumulado <= @maxFilas;
+
+CREATE TABLE #lote (StartMemberId nvarchar(450) COLLATE DATABASE_DEFAULT NOT NULL, Side int NOT NULL,
+                    Points decimal(18,4) NOT NULL, NodeCount int NOT NULL, QualifiedCount int NOT NULL, OwnChange bit NOT NULL);
+DELETE q
+OUTPUT deleted.StartMemberId, deleted.Side, deleted.Points, deleted.NodeCount, deleted.QualifiedCount, deleted.OwnChange INTO #lote
+FROM DualLegDeltas q
+JOIN #arranques r ON r.StartMemberId = q.StartMemberId
+WHERE q.Id <= @hasta
+  AND (q.OwnChange = 0 OR EXISTS (SELECT 1 FROM DualTeamTree v
+                                  WHERE v.MemberId = q.StartMemberId AND v.IsDeleted = 0 AND v.BinaryPath IS NOT NULL));
+
+-- Un propio va a las piernas de los ascendientes (AncestorKey <> la clave del arranque) y al SelfQualified del arranque
+-- (AncestorKey = su clave); uno de pierna, como los puntos, a la pierna Side del arranque y a cada ascendiente.
+SELECT a.AncestorKey,
+       SUM(CASE WHEN a.Side = 0 THEN l.Points    ELSE 0 END) AS LP,
+       SUM(CASE WHEN a.Side = 1 THEN l.Points    ELSE 0 END) AS RP,
+       SUM(CASE WHEN a.Side = 0 THEN l.NodeCount ELSE 0 END) AS LC,
+       SUM(CASE WHEN a.Side = 1 THEN l.NodeCount ELSE 0 END) AS RC,
+       SUM(CASE WHEN a.Side = 0 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS LQ,
+       SUM(CASE WHEN a.Side = 1 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS RQ,
+       SUM(CASE WHEN l.OwnChange = 1 AND a.AncestorKey = s.BinaryPath THEN l.QualifiedCount ELSE 0 END) AS SQ
+INTO #deltas
+FROM (SELECT StartMemberId, Side, OwnChange, SUM(Points) AS Points, SUM(NodeCount) AS NodeCount,
+             SUM(QualifiedCount) AS QualifiedCount
+      FROM #lote GROUP BY StartMemberId, Side, OwnChange) l
+JOIN DualTeamTree s ON s.MemberId = l.StartMemberId AND s.IsDeleted = 0 AND s.BinaryPath IS NOT NULL
+CROSS APPLY dbo.DualAncestorKeys(s.BinaryPath, l.Side) a
+GROUP BY a.AncestorKey
+OPTION (MAXDOP 1);
+
+SELECT d.Id AS NodeId, d.MemberId, x.LP, x.RP, x.LC, x.RC, x.LQ, x.RQ, x.SQ, ROW_NUMBER() OVER (ORDER BY d.Id) AS Rn
+INTO #x
+FROM #deltas x
+JOIN DualTeamTree d ON d.BinaryPath = x.AncestorKey AND d.IsDeleted = 0
+OPTION (MAXDOP 1);
+CREATE CLUSTERED INDEX cx ON #x (Rn);
+
+DECLARE @desde int = 1, @filas int = (SELECT COUNT(*) FROM #x);
+WHILE @desde <= @filas
+BEGIN
+    UPDATE d
+    SET LeftLegPoints     = d.LeftLegPoints     + x.LP,
+        RightLegPoints    = d.RightLegPoints    + x.RP,
+        LeftLegCount      = d.LeftLegCount      + x.LC,
+        RightLegCount     = d.RightLegCount     + x.RC,
+        LeftLegQualified  = d.LeftLegQualified  + x.LQ,
+        RightLegQualified = d.RightLegQualified + x.RQ,
+        SelfQualified     = d.SelfQualified     + x.SQ
+    FROM DualTeamTree d
+    JOIN #x x ON x.NodeId = d.Id
+    WHERE x.Rn >= @desde AND x.Rn < @desde + @trozo;
+
+    -- DQ15: la copia del tamano del equipo binario en las estadisticas, junto a la de los puntos.
+    UPDATE s
+    SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int),
+        DualTeamSize   = d.LeftLegCount + d.RightLegCount
+    FROM MemberStatistics s
+    JOIN #x x ON x.MemberId = s.MemberId AND x.Rn >= @desde AND x.Rn < @desde + @trozo
+    JOIN DualTeamTree d ON d.Id = x.NodeId;
+
+    SET @desde += @trozo;
+END
+```
+
+  - El trabajo nunca se queda en un bucle con los propios que esperan: `DrainAsync` termina cuando una tanda no aplica nada, y esa tanda no los elige.
+  - Su coste: una búsqueda por `IX_DualTeamTree_MemberId` por cada miembro sin colocar con cambios pendientes (Q-R26).
+
+- [ ] **Paso 6.** `DualTeamNodes.RemoveAsync`. El borrado de la Tarea 7, Paso 2 pasa a conservar los propios y a devolver a la cola lo ya aplicado del miembro. Va antes de borrar el nodo, en la misma transacción, con `dual-tree` en exclusivo:
+
+```csharp
+        if (db.Database.IsRelational())
+        {
+            // Plan Q (revision C1): los pendientes DE PIERNA con arranque en este nodo se descartan (su valor ya esta en el
+            // valor verdadero sumado y restado). Plan Q (DQ13): los PROPIOS son del miembro, no del nodo: se quedan, y lo
+            // ya aplicado de el (SelfQualified) vuelve a la cola como propio. Si se le vuelve a colocar, su nodo nuevo
+            // (SelfQualified = 0) lo recibe al vaciar; si no, espera.
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM DualLegDeltas WHERE StartMemberId = {memberId} AND OwnChange = 0", ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
+SELECT d.MemberId, 0, 0, 0, d.SelfQualified, 1, {now}, {by}
+FROM DualTeamTree d
+WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct);
+        }
+```
+
+  En `EscritoresDelBinarioTests`, el motivo de `LegPointMaintenance.cs` pasa a «solo puntos, contadores y calificados (UPDATE de LeftLeg*/RightLeg*/SelfQualified), no la estructura».
+
+- [ ] **Paso 7.** El manejador (`GetRankProgressHandler.cs:135-146`) deja de contar el binario:
+
+```csharp
+        // Plan Q (DQ13): los calificados del binario son contadores de pierna que mantiene la cola (Tarea 8b): O(1), con el
+        // mismo atraso que los puntos de pierna (Q-R1). Antes, el rango de la clave unido a las activas: O(equipo).
+        var placementQualifiedCount = dualNode is null ? 0 : dualNode.LeftLegQualified + dualNode.RightLegQualified;
+```
+
+  Se borra la declaración `var placementQualifiedCount = 0;` de `:115`. `DualSubtree.MemberIdsUnder` (Tarea 3b) se queda como el recuento de referencia de la verificación del script 04 (Paso 8) y de su prueba de plan.
+
+- [ ] **Paso 8.** `Scripts/sql/plan-p/04-contadores-y-colas.sql` recalcula también los calificados y `DualTeamSize`, en la misma pasada de abajo arriba, y neutraliza la cola de calificados.
+  - **Candado y cola.** Justo después de tomar `dual-tree` (`:40-42`) toma `dual-leg-deltas` en exclusivo. La Tarea 14 reutiliza este candado para neutralizar los contadores.
+
+```sql
+    -- Plan Q (DQ13): este script recalcula los CALIFICADOS desde cero. Lo pendiente de calificados ya va dentro del
+    -- recalculo: se pone a cero en los de pierna y se borran los propios; al final se vuelven a encolar, como propios,
+    -- las activas de los miembros sin nodo vivo (esperan a su colocacion).
+    DECLARE @cola int;
+    EXEC @cola = sp_getapplock @Resource = N'dual-leg-deltas', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
+    IF @cola < 0
+        THROW 51114, N'La cola de piernas se esta vaciando (dual-leg-deltas ocupado): parar los servicios.', 1;
+    IF OBJECT_ID(N'dbo.DualLegDeltas') IS NOT NULL
+    BEGIN
+        BEGIN TRAN;
+        UPDATE DualLegDeltas SET QualifiedCount = 0 WHERE OwnChange = 0 AND QualifiedCount <> 0;
+        DELETE FROM DualLegDeltas WHERE OwnChange = 1;
+        DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0 AND QualifiedCount = 0;
+        COMMIT;
+    END
+```
+
+  - **`#n`** gana tres columnas (`CAST(0 AS int) AS Yo, CAST(0 AS int) AS IzqQ, CAST(0 AS int) AS DerQ`; el índice `ix_p` las incluye), y antes del bucle:
+
+```sql
+    UPDATE n SET Yo = a.Activas
+    FROM #n n
+    JOIN (SELECT CAST(MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId, COUNT(*) AS Activas
+          FROM MembershipSubscriptions WHERE SubscriptionStatus = 1 GROUP BY MemberId) a ON a.MemberId = n.MemberId;
+```
+
+  - **En el bucle** (`:62-71`), los `OUTER APPLY` de cada lado devuelven además `c.Yo + c.IzqQ + c.DerQ AS Q`, y el `SET` añade `IzqQ = ISNULL(l.Q, 0), DerQ = ISNULL(r.Q, 0)`.
+  - **La escritura por tandas** (`:79-81`) pasa a:
+
+```sql
+        UPDATE TOP (20000) d
+        SET LeftLegCount = n.Izq, RightLegCount = n.Der,
+            SelfQualified = n.Yo, LeftLegQualified = n.IzqQ, RightLegQualified = n.DerQ
+        FROM DualTeamTree d JOIN #n n ON n.MemberId = d.MemberId
+        WHERE d.IsDeleted = 0 AND (d.LeftLegCount <> n.Izq OR d.RightLegCount <> n.Der OR d.SelfQualified <> n.Yo
+                                   OR d.LeftLegQualified <> n.IzqQ OR d.RightLegQualified <> n.DerQ);
+```
+
+  - **Después**, `DualTeamSize` (DQ15) por tandas igual, y los propios de los miembros sin nodo:
+
+```sql
+    SET @hecho = 1;
+    WHILE @hecho > 0
+    BEGIN
+        BEGIN TRAN;
+        UPDATE TOP (20000) s SET DualTeamSize = n.Izq + n.Der
+        FROM MemberStatistics s JOIN #n n ON n.MemberId = s.MemberId
+        WHERE s.DualTeamSize <> n.Izq + n.Der;
+        SET @hecho = @@ROWCOUNT;
+        COMMIT;
+    END
+
+    INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
+    SELECT s.MemberId, 0, 0, 0, COUNT(*), 1, GETDATE(), N'plan-q-calificados'
+    FROM MembershipSubscriptions s
+    WHERE s.SubscriptionStatus = 1
+      AND NOT EXISTS (SELECT 1 FROM DualTeamTree d WHERE d.MemberId = s.MemberId AND d.IsDeleted = 0)
+    GROUP BY s.MemberId;
+    DECLARE @aparcados int = @@ROWCOUNT;
+```
+
+  - **Verificación final.** Las cinco raíces con más nodos: su `LeftLegQualified + RightLegQualified` frente al recuento al vuelo de las activas de su rango (la misma consulta que `DualSubtree.MemberIdsUnder`). La salida añade `CalificadosDistintos` (debe ser 0) y `PropiosAparcados = @aparcados`.
+  - `dual-leg-deltas` se suelta junto a `dual-tree`, en la salida normal (`:109`) y en el `CATCH` (`:119-120`), con `IF APPLOCK_MODE(N'public', N'dual-leg-deltas', N'Session') <> N'NoLock' EXEC sp_releaseapplock …`.
+
+  Ejecutar en local con los servicios parados: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/04-contadores-y-colas.sql`. **Esperado:** `CalificadosDistintos = 0`, y AMB-700829 con `LeftLegQualified + RightLegQualified` = 12.060 (el recuento de la Tarea 3b), salvo que haya cambiado el número de suscripciones activas. Una segunda ejecución cambia 0 filas.
+
+- [ ] **Paso 9.** La regla `EscritoresDeSuscripcionesTests`. Nadie escribe `MembershipSubscriptions` por fuera del seguimiento de cambios de EF, porque se saltaría el interceptor:
+
+```csharp
+using System.Text.RegularExpressions;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
+
+namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
+
+/// <summary>
+/// Regla del Plan Q (DQ13): los calificados del equipo los mueve QualifiedTeamCountsInterceptor al guardar. Un escritor de
+/// MembershipSubscriptions por fuera del seguimiento de cambios (ExecuteUpdate/ExecuteDelete, ExecuteSql, SQL crudo con
+/// INSERT/UPDATE/DELETE/MERGE o SqlBulkCopy) cambiaria suscripciones activas sin mover los contadores. Se mira, sin
+/// comentarios, en los .cs de los proyectos que no son de pruebas (sin Migrations) y en los .cs, .sql y .ps1 de Scripts/,
+/// DeploymentScripts/ y la raiz. Complementa a EstadosSinInterceptorTests (Plan J), que mira solo C#.
+/// </summary>
+public class EscritoresDeSuscripcionesTests
+{
+    private static readonly Dictionary<string, string> Revisados = new()
+    {
+        ["Scripts/sql/plan-p/escala/altas/c-pedidos.sql"] =
+            "generador de escala (solo MLMConquerorGlobalEditionDb_Escala); despues corren 04-contadores-y-colas.sql y 04-calificados-de-inscripcion.sql",
+        ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "solo lectura: el INSERT es a una tabla temporal",
+    };
+
+    private static readonly Regex EscrituraSql = new(
+        @"\b(INSERT|UPDATE|DELETE|MERGE)\b[^;]{0,600}?\bMembershipSubscriptions\b|DestinationTableName\s*=\s*""[^""]*MembershipSubscriptions",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex EscrituraEf = new(
+        @"\bMembershipSubscriptions\b[^;]*?\.\s*(ExecuteUpdate|ExecuteUpdateAsync|ExecuteDelete|ExecuteDeleteAsync)\s*\(" +
+        @"|\bExecuteSql\w*\s*\([^;]*\bMembershipSubscriptions\b",
+        RegexOptions.Compiled);
+    private static readonly Regex ComentarioCs = new(@"//[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);
+    private static readonly Regex ComentarioSql = new(@"--[^\r\n]*|/\*[\s\S]*?\*/", RegexOptions.Compiled);
+
+    private static IEnumerable<string> Ficheros(string raiz)
+    {
+        var sep = Path.DirectorySeparatorChar;
+        foreach (var proyecto in Directory.GetDirectories(raiz, "MLMConquerorGlobalEdition.*")
+                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal)))
+        foreach (var f in Directory.EnumerateFiles(proyecto, "*.cs", SearchOption.AllDirectories))
+            if (!f.Contains($"{sep}obj{sep}") && !f.Contains($"{sep}bin{sep}") && !f.Contains($"{sep}Migrations{sep}"))
+                yield return f;
+        foreach (var carpeta in new[] { "Scripts", "DeploymentScripts" }.Select(c => Path.Combine(raiz, c)).Where(Directory.Exists))
+        foreach (var f in Directory.EnumerateFiles(carpeta, "*.*", SearchOption.AllDirectories))
+            if (EsScript(f) && !f.Contains($"{sep}obj{sep}") && !f.Contains($"{sep}bin{sep}"))
+                yield return f;
+        foreach (var f in Directory.EnumerateFiles(raiz, "*.*", SearchOption.TopDirectoryOnly).Where(EsScript))
+            yield return f;
+    }
+
+    private static bool EsScript(string f) =>
+        f.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase)
+        || f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+
+    [Fact]
+    public void Nadie_escribe_suscripciones_por_fuera_del_interceptor()
+    {
+        var raiz = ReportesDb.RaizDelRepositorio();
+        var hallazgos = new List<string>();
+        foreach (var archivo in Ficheros(raiz))
+        {
+            var relativo = Path.GetRelativePath(raiz, archivo).Replace('\\', '/');
+            if (Revisados.ContainsKey(relativo)) continue;
+            var esSql = archivo.EndsWith(".sql", StringComparison.OrdinalIgnoreCase);
+            var texto = (esSql ? ComentarioSql : ComentarioCs).Replace(File.ReadAllText(archivo), string.Empty);
+            var m = EscrituraSql.Match(texto);
+            if (!m.Success && !esSql) m = EscrituraEf.Match(texto);
+            if (m.Success) hallazgos.Add($"{relativo}: {m.Value[..Math.Min(120, m.Value.Length)]}");
+        }
+        hallazgos.Should().BeEmpty("un cambio de suscripciones fuera de EF no mueve los calificados del equipo (DQ13): " +
+                                   "pasar por el seguimiento de cambios o anadirlo a Revisados con su recalculo");
+    }
+
+    [Fact]
+    public void Los_revisados_siguen_existiendo()
+    {
+        var raiz = ReportesDb.RaizDelRepositorio();
+        Revisados.Keys.Where(r => !File.Exists(Path.Combine(raiz, r))).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("UPDATE MembershipSubscriptions SET SubscriptionStatus = 4 WHERE MemberId = @m")]
+    [InlineData("update s set SubscriptionStatus = 1 from [dbo].[MembershipSubscriptions] s")]
+    [InlineData("INSERT INTO MembershipSubscriptions (MemberId) VALUES ('x')")]
+    [InlineData("MERGE MembershipSubscriptions AS t USING s ON t.Id = s.Id")]
+    [InlineData("bulk.DestinationTableName = \"dbo.MembershipSubscriptions\";")]
+    public void Detecta_las_escrituras_por_SQL(string codigo) => EscrituraSql.IsMatch(codigo).Should().BeTrue();
+
+    [Theory]
+    [InlineData("await _db.MembershipSubscriptions.Where(s => s.MemberId == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.SubscriptionStatus, MembershipStatus.Cancelled));")]
+    [InlineData("await _db.Database.ExecuteSqlRawAsync(\"DELETE FROM MembershipSubscriptions WHERE Id = {0}\", id);")]
+    public void Detecta_las_escrituras_masivas_por_EF(string codigo) => EscrituraEf.IsMatch(codigo).Should().BeTrue();
+}
+```
+
+  En verde a la primera con el código de hoy (comprobado el 2026-10-19 con las mismas expresiones: solo salen los dos revisados).
+
+- [ ] **Paso 10.** En verde: `QualifiedTeamDeltasTests`, `SqlServerCalificadosDelBinarioTests`, `SqlServerColaDePiernasTests`, `EscritoresDelBinarioTests`, `EscritoresDeSuscripcionesTests` y `SinRutaEnElBinarioTests` (filtro `Binario` de BizCenter.Tests), `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` y, en serie, Signups.Tests, AdminAPI.Tests y Billing.Tests: el interceptor corre en todos sus guardados. Las pruebas de SQL Server que confirman suscripciones sin transacción que se deshace borran también sus propios al limpiar (`DELETE FROM DualLegDeltas WHERE StartMemberId = …`, junto a su borrado de `MemberStatisticDeltas`, hoy en `SqlServerEntraxSettlementTests.cs:69`). Para comprobar que ninguna deja filas en la base local, antes y después de las suites: `SELECT COUNT(*) FROM DualLegDeltas WHERE OwnChange = 1 AND CreatedBy = 'qualified-count'`. Commit: `Plan Q: los calificados del binario se mantienen por la cola de piernas desde un interceptor de suscripciones`.
 
 ### Tarea 9: los lectores que pagan vacían antes de leer
 
@@ -2011,12 +2810,13 @@ SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
     BEGIN
         BEGIN TRAN;
         UPDATE DualLegDeltas SET Points = 0 WHERE Points <> 0;
-        DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0;
+        -- Tarea 8b: un delta con calificados pendientes (o un propio) no se borra: este script no los recalcula.
+        DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0 AND QualifiedCount = 0 AND OwnChange = 0;
         COMMIT;
     END
     ```
 
-    En `04`, lo mismo con `NodeCount` (este script recalcula los contadores) y el error `51113`:
+    En `04`, lo mismo con `NodeCount` (este script recalcula los contadores). **El candado ya lo toma la Tarea 8b** (error `51114`), así que aquí solo se añade, dentro de su transacción y antes de sus `DELETE`, `UPDATE DualLegDeltas SET NodeCount = 0 WHERE NodeCount <> 0;`. El bloque de abajo es el de referencia: su `51113` no se usa en `04`.
 
     ```sql
     -- Plan Q (revision I3): este script recalcula los CONTADORES de pierna desde cero. Lo pendiente de contadores ya va
@@ -2029,7 +2829,7 @@ SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
     BEGIN
         BEGIN TRAN;
         UPDATE DualLegDeltas SET NodeCount = 0 WHERE NodeCount <> 0;
-        DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0;
+        DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0 AND QualifiedCount = 0 AND OwnChange = 0;
         COMMIT;
     END
     ```
@@ -2713,6 +3513,392 @@ DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;";
   - La cota de la cola de rango es `GenealogyUpline.EnrollmentLevels`, la misma constante que usan las Tareas 16 y 17: cambiarla (Q1) es cambiar un número.
 - [ ] **Paso 3.** En verde: la prueba nueva, `ApplyMemberStatisticDeltasJobTests` y `SignupRankInputsTests` (`dotnet test MLMConquerorGlobalEdition.Signups.Tests` entero y el filtro `SqlServerDeltasPorLinea` de BizCenter.Tests). Commit: `Plan Q: el trabajo de deltas expande la linea de patrocinio en SQL y aplica las estadisticas con un MERGE por tanda en una transaccion`.
 
+### Tarea 19b: calificados de inscripción mantenidos por la cola de estadísticas (DQ13)
+
+Lo mismo que la Tarea 8b, en el árbol de inscripción. `MemberStatistics` gana `EnrollmentQualifiedTeamMembers`, junto a `EnrollmentTeamSize`, y `MemberStatisticDeltas` gana su delta. El mismo componente (`QualifiedTeamDeltas`) encola, por cada cambio neto de un miembro, una fila con un alcance nuevo:
+- `Scope = AncestorsOf`;
+- `MemberId` es el miembro cuya suscripción cambió;
+- el trabajo la aplica a cada ascendiente de su `Node` (distancia ≥ 1), no a él.
+
+El progreso de rango lee el contador.
+- **Sin carrera:** el nodo de inscripción se crea en el alta, en el mismo guardado que la suscripción `Pending` (`SignupMemberHandler.cs:176-193`, `SignupAmbassadorHandler.cs:236-272`, `RootAmbassadorSeeder.cs:68-108`). Así que cuando una suscripción pasa a `Active`, su miembro ya tiene nodo.
+- **Sin movimientos:** nada mueve nodos de inscripción hoy. Lo único que escribe `GenealogyTree` son esas tres altas (Q-R28).
+- **Rango:** la evaluación de rango no lee estos contadores, así que una fila `AncestorsOf` no encola evaluaciones.
+
+**Files:**
+- Modify: `MLMConquerorGlobalEdition.Domain/Entities/Member/MemberStatisticEntity.cs` (`EnrollmentQualifiedTeamMembers`)
+- Modify: `MLMConquerorGlobalEdition.Domain/Entities/Member/MemberStatisticDelta.cs` (`EnrollmentQualifiedTeamMembersDelta`)
+- Modify: `MLMConquerorGlobalEdition.Domain/Entities/Member/MemberStatisticDeltaScope.cs` (de la Tarea 18: `AncestorsOf = 2`)
+- Create: migración `CalificadosDeInscripcion`
+- Modify: `MLMConquerorGlobalEdition.Repository/Services/Teams/QualifiedTeamDeltas.cs` (de la Tarea 8b: la fila de estadísticas)
+- Modify: `MLMConquerorGlobalEdition.Repository/Jobs/ApplyMemberStatisticDeltasJob.cs` (de la Tarea 19: `ApplyBatchSql` y la rama InMemory)
+- Modify: `MLMConquerorGlobalEdition.RankEngine/Features/GetRankProgress/GetRankProgressHandler.cs:110-133`
+- Create: `Scripts/sql/plan-q/04-calificados-de-inscripcion.sql`
+- Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/QualifiedTeamDeltasTests.cs`, `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/BinarioDb.cs` (`LimpiarAsync`)
+- Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerDeltasPorLineaTests.cs` (de la Tarea 19)
+- Modify: `MLMConquerorGlobalEdition.Signups.Tests/Jobs/ApplyMemberStatisticDeltasJobTests.cs`
+- Modify: `MLMConquerorGlobalEdition.Signups.Tests/Features/Signups/ActivacionUnDeltaPorAltaTests.cs` (de la Tarea 18), `AltaPorCriptoTests.cs:560, :627, :695` y `CompleteSignupHandlerTests.cs:741, :826`
+- Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs:55-95`
+
+- [ ] **Paso 1.** Pruebas en rojo.
+  - **InMemory, en `QualifiedTeamDeltasTests`.** La activación y la cancelación dejan una fila `AncestorsOf` con su signo:
+
+```csharp
+    private static Task<List<int>> DeLineaAsync(AppDbContext db, string memberId) =>
+        db.MemberStatisticDeltas.AsNoTracking()
+            .Where(d => d.MemberId == memberId && d.Scope == MemberStatisticDeltaScope.AncestorsOf)
+            .OrderBy(d => d.Id).Select(d => d.EnrollmentQualifiedTeamMembersDelta).ToListAsync();
+
+    [Fact]
+    public async Task Activar_y_cancelar_encolan_una_fila_para_los_ascendientes_de_inscripcion()
+    {
+        var (db, s) = await ConSuscripcionAsync(MembershipStatus.Pending);
+        (await DeLineaAsync(db, "AMB-Q1")).Should().BeEmpty();
+        s.SubscriptionStatus = MembershipStatus.Active;
+        await db.SaveChangesAsync();
+        s.SubscriptionStatus = MembershipStatus.Cancelled;
+        await db.SaveChangesAsync();
+        (await DeLineaAsync(db, "AMB-Q1")).Should().Equal(1, -1);
+        (await db.MemberStatisticDeltas.AsNoTracking().Where(d => d.Scope == MemberStatisticDeltaScope.AncestorsOf)
+            .Select(d => new { d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta, d.SourceMemberId })
+            .ToListAsync()).Should().OnlyContain(d => d.EnrollmentPointsDelta == 0 && d.EnrollmentTeamSizeDelta == 0
+                                                     && d.QualifiedSponsoredMembersDelta == 0 && d.SourceMemberId == "AMB-Q1");
+    }
+```
+
+    (`using MLMConquerorGlobalEdition.Domain.Entities.Member;`.) `Repetir_el_registro_en_el_mismo_guardado_no_duplica` añade: `(await DeLineaAsync(db, "AMB-Q1")).Should().Equal(1);`.
+  - **InMemory, en `ApplyMemberStatisticDeltasJobTests`.** Una fila `AncestorsOf` sobre L11 sube a L0..L10 y no a L11, y no encola evaluaciones de rango:
+
+```csharp
+    [Fact]
+    public async Task ExecuteAsync_AncestorsOf_SubePorLosAscendientesSinElPropioNiCola()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var linea = Enumerable.Range(0, 12).Select(i => $"AMB-L{i:D2}").ToArray();
+        for (var i = 0; i < linea.Length; i++)
+            db.GenealogyTree.Add(new GenealogyEntity
+            {
+                MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
+                HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                CreatedBy = "test", CreationDate = FixedNow
+            });
+        var delta = BuildDelta(linea[11], enrollmentPoints: 0, teamSize: 0, qsm: 0);
+        delta.Scope = MemberStatisticDeltaScope.AncestorsOf;
+        delta.EnrollmentQualifiedTeamMembersDelta = 1;
+        db.MemberStatisticDeltas.Add(delta);
+        await db.SaveChangesAsync();
+
+        await CreateJob(db).ExecuteAsync(CancellationToken.None);
+
+        var stats = await db.MemberStatistics.ToDictionaryAsync(s => s.MemberId);
+        linea[..11].Should().OnlyContain(id => stats[id].EnrollmentQualifiedTeamMembers == 1);
+        stats.ContainsKey(linea[11]).Should().BeFalse("el propio no esta en su equipo");
+        (await db.RankEvaluationQueue.CountAsync()).Should().Be(0, "la evaluacion de rango no lee los calificados");
+        (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
+    }
+```
+
+  - **SQL Server, en `SqlServerDeltasPorLineaTests`.** La coherencia tras aplicar: una línea de 12 con suscripciones creadas por el guardado normal (el interceptor encola), una activa cancelada y una pendiente activada después. Tras el trabajo, cada uno tiene el recuento al vuelo al que sustituye el contador (el de la Tarea 2):
+
+```csharp
+    [SqlServerFact]
+    public async Task Los_calificados_de_inscripcion_coinciden_con_el_recuento_tras_aplicar()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        var ids = Enumerable.Range(0, 12).Select(_ => SqlServerReportes.NuevoId("DQ")).ToArray();
+        var subs = new List<MembershipSubscription>();
+        for (var i = 0; i < ids.Length; i++)
+        {
+            ReportesDb.Miembro(db, ids[i], i == 0 ? null : ids[i - 1]);
+            ReportesDb.Nodo(db, ids[i], i == 0 ? null : ids[i - 1], ReportesDb.Ruta(ids[..(i + 1)]), i + 1);
+            ReportesDb.Puntos(db, ids[i], 0);
+            subs.Add(ReportesDb.Suscripcion(db, ids[i], 2, i % 3 == 0 ? MembershipStatus.Pending : MembershipStatus.Active, ReportesDb.Base));
+        }
+        await db.SaveChangesAsync();
+        subs[7].SubscriptionStatus = MembershipStatus.Cancelled;   // era Active
+        subs[9].SubscriptionStatus = MembershipStatus.Active;   // era Pending
+        await db.SaveChangesAsync();
+
+        await new ApplyMemberStatisticDeltasJob(db, new Reloj(), NullLogger<ApplyMemberStatisticDeltasJob>.Instance).ExecuteAsync();
+
+        foreach (var id in ids)
+        {
+            var nodo = await db.GenealogyTree.AsNoTracking().CurrentOfAsync(id);
+            var alVuelo = await (
+                from g in db.GenealogyTree.AsNoTracking().CurrentUnder(nodo!.Node)
+                where g.MemberId != id
+                join s in db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+                where s.SubscriptionStatus == MembershipStatus.Active
+                select s.Id).CountAsync();
+            var contador = await db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == id)
+                .OrderBy(s => s.Id).Select(s => s.EnrollmentQualifiedTeamMembers).FirstAsync();
+            contador.Should().Be(alVuelo, id);
+        }
+        await tx.RollbackAsync();
+    }
+```
+
+    (`using MLMConquerorGlobalEdition.Domain.Entities.Membership;` y `using MLMConquerorGlobalEdition.Repository.Queries;`.)
+  - **SQL Server, en `RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs`.** `Los_calificados_del_equipo_salen_de_una_consulta_sin_la_lista_de_ids` (`:55-95`) pasa a llamarse `Los_calificados_de_inscripcion_salen_del_contador`. Misma siembra; antes de sembrar, `UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0` y `ReportesDb.Puntos(db, x, 0)` para R, A, B y C. Tras el `SaveChangesAsync`, aplica la cola con `new ApplyMemberStatisticDeltasJob(db, new RelojJob(), NullLogger<ApplyMemberStatisticDeltasJob>.Instance).ExecuteAsync()` (`RelojJob` implementa `MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider`, que es el que pide el trabajo). Comprueba:
+    - `EnrollmentQualifiedTeamMembers` = 3, como antes;
+    - ningún comando del manejador une `GenealogyTree` con `MembershipSubscriptions`: `cap.Textos.Should().NotContain(t => t.Contains("GenealogyTree") && t.Contains("MembershipSubscriptions"))`;
+    - se conserva la aserción de que no viaja la lista de ids.
+
+  **Esperado:** no compilan (no existen `AncestorsOf`, `EnrollmentQualifiedTeamMembers` ni su delta).
+
+- [ ] **Paso 2.** Entidades, junto a sus vecinas:
+
+```csharp
+    // MemberStatisticEntity, despues de EnrollmentTeamSize
+    /// <summary>
+    /// Plan Q (DQ13): suscripciones activas del equipo de inscripcion (sin el propio). La mantiene la cola de
+    /// estadisticas (filas AncestorsOf de QualifiedTeamDeltas); la lee el progreso de rango. Diferida como el resto (Q-R1).
+    /// </summary>
+    public int EnrollmentQualifiedTeamMembers { get; set; }
+
+    // MemberStatisticDelta, despues de QualifiedSponsoredMembersDelta
+    /// <summary>Plan Q (DQ13): cambio de EnrollmentQualifiedTeamMembers.</summary>
+    public int EnrollmentQualifiedTeamMembersDelta { get; set; }
+
+    // MemberStatisticDeltaScope, despues de SponsorLine
+    /// <summary>
+    /// Plan Q (DQ13): MemberId es el miembro cuya suscripcion cambio; el delta se aplica a cada ascendiente de su Node
+    /// (distancia 1 en adelante), no a el. No encola evaluaciones de rango. Lo escribe solo QualifiedTeamDeltas.
+    /// </summary>
+    AncestorsOf = 2
+```
+
+  `dotnet ef migrations add CalificadosDeInscripcion …`. **Esperado:** dos columnas `int` NOT NULL con valor 0. Aplicar en local con `--connection`.
+
+- [ ] **Paso 3.** `QualifiedTeamDeltas.Record` (Tarea 8b) encola también la fila de estadísticas, con la misma idempotencia. Dentro del bucle, después del `DualLegDelta`, y con `yaEncoladosInscripcion` calculado como `yaEncolados` pero sobre las `MemberStatisticDelta` añadidas con `Scope == AncestorsOf` y `CreatedBy == Actor`:
+
+```csharp
+            var faltaInscripcion = cambios.GetValueOrDefault(memberId) - yaEncoladosInscripcion.GetValueOrDefault(memberId);
+            if (faltaInscripcion != 0)
+                context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
+                {
+                    MemberId = memberId, Scope = MemberStatisticDeltaScope.AncestorsOf,
+                    EnrollmentQualifiedTeamMembersDelta = faltaInscripcion,
+                    SourceMemberId = memberId, IsApplied = false, CreatedBy = Actor, CreationDate = now
+                });
+```
+
+  El `continue` de `falta == 0` se cambia para que cada cola decida por su cuenta: primero las dos cuentas y después cada `if`. El resumen de la clase dice «un delta propio de la cola de piernas y una fila `AncestorsOf` de la cola de estadísticas».
+
+- [ ] **Paso 4.** `ApplyMemberStatisticDeltasJob` (Tarea 19).
+  - **`ApplyBatchSql`.** Empieza tomando el candado de la cola de estadísticas, con el que `04-calificados-de-inscripcion.sql` la excluye (Paso 6). Sus filas llevan el alcance y el delta nuevo, y la cola de rango ignora `AncestorsOf`. Sustituye al de la Tarea 19:
+
+```sql
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+DECLARE @candado int;
+EXEC @candado = sp_getapplock @Resource = N'member-statistic-deltas', @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 30000;
+IF @candado < 0
+    THROW 51115, N'La cola de estadisticas esta ocupada (member-statistic-deltas): un recalculo en curso.', 1;
+DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #exp; DROP TABLE IF EXISTS #agg;
+CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Scope int NOT NULL,
+                    P int NOT NULL, T int NOT NULL, Q int NOT NULL, QQ int NOT NULL,
+                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL);
+INSERT INTO #lote
+SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta,
+       EnrollmentQualifiedTeamMembersDelta, CreatedBy
+FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id;
+
+-- Scope 0: la fila es del propio MemberId. Scope 1 (SponsorLine): MemberId es el patrocinador y el delta va a el y a cada
+-- ascendiente de su Node vigente. Scope 2 (AncestorsOf): MemberId es quien cambio y el delta va a sus ascendientes
+-- (Distancia >= 1), no a el.
+SELECT x.MemberId, x.Distancia, l.Scope, l.P, l.T,
+       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.QQ, l.CreatedBy
+INTO #exp
+FROM #lote l
+CROSS APPLY (
+    SELECT l.MemberId AS MemberId, 0 AS Distancia WHERE l.Scope = 0
+    UNION ALL
+    SELECT a.MemberId, an.Distancia
+    FROM (SELECT TOP 1 g.Node FROM GenealogyTree g
+          WHERE g.MemberId = l.MemberId AND g.IsDeleted = 0 AND g.Node IS NOT NULL
+          ORDER BY g.CreationDate DESC, g.Id DESC) s
+    CROSS APPLY dbo.GenealogyAncestors(s.Node) an
+    JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
+    WHERE l.Scope = 1 OR (l.Scope = 2 AND an.Distancia >= 1)
+) x;
+
+SELECT MemberId, SUM(P) AS P, SUM(T) AS T, SUM(Q) AS Q, SUM(QQ) AS QQ, MIN(CreatedBy) AS CreatedBy
+INTO #agg FROM #exp GROUP BY MemberId;
+
+MERGE INTO MemberStatistics WITH (HOLDLOCK) AS t
+USING #agg AS s ON t.MemberId = s.MemberId
+WHEN MATCHED THEN UPDATE SET
+    EnrollmentPoints               = t.EnrollmentPoints               + s.P,
+    EnrollmentTeamSize             = t.EnrollmentTeamSize             + s.T,
+    QualifiedSponsoredMembers      = t.QualifiedSponsoredMembers      + s.Q,
+    EnrollmentQualifiedTeamMembers = t.EnrollmentQualifiedTeamMembers + s.QQ
+WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize,
+        EnrollmentTeamSize, DualTeamPoints, EnrollmentPoints, QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
+        EnrollmentQualifiedTeamMembers,
+        EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth, DualTeamPointsGrowth,
+        CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
+    VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, s.QQ, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
+
+-- Evaluacion de rango inmediata solo hasta @niveles del patrocinador (DQ5), y nunca por AncestorsOf: el rango no lee
+-- los calificados del equipo.
+INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,
+                                 ProcessedBy, ErrorMessage, RetryCount, CreationDate, CreatedBy)
+SELECT e.MemberId, e.MemberId, @enrollment, @now, 0, NULL, NULL, NULL, 0, @now, N'delta-apply'
+FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles AND Scope <> 2) e
+WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
+                  WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
+
+UPDATE d SET IsApplied = 1, AppliedAt = @now FROM MemberStatisticDeltas d JOIN #lote l ON l.Id = d.Id;
+SELECT COUNT(*) AS [Value] FROM #lote;
+DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;
+```
+
+  - **La rama InMemory** (`ApplyBatchInMemoryAsync`):
+    - la expansión trata `AncestorsOf` como `SponsorLine`, pero sin la fila de distancia 0. En el bucle, `if (d.Scope != MemberStatisticDeltaScope.AncestorsOf || distancia > 0) filas.Add((id, distancia, d));`;
+    - el grupo suma `QQ = g.Sum(f => f.Delta.EnrollmentQualifiedTeamMembersDelta)` y lo aplica a `EnrollmentQualifiedTeamMembers` al actualizar y al crear;
+    - `Encolar` pasa a `g.Any(f => f.Delta.Scope != MemberStatisticDeltaScope.AncestorsOf && f.Distancia < GenealogyUpline.EnrollmentLevels)`.
+
+- [ ] **Paso 5.** El manejador. Las líneas 110-133 (el nodo de inscripción y el recuento) pasan a:
+
+```csharp
+        // Plan Q (DQ13): los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas, Tarea 19b): O(1),
+        // diferidos como el resto de contadores (Q-R1). Antes, el rango del Node unido a las activas: O(equipo).
+        var enrollmentQualifiedCount = await _db.MemberStatistics.AsNoTracking()
+            .Where(s => s.MemberId == memberId).OrderBy(s => s.Id)
+            .Select(s => s.EnrollmentQualifiedTeamMembers).FirstOrDefaultAsync(ct);
+
+        // ET points via the single source of truth (replaces the former headcount).
+        var enrollmentTeamPoints = await _enrollment.GetRawEnrollmentTeamPointsAsync(memberId, ct);
+        var personalCustomerPoints = await _personal.GetPersonalCustomerPointsAsync(memberId, ct);
+```
+
+  Sale el `using MLMConquerorGlobalEdition.Repository.Queries;` si ya no se usa. Con la Tarea 8b, el manejador no cuenta ningún equipo: lee el nodo binario, una fila de estadísticas y los servicios de puntos.
+
+- [ ] **Paso 6.** `Scripts/sql/plan-q/04-calificados-de-inscripcion.sql`, el relleno y el recálculo desde cero. Va de abajo arriba por `Level`, por conjuntos, con los servicios parados, y neutraliza en la cola la parte que recalcula.
+
+```sql
+/*
+Plan Q, Tarea 19b (DQ13). Recalcula MemberStatistics.EnrollmentQualifiedTeamMembers (suscripciones activas del equipo de
+inscripcion, sin el propio) desde cero, de abajo arriba por Level: lo de un nodo = sus activas + lo de sus hijos. Antes,
+pone a cero en la cola de estadisticas lo pendiente de calificados (ya va dentro del recalculo). Toma
+'member-statistic-deltas' en exclusivo (el trabajo de deltas lo pide en cada tanda). Escribe por tandas de 20.000.
+Idempotente: una segunda ejecucion cambia 0 filas. Necesita un solo nodo vivo por miembro (Tarea 21, DQ9).
+  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-q/04-calificados-de-inscripcion.sql
+*/
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+IF N'$(Confirmo)' NOT IN (N'LOCAL', N'ESCALA')
+    THROW 51116, N'Ejecutar con -v Confirmo=LOCAL (o ESCALA en la base de escala).', 1;
+IF NOT ((N'$(Confirmo)' = N'LOCAL'  AND DB_NAME() = N'MLMConquerorGlobalEditionDb')
+     OR (N'$(Confirmo)' = N'ESCALA' AND DB_NAME() = N'MLMConquerorGlobalEditionDb_Escala'))
+    THROW 51117, N'Confirmo no corresponde a esta base.', 1;
+IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAVING COUNT(*) > 1)
+    THROW 51118, N'Hay miembros con mas de un nodo vivo: primero Scripts/sql/plan-q/01-nodos-de-inscripcion-repetidos.sql.', 1;
+
+DECLARE @inicio datetime2 = SYSDATETIME();
+BEGIN TRY
+    DECLARE @candado int;
+    EXEC @candado = sp_getapplock @Resource = N'member-statistic-deltas', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
+    IF @candado < 0
+        THROW 51119, N'El trabajo de deltas esta aplicando una tanda (member-statistic-deltas ocupado): parar los servicios.', 1;
+
+    BEGIN TRAN;
+    UPDATE MemberStatisticDeltas SET EnrollmentQualifiedTeamMembersDelta = 0
+    WHERE IsApplied = 0 AND EnrollmentQualifiedTeamMembersDelta <> 0;
+    UPDATE MemberStatisticDeltas SET IsApplied = 1, AppliedAt = GETDATE()
+    WHERE IsApplied = 0 AND Scope = 2;   -- AncestorsOf: no llevan otra cosa
+    COMMIT;
+
+    DROP TABLE IF EXISTS #g;
+    SELECT CAST(g.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId,
+           CAST(g.ParentMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS ParentMemberId,
+           g.Level, CAST(0 AS int) AS Yo, CAST(0 AS int) AS Sub
+    INTO #g
+    FROM GenealogyTree g
+    WHERE g.IsDeleted = 0;
+    CREATE UNIQUE CLUSTERED INDEX cx ON #g (Level, MemberId);
+    CREATE INDEX ix_p ON #g (ParentMemberId) INCLUDE (Sub);
+
+    UPDATE g SET Yo = a.Activas
+    FROM #g g
+    JOIN (SELECT CAST(MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId, COUNT(*) AS Activas
+          FROM MembershipSubscriptions WHERE SubscriptionStatus = 1 GROUP BY MemberId) a ON a.MemberId = g.MemberId;
+
+    DECLARE @nivel int = (SELECT MAX(Level) FROM #g);
+    WHILE @nivel >= 0
+    BEGIN
+        UPDATE p SET Sub = p.Yo + ISNULL(h.S, 0)
+        FROM #g p
+        OUTER APPLY (SELECT SUM(c.Sub) AS S FROM #g c WHERE c.ParentMemberId = p.MemberId) h
+        WHERE p.Level = @nivel;
+        SET @nivel -= 1;
+    END
+
+    DECLARE @hecho int = 1, @cambiados int = 0;
+    WHILE @hecho > 0
+    BEGIN
+        BEGIN TRAN;
+        UPDATE TOP (20000) s SET EnrollmentQualifiedTeamMembers = g.Sub - g.Yo
+        FROM MemberStatistics s JOIN #g g ON g.MemberId = s.MemberId
+        WHERE s.EnrollmentQualifiedTeamMembers <> g.Sub - g.Yo;
+        SET @hecho = @@ROWCOUNT;
+        SET @cambiados += @hecho;
+        COMMIT;
+    END
+
+    -- Quien tiene equipo con activas y aun no tiene fila de estadisticas: se crea, como haria el MERGE del trabajo.
+    INSERT INTO MemberStatistics (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize, EnrollmentTeamSize,
+        DualTeamPoints, EnrollmentPoints, QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
+        EnrollmentQualifiedTeamMembers, EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth, DualTeamPointsGrowth,
+        CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
+    SELECT g.MemberId, 0, 0, 0, 0, 0, 0, 0, 0, g.Sub - g.Yo, 0, 0, 0, 0, 0, 0, 0, GETDATE(), N'plan-q-calificados'
+    FROM #g g
+    WHERE g.Sub - g.Yo <> 0 AND NOT EXISTS (SELECT 1 FROM MemberStatistics s WHERE s.MemberId = g.MemberId);
+    DECLARE @creados int = @@ROWCOUNT;
+
+    EXEC sp_releaseapplock @Resource = N'member-statistic-deltas', @LockOwner = N'Session';
+
+    -- Verificacion: las cinco raices mayores, contador frente al recuento al vuelo por el rango del Node.
+    SELECT TOP 5 r.MemberId, s.EnrollmentQualifiedTeamMembers AS Contador,
+           (SELECT COUNT(*) FROM GenealogyTree g
+            JOIN MembershipSubscriptions m ON m.MemberId = g.MemberId AND m.SubscriptionStatus = 1
+            WHERE g.IsDeleted = 0 AND g.Node.IsDescendantOf(r.Node) = 1 AND g.MemberId <> r.MemberId) AS AlVuelo
+    FROM GenealogyTree r
+    JOIN MemberStatistics s ON s.MemberId = r.MemberId
+    WHERE r.IsDeleted = 0 AND r.ParentMemberId IS NULL
+    ORDER BY s.EnrollmentTeamSize DESC;
+
+    SELECT (SELECT COUNT(*) FROM #g) AS Nodos, @cambiados AS Cambiados, @creados AS Creados,
+           DATEDIFF(second, @inicio, SYSDATETIME()) AS Segundos;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK;
+    IF APPLOCK_MODE(N'public', N'member-statistic-deltas', N'Session') <> N'NoLock'
+        EXEC sp_releaseapplock @Resource = N'member-statistic-deltas', @LockOwner = N'Session';
+    THROW;
+END CATCH
+```
+
+  Ejecutar en local. **Esperado:** en la verificación, `Contador = AlVuelo` en las cinco raíces, y para AMB-700829, el valor de la Tarea 2. Una segunda ejecución da `Cambiados = 0` y `Creados = 0`.
+
+- [ ] **Paso 7.** Las pruebas que cuentan filas de `MemberStatisticDeltas` después de una activación ven ahora una fila más, la `AncestorsOf` del activado. Hoy son estas, y cada una filtra `d.Scope != MemberStatisticDeltaScope.AncestorsOf` y añade la aserción de que hay exactamente una `AncestorsOf` con `+1` para el activado:
+  - `ActivacionUnDeltaPorAltaTests` (Tarea 18): el `ContainSingle()` pasa a ser sobre `Scope == SponsorLine`;
+  - `AltaPorCriptoTests.cs:560`, `:627` y `:695`;
+  - `CompleteSignupHandlerTests.cs:741` y `:826`.
+
+  Las que esperan 0 filas (`AltaPorCriptoTests.cs:357`, `DescuentoCerradoEnElAltaTests.cs:67`, `TarjetaApagadaEnElAltaTests.cs:104`) no activan, así que siguen en 0; si alguna falla, es que activa y se corrige igual. `BinarioDb.LimpiarAsync` borra también `DELETE FROM MemberStatisticDeltas WHERE MemberId LIKE {patron}`.
+
+- [ ] **Paso 8.** En verde, en serie:
+  - `dotnet test MLMConquerorGlobalEdition.Signups.Tests` entero;
+  - en BizCenter.Tests, los filtros `Binario` y `SqlServerDeltasPorLinea`;
+  - `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests`;
+  - Billing.Tests y AdminAPI.Tests, porque también activan y cancelan.
+
+  Commit: `Plan Q: los calificados de inscripcion se mantienen por la cola de estadisticas y el progreso de rango ya no cuenta ningun equipo`.
+
 ### Tarea 20: medición rápida local del bloque
 
 **Files:**
@@ -3160,7 +4346,8 @@ public static class TeamGridLimits
         var limitado = TeamGridLimits.Limit(request, tamano);
 
         var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure: request.Sorts.Count == 0);
-        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct);
+        // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo.
+        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct, unfilteredTotal: tamano);
         await EnrichPageAsync(result.Items, ct);
         result.Limited = limitado;
         return result;
@@ -3191,7 +4378,33 @@ public static class TeamGridLimits
     }
 ```
 
-  `GetMyTeamAsync` (la lectura sin rejilla, `:77-112`) sigue llamando a `BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId)` con su orden por fecha: no cambia.
+  `GetMyTeamAsync` (la lectura sin rejilla, `:77-112`) sigue llamando a `BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId)` con su orden por fecha.
+  - **DQ14 en las lecturas sin rejilla.** `EnrollmentTeamService.GetMyTeamAsync` (`:97`) y `DualTeamService.GetMyTeamAsync` (`:77`) solo cuentan si hay filtros. En inscripción:
+
+```csharp
+        // Plan Q (DQ14): sin busqueda ni fechas el total es el tamano guardado; con filtros se cuenta el resultado.
+        var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
+        var total = sinFiltros
+            ? await _db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == memberId)
+                .OrderBy(s => s.Id).Select(s => s.EnrollmentTeamSize).FirstOrDefaultAsync(ct)
+            : await query.CountAsync(ct);
+```
+
+    En el binario: `var total = sinFiltros ? myNode.LeftLegCount + myNode.RightLegCount : await q.CountAsync(ct);`, con el mismo `sinFiltros`.
+  - **Pruebas de DQ14** (en `LimitesDeRejillaTests`): el total sin filtros sale del contador y con búsqueda se cuenta.
+
+```csharp
+    [Fact]
+    public async Task Inscripcion_el_total_sin_filtros_sale_de_EnrollmentTeamSize()
+    {
+        await using var db = await InscripcionAsync(42);
+        (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20 })).TotalCount.Should().Be(42);
+        (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "AMB-000003" }))
+            .TotalCount.Should().Be(1, "con busqueda se cuenta el resultado");
+    }
+```
+
+    Las pruebas que hoy esperan el total sin filtros de la rejilla de inscripción con un equipo sembrado y sin `MemberStatistics` siembran `EnrollmentTeamSize`. Hoy es `NodosVigentesEnLosEquiposTests.cs:44`: añade `ReportesDb.Puntos(db, Yo, 0).EnrollmentTeamSize = 2;` a su siembra. Es lo mismo que hace `MiEquipoDualTotalPorContadoresTests` con las piernas. Las demás salen al pasar la suite de BizCenter.Tests.
 - [ ] **Paso 3.** La interfaz.
   - **Contrato:** `GridPagedResult<T>` gana `public bool Limited { get; set; }`.
   - **Adaptador:** `ServerGridAdaptor` gana un parámetro, y después de leer el `payload` (`:155-157`) añade `if (OnLimited is not null) await OnLimited(payload?.Data?.Limited ?? false).ConfigureAwait(false);`.
@@ -3486,6 +4699,10 @@ WHERE m.IsDeleted = 0 AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t 
         }
         var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
                                           byStructure: request.Sorts.Count == 0, prefixTerm: prefijo);
+        // DQ14 (sustituye al ToGridResultAsync de la Tarea 22): con el prefijo el resultado ya no es el equipo entero y se
+        // cuenta, como totalSinFiltros en el binario.
+        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
+                                                   unfilteredTotal: prefijo is null ? tamano : null);
 ```
 
   - Dos pruebas más en `LimitesDeRejillaTests` (InMemory): con el límite, «000003» (subcadena del id) ya no encuentra a nadie y «amb-000003» (comienzo del id) encuentra a B.
@@ -4426,13 +5643,16 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
 ```powershell
 & sqlcmd -S . -d MLMConquerorGlobalEditionDb_Escala -E -C -b -I -v Confirmo=ESCALA -v SoloInforme=0 -i (Join-Path $PSScriptRoot '..\..\plan-q\01-nodos-de-inscripcion-repetidos.sql')
 & sqlcmd -S . -d MLMConquerorGlobalEditionDb_Escala -E -C -b -I -v Confirmo=ESCALA -i (Join-Path $PSScriptRoot '..\..\plan-q\02-nivel-de-alta.sql')
+& sqlcmd -S . -d MLMConquerorGlobalEditionDb_Escala -E -C -b -I -v Confirmo=ESCALA -i (Join-Path $PSScriptRoot '..\..\plan-q\04-calificados-de-inscripcion.sql')
 ```
 
   Con el mismo manejo de errores que las líneas vecinas: si `sqlcmd` falla, el orquestador se detiene.
 - [ ] **Paso 5.** `02-verificar-escala.sql`:
   - fuera la comprobación de rutas del binario (`:35-44`); se conserva la de clave y profundidad con `dbo.DualChildKey`;
   - las filas por alta esperadas pasan a: `RankEvaluationQueue` y `MemberNotifications` = Σ min(ascendientes, 10), y `MemberStatisticDeltas` = 1 por alta con patrocinador;
-  - nuevas comprobaciones: 0 miembros con dos nodos vivos, 0 perfiles con alta pero sin `SignupMembershipLevelId`, y `DualLegDeltas` vacía.
+  - nuevas comprobaciones: 0 miembros con dos nodos vivos, 0 perfiles con alta pero sin `SignupMembershipLevelId`;
+  - `DualLegDeltas` sin filas de pierna (`OwnChange = 0`). Las propias son solo de miembros sin nodo binario vivo: tantas como miembros activos sin colocar (DQ13);
+  - en ESC-M, `LeftLegQualified + RightLegQualified` y `EnrollmentQualifiedTeamMembers` iguales al recuento al vuelo de las activas de su rango (DQ13).
 - [ ] **Paso 6.** Commit: `Plan Q: el generador de escala deja lo que deja un alta del Plan Q y la verificacion lo comprueba`.
 
 ### Tarea 33: mediciones nuevas y objetivos
@@ -4451,6 +5671,7 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
   - **`Mi_equipo_binario_con_busqueda_por_nombre` (`:129-137`):** la búsqueda «Lucia Diaz» va ahora por prefijo. Objetivo < 2 s.
   - **`Mi_equipo_binario_primera_pagina_y_pagina_1000` (`:106-127`):** con el orden por defecto, que ahora es la clave. Objetivo < 2 s.
   - **`Informe_de_la_base_de_escala` (`:58-84`):** informa del tamaño de `DualTeamTree` sin ruta.
+  - **`EscalaProgresoDeRangoTests` (RankEngine.Tests):** el objetivo sigue en < 1 s con 1.000.000. Tras las Tareas 8b y 19b, el manejador no cuenta ningún equipo (DQ13), así que se espera muy por debajo.
 - [ ] **Paso 2.** Commit: `Plan Q: objetivos de escala del Plan Q y medicion del vaciado de la cola`.
 
 ### Tarea 34: generar, medir y borrar (500.000 y 1.000.000)
@@ -4524,9 +5745,10 @@ Tarea 0 (500.000 antes, código de be932cc): generación 2.899 s y `02-verificar
 | 2 | Copia de seguridad (`COPY_ONLY`, comprimida) | Volver atrás de `RetiraRutaDelBinario` es restaurarla (Q-R10) |
 | 3 | `01-nodos-de-inscripcion-repetidos.sql` con `SoloInforme=1` | En producción **lo ejecuta Nick**, nunca nosotros (Q2). Es solo lectura y puede adelantarse a la ventana. **Parar aquí si sale más de 0** y decidir con el número |
 | 4 | El mismo script con `SoloInforme=0` | Solo si el paso 3 lo pide; en producción también lo ejecuta Nick |
-| 5 | Migraciones, en orden: `SuscripcionesActivasPorMiembro`, `ColaDeDeltasDePierna`, `RetiraRutaDelBinario`, `DeltaPorLineaDePatrocinio`, `UnNodoPorMiembro`, `BusquedaYNivelDeAlta` | `dotnet ef database update … --connection …`. Las guardas 51100 y 51108 detienen sin tocar nada |
+| 5 | Migraciones, en orden: `SuscripcionesActivasPorMiembro`, `ColaDeDeltasDePierna`, `CalificadosDelBinario`, `RetiraRutaDelBinario`, `DeltaPorLineaDePatrocinio`, `CalificadosDeInscripcion`, `UnNodoPorMiembro`, `BusquedaYNivelDeAlta` | `dotnet ef database update … --connection …`. Las guardas 51100 y 51108 detienen sin tocar nada |
 | 6 | `02-nivel-de-alta.sql` | Por lotes; idempotente |
-| 7 | Verificación: 0 miembros con dos nodos vivos, `DualLegDeltas` vacía, columnas e índices nuevos presentes | Solo lectura |
+| 6b | `04-contadores-y-colas.sql` (Plan P, ampliado en la Tarea 8b) y `04-calificados-de-inscripcion.sql` (Tarea 19b), con los servicios parados | Rellenan los calificados del equipo y `DualTeamSize` (DQ13, DQ15). Sus cerrojos admiten solo la base local y la de escala: el guion (Tarea 35) dice cómo los ejecuta Nick en producción, igual que `02-nivel-de-alta.sql`. Verificación propia: `CalificadosDistintos = 0` y `Contador = AlVuelo` |
+| 7 | Verificación: 0 miembros con dos nodos vivos, `DualLegDeltas` sin filas de pierna (`OwnChange = 0`; las propias son de miembros activos sin colocar), columnas e índices nuevos presentes | Solo lectura |
 | 8 | Arrancar los servicios, todos con el código del plan | El trabajo `apply-dual-leg-deltas` empieza a correr. SignupAPI (activación, Tarea 18) y el trabajo de deltas (Tarea 19) salen en el mismo despliegue: nunca uno sin el otro (Q-R23) |
 | 9 | `03-recuperar-espacio-de-la-ruta.sql`, con los servicios en marcha | Fuera de la ventana; puede tardar con mucha ruta. Vigilar el registro (`log_reuse_wait_desc`) y hacer copias del registro durante la ejecución si la base está en recuperación completa |
 
@@ -4538,7 +5760,7 @@ Si en algún momento hay que ejecutar `02-recalcular-piernas.sql` o `04-contador
 
 | Id | Riesgo | Mitigación |
 |---|---|---|
-| Q-R1 | **Piernas diferidas (DQ1).** Lo que se muestra puede ir hasta 1 minuto más el atraso de la cola por detrás: Mi equipo (su total sin filtros sale de los contadores de pierna, `DualTeamService.cs:110-111`, y también el tamaño con el que `TeamGridLimits` decide el límite), visualizador, estadísticas y progreso de rango. La evaluación de rango lee `LeftLegPoints`/`RightLegPoints` (`RankQualificationService.cs:81-82`). La regla de colocación no lee piernas. | Las comisiones y la instantánea vacían la cola antes de leer (Tarea 9). `ProcessRankQueueJob` vacía hasta 5 tandas antes de evaluar (Tarea 9); si el árbol está ocupado por un movimiento, evalúa con lo aplicado y lo registra. Un total o un límite con un minuto de atraso no cambia nada que se pague. Si hiciera falta exactitud en una pantalla, su manejador llama a `DrainAsync(maxBatches: 1)`. |
+| Q-R1 | **Piernas diferidas (DQ1).** Lo que se muestra puede ir hasta 1 minuto más el atraso de la cola por detrás: los calificados del equipo del progreso de rango (DQ13: los del binario por la cola de piernas y los de inscripción por la de estadísticas), Mi equipo (su total sin filtros sale de los contadores de pierna, `DualTeamService.cs:110-111`, y también el tamaño con el que `TeamGridLimits` decide el límite), visualizador, estadísticas y progreso de rango. La evaluación de rango lee `LeftLegPoints`/`RightLegPoints` (`RankQualificationService.cs:81-82`). La regla de colocación no lee piernas. | Las comisiones y la instantánea vacían la cola antes de leer (Tarea 9). `ProcessRankQueueJob` vacía hasta 5 tandas antes de evaluar (Tarea 9); si el árbol está ocupado por un movimiento, evalúa con lo aplicado y lo registra. Un total o un límite con un minuto de atraso no cambia nada que se pague. Si hiciera falta exactitud en una pantalla, su manejador llama a `DrainAsync(maxBatches: 1)`. |
 | Q-R2 | **Coste del vaciado.** Una tanda calcula Σ (profundidad + 1) de sus arranques, y un pico de altas en la línea profunda puede acumular atraso. | `BatchSize` (200 arranques) y `MaxAncestorRowsPerBatch` (400.000 filas) acotan cada tanda; el tiempo de comando cubre la espera del candado más 300 s, y cada pasada vacía solo lo encolado al empezar (revisiones I1 e I2). Se mide «vaciar 1.000» en el Bloque 7. Si no cumple, la mejora es agrupar en C# los arranques de la misma línea antes de expandir: solo hace falta el ascendiente común más profundo y las ramas por debajo. |
 | Q-R3 | **Un movimiento grande sigue tomando el árbol en exclusivo** (punto 9 del Plan P). Sin la ruta ni la subida, mover 50.000 debería bajar de 127 s a unos 15 a 40 s; mientras dura, las colocaciones esperan hasta 15 s y fallan con `PLACEMENT_BUSY`. | Medir en el Bloque 7. Si sigue por encima de 15 s, la siguiente tanda debe encolar el movimiento como trabajo de fondo con aviso al usuario, o reescribir las claves por tandas fuera del candado exclusivo. |
 | Q-R4 | **Cola sin caché** (punto 7 del Plan P): 8,6 y 12,5 s. | Sin cambio. La caché `DualTeamLegFrontiers` es obligatoria; `04` la reconstruye y los movimientos solo vacían las afectadas. |
@@ -4553,7 +5775,7 @@ Si en algún momento hay que ejecutar `02-recalcular-piernas.sql` o `04-contador
 | Q-R13 | **La fase 2 del barrido nocturno evalúa a todos los embajadores activos**, sin medir con 1.000.000. | Sin medir. Si Q1 se acepta, pasa a ser la vía de los ascendientes lejanos: medirlo antes de producción con la base de escala. |
 | Q-R14 | **`SignupMembershipLevelId` debe mantenerse.** Un camino nuevo que cree el pedido de alta sin llamar a `SignupMembershipLevel` dejaría al miembro en «Otro» en Actividad. | Un único componente, llamado desde la elección de productos y la activación. `02-verificar-escala.sql` y la prueba de contraste lo vigilan. |
 | Q-R15 | **Actividad con 1.000.000** puede seguir por encima de 2 s si la ventana de 3 meses abarca casi todo el equipo (el peor caso sintético). | Si no cumple: una tabla resumen diaria por patrocinador, nivel y tipo, que alimenta el alta. Se decide con la cifra. |
-| Q-R16 | **Progreso de rango < 1 s con 1.000.000** puede no cumplirse: une un millón de nodos con las activas. | Si no cumple: los dos contadores de calificados pasan a la instantánea nocturna (`MemberStatisticSnapshotJob`) y el progreso los lee de ahí, con la fecha de cálculo. |
+| Q-R16 | **Progreso de rango < 1 s con 1.000.000.** La revisión del Bloque 1 midió que los dos recuentos al vuelo son O(equipo) y no caben en 1 s (1 a 2 s el de inscripción y unos 1,8 s el binario). | Decidido en DQ13: contadores mantenidos por las colas (Tareas 8b y 19b) y lectura O(1). La instantánea nocturna se descartó, porque en el binario sería la suma de profundidades (miles de millones de filas). Se mide en el Bloque 7. |
 | Q-R17 | **Una retirada descarta los deltas pendientes con arranque en el nodo retirado** (revisión C1). Es lo correcto (en el valor verdadero ya se sumaron y se restaron), pero cambia lo que hay en la cola. | `RemoveAsync` los borra en su transacción, con `dual-tree` en exclusivo. Prueba `Retirar_y_recolocar_antes_de_vaciar_no_cuenta_dos_veces` (Tarea 6). |
 | Q-R18 | **El vaciado se trocea y espera más** (revisiones I1, I2 e I9): cada pasada vacía solo lo encolado al empezar, una tanda espera el candado hasta su tiempo y el `UPDATE` va por trozos de 4.000 filas para no escalar a candado de tabla. Lo encolado durante una pasada espera a la siguiente (como mucho, 1 minuto más). | La tanda sigue siendo atómica (una transacción). Prueba de concurrencia `Vaciar_en_bucle_durante_diez_colocaciones_a_gran_profundidad` (Tarea 10). |
 | Q-R19 | **Los recálculos del Plan P y la cola de piernas** (revisión I3): `02-recalcular-piernas.sql` y `04-contadores-y-colas.sql` recalculan desde cero puntos y contadores; un pendiente aplicado después contaría dos veces. | Cada script toma `dual-leg-deltas` en exclusivo y pone a cero en la cola solo la parte que recalcula (Tarea 14). Prueba manual descrita allí. |
@@ -4561,6 +5783,11 @@ Si en algún momento hay que ejecutar `02-recalcular-piernas.sql` o `04-contador
 | Q-R21 | **El índice filtrado de suscripciones activas no filtra `IsDeleted`** (revisión I4): una suscripción borrada lógicamente y activa cuenta como calificada. | Es lo que se cuenta hoy: ni las consultas ni un filtro global de la entidad excluyen las borradas. Cambiarlo sería un cambio de regla, fuera de este plan. |
 | Q-R22 | **Un segundo nodo vivo para el mismo miembro falla** (DQ9): `UX_GenealogyTree_MemberId_Vivo` lo rechaza con 2601. | En el alta solo puede pasar con dos altas que sacan el mismo id libre a la vez: se reintenta con otro id, igual que con `AK_MemberProfiles_MemberId` (Tarea 21). Nada más escribe nodos de inscripción para un miembro existente. |
 | Q-R23 | **Las Tareas 18 y 19 no se despliegan por separado.** Con la activación nueva y el trabajo viejo, la fila `SponsorLine` se aplicaría solo al patrocinador y la línea perdería sus puntos de inscripción. | Un único despliegue con todo el plan (paso 8 del despliegue); en local, commits seguidos sin arrancar SignupAPI entre medias. |
+| Q-R25 | **Un escritor de suscripciones por fuera de EF** (`ExecuteUpdate`, SQL crudo, `SqlBulkCopy`) cambiaría suscripciones activas sin mover los calificados (DQ13). | `EscritoresDeSuscripcionesTests` (Tarea 8b; C#, `.sql` y `.ps1`) y `EstadosSinInterceptorTests` (Plan J). Los dos ficheros revisados son de la base de escala, que después ejecuta los recálculos. Si un escritor así hace falta, ejecuta después `04-contadores-y-colas.sql` y `04-calificados-de-inscripcion.sql`. Un `Update()` de una entidad sin seguir tampoco lo vería el interceptor: también lo prohíbe `EstadosSinInterceptorTests`. |
+| Q-R26 | **Deltas propios que esperan en la cola de piernas.** Un miembro activo sin nodo binario vivo (sin colocar, o retirado y no recolocado) deja sus propios en `DualLegDeltas` hasta que se le coloca (DQ13). | Es una fila por cambio de estado de alguien sin colocar. El vaciado no los elige (una búsqueda por `MemberId` por arranque) y `04` los rehace como uno por miembro. Si con 1.000.000 fueran muchos, se pasan a una tabla propia; `02-verificar-escala.sql` los cuenta. |
+| Q-R27 | **Un miembro con dos suscripciones activas cuenta dos**, y una suscripción activa borrada lógicamente sigue contando. | Es lo que cuenta hoy el recuento al vuelo (Q-R21), y la prueba del Bloque 1 lo fija. Cambiarlo sería un cambio de regla, fuera de este plan. |
+| Q-R28 | **Nada mueve nodos de inscripción hoy.** Si se añade un cambio de patrocinador, los contadores de inscripción (`EnrollmentPoints`, `EnrollmentTeamSize`, `EnrollmentQualifiedTeamMembers`) no se moverían solos. | Ese cambio tendría que encolar los negativos en la línea vieja y los positivos en la nueva, como el binario, o ejecutar después los recálculos. Hoy solo escriben nodos las tres altas (Tarea 21). |
+| Q-R29 | **Una activación deja dos filas en `MemberStatisticDeltas`**: la `SponsorLine` del alta y la `AncestorsOf` del cambio de estado. | Sigue siendo O(1) por alta. El trabajo las expande igual, y la `AncestorsOf` no encola evaluaciones de rango. |
 | Q-R24 | **`03-recuperar-espacio-de-la-ruta.sql` hace crecer el registro** en recuperación completa (decenas de GB a escala). | Se ejecuta fuera de la ventana, vigilando `log_reuse_wait_desc` y con copias del registro durante la ejecución si hace falta (Tarea 13). |
 
 ## Preguntas para Nick
