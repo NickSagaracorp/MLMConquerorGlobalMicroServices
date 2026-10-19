@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Jobs;
 
@@ -41,6 +42,14 @@ public class RankEvaluationSweepJob
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
         _logger.LogInformation("{Job}: starting at {Now}.", JobSource, DateTime.UtcNow);
+
+        // Plan Q (Q-R1, revision del bloque 2 I-4): la evaluacion lee las piernas del binario (RankQualificationService).
+        // El barrido evalua a todos los embajadores: vacia la cola ENTERA antes, con la misma espera de candado que las
+        // comisiones. Si no puede (arbol ocupado mas de 120 s), falla y Hangfire lo reintenta: evaluar con piernas
+        // atrasadas podria dejar sin ascenso a quien ya lo tiene.
+        var aplicados = await LegPointMaintenance.DrainAsync(_db, ct: ct, lockTimeoutMs: 120_000, logger: _logger);
+        if (aplicados > 0)
+            _logger.LogInformation("{Job}: {Count} deltas de pierna aplicados antes de evaluar.", JobSource, aplicados);
 
         // ── Phase 1: recover missed/failed queue entries (past 48h) ──────────
         var cutoff = DateTime.UtcNow.AddHours(-48);

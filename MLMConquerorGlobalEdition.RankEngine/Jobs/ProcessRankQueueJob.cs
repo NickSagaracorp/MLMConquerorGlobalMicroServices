@@ -56,11 +56,17 @@ public class ProcessRankQueueJob
         // aplicado: el vaciado de cada minuto y la siguiente pasada lo ponen al dia.
         try
         {
-            await LegPointMaintenance.DrainAsync(_db, maxBatches: 5, ct: ct);
+            await LegPointMaintenance.DrainAsync(_db, maxBatches: 5, ct: ct, logger: _logger);
         }
         catch (DualTeamBusyException ex)
         {
             _logger.LogWarning(ex, "{Job}: piernas sin vaciar, el arbol binario esta ocupado; se evalua con lo aplicado.", JobSource);
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == -2)
+        {
+            // Revision del bloque 2 (I-4): una tanda que agota el tiempo del comando se deshace entera (los deltas vuelven a
+            // la cola); como con el arbol ocupado, se evalua con lo aplicado y el vaciado de cada minuto lo pone al dia.
+            _logger.LogWarning(ex, "{Job}: piernas sin vaciar, el vaciado agoto su tiempo; se evalua con lo aplicado.", JobSource);
         }
 
         _logger.LogInformation(
