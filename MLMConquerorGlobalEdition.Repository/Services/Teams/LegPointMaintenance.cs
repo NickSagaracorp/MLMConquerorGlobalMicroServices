@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -77,7 +78,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
     /// confirmar y sin reintentar.
     /// </summary>
     public static async Task<int> DrainAsync(AppDbContext db, int maxBatches = int.MaxValue, CancellationToken ct = default,
-        int lockTimeoutMs = DualTeamGate.DefaultLockTimeoutMs)
+        int lockTimeoutMs = DualTeamGate.DefaultLockTimeoutMs, ILogger? logger = null)
     {
         if (!db.Database.IsRelational()) return 0;
 
