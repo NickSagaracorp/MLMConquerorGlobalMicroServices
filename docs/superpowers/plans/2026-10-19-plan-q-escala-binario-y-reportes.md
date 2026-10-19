@@ -116,14 +116,14 @@ Nick pidió los tiempos de 500.000. Sin una medición previa no habría con qué
 **Files:**
 - Modify: `docs/superpowers/plans/2026-10-19-plan-q-escala-binario-y-reportes.md` (sección «Resultados medidos», columna «500.000 antes»)
 
-- [ ] **Paso 1.** Generar (unos 45 min, interpolando entre 29 min con 400.000 y 2 h 40 con 1.000.000):
+- [x] **Paso 1.** Generar (unos 45 min, interpolando entre 29 min con 400.000 y 2 h 40 con 1.000.000):
 
 ```powershell
 git rev-parse HEAD   # debe ser be932cc o un commit solo de documentos
 powershell -File Scripts/sql/plan-p/escala/01-generar-altas.ps1 -Nodos 500000 -Salida C:\temp\escala-500k-antes.txt -Recrear
 ```
 
-- [ ] **Paso 2.** Medir con las tres suites de escala, en serie:
+- [x] **Paso 2.** Medir con las tres suites de escala, en serie:
 
 ```powershell
 $env:MLM_ESCALA_SQLSERVER = "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;Integrated Security=true;TrustServerCertificate=True;Encrypt=True"
@@ -134,13 +134,13 @@ dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedN
 
 **Esperado:** los mismos rojos que con 400.000 y 1.000.000, con cifras intermedias.
 
-- [ ] **Paso 3.** Copiar las líneas `[ESCALA] … -> mediana N ms` a la columna «500.000 antes» de «Resultados medidos» (Bloque 7). Borrar la base:
+- [x] **Paso 3.** Copiar las líneas `[ESCALA] … -> mediana N ms` a la columna «500.000 antes» de «Resultados medidos» (Bloque 7). Borrar la base:
 
 ```powershell
 sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Escala SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE MLMConquerorGlobalEditionDb_Escala;"
 ```
 
-- [ ] **Paso 4.** Commit (solo el plan): `Plan Q: linea base del binario y los reportes con 500.000 altas antes de los cambios`.
+- [x] **Paso 4.** Commit (solo el plan): `Plan Q: linea base del binario y los reportes con 500.000 altas antes de los cambios`.
 
 ---
 
@@ -2449,24 +2449,28 @@ Las columnas «antes» de 400.000 y 1.000.000 vienen del Bloque D del Plan P. La
 
 | Medición | Objetivo | 400.000 antes | 1.000.000 antes | 500.000 antes | 500.000 después | 1.000.000 después |
 |---|---|---|---|---|---|---|
-| Progreso de rango de ESC-M | < 1 s | > 30 s ❌ | > 30 s ❌ | | | |
-| Colocar una hoja a 8.507 niveles | < 300 ms | 1.549 | 3.457 ❌ | | | |
-| 10 colocaciones a la vez en la línea profunda (p95) | < 2 s | 14.249 ❌ | 29.682 ❌ | | | |
+| Progreso de rango de ESC-M | < 1 s | > 30 s ❌ | > 30 s ❌ | 17.718 ❌ ² | | |
+| Colocar una hoja a 8.507 niveles | < 300 ms | 1.549 | 3.457 ❌ | 1.639 ❌ | | |
+| 10 colocaciones a la vez en la línea profunda (p95) | < 2 s | 14.249 ❌ | 29.682 ❌ | 13.695 ❌ | | |
 | Vaciar 1.000 deltas en la línea profunda | < 60 s | — | — | — | | |
-| Mover ESC-P (50.000) | < 30 s | 126.621 ❌ | 227.134 ❌ | | | |
-| Colocaciones durante el movimiento (fallan) | 0 de 15 | 13 ❌ | 13 ❌ | | | |
-| Mi equipo binario, primera página | < 2 s | 2.089 ❌ | 1.692 ✅ ¹ | | | |
-| Mi equipo binario, página 1.000 | < 2 s | 2.792 ❌ | 2.323 ❌ ¹ | | | |
-| Mi equipo binario, búsqueda por nombre | < 2 s | 4.313 ❌ | 18.510 ❌ | | | |
-| Mi equipo de inscripción: conteo / p1 / p1000 | < 2 s | 468 / 1.049 / 1.868 ✅ | 2.776 / 4.545 / 7.082 ❌ | | | |
-| Actividad, 3 meses | < 2 s | 5.344 ❌ | > 30 s ❌ | | | |
-| Clientes de todo el equipo | < 2 s | 4.883 ❌ | 24.231 ❌ | | | |
-| Eventos (todo el equipo, 200 inscritos) | < 2 s | 1.457 ✅ | 7.163 ❌ | | | |
-| Cola sin caché (residual, sin cambio) | — | 8.631 | 12.479 | | | |
-| Tamaño de DualTeamTree | — | 29,7 GB | 77,9 GB | | | |
-| Filas por tabla de ascendientes (cola, deltas, avisos) | — | 11,7 M | 29,4 M | | | |
+| Mover ESC-P (50.000) | < 30 s | 126.621 ❌ | 227.134 ❌ | 254.031 ❌ | | |
+| Colocaciones durante el movimiento (fallan) | 0 de 15 | 13 ❌ | 13 ❌ | 15 ❌ | | |
+| Mi equipo binario, primera página | < 2 s | 2.089 ❌ | 1.692 ✅ ¹ | 2.061 ❌ | | |
+| Mi equipo binario, página 1.000 | < 2 s | 2.792 ❌ | 2.323 ❌ ¹ | 2.410 ❌ | | |
+| Mi equipo binario, búsqueda por nombre | < 2 s | 4.313 ❌ | 18.510 ❌ | 6.522 ❌ | | |
+| Mi equipo de inscripción: conteo / p1 / p1000 | < 2 s | 468 / 1.049 / 1.868 ✅ | 2.776 / 4.545 / 7.082 ❌ | 797 / 1.519 / 2.882 ❌ | | |
+| Actividad, 3 meses | < 2 s | 5.344 ❌ | > 30 s ❌ | 7.591 ❌ | | |
+| Clientes de todo el equipo | < 2 s | 4.883 ❌ | 24.231 ❌ | 6.735 ❌ | | |
+| Eventos (todo el equipo, 200 inscritos) | < 2 s | 1.457 ✅ | 7.163 ❌ | 3.265 ❌ | | |
+| Cola sin caché (residual, sin cambio) | — | 8.631 | 12.479 | 4.753 | | |
+| Tamaño de DualTeamTree | — | 29,7 GB | 77,9 GB | 39,6 GB | | |
+| Filas por tabla de ascendientes (cola, deltas, avisos) | — | 11,7 M | 29,4 M | 14,6 M | | |
 
 ¹ Tras el Plan B del conteo (Plan P, Bloque D).
+
+² Con 500.000 no se agota: 37.200 / 16.351 / 17.718 ms (la primera, en frío, pasa de 30 s).
+
+Tarea 0 (500.000 antes, código de be932cc): generación 2.899 s y `02-verificar-escala.sql` a 0 en todo (ESC-M con 500.000 en el binario y 550.000 en inscripción; profundidad máxima 8.506, clave máxima 1.068 B, nivel máximo de inscripción 429; base de 63.112 MB y registro de 36.936 MB). El índice agrupado de `DualTeamTree` ocupa 40.536 MB (669.435 filas) y `HierarchyPath`, 32.875 MB. Las 15 colocaciones durante el movimiento fallan tras unos 15,1 s con «Another dual-tree write holds dual-tree.»; el movimiento tardó 149.282 / 397.268 / 254.031 ms. Las 10 simultáneas: p50 7.874 / 9.364 / 4.284 ms y p95 13.695 / 26.202 / 11.581 ms, ninguna falla. Fuera de la tabla: `PlaceBulkAsync` con 1.000 pendientes, mediana 903,7 s (831 ms por colocación, 0 fallidas); conteo de Mi equipo binario 215 ms; página 1.000 por clave 91 ms; puntos y contadores de pierna 2 ms; visualizador del admin con 6 niveles 44 ms. Suites: BizCenter 5 de 14 en verde (4.390 s), AdminAPI 1 de 1 (17 s), RankEngine 0 de 1 (78 s).
 
 ---
 
