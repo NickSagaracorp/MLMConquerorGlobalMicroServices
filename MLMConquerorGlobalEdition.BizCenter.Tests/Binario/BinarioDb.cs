@@ -29,9 +29,10 @@ public static class BinarioDb
             db.DualTeamTree.Add(nodo);
         }
         await db.SaveChangesAsync();
-        // Las piernas (puntos y contadores) coherentes con lo sembrado, como al colocar.
-        await Repository.Services.Teams.LegPointMaintenance.ApplyIncrementalAsync(
-            db, nodos.Where(n => n.Padre is not null).Select(n => n.Id).ToList());
+        // Las piernas (puntos y contadores) coherentes con lo sembrado: se encola cada hoja y se vacia la cola.
+        foreach (var (id, padre, _) in nodos.Where(n => n.Padre is not null))
+            await Repository.Services.Teams.LegPointMaintenance.EnqueueLeafAsync(db, id, DateTime.Now, "plan-p-prueba");
+        await Repository.Services.Teams.LegPointMaintenance.DrainAsync(db);
     }
 
     public static Task<int> HijosAsync(AppDbContext db, string padre, TreeSide lado) =>
@@ -88,6 +89,7 @@ public static class BinarioDb
         var patron = prefijo + "%";
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamLegFrontiers WHERE SponsorMemberId LIKE {patron} OR DeepestMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PlacementLogs WHERE MemberId LIKE {patron}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamTree WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");

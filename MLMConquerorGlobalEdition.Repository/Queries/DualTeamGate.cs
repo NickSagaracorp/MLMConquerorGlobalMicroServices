@@ -63,6 +63,20 @@ public static class DualTeamGate
         await LockAsync(db, TreeResource, "Exclusive", lockTimeoutMs, ct);
     }
 
+    public const string LegDrainResource = "dual-leg-deltas";
+
+    /// <summary>
+    /// Plan Q: el vaciado de la cola de piernas. "dual-tree" compartido (ningun movimiento a la vez: DQ2) y
+    /// "dual-leg-deltas" exclusivo (un solo vaciador: el trabajo o una comision que vacia antes de leer).
+    /// </summary>
+    public static async Task EnterLegDrainAsync(AppDbContext db, CancellationToken ct = default,
+        int lockTimeoutMs = DefaultLockTimeoutMs)
+    {
+        if (!Applies(db)) return;
+        await LockAsync(db, TreeResource, "Shared", lockTimeoutMs, ct);
+        await LockAsync(db, LegDrainResource, "Exclusive", lockTimeoutMs, ct);
+    }
+
     private static bool Applies(AppDbContext db)
     {
         if (!db.Database.IsSqlServer()) return false;

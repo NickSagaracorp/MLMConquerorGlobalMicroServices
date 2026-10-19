@@ -650,7 +650,7 @@ FROM b;");
 - Una retirada encola `−T` en el padre, **borra los pendientes con arranque en el nodo retirado** y borra el nodo. La línea vieja queda en `−T`, como en V (que habría sumado v y restado T + v). Borrarlos es obligatorio, no basta con que «no encuentren fila» al vaciar: si el mismo miembro se vuelve a colocar antes del vaciado (el admin lo retira y lo recoloca, con sus hijos flotantes), su nodo nuevo tiene el mismo `MemberId` y el pendiente subiría por la línea nueva, además del `+T'` con el que vuelve su equipo (revisión C1; prueba `Retirar_y_recolocar_antes_de_vaciar_no_cuenta_dos_veces`).
 - La condición es que trabajador y movimientos no se crucen: el trabajador toma `dual-tree` **compartido** y los movimientos y retiradas lo toman **exclusivo**. Las colocaciones también lo toman compartido y ya no tocan la línea.
 
-- [ ] **Paso 1.** Pruebas en rojo (`SqlServerColaDePiernasTests`). Usan `BinarioDb`, con prefijo propio y limpieza en `finally`, porque el vaciado confirma sus propias transacciones.
+- [x] **Paso 1.** Pruebas en rojo (`SqlServerColaDePiernasTests`). Usan `BinarioDb`, con prefijo propio y limpieza en `finally`, porque el vaciado confirma sus propias transacciones.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -820,9 +820,9 @@ Añadir a `BinarioDb.LimpiarAsync` (`BinarioDb.cs:72`) el borrado de los deltas 
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId LIKE {patron}");
 ```
 
-- [ ] **Paso 2.** Ejecutar. **Esperado:** no compila: no existen `LegPointMaintenance.DrainAsync` ni `EnqueueLeafAsync` (`DualLegDeltas` sí existe desde la Tarea 5).
+- [x] **Paso 2.** Ejecutar. **Esperado:** no compila: no existen `LegPointMaintenance.DrainAsync` ni `EnqueueLeafAsync` (`DualLegDeltas` sí existe desde la Tarea 5).
 
-- [ ] **Paso 3.** `DualTeamGate`, después de `EnterTreeExclusiveAsync`:
+- [x] **Paso 3.** `DualTeamGate`, después de `EnterTreeExclusiveAsync`:
 
 ```csharp
     public const string LegDrainResource = "dual-leg-deltas";
@@ -840,7 +840,7 @@ Añadir a `BinarioDb.LimpiarAsync` (`BinarioDb.cs:72`) el borrado de los deltas 
     }
 ```
 
-- [ ] **Paso 4.** `LegPointMaintenance` (se sustituyen las líneas 9-122; `ApplyInMemoryAsync` queda igual):
+- [x] **Paso 4.** `LegPointMaintenance` (se sustituyen las líneas 9-122; `ApplyInMemoryAsync` queda igual):
 
 ```csharp
 /// <summary>
@@ -1055,7 +1055,7 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
 - Un arranque sin nodo vivo (retirado) entra con 1 fila y sus deltas se reclaman y se descartan, como en DQ2.
 - Las mismas cuentas (`Σ` por ascendiente) que antes: lo único que cambia es que el `UPDATE` va por trozos de 4.000 filas dentro de la misma transacción, así que la tanda sigue siendo atómica (revisión I9).
 
-- [ ] **Paso 5.** `BinarioDb.SembrarAsync` (`BinarioDb.cs:30-32`) encola cada hoja y vacía, para que las piernas queden igual que antes:
+- [x] **Paso 5.** `BinarioDb.SembrarAsync` (`BinarioDb.cs:30-32`) encola cada hoja y vacía, para que las piernas queden igual que antes:
 
 ```csharp
         // Las piernas (puntos y contadores) coherentes con lo sembrado: se encola cada hoja y se vacia la cola.
@@ -1064,7 +1064,9 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
         await Repository.Services.Teams.LegPointMaintenance.DrainAsync(db);
 ```
 
-- [ ] **Paso 6.** Commit (las pruebas siguen en rojo hasta la Tarea 7): `Plan Q: LegPointMaintenance encola los cambios de pierna y los aplica por tandas agregadas por ascendiente`.
+- [x] **Paso 6.** Commit (las pruebas siguen en rojo hasta la Tarea 7): `Plan Q: LegPointMaintenance encola los cambios de pierna y los aplica por tandas agregadas por ascendiente`.
+
+> **Desviación (al implementar).** En este commit `ApplyIncrementalAsync` y `ApplySubtreeAsync` se conservan (al final de la clase, con una nota) para que la solución compile entre commits: los siete escritores los siguen llamando hasta la Tarea 7, cuyo Paso 3 los retira. En rojo tras este commit solo queda `Colocar_no_toca_la_linea_y_el_vaciado_la_sube` (la colocación aún sube en el acto); las otras dos ya pasan porque comprueban la coherencia tras vaciar.
 
 ### Tarea 7: los siete escritores encolan
 

@@ -3,22 +3,217 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// Incremental dual-team leg maintenance: points (LeftLegPoints/RightLegPoints and the cached
-/// MemberStatistics.DualTeamPoints) and, since Plan P, node counts (LeftLegCount/RightLegCount).
-///
-/// A node's leg = everything in the subtree of its child on that side (the child included). When a
-/// subtree appears under a node (a new leaf, a moved subtree, a provisional root being placed) its
-/// totals are ADDED to every ancestor through the side it descends by; when it leaves (a removal or the
-/// old position of a move) they are SUBTRACTED. Walking UP the adjacency list (ParentMemberId) with a
-/// recursive CTE costs O(depth) per subtree, never a recount of the tree (Plan P, C2 of the review: the
-/// path-based recalculator was O(depth × N) inside the tree lock).
+/// Piernas del binario (LeftLegPoints/RightLegPoints, LeftLegCount/RightLegCount y la copia MemberStatistics.DualTeamPoints).
+/// Plan Q (P-R9): quien escribe el binario ENCOLA un delta en DualLegDeltas (O(1), sin tocar la linea ascendente) y
+/// DrainAsync los aplica por tandas, agregados por ascendiente. Los ascendientes salen de la clave con
+/// dbo.DualAncestorKeys, sin recursion. Semantica (DQ2): un delta se aplica por los ascendientes que su arranque tenga
+/// AL APLICARSE; los movimientos encolan lo que leen de las piernas ya aplicadas. En InMemory se aplica en el acto.
 /// </summary>
 public static class LegPointMaintenance
 {
+    /// <summary>Arranques distintos por tanda, como mucho.</summary>
+    public const int BatchSize = 200;
+
+    /// <summary>
+    /// Revision I1: filas de ascendientes calculadas por tanda, como mucho (la suma de profundidad + 1 de sus arranques).
+    /// Con la linea de 8.500 niveles caben unos 47 arranques por tanda en vez de 200 (1,7 millones de filas, que no
+    /// cabian en el tiempo de un comando). Un arranque mas hondo que el tope va solo en su tanda.
+    /// </summary>
+    public const int MaxAncestorRowsPerBatch = 400_000;
+
+    /// <summary>
+    /// Revision I9: filas por UPDATE. Por debajo de 5.000, el umbral a partir del cual SQL Server escala los candados de
+    /// fila de una sentencia a la tabla entera (y bloquearia colocaciones y el MERGE del trabajo de estadisticas).
+    /// </summary>
+    public const int UpdateChunk = 4_000;
+
+    /// <summary>Revision I1: segundos de cada comando de una tanda, ademas de la espera del candado (el de EF es 30 s).</summary>
+    public const int BatchCommandSeconds = 300;
+
+    /// <summary>Revision C2: reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
+    public const int MaxDeadlockRetries = 3;
+
+    /// <summary>Encola la hoja recien guardada: sus PersonalPoints y 1 nodo, en la pierna de su padre.</summary>
+    public static async Task EnqueueLeafAsync(AppDbContext db, string memberId, DateTime now, string by, CancellationToken ct = default)
+    {
+        if (!db.Database.IsRelational()) { await ApplyInMemoryAsync(db, memberId, leaf: true, sign: 1, ct); return; }
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, CreationDate, CreatedBy)
+SELECT d.ParentMemberId, d.Side,
+       ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0),
+       1, {now}, {by}
+FROM DualTeamTree d
+WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NULL;", ct);
+    }
+
+    /// <summary>
+    /// Encola el subarbol de <paramref name="subtreeRootId"/> entero (sus propios puntos mas sus dos piernas YA APLICADAS, y
+    /// 1 + sus contadores) con el signo dado, en la pierna de su padre ACTUAL. -1 antes de soltarlo y +1 despues de colgarlo.
+    /// </summary>
+    public static async Task EnqueueSubtreeAsync(AppDbContext db, string subtreeRootId, int sign, DateTime now, string by,
+        CancellationToken ct = default)
+    {
+        if (sign is not (1 or -1)) throw new ArgumentOutOfRangeException(nameof(sign));
+        if (!db.Database.IsRelational()) { await ApplyInMemoryAsync(db, subtreeRootId, leaf: false, sign, ct); return; }
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, CreationDate, CreatedBy)
+SELECT d.ParentMemberId, d.Side,
+       {sign} * (ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0)
+                 + d.LeftLegPoints + d.RightLegPoints),
+       {sign} * (1 + d.LeftLegCount + d.RightLegCount), {now}, {by}
+FROM DualTeamTree d
+WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NULL;", ct);
+    }
+
+    /// <summary>
+    /// Aplica la cola hasta vaciar lo encolado al empezar (o hasta <paramref name="maxBatches"/> tandas) y devuelve cuantos
+    /// deltas aplico. Cada tanda va en su transaccion; si quien llama ya tiene una (pruebas), trabaja dentro de ella sin
+    /// confirmar y sin reintentar.
+    /// </summary>
+    public static async Task<int> DrainAsync(AppDbContext db, int maxBatches = int.MaxValue, CancellationToken ct = default,
+        int lockTimeoutMs = DualTeamGate.DefaultLockTimeoutMs)
+    {
+        if (!db.Database.IsRelational()) return 0;
+
+        // Revision I1: el tiempo de EF por comando es 30 s; una tanda espera el candado (hasta lockTimeoutMs) y despues
+        // calcula. Con 30 s, un comando agotado se deshacia y la misma tanda se repetia sin fin (ORDER BY MIN(Id)).
+        var antes = db.Database.GetCommandTimeout();
+        db.Database.SetCommandTimeout(lockTimeoutMs / 1000 + BatchCommandSeconds);
+        try
+        {
+            // Revision I2: solo lo encolado hasta ahora. Con altas entrando sin parar, «hasta que no quede nada» podia no
+            // terminar nunca; lo que entre mientras tanto lo vacia la siguiente pasada (el trabajo corre cada minuto).
+            var hasta = (await db.Database.SqlQueryRaw<long>("SELECT ISNULL(MAX(Id), 0) AS [Value] FROM DualLegDeltas")
+                .ToListAsync(ct)).Single();
+            if (hasta == 0) return 0;
+
+            var total = 0;
+            for (var i = 0; i < maxBatches; i++)
+            {
+                var n = await ApplyBatchAsync(db, hasta, lockTimeoutMs, ct);
+                total += n;
+                if (n == 0) break;
+            }
+            return total;
+        }
+        finally
+        {
+            db.Database.SetCommandTimeout(antes);
+        }
+    }
+
+    /// <summary>Una tanda en su transaccion, reintentada si es victima de un interbloqueo (revision C2).</summary>
+    private static async Task<int> ApplyBatchAsync(AppDbContext db, long hasta, int lockTimeoutMs, CancellationToken ct)
+    {
+        for (var intento = 1; ; intento++)
+        {
+            var propia = db.Database.CurrentTransaction is null;
+            await using var tx = propia ? await db.Database.BeginTransactionAsync(ct) : null;
+            try
+            {
+                await DualTeamGate.EnterLegDrainAsync(db, ct, lockTimeoutMs);
+                var n = (await db.Database.SqlQueryRaw<int>(ApplyBatchSql,
+                        new SqlParameter("@lote", BatchSize),
+                        new SqlParameter("@maxFilas", MaxAncestorRowsPerBatch),
+                        new SqlParameter("@trozo", UpdateChunk),
+                        new SqlParameter("@hasta", hasta))
+                    .ToListAsync(ct)).Single();
+                if (tx is not null) await tx.CommitAsync(ct);
+                return n;
+            }
+            catch (SqlException ex) when (ex.Number == 1205 && propia && intento < MaxDeadlockRetries)
+            {
+                // SQL Server ya deshizo la tanda; el await using cierra la transaccion y se repite entera.
+            }
+        }
+    }
+
+    // Una tanda:
+    //  1. elige los arranques (hasta @lote, en orden de llegada, y hasta @maxFilas filas de ascendientes; el primero siempre
+    //     entra) entre los deltas con Id <= @hasta;
+    //  2. reclama (DELETE ... OUTPUT) todos sus deltas con Id <= @hasta;
+    //  3. los agrega por arranque y lado, los expande a sus ascendientes por la clave y los agrega por ascendiente;
+    //  4. aplica por trozos de @trozo filas (cada UPDATE por debajo del umbral de escalado de candados).
+    // SET XACT_ABORT ON: cualquier error deshace la tanda entera (los deltas reclamados vuelven a la cola).
+    private const string ApplyBatchSql = @"
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+DROP TABLE IF EXISTS #arranques; DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #deltas; DROP TABLE IF EXISTS #x;
+
+CREATE TABLE #arranques (StartMemberId nvarchar(450) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY);
+WITH a AS (
+    SELECT TOP (@lote) q.StartMemberId, MIN(q.Id) AS Primero
+    FROM DualLegDeltas q
+    WHERE q.Id <= @hasta
+    GROUP BY q.StartMemberId
+    ORDER BY MIN(q.Id)),
+f AS (
+    SELECT a.StartMemberId,
+           SUM(ISNULL(d.Depth, 0) + 1) OVER (ORDER BY a.Primero ROWS UNBOUNDED PRECEDING) AS Acumulado,
+           ROW_NUMBER() OVER (ORDER BY a.Primero) AS Rn
+    FROM a
+    LEFT JOIN DualTeamTree d ON d.MemberId = a.StartMemberId AND d.IsDeleted = 0)
+INSERT INTO #arranques (StartMemberId)
+SELECT StartMemberId FROM f WHERE Rn = 1 OR Acumulado <= @maxFilas;
+
+CREATE TABLE #lote (StartMemberId nvarchar(450) COLLATE DATABASE_DEFAULT NOT NULL, Side int NOT NULL,
+                    Points decimal(18,4) NOT NULL, NodeCount int NOT NULL);
+DELETE q
+OUTPUT deleted.StartMemberId, deleted.Side, deleted.Points, deleted.NodeCount INTO #lote
+FROM DualLegDeltas q
+JOIN #arranques r ON r.StartMemberId = q.StartMemberId
+WHERE q.Id <= @hasta;
+
+SELECT a.AncestorKey,
+       SUM(CASE WHEN a.Side = 0 THEN l.Points    ELSE 0 END) AS LP,
+       SUM(CASE WHEN a.Side = 1 THEN l.Points    ELSE 0 END) AS RP,
+       SUM(CASE WHEN a.Side = 0 THEN l.NodeCount ELSE 0 END) AS LC,
+       SUM(CASE WHEN a.Side = 1 THEN l.NodeCount ELSE 0 END) AS RC
+INTO #deltas
+FROM (SELECT StartMemberId, Side, SUM(Points) AS Points, SUM(NodeCount) AS NodeCount FROM #lote GROUP BY StartMemberId, Side) l
+JOIN DualTeamTree s ON s.MemberId = l.StartMemberId AND s.IsDeleted = 0 AND s.BinaryPath IS NOT NULL
+CROSS APPLY dbo.DualAncestorKeys(s.BinaryPath, l.Side) a
+GROUP BY a.AncestorKey
+OPTION (MAXDOP 1);
+
+SELECT d.Id AS NodeId, d.MemberId, x.LP, x.RP, x.LC, x.RC, ROW_NUMBER() OVER (ORDER BY d.Id) AS Rn
+INTO #x
+FROM #deltas x
+JOIN DualTeamTree d ON d.BinaryPath = x.AncestorKey AND d.IsDeleted = 0
+OPTION (MAXDOP 1);
+CREATE CLUSTERED INDEX cx ON #x (Rn);
+
+DECLARE @desde int = 1, @filas int = (SELECT COUNT(*) FROM #x);
+WHILE @desde <= @filas
+BEGIN
+    UPDATE d
+    SET LeftLegPoints  = d.LeftLegPoints  + x.LP,
+        RightLegPoints = d.RightLegPoints + x.RP,
+        LeftLegCount   = d.LeftLegCount   + x.LC,
+        RightLegCount  = d.RightLegCount  + x.RC
+    FROM DualTeamTree d
+    JOIN #x x ON x.NodeId = d.Id
+    WHERE x.Rn >= @desde AND x.Rn < @desde + @trozo;
+
+    UPDATE s
+    SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int)
+    FROM MemberStatistics s
+    JOIN #x x ON x.MemberId = s.MemberId AND x.Rn >= @desde AND x.Rn < @desde + @trozo
+    JOIN DualTeamTree d ON d.Id = x.NodeId;
+
+    SET @desde += @trozo;
+END
+
+SELECT COUNT(*) AS [Value] FROM #lote;
+DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
+
+    // Plan Q: ApplyIncrementalAsync y ApplySubtreeAsync (subida en el acto) se retiran en la Tarea 7, cuando los siete
+    // escritores pasen a encolar.
     private const int ChunkSize = 500;
 
     /// <summary>
