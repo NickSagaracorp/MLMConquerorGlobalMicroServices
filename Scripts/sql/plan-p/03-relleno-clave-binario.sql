@@ -14,7 +14,9 @@ y funcion dbo.DualChildKey) y que no queden huecos repetidos (01-reparar-huecos-
 Idempotente: solo toca filas sin clave. Aguanta un corte: lo ya escrito es correcto (las claves dependen solo
 de la clave del padre) y la siguiente ejecucion sigue con lo que falte. Una segunda ejecucion no cambia nada.
 
-SOLO base local o la base de ensayo del Plan P, con los servicios parados.
+SOLO base local o la base de ensayo del Plan P, con los servicios parados, o la base de escala del Bloque D
+(MLMConquerorGlobalEditionDb_Escala), que exige -v Confirmo=ESCALA; LOCAL solo vale en las otras dos. No se usa
+-v Base=ESCALA porque sqlcmd falla si una variable no se define y romperia la invocacion de siempre.
 Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineName') = HOST_NAME().
 
   sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/03-relleno-clave-binario.sql
@@ -22,10 +24,10 @@ Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineN
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
-IF DB_NAME() NOT IN (N'MLMConquerorGlobalEditionDb', N'MLMConquerorGlobalEditionDb_PlanPEnsayo')
-    THROW 51053, N'Este script es solo para MLMConquerorGlobalEditionDb (o su ensayo del Plan P).', 1;
-IF N'$(Confirmo)' <> N'LOCAL'
-    THROW 51054, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL.', 1;
+IF DB_NAME() NOT IN (N'MLMConquerorGlobalEditionDb', N'MLMConquerorGlobalEditionDb_PlanPEnsayo', N'MLMConquerorGlobalEditionDb_Escala')
+    THROW 51053, N'Este script es solo para MLMConquerorGlobalEditionDb (o su ensayo o la base de escala del Plan P).', 1;
+IF N'$(Confirmo)' <> CASE WHEN DB_NAME() = N'MLMConquerorGlobalEditionDb_Escala' THEN N'ESCALA' ELSE N'LOCAL' END
+    THROW 51054, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL (Confirmo=ESCALA en la base de escala).', 1;
 IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
     THROW 51055, N'El servidor no es la maquina local.', 1;
 IF COL_LENGTH(N'dbo.DualTeamTree', N'BinaryPath') IS NULL OR OBJECT_ID(N'dbo.DualChildKey') IS NULL

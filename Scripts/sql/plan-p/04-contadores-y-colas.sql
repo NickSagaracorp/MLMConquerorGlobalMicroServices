@@ -12,7 +12,9 @@ Plan P, Tarea 14. Despues del relleno de la clave (03-relleno-clave-binario.sql)
 Escribe por tandas, una transaccion por tanda. Idempotente: una segunda ejecucion no cambia ningun contador y
 deja las mismas colas. Toma 'dual-tree' en exclusivo.
 
-SOLO base local o la base de ensayo del Plan P, con los servicios parados.
+SOLO base local o la base de ensayo del Plan P, con los servicios parados, o la base de escala del Bloque D
+(MLMConquerorGlobalEditionDb_Escala), que exige -v Confirmo=ESCALA; LOCAL solo vale en las otras dos. No se usa
+-v Base=ESCALA porque sqlcmd falla si una variable no se define y romperia la invocacion de siempre.
 Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineName') = HOST_NAME().
 
   sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/04-contadores-y-colas.sql
@@ -20,10 +22,10 @@ Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineN
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
-IF DB_NAME() NOT IN (N'MLMConquerorGlobalEditionDb', N'MLMConquerorGlobalEditionDb_PlanPEnsayo')
-    THROW 51058, N'Este script es solo para MLMConquerorGlobalEditionDb (o su ensayo del Plan P).', 1;
-IF N'$(Confirmo)' <> N'LOCAL'
-    THROW 51059, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL.', 1;
+IF DB_NAME() NOT IN (N'MLMConquerorGlobalEditionDb', N'MLMConquerorGlobalEditionDb_PlanPEnsayo', N'MLMConquerorGlobalEditionDb_Escala')
+    THROW 51058, N'Este script es solo para MLMConquerorGlobalEditionDb (o su ensayo o la base de escala del Plan P).', 1;
+IF N'$(Confirmo)' <> CASE WHEN DB_NAME() = N'MLMConquerorGlobalEditionDb_Escala' THEN N'ESCALA' ELSE N'LOCAL' END
+    THROW 51059, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL (Confirmo=ESCALA en la base de escala).', 1;
 IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
     THROW 51060, N'El servidor no es la maquina local.', 1;
 IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND (BinaryPath IS NULL OR Depth IS NULL))

@@ -30,4 +30,9 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.RankEngine\MLMConquerorGlobalEdition.RankEngine.csproj" />
   </ItemGroup>
 
+  <!-- Plan P, Bloque D: el atributo [EscalaFact] y la conexion a la base de escala, en un solo sitio. -->
+  <ItemGroup>
+    <Compile Include="..\MLMConquerorGlobalEdition.BizCenter.Tests\Binario\EscalaDb.cs" Link="Escala\EscalaDb.cs" />
+  </ItemGroup>
+
 </Project>
