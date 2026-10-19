@@ -1150,7 +1150,7 @@ DROP TABLE #x; DROP TABLE #deltas; DROP TABLE #lote; DROP TABLE #arranques;";
 - Modify: `MLMConquerorGlobalEdition.BizCenter/Program.cs:262` (DI) y `:456-460` (registro, después de `auto-placement`)
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/ApplyDualLegDeltasJobTests.cs`
 
-- [ ] **Paso 1.** Prueba en rojo (InMemory). El trabajo no falla sin proveedor relacional y devuelve 0:
+- [x] **Paso 1.** Prueba en rojo (InMemory). El trabajo no falla sin proveedor relacional y devuelve 0:
 
 ```csharp
 using Microsoft.Extensions.Logging.Abstractions;
@@ -1171,9 +1171,9 @@ public class ApplyDualLegDeltasJobTests
 }
 ```
 
-- [ ] **Paso 2.** Ejecutar. **Esperado:** no compila.
+- [x] **Paso 2.** Ejecutar. **Esperado:** no compila.
 
-- [ ] **Paso 3.** El trabajo. Vive en `Repository` por la misma razón que `ApplyMemberStatisticDeltasJob`: todos los planificadores de Hangfire deben poder cargar su tipo. Corre en la cola `bizcenter`, la del servicio que coloca (`AutoPlacementJob`).
+- [x] **Paso 3.** El trabajo. Vive en `Repository` por la misma razón que `ApplyMemberStatisticDeltasJob`: todos los planificadores de Hangfire deben poder cargar su tipo. Corre en la cola `bizcenter`, la del servicio que coloca (`AutoPlacementJob`).
 
 ```csharp
 using Hangfire;
@@ -1222,7 +1222,7 @@ RecurringJob.AddOrUpdate<ApplyDualLegDeltasJob>(
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
 ```
 
-- [ ] **Paso 4.** En verde. Commit: `Plan Q: trabajo recurrente que vacia la cola de piernas del binario`.
+- [x] **Paso 4.** En verde. Commit: `Plan Q: trabajo recurrente que vacia la cola de piernas del binario`.
 
 ### Tarea 8b: calificados del binario mantenidos por la cola (DQ13)
 

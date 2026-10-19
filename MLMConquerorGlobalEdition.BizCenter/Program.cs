@@ -31,6 +31,7 @@ using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfa
 
 using MLMConquerorGlobalEdition.Repository.Services.Payout;
 using MLMConquerorGlobalEdition.Notifications;
+using MLMConquerorGlobalEdition.Repository.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -260,6 +261,7 @@ builder.Services.AddScoped<MemberStatisticSnapshotJob>();
 builder.Services.AddScoped<ExpiredTokenCleanupJob>();
 builder.Services.AddScoped<LoyaltyPointsMonthlyRollupJob>();
 builder.Services.AddScoped<AutoPlacementJob>();
+builder.Services.AddScoped<ApplyDualLegDeltasJob>();
 builder.Services.AddHangfire(cfg =>
 {
     cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -458,6 +460,13 @@ RecurringJob.AddOrUpdate<AutoPlacementJob>(
     job => job.ExecuteAsync(),
     "0 */6 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Plan Q (P-R9): las piernas del binario se aplican desde la cola cada minuto.
+RecurringJob.AddOrUpdate<ApplyDualLegDeltasJob>(
+    "apply-dual-leg-deltas",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "* * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
 {
