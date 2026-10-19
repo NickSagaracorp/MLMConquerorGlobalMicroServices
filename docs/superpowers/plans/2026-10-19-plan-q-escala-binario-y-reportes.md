@@ -2171,13 +2171,13 @@ public class SqlServerColaDeRangoVaciaPiernasTests
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanPTests.cs` (las mediciones de colocación a más de 8.000 niveles de la base local)
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanQTests.cs`
 
-- [ ] **Paso 1.** Las mediciones locales del Plan P («colocar una hoja a 8.223 niveles», «10 a la vez») pasan a medir la colocación sin la subida y, aparte, el vaciado. Nuevos objetivos:
+- [x] **Paso 1.** Las mediciones locales del Plan P («colocar una hoja a 8.223 niveles», «10 a la vez») pasan a medir la colocación sin la subida y, aparte, el vaciado. Nuevos objetivos:
   - colocar una hoja a más de 8.000 niveles, **< 300 ms** (antes 1,6 s);
   - 10 a la vez, **p95 < 2 s**;
   - vaciar los 10 deltas, **< 5 s**.
 
   En el `finally` de `Diez_colocaciones_simultaneas_a_gran_profundidad`, después del `CommitAsync` de las retiradas y antes de `BinarioDb.LimpiarAsync(x)`, se vacía la cola, para que la base local quede con las piernas como estaban: `await using (var vaciar = SqlServerReportes.Db()) await LegPointMaintenance.DrainAsync(vaciar);`.
-- [ ] **Paso 2.** Concurrencia del vaciado con las colocaciones (revisión I9). El vaciado corre en bucle mientras se hacen 10 colocaciones simultáneas a más de 8.000 niveles: ninguna colocación falla (ni 1205 ni candado agotado), el vaciado no falla, se mide el p95 y, al vaciar del todo, la raíz común sube exactamente 10 nodos.
+- [x] **Paso 2.** Concurrencia del vaciado con las colocaciones (revisión I9). El vaciado corre en bucle mientras se hacen 10 colocaciones simultáneas a más de 8.000 niveles: ninguna colocación falla (ni 1205 ni candado agotado), el vaciado no falla, se mide el p95 y, al vaciar del todo, la raíz común sube exactamente 10 nodos.
 
 ```csharp
 using System.Collections.Concurrent;
@@ -2301,7 +2301,11 @@ public class SqlServerMedicionPlanQTests
 }
 ```
 
-- [ ] **Paso 3.** Ejecutar con la categoría de medición y anotar las cifras en «Resultados medidos». Commit: `Plan Q: medicion local de la colocacion sin subida, del vaciado de la cola y del vaciado durante colocaciones simultaneas`.
+- [x] **Paso 3.** Ejecutar con la categoría de medición y anotar las cifras en «Resultados medidos». Commit: `Plan Q: medicion local de la colocacion sin subida, del vaciado de la cola y del vaciado durante colocaciones simultaneas`.
+
+> **Desviaciones (al implementar).**
+> - **Coste del vaciado.** La primera medición dio 6.519 ms al vaciar los 10 deltas (❌ de 5 s). El desglose de la tanda en `sqlcmd` (10 arranques a más de 8.000 niveles: 82.185 filas de la expansión, 8.222 ascendientes): expansión y agregación 4.200 ms, unión por la clave 281 ms, `UPDATE` por trozos 1.336 ms. La Tarea 8b comparaba `a.AncestorKey <> s.BinaryPath` (claves de hasta 1.700 bytes) en cada fila de la expansión para separar el propio del arranque; pasa a compararse la profundidad (`a.Depth < s.Depth` y `a.Depth = s.Depth`), que es la misma condición porque `Depth` es la de la clave. Con eso, la expansión y agregación bajan a 1.933-3.393 ms (con la máquina cargada por los servicios del árbol `-run`) y el vaciado de los 10, a 4.080-4.124 ms. El resto del coste es construir y agrupar 82.185 claves de unos 500 bytes: si a escala no cumple, la mejora es la de Q-R2 (agrupar los ascendientes en C# con `DualBinaryPath.Ancestor` antes de mandarlos).
+> - **Colocar una hoja en frío.** La primera colocación del proceso compila las consultas del motor (550-700 ms). `Escrituras_a_mas_de_8000_niveles` coloca antes otra hoja bajo el mismo nodo (su hueco izquierdo) y la mide aparte, sin objetivo; el objetivo de 300 ms es el de la segunda (44 ms).
 
 ---
 
@@ -5732,6 +5736,8 @@ Las columnas «antes» de 400.000 y 1.000.000 vienen del Bloque D del Plan P. La
 ² Con 500.000 no se agota: 37.200 / 16.351 / 17.718 ms (la primera, en frío, pasa de 30 s).
 
 Tarea 0 (500.000 antes, código de be932cc): generación 2.899 s y `02-verificar-escala.sql` a 0 en todo (ESC-M con 500.000 en el binario y 550.000 en inscripción; profundidad máxima 8.506, clave máxima 1.068 B, nivel máximo de inscripción 429; base de 63.112 MB y registro de 36.936 MB). El índice agrupado de `DualTeamTree` ocupa 40.536 MB (669.435 filas) y `HierarchyPath`, 32.875 MB. Las 15 colocaciones durante el movimiento fallan tras unos 15,1 s con «Another dual-tree write holds dual-tree.»; el movimiento tardó 149.282 / 397.268 / 254.031 ms. Las 10 simultáneas: p50 7.874 / 9.364 / 4.284 ms y p95 13.695 / 26.202 / 11.581 ms, ninguna falla. Fuera de la tabla: `PlaceBulkAsync` con 1.000 pendientes, mediana 903,7 s (831 ms por colocación, 0 fallidas); conteo de Mi equipo binario 215 ms; página 1.000 por clave 91 ms; puntos y contadores de pierna 2 ms; visualizador del admin con 6 niveles 44 ms. Suites: BizCenter 5 de 14 en verde (4.390 s), AdminAPI 1 de 1 (17 s), RankEngine 0 de 1 (78 s).
+
+Tarea 10 (base local, `Medicion.runsettings`, 2026-10-19; 119.433 nodos, profundidad máxima 8.222; con los servicios del árbol `-run` en marcha): colocar una hoja a 8.223 niveles sin la subida **44 ms** ✅ (< 300 ms; la primera del proceso, en frío, 700 ms) y vaciar su delta 1.141 ms; 10 colocaciones simultáneas a más de 8.000 niveles p50 93 ms, **p95 99 ms** ✅ (< 2 s) y vaciar los 10 deltas **4.124 ms** ✅ (< 5 s; 6.519 ms ❌ antes de comparar la profundidad, ver la Tarea 10); 10 colocaciones con el vaciado en bucle (`SqlServerMedicionPlanQTests`) p50 59 ms, **p95 81 ms** ✅, sin fallos de colocación ni del vaciado, y la raíz común sube exactamente 10 nodos. Del resto del Plan P en la misma pasada: raíz provisional con 50 a más de 8.000 niveles 573 ms, retirar un nodo con equipo 439 ms, retirar y recolocar con equipo a 4.625 niveles (con el vaciado dentro) 1.280 ms, Mi equipo de AMB-700829 p1 67 ms y p1000 523 ms.
 
 ---
 

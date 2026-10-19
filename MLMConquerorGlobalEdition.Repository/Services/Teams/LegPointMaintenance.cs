@@ -174,16 +174,18 @@ WHERE q.Id <= @hasta
   AND (q.OwnChange = 0 OR EXISTS (SELECT 1 FROM DualTeamTree v
                                   WHERE v.MemberId = q.StartMemberId AND v.IsDeleted = 0 AND v.BinaryPath IS NOT NULL));
 
--- Un propio va a las piernas de los ascendientes (AncestorKey <> la clave del arranque) y al SelfQualified del arranque
--- (AncestorKey = su clave); uno de pierna, como los puntos, a la pierna Side del arranque y a cada ascendiente.
+-- Un propio va a las piernas de los ascendientes (a.Depth < la profundidad del arranque) y al SelfQualified del arranque
+-- (a.Depth = su profundidad: la fila de su propia clave); uno de pierna, como los puntos, a la pierna Side del arranque y
+-- a cada ascendiente. Se compara la profundidad y no la clave: comparar claves de hasta 1.700 bytes en cada fila de la
+-- expansion casi duplicaba su coste (medido en la Tarea 10). Depth es la de la clave (la escribe solo DualTeamNodes).
 SELECT a.AncestorKey,
        SUM(CASE WHEN a.Side = 0 THEN l.Points    ELSE 0 END) AS LP,
        SUM(CASE WHEN a.Side = 1 THEN l.Points    ELSE 0 END) AS RP,
        SUM(CASE WHEN a.Side = 0 THEN l.NodeCount ELSE 0 END) AS LC,
        SUM(CASE WHEN a.Side = 1 THEN l.NodeCount ELSE 0 END) AS RC,
-       SUM(CASE WHEN a.Side = 0 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS LQ,
-       SUM(CASE WHEN a.Side = 1 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS RQ,
-       SUM(CASE WHEN l.OwnChange = 1 AND a.AncestorKey = s.BinaryPath THEN l.QualifiedCount ELSE 0 END) AS SQ
+       SUM(CASE WHEN a.Side = 0 AND (l.OwnChange = 0 OR a.Depth < s.Depth) THEN l.QualifiedCount ELSE 0 END) AS LQ,
+       SUM(CASE WHEN a.Side = 1 AND (l.OwnChange = 0 OR a.Depth < s.Depth) THEN l.QualifiedCount ELSE 0 END) AS RQ,
+       SUM(CASE WHEN l.OwnChange = 1 AND a.Depth = s.Depth THEN l.QualifiedCount ELSE 0 END) AS SQ
 INTO #deltas
 FROM (SELECT StartMemberId, Side, OwnChange, SUM(Points) AS Points, SUM(NodeCount) AS NodeCount,
              SUM(QualifiedCount) AS QualifiedCount

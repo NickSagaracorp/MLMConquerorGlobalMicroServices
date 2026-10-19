@@ -55,11 +55,19 @@ public class SqlServerMedicionPlanPTests
         await using var tx = await db.Database.BeginTransactionAsync();
         var motor = new PlacementService(db, new Reloj());
 
-        // 1. Una hoja bajo el nodo mas profundo (sube puntos y contadores por mas de 8.000 ascendientes).
+        // 1. Una hoja bajo el nodo mas profundo. Plan Q: la colocacion solo encola (objetivo 300 ms, antes 1,6 s) y el
+        // vaciado sube puntos y contadores por mas de 8.000 ascendientes, aparte.
+        // La primera colocacion del proceso compila las consultas del motor (en frio): se mide aparte, sin objetivo, con
+        // otra hoja bajo el mismo nodo (su hueco izquierdo); la medida es la segunda (su hueco derecho).
+        await BinarioDb.SembrarPerfilAsync(db, $"{x}W", hondo.MemberId);
+        await MideAsync($"Colocar una hoja a profundidad {hondo.Depth + 1} (primera del proceso, en frio)", async () =>
+            (await motor.PlaceAsync($"{x}W", hondo.MemberId)).IsSuccess.Should().BeTrue());
         await BinarioDb.SembrarPerfilAsync(db, $"{x}H", hondo.MemberId);
         await BinarioDb.PuntosAsync(db, $"{x}H", 25);
-        var t1 = await MideAsync($"Colocar una hoja a profundidad {hondo.Depth + 1}", async () =>
+        var t1 = await MideAsync($"Colocar una hoja a profundidad {hondo.Depth + 1} (sin la subida)", async () =>
             (await motor.PlaceAsync($"{x}H", hondo.MemberId)).IsSuccess.Should().BeTrue());
+        var t1v = await MideAsync("Vaciar la cola tras colocar la hoja (sube por mas de 8.000 ascendientes)", () =>
+            LegPointMaintenance.DrainAsync(db));
 
         // 2. Una raiz provisional con un equipo de 50 que se coloca bajo la hoja nueva (mueve 51 claves a 8.000 niveles).
         await BinarioDb.SembrarPerfilAsync(db, $"{x}B", $"{x}H");
@@ -83,7 +91,8 @@ public class SqlServerMedicionPlanPTests
         });
 
         await tx.RollbackAsync();
-        new[] { t1, t2, t3 }.Should().OnlyContain(t => t < Objetivo);
+        t1.Should().BeLessThan(TimeSpan.FromMilliseconds(300), "Plan Q: colocar solo encola");
+        new[] { t1v, t2, t3 }.Should().OnlyContain(t => t < Objetivo);
     }
 
     [SqlServerFact]
@@ -209,16 +218,29 @@ public class SqlServerMedicionPlanPTests
             _salida.WriteLine($"10 colocaciones simultaneas a mas de 8.000 niveles: p50 {P(0.5):0} ms, p95 {P(0.95):0} ms, max {orden[^1]:0} ms");
             resultados.Should().OnlyContain(r => r.IsSuccess, string.Join("; ", resultados.Where(r => !r.IsSuccess).Select(r => r.Error)));
             resultados.Should().OnlyContain(r => r.Value!.Depth > 8000);
+            P(0.95).Should().BeLessThan(2000, "Plan Q: 10 a la vez, p95 < 2 s");
+
+            // Plan Q: el vaciado de los 10 deltas (cada uno sube por mas de 8.000 ascendientes), < 5 s.
+            await using (var vaciar = SqlServerReportes.Db())
+            {
+                var tv = await MideAsync("Vaciar los 10 deltas de las colocaciones simultaneas", () => LegPointMaintenance.DrainAsync(vaciar));
+                tv.Should().BeLessThan(TimeSpan.FromSeconds(5));
+            }
         }
         finally
         {
             // Se retiran (restando sus piernas) para dejar la copia como estaba.
-            await using var db = SqlServerReportes.Db();
-            await using var tx = await db.Database.BeginTransactionAsync();
-            await DualTeamGate.EnterTreeExclusiveAsync(db);
-            foreach (var id in await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).Select(d => d.MemberId).ToListAsync())
-                await DualTeamNodes.RemoveAsync(db, id, DualTeamChildrenOnRemoval.Reject, DateTime.Now, "medicion");
-            await tx.CommitAsync();
+            await using (var db = SqlServerReportes.Db())
+            {
+                await using var tx = await db.Database.BeginTransactionAsync();
+                await DualTeamGate.EnterTreeExclusiveAsync(db);
+                foreach (var id in await db.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).Select(d => d.MemberId).ToListAsync())
+                    await DualTeamNodes.RemoveAsync(db, id, DualTeamChildrenOnRemoval.Reject, DateTime.Now, "medicion");
+                await tx.CommitAsync();
+            }
+            // Plan Q: los -T de las retiradas (y lo que quedara de las colocaciones) se aplican antes de limpiar, para que
+            // la base local quede con las piernas como estaban.
+            await using (var vaciar = SqlServerReportes.Db()) await LegPointMaintenance.DrainAsync(vaciar);
             await BinarioDb.LimpiarAsync(x);
         }
     }
