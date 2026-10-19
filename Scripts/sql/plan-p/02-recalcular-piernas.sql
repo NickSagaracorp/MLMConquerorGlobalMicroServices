@@ -12,7 +12,14 @@ patrocinador; la Tarea 14 la reconstruye de una vez.
 Escribe por tandas de 20.000 filas, una transaccion por tanda, con 'dual-tree' en exclusivo durante todo el script. Idempotente: una segunda ejecucion no cambia
 ninguna fila. Se niega a ejecutarse si quedan huecos repetidos (las piernas no estarian bien definidas).
 
-SOLO base local o la base de ensayo del Plan P, con los servicios parados.
+Plan Q (revision del bloque 2, I-2): neutraliza la cola de piernas. Toma 'dual-leg-deltas' en exclusivo (ningun vaciado
+a la vez) y pone a cero los PUNTOS pendientes en DualLegDeltas: ya van dentro de este recalculo y aplicarlos despues los
+contaria dos veces. Los contadores y calificados pendientes se conservan (este script no los recalcula).
+
+SOLO base local o la base de ensayo del Plan P, con TODOS los servicios parados, Hangfire incluido: BizCenter (coloca y
+vacia la cola de piernas), SignupAPI y AdminAPI (colocan y retiran), Billing (UplineAggregator escribe DualTeamPoints y
+PersonalPoints), RankEngine y CommissionEngine (vacian la cola antes de leer). Un escritor en marcha durante el script
+deja piernas o DualTeamPoints distintos del recalculo.
 Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineName') = HOST_NAME().
 
   sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/02-recalcular-piernas.sql
@@ -39,6 +46,25 @@ DECLARE @candado int;
 EXEC @candado = sp_getapplock @Resource = N'dual-tree', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
 IF @candado < 0
     THROW 51065, N'Hay escrituras del binario en curso (dual-tree ocupado): parar los servicios.', 1;
+
+-- Plan Q (revision I3 y revision del bloque 2, I-2): este script recalcula los PUNTOS de pierna desde cero. Lo pendiente
+-- de puntos en la cola ya va dentro del recalculo: se pone a cero (los contadores y calificados pendientes se conservan:
+-- este script no los recalcula). Con dual-tree en exclusivo ninguna colocacion encola mientras dura, y con
+-- dual-leg-deltas en exclusivo ningun vaciado reclama a la vez.
+DECLARE @cola int;
+EXEC @cola = sp_getapplock @Resource = N'dual-leg-deltas', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
+IF @cola < 0
+    THROW 51112, N'La cola de piernas se esta vaciando (dual-leg-deltas ocupado): parar los servicios.', 1;
+DECLARE @puntosNeutralizados int = 0;
+IF OBJECT_ID(N'dbo.DualLegDeltas') IS NOT NULL
+BEGIN
+    BEGIN TRAN;
+    UPDATE DualLegDeltas SET Points = 0 WHERE Points <> 0;
+    SET @puntosNeutralizados = @@ROWCOUNT;
+    -- Tarea 8b: un delta con calificados pendientes (o un propio) no se borra: este script no los recalcula.
+    DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0 AND QualifiedCount = 0 AND OwnChange = 0;
+    COMMIT;
+END
 
 IF OBJECT_ID('tempdb..#n') IS NOT NULL DROP TABLE #n;
 SELECT CAST(d.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId,
@@ -88,16 +114,20 @@ DELETE FROM DualTeamLegFrontiers;
 DECLARE @colas int = @@ROWCOUNT;
 COMMIT;
 
+EXEC sp_releaseapplock @Resource = N'dual-leg-deltas', @LockOwner = N'Session';
 EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
 
 SELECT (SELECT COUNT(*) FROM #n) AS NodosRecalculados,
        @piernas AS PiernasCambiadas,
        @estadisticas AS DualTeamPointsCambiados,
        @colas AS ColasVaciadas,
+       @puntosNeutralizados AS PendientesNeutralizados,
        DATEDIFF(second, @inicio, SYSDATETIME()) AS Segundos;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK;
+    IF APPLOCK_MODE(N'public', N'dual-leg-deltas', N'Session') <> N'NoLock'
+        EXEC sp_releaseapplock @Resource = N'dual-leg-deltas', @LockOwner = N'Session';
     IF APPLOCK_MODE(N'public', N'dual-tree', N'Session') <> N'NoLock'
         EXEC sp_releaseapplock @Resource = N'dual-tree', @LockOwner = N'Session';
     THROW;
