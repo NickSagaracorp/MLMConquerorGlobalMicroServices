@@ -10,7 +10,7 @@ real»). Forma de los datos:
     raiz provisional (sin padre) con un arbol completo de 50.000 nodos.
   - Inscripcion: independiente del binario. Cada patrocinador inscribe de 0 a 10 (45 % ninguno, media 1,47, pocos muy
     productivos; hash MD5 determinista), en anchura, hasta sumar N bajo ESC-M, mas una rama larga de 400 niveles colgada
-    del nodo mas hondo (unos 440 niveles en la rama mas larga); mas ESC-P, inscrito por ESC-M, con 49.999 debajo.
+    del nodo mas hondo (unos 440 niveles en la rama mas larga); mas ESC-P, inscrito por ESC-2 (cabeza de la columna binaria), con 49.999 debajo.
   - n = orden de alta (fechas crecientes en los ultimos 24 meses, hora del servidor): todo patrocinador y todo padre
     binario es anterior a sus hijos. Producto por n (VIP, Elite, Turbo del catalogo real) mas Lifestyle Ambassador.
   - Contrasena de todos los usuarios sinteticos: Escala2026! (un hash V3 generado para esta base, no copiado de nadie).

@@ -58,8 +58,10 @@ public static class EscalaDb
     public static AppDbContext Db(int timeoutSegundos = 600)
     {
         if (Motivo is { } m) throw new InvalidOperationException(m);
+        // El mismo tiempo en la cadena: SqlTransaction.Rollback no usa el de EF, sino el de la conexion.
+        var cadena = new SqlConnectionStringBuilder(ConnectionString) { CommandTimeout = timeoutSegundos }.ConnectionString;
         return new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(ConnectionString, o => o.CommandTimeout(timeoutSegundos)).Options);
+            .UseSqlServer(cadena, o => o.CommandTimeout(timeoutSegundos)).Options);
     }
 
     /// <summary>

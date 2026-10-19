@@ -36,6 +36,8 @@ public class EscalaBinarioTests
     private const int TimeoutProduccion = 30;
     private const string Medido = "ESC-M";
     private const string Provisional = "ESC-P";
+    /// <summary>Primer eslabon de la columna: tiene los dos hijos (ESC-M solo tiene el izquierdo) y su pierna izquierda es la cadena de 8.500 niveles.</summary>
+    private const string Cabeza = "ESC-2";
 
     private readonly ITestOutputHelper _salida;
     public EscalaBinarioTests(ITestOutputHelper salida) => _salida = salida;
@@ -129,8 +131,8 @@ public class EscalaBinarioTests
     {
         await using var db = EscalaDb.Db(TimeoutProduccion);
         var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
-        var t = await Mediana("Mi equipo binario de ESC-M, busqueda 'Lucia Romero'", async _ =>
-            (await servicio.GetMyTeamGridAsync(Medido, new GridDataRequest { PageSize = 20, Search = "Lucia Romero" })).TotalCount.Should().BePositive());
+        var t = await Mediana("Mi equipo binario de ESC-M, busqueda 'Lucia Diaz' (1 de cada 100)", async _ =>
+            (await servicio.GetMyTeamGridAsync(Medido, new GridDataRequest { PageSize = 20, Search = "Lucia Diaz" })).TotalCount.Should().BePositive());
         t.Should().BeLessThan(Objetivo, "si no se cumple, se propone un indice de texto (Plan P, Bloque D)");
     }
 
@@ -178,15 +180,15 @@ public class EscalaBinarioTests
     {
         await using var db = EscalaDb.Db(TimeoutProduccion);
         var motor = new PlacementService(db, new Reloj());
-        var t = await Mediana("Derrame de ESC-M con su cola (DualTeamLegFrontiers) vacia", async i =>
+        var t = await Mediana("Derrame de ESC-2 (cabeza de la columna) con su cola (DualTeamLegFrontiers) vacia", async i =>
         {
             await using var tx = await db.Database.BeginTransactionAsync();
-            await db.Database.ExecuteSqlRawAsync("DELETE FROM DualTeamLegFrontiers WHERE SponsorMemberId = {0}", Medido);
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM DualTeamLegFrontiers WHERE SponsorMemberId = {0}", Cabeza);
             var id = $"EZC{i}{Guid.NewGuid():N}"[..14].ToUpperInvariant();
-            await BinarioDb.SembrarPerfilAsync(db, id, Medido);
-            var r = await motor.PlaceAsync(id, Medido);
+            await BinarioDb.SembrarPerfilAsync(db, id, Cabeza);
+            var r = await motor.PlaceAsync(id, Cabeza);
             r.IsSuccess.Should().BeTrue(r.Error);
-            r.Value!.Depth.Should().BeGreaterThan(8400, "ESC-M tiene los dos hijos: derrama a la hoja mas honda de su pierna izquierda");
+            r.Value!.Depth.Should().BeGreaterThan(8400, "ESC-2 tiene los dos hijos: derrama a la hoja mas honda de su pierna izquierda");
             await tx.RollbackAsync();
         });
         t.Should().BeLessThan(Objetivo, "si no, la cache es obligatoria y 04 la reconstruye");
@@ -239,13 +241,15 @@ public class EscalaBinarioTests
     /// <summary>
     /// Riesgo P-R6: colocar la raiz provisional ESC-P (50.000 en su equipo) mueve su subarbol entero bajo la linea de
     /// ESC-M (derrame a unos 8.500 niveles), con el arbol en exclusivo. Mientras, 5 colocaciones normales esperan: se
-    /// mide cuanto. Despues se devuelve ESC-P a raiz provisional (sin medir) para repetir.
+    /// mide cuanto. Despues se devuelve ESC-P a raiz provisional (sin medir) para repetir. Se coloca bajo ESC-2 (cabeza de la
+    /// columna, con los dos hijos), para que derrame a unos 8.500 niveles; bajo ESC-M iria a su derecha libre.
     /// </summary>
     [EscalaFact]
     public async Task Mover_un_subarbol_de_50000_nodos_y_cuanto_bloquea()
     {
         var movs = new List<double>();
         var esperas = new List<double>();
+        var fallos = new List<string>();
         for (var rep = 0; rep < 3; rep++)
         {
             List<string> patrocinadores;
@@ -264,7 +268,7 @@ public class EscalaBinarioTests
                     // Tiempo de espera largo para conocer la duracion real; la asercion la compara con los 30 s de produccion.
                     await using var db = EscalaDb.Db();
                     var c = Stopwatch.StartNew();
-                    var r = await new PlacementService(db, new Reloj()).PlaceAsync(Provisional, Medido);
+                    var r = await new PlacementService(db, new Reloj()).PlaceAsync(Provisional, Cabeza);
                     c.Stop();
                     return (r, c.Elapsed);
                 });
@@ -283,8 +287,9 @@ public class EscalaBinarioTests
                 esperas.Add(otras.Max(o => o.Elapsed.TotalMilliseconds));
                 _salida.WriteLine($"[ESCALA] Mover ESC-P (50.000), repeticion {rep + 1}: {tm.TotalMilliseconds:0} ms, profundidad {rm.Value?.Depth}; " +
                                   $"5 colocaciones durante el movimiento: {string.Join(" / ", otras.Select(o => $"{o.Elapsed.TotalMilliseconds:0} ms{(o.r.IsSuccess ? "" : " " + o.r.Error)}"))}");
-                rm.IsSuccess.Should().BeTrue(rm.Error);
-                otras.Should().OnlyContain(o => o.r.IsSuccess, "ninguna colocacion debe fallar por el candado mientras se mueve un subarbol");
+                // Las aserciones van al final, para tener las tres repeticiones aunque alguna falle.
+                if (!rm.IsSuccess) fallos.Add($"repeticion {rep + 1}: el movimiento fallo ({rm.Error})");
+                fallos.AddRange(otras.Where(o => !o.r.IsSuccess).Select(o => $"repeticion {rep + 1}: una colocacion fallo tras {o.Elapsed.TotalSeconds:0.0} s ({o.r.Error})"));
             }
             finally
             {
@@ -295,6 +300,7 @@ public class EscalaBinarioTests
         var mm = movs.OrderBy(v => v).ElementAt(1);
         var me = esperas.OrderBy(v => v).ElementAt(1);
         _salida.WriteLine($"[ESCALA] Mover ESC-P: mediana {mm:0} ms; espera maxima de las colocaciones, mediana {me:0} ms");
+        fallos.Should().BeEmpty("ninguna colocacion debe fallar por el candado mientras se mueve un subarbol");
         TimeSpan.FromMilliseconds(mm).Should().BeLessThan(TimeSpan.FromSeconds(TimeoutProduccion), "un comando de mas de 30 s fallaria en produccion");
     }
 
@@ -302,13 +308,16 @@ public class EscalaBinarioTests
     [EscalaFact]
     public async Task PlaceBulk_con_1000_pendientes()
     {
-        await using var db = EscalaDb.Db(TimeoutProduccion);
+        // Tiempo de espera largo: deshacer las 1.000 colocaciones de una vez tarda mas de 30 s (en produccion cada una confirma).
+        await using var db = EscalaDb.Db();
         // Patrocinadores repartidos por el equipo de inscripcion de ESC-M (cada 397.o, determinista).
         var gen = await db.GenealogyTree.AsNoTracking().CurrentOfAsync(Medido);
         var patrocinadores = await db.GenealogyTree.AsNoTracking().CurrentUnder(gen!.Node)
             .OrderBy(g => g.MemberId).Select(g => g.MemberId).ToListAsync();
-        patrocinadores = patrocinadores.Where((_, i) => i % 397 == 0).Take(1000).ToList();
-        while (patrocinadores.Count < 1000) patrocinadores.Add(Medido);
+        // MLM_ESCALA_PENDIENTES solo para comprobar la prueba con pocos; la medicion es con 1.000.
+        var cuantos = int.TryParse(Environment.GetEnvironmentVariable("MLM_ESCALA_PENDIENTES"), out var k) ? k : 1000;
+        patrocinadores = patrocinadores.Where((_, i) => i % 397 == 0).Take(cuantos).ToList();
+        while (patrocinadores.Count < cuantos) patrocinadores.Add(Medido);
         var porColocacion = new List<double>();
 
         var t = await Mediana("PlaceBulkAsync con 1.000 pendientes", async rep =>
@@ -338,8 +347,10 @@ public class EscalaBinarioTests
                               $"colocados {r.Value?.Placed}, fallidos {r.Value?.Failed}");
             r.IsSuccess.Should().BeTrue();
             r.Value!.Failed.Should().Be(0);
-            r.Value.Placed.Should().Be(1000);
-            await tx.RollbackAsync();
+            r.Value.Placed.Should().Be(cuantos);
+            // Deshacer 1.000 colocaciones tarda mas de 30 s y SqlTransaction.Rollback no admite otro tiempo de espera: el
+            // ROLLBACK va como sentencia, con el tiempo de espera largo del contexto (SqlClient da la transaccion por cerrada).
+            await db.Database.ExecuteSqlRawAsync("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION");
             db.ChangeTracker.Clear();
         });
         var mediaPorColocacion = porColocacion.OrderBy(v => v).ElementAt(1);

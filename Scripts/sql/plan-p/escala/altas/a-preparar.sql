@@ -128,12 +128,13 @@ INSERT INTO escala.Altas (n, MemberId, GenPadre, GenNivel, GenOrd)
 SELECT g.Pos + 1, CASE WHEN g.Pos = 0 THEN N'ESC-M' ELSE CONCAT(N'ESC-', g.Pos + 1) END,
        CASE WHEN g.Pos = 0 THEN 0 ELSE g.Padre + 1 END, g.Nivel + 1, g.Ord
 FROM escala.Gen g WHERE g.Arbol = 'M';
--- ESC-P, inscrito por ESC-M (su ultimo hijo), y su arbol: n = N + 2 + posicion.
+-- ESC-P, inscrito por ESC-2 (la cabeza de la columna binaria, nivel 2 de inscripcion: su ultimo hijo), y su arbol:
+-- n = N + 2 + posicion. Al colocar a ESC-P bajo su patrocinador derrama a unos 8.500 niveles (riesgo P-R6).
 INSERT INTO escala.Altas (n, MemberId, GenPadre, GenNivel, GenOrd)
 SELECT @N + 2 + g.Pos, CASE WHEN g.Pos = 0 THEN N'ESC-P' ELSE CONCAT(N'ESC-', @N + 2 + g.Pos) END,
-       CASE WHEN g.Pos = 0 THEN 1 ELSE @N + 2 + g.Padre END,
-       g.Nivel + 2,
-       CASE WHEN g.Pos = 0 THEN (SELECT COUNT(*) FROM escala.Gen x WHERE x.Arbol = 'M' AND x.Padre = 0) + 1 ELSE g.Ord END
+       CASE WHEN g.Pos = 0 THEN 2 ELSE @N + 2 + g.Padre END,
+       g.Nivel + 3,
+       CASE WHEN g.Pos = 0 THEN (SELECT COUNT(*) FROM escala.Gen x WHERE x.Arbol = 'M' AND x.Padre = 1) + 1 ELSE g.Ord END
 FROM escala.Gen g WHERE g.Arbol = 'P';
 DROP TABLE escala.Gen;
 
