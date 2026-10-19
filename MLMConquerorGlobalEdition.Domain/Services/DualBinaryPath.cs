@@ -97,6 +97,28 @@ public static class DualBinaryPath
         return k;
     }
 
+    /// <summary>
+    /// Plan Q: la clave del ascendiente de <paramref name="key"/> a profundidad <paramref name="depth"/> (0 = la raiz,
+    /// Depth(key) = la propia clave): los bits de camino hasta ahi y el terminador. Es lo mismo que calcula
+    /// dbo.DualAncestorKeys en SQL; SqlServerAscendientesPorClaveTests exige que coincidan.
+    /// </summary>
+    public static byte[] Ancestor(ReadOnlySpan<byte> key, int depth)
+    {
+        var d = Depth(key);
+        if (depth < 0 || depth > d) throw new ArgumentOutOfRangeException(nameof(depth));
+        var k = key[..(RootBytes + depth / 8 + 1)].ToArray();
+        var m = depth % 8;
+        k[^1] = (byte)((k[^1] & (0xFF00 >> m)) | (0x80 >> m));   // conserva los m bits de arriba y pone el terminador
+        return k;
+    }
+
+    /// <summary>Plan Q: el lado por el que baja el camino de <paramref name="key"/> desde su ascendiente de profundidad <paramref name="depth"/>.</summary>
+    public static TreeSide SideBelow(ReadOnlySpan<byte> key, int depth)
+    {
+        if (depth < 0 || depth >= Depth(key)) throw new ArgumentOutOfRangeException(nameof(depth));
+        return GetBit(key, depth) ? TreeSide.Right : TreeSide.Left;
+    }
+
     private static bool GetBit(ReadOnlySpan<byte> k, int pathBit) =>
         (k[RootBytes + pathBit / 8] & (0x80 >> (pathBit % 8))) != 0;
 

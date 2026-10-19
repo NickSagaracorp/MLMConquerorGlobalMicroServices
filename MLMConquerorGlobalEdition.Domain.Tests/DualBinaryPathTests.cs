@@ -196,4 +196,28 @@ public class DualBinaryPathTests
         Hex(DualBinaryPath.Rebase(d, viejo, nuevo)).Should().Be(Hex(esperado));
         DualBinaryPath.Depth(DualBinaryPath.Rebase(d, viejo, nuevo)).Should().Be(7000);
     }
+
+    [Fact]
+    public void Ancestor_y_SideBelow_reconstruyen_el_camino_de_cualquier_clave()
+    {
+        var rnd = new Random(20261019);
+        for (var caso = 0; caso < 200; caso++)
+        {
+            var claves = new List<byte[]> { DualBinaryPath.Root(rnd.Next(1, int.MaxValue)) };
+            var lados = new List<TreeSide>();
+            var prof = rnd.Next(0, 3000);
+            for (var i = 0; i < prof; i++)
+            {
+                var lado = rnd.Next(2) == 0 ? TreeSide.Left : TreeSide.Right;
+                lados.Add(lado);
+                claves.Add(DualBinaryPath.Child(claves[^1], lado));
+            }
+            var hoja = claves[^1];
+            for (var j = 0; j <= prof; j++)
+            {
+                DualBinaryPath.Ancestor(hoja, j).Should().Equal(claves[j]);
+                if (j < prof) DualBinaryPath.SideBelow(hoja, j).Should().Be(lados[j]);
+            }
+        }
+    }
 }

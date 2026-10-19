@@ -431,7 +431,7 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 - Modify: `MLMConquerorGlobalEdition.Domain/Services/DualBinaryPath.cs:100-103` (después de `Rebase`)
 - Modify: `MLMConquerorGlobalEdition.Domain.Tests/DualBinaryPathTests.cs` (el único fichero de pruebas de `DualBinaryPath`)
 
-- [ ] **Paso 1.** Prueba en rojo:
+- [x] **Paso 1.** Prueba en rojo:
 
 ```csharp
     [Fact]
@@ -459,9 +459,9 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
     }
 ```
 
-- [ ] **Paso 2.** `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter FullyQualifiedName~DualBinaryPath`. **Esperado:** no compila (no existen los métodos).
+- [x] **Paso 2.** `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter FullyQualifiedName~DualBinaryPath`. **Esperado:** no compila (no existen los métodos).
 
-- [ ] **Paso 3.** Implementación:
+- [x] **Paso 3.** Implementación:
 
 ```csharp
     /// <summary>
@@ -487,7 +487,7 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
     }
 ```
 
-- [ ] **Paso 4.** En verde. Commit: `Plan Q: claves de los ascendientes y lado de bajada a partir de la clave compacta`.
+- [x] **Paso 4.** En verde. Commit: `Plan Q: claves de los ascendientes y lado de bajada a partir de la clave compacta`.
 
 ### Tarea 5: tabla `DualLegDeltas` y funciones `dbo.Numeros` y `dbo.DualAncestorKeys`
 
