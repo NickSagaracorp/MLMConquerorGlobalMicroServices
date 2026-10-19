@@ -32,6 +32,26 @@ public static class DualSubtree
         return Range(db, lo, hi).Where(d => d.MemberId != node.MemberId);
     }
 
+    /// <summary>
+    /// Plan Q: solo los MemberId de los descendientes de <paramref name="node"/>, leidos por el indice cubriente
+    /// UX_DualTeamTree_BinaryPath (con la pista: con SELECT * el optimizador elegia a veces una interseccion paralela
+    /// de tres indices, de 400 a 1.660 ms con 119.000; asi, unos 200 ms sin carga). Para contar o unir con otra tabla.
+    /// </summary>
+    public static IQueryable<string> MemberIdsUnder(AppDbContext db, DualTeamEntity node)
+    {
+        if (!db.Database.IsSqlServer())
+            return Under(db, node).Select(d => d.MemberId);
+        var (lo, hi) = DualBinaryPath.SubtreeBounds(Key(node));
+        return db.Database
+            .SqlQueryRaw<DualMemberIdRow>(
+                "SELECT MemberId FROM DualTeamTree WITH (INDEX(UX_DualTeamTree_BinaryPath)) " +
+                "WHERE BinaryPath > @lo AND BinaryPath < @hi AND IsDeleted = 0 AND MemberId <> @self",
+                Param("@lo", lo), Param("@hi", hi),
+                new SqlParameter("@self", SqlDbType.NVarChar, 450) { Value = node.MemberId })
+            .TagWith(RecompileTag)
+            .Select(r => r.MemberId);
+    }
+
     /// <summary>Los nodos de una pierna de <paramref name="node"/> (el subarbol de su hijo de ese lado).</summary>
     public static IQueryable<DualTeamEntity> Leg(AppDbContext db, DualTeamEntity node, TreeSide side)
     {
@@ -53,6 +73,12 @@ public static class DualSubtree
             .FromSqlRaw("SELECT * FROM DualTeamTree WHERE BinaryPath > @lo AND BinaryPath < @hi AND IsDeleted = 0",
                 Param("@lo", lo), Param("@hi", hi))
             .TagWith(RecompileTag);
+
+    /// <summary>Fila de <see cref="MemberIdsUnder"/>: EF no traduce un join contra SqlQueryRaw&lt;string&gt;.</summary>
+    public sealed class DualMemberIdRow
+    {
+        public string MemberId { get; set; } = string.Empty;
+    }
 
     private static SqlParameter Param(string name, byte[] value) =>
         new(name, SqlDbType.VarBinary, DualBinaryPath.MaxBytes) { Value = value };

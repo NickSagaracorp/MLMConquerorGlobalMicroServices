@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
@@ -94,6 +95,10 @@ public class SqlServerProgresoDeRangoTests
         await tx.RollbackAsync();
     }
 
+    /// <summary>
+    /// Medicion (Categoria=Medicion: fuera de la suite normal, ver RankEngine.Tests.runsettings): mediana de 3
+    /// ejecuciones del progreso completo de la raiz mayor local. Orden: la del resumen de Medicion.runsettings.
+    /// </summary>
     [SqlServerFact]
     [Trait("Categoria", "Medicion")]
     public async Task El_progreso_de_la_raiz_mayor_local_responde_en_menos_de_un_segundo()
@@ -102,11 +107,11 @@ public class SqlServerProgresoDeRangoTests
         var handler = new GetRankProgressHandler(db, new Reloj(),
             new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         await handler.Handle(new GetRankProgressQuery("AMB-700829"), CancellationToken.None);   // calienta
-        var t = System.Diagnostics.Stopwatch.StartNew();
-        var r = await handler.Handle(new GetRankProgressQuery("AMB-700829"), CancellationToken.None);
-        t.Stop();
-        _salida.WriteLine($"[MEDICION] Progreso de rango de AMB-700829 (local) -> {t.ElapsedMilliseconds} ms");
-        r.IsSuccess.Should().BeTrue(r.Error);
-        t.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1));
+        var t = await EscalaDb.MedianaAsync(_salida, "Progreso de rango de AMB-700829 (local)", async _ =>
+        {
+            var r = await handler.Handle(new GetRankProgressQuery("AMB-700829"), CancellationToken.None);
+            r.IsSuccess.Should().BeTrue(r.Error);
+        });
+        t.Should().BeLessThan(TimeSpan.FromSeconds(1));
     }
 }

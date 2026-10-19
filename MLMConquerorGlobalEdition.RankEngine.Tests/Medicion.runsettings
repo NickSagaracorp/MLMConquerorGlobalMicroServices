@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plan Q: solo las pruebas de tiempo (Trait Categoria=Medicion). Las locales (SqlServerProgresoDeRangoTests) usan la
+  base local; las de escala (Escala/) solo corren con MLM_ESCALA_SQLSERVER y se saltan sin ella.
+  Uso: dotnet test MLMConquerorGlobalEdition.RankEngine.Tests -s MLMConquerorGlobalEdition.RankEngine.Tests/Medicion.runsettings
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Categoria=Medicion</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>

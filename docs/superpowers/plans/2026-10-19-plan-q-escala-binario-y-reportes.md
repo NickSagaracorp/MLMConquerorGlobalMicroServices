@@ -340,9 +340,56 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 - [x] **Paso 2.** En `EscalaProgresoDeRangoTests.cs:36`, el objetivo pasa a 1 s (el que se fija para 1.000.000): `t.Should().BeLessThan(TimeSpan.FromSeconds(1));`. Se mide en el Bloque 7.
 - [x] **Paso 3.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedName~SqlServerProgresoDeRango"` en verde. Commit: `Plan Q: medicion local del progreso de rango y objetivo de un segundo a escala`.
 
-> **Medido (2026-10-19, base local, AMB-700829 con 119.404 nodos de inscripción):** seis ejecuciones de la prueba: 1.474 ms (la primera tras compilar, en rojo), 717, 731, 767, 826 y 653 ms. La consulta de calificados de inscripción sola tarda 58 a 116 ms y usa `IX_MembershipSubscriptions_Activas`; el resto del tiempo es del resto del manejador.
+> **Medido (2026-10-19, base local, AMB-700829 con 119.404 nodos de inscripción):** seis ejecuciones de la prueba: 1.474 ms (la primera tras compilar, en rojo), 717, 731, 767, 826 y 653 ms. La consulta de calificados de inscripción sola tarda 58 a 116 ms y usa `IX_MembershipSubscriptions_Activas`. **Corrección (revisión del Bloque 1, M1):** el resto del tiempo no era «el resto del manejador» sino casi todo el conteo de calificados del binario del Plan P (`DualSubtree.Under` unido a las activas), que la revisión midió entre 400 y 1.660 ms por un plan paralelo que cruzaba tres índices; el resto del manejador (`EnrollmentTeamPointsService`, `PersonalCustomerPointsService` y los conteos de patrocinados y ventas) suma unos 35 ms. Lo corrige la Tarea 3b.
 >
 > **Desviación (al implementar).** La prueba escribe el tiempo con `ITestOutputHelper` (`[MEDICION] … ms`), para tener la cifra además de la aserción. El comentario de `EscalaProgresoDeRangoTests` pasa también a «menos de 1 s».
+
+### Tarea 3b: correcciones de la revisión del Bloque 1
+
+**Files:**
+- Modify: `MLMConquerorGlobalEdition.Repository/Queries/DualSubtree.cs` (nuevo `MemberIdsUnder`)
+- Modify: `MLMConquerorGlobalEdition.RankEngine/Features/GetRankProgress/GetRankProgressHandler.cs:135-146`
+- Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerDualSubtreeTests.cs` (prueba del plan)
+- Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs` (mediana)
+- Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/MLMConquerorGlobalEdition.RankEngine.Tests.csproj` (`RunSettingsFilePath`)
+- Create: `MLMConquerorGlobalEdition.RankEngine.Tests/RankEngine.Tests.runsettings` y `Medicion.runsettings`
+
+- [x] **Paso 1 (I1).** La medición local fallaba al azar en la suite normal (916, 567, 1.843 y 603 ms en la revisión): `RankEngine.Tests` no tenía runsettings que excluyera `Categoria=Medicion`. Como en `BizCenter.Tests`: `<RunSettingsFilePath>$(MSBuildProjectDirectory)/RankEngine.Tests.runsettings</RunSettingsFilePath>` con `<TestCaseFilter>Categoria!=Medicion</TestCaseFilter>`, y `Medicion.runsettings` con `Categoria=Medicion`. La prueba mide con `EscalaDb.MedianaAsync` (mediana de 3) en vez de una sola ejecución. Ojo: `--filter` en la línea de órdenes se **combina** con el del runsettings (`(Categoria!=Medicion)&(FullyQualifiedName~Escala)` no encuentra nada, comprobado), así que las órdenes de escala de `RankEngine.Tests` del Bloque 7 llevan `--settings MLMConquerorGlobalEdition.RankEngine.Tests/Medicion.runsettings`.
+- [x] **Paso 2 (prueba en rojo del conteo binario).** `SqlServerDualSubtreeTests.Los_calificados_del_equipo_leen_el_rango_por_el_indice_cubriente`: el plan real (`PlanDeEjecucion.CompiladoAsync`) solo lee `DualTeamTree` por `UX_DualTeamTree_BinaryPath`, con un *seek*, y el conteo es el mismo que por `DualSubtree.Under`.
+- [x] **Paso 3.** `DualSubtree.MemberIdsUnder`: solo los `MemberId` del rango, con la pista del índice cubriente (lleva `MemberId` incluido). Con `SELECT *` el optimizador elegía a veces una intersección paralela de tres índices.
+
+```csharp
+    public static IQueryable<string> MemberIdsUnder(AppDbContext db, DualTeamEntity node)
+    {
+        if (!db.Database.IsSqlServer())
+            return Under(db, node).Select(d => d.MemberId);
+        var (lo, hi) = DualBinaryPath.SubtreeBounds(Key(node));
+        return db.Database
+            .SqlQueryRaw<DualMemberIdRow>(
+                "SELECT MemberId FROM DualTeamTree WITH (INDEX(UX_DualTeamTree_BinaryPath)) " +
+                "WHERE BinaryPath > @lo AND BinaryPath < @hi AND IsDeleted = 0 AND MemberId <> @self",
+                Param("@lo", lo), Param("@hi", hi),
+                new SqlParameter("@self", SqlDbType.NVarChar, 450) { Value = node.MemberId })
+            .TagWith(RecompileTag)
+            .Select(r => r.MemberId);
+    }
+```
+
+  y en el manejador:
+
+```csharp
+            placementQualifiedCount = await (
+                from id in DualSubtree.MemberIdsUnder(_db, dualNode)
+                join s in _db.MembershipSubscriptions.AsNoTracking() on id equals s.MemberId
+                where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
+                select s.Id).CountAsync(ct);
+```
+
+> **Desviación (al implementar).** Con `SqlQueryRaw<string>` EF 10 no traduce el `join` (`Unhandled expression SqlConstantExpression … in SqlNullabilityProcessor`); con `Contains` lo manda como `IN` y el plan es una semiunión hash que recorre todas las activas (mediana de 10 en `sqlcmd -I`: unos 520 ms frente a unos 380 ms del `join`, con la máquina cargada). Por eso la consulta devuelve una fila con nombre (`DualSubtree.DualMemberIdRow`) y se proyecta a `MemberId`: así el `join` se traduce.
+
+> **Medido (2026-10-19, base local, `sqlcmd -I`, AMB-700829).** El conteo da 12.060 con la consulta vieja y con la nueva. El plan nuevo: `Index Seek` sobre `UX_DualTeamTree_BinaryPath` y `Index Scan` de `IX_MembershipSubscriptions_Activas`, sin otros índices de `DualTeamTree`. Diez ejecuciones alternadas, con la máquina cargada (un CommissionEngine en marcha): consulta vieja 645 a 2.001 ms (media 980 a 1.359), nueva 250 a 912 ms (media 378 a 465); sin carga, la nueva dio 174 a 215 ms. El progreso completo con `Medicion.runsettings`, en esas mismas condiciones de carga: medianas 1.465, 1.326 y 1.361 ms (❌ del objetivo local de 1 s). El desglose por consulta (interceptor de duración) fue: calificados de inscripción 507 a 621 ms, calificados del binario 706 a 1.100 ms y todo lo demás menos de 50 ms. Los dos conteos son O(equipo) (Q-R16).
+
+- [x] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` (132 en verde, sin las de medición) y `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests` (1.114 en verde, incluidas `SinRutaEnElBinarioTests` y `EscritoresDelBinarioTests`). Commit: `Plan Q: progreso de rango con el conteo binario por el indice cubriente y medicion fuera de la suite normal`.
 
 ---
 
@@ -4416,7 +4463,7 @@ powershell -File Scripts/sql/plan-p/escala/01-generar-altas.ps1 -Nodos N -Salida
 $env:MLM_ESCALA_SQLSERVER = "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;Integrated Security=true;TrustServerCertificate=True;Encrypt=True"
 dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --settings MLMConquerorGlobalEdition.BizCenter.Tests/Medicion.runsettings --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
 dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
-dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
+dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --settings MLMConquerorGlobalEdition.RankEngine.Tests/Medicion.runsettings --filter "FullyQualifiedName~Escala" --logger "console;verbosity=detailed"
 sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Escala SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE MLMConquerorGlobalEditionDb_Escala;"
 ```
 

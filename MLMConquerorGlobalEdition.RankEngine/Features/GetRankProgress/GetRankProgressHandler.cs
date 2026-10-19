@@ -137,9 +137,10 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         {
             // Plan P: una sola consulta, el rango de la clave compacta unido a las suscripciones activas (antes,
             // la lista de ids por prefijo de la ruta y luego Contains: no escala y falla con rutas largas).
+            // Plan Q: solo los MemberId del rango, por el indice cubriente (con el nodo entero, el plan era inestable).
             placementQualifiedCount = await (
-                from s in _db.MembershipSubscriptions.AsNoTracking()
-                join d in DualSubtree.Under(_db, dualNode).AsNoTracking() on s.MemberId equals d.MemberId
+                from id in DualSubtree.MemberIdsUnder(_db, dualNode)
+                join s in _db.MembershipSubscriptions.AsNoTracking() on id equals s.MemberId
                 where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
                 select s.Id).CountAsync(ct);
         }

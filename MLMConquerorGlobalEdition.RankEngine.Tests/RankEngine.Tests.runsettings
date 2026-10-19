@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuracion por defecto de RankEngine.Tests (la carga RunSettingsFilePath del .csproj), como en BizCenter.Tests.
+  Plan Q: las pruebas de tiempo (Trait Categoria=Medicion) no corren con la suite; dependen de la maquina y de la
+  carga. Para medir, usar Medicion.runsettings.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Categoria!=Medicion</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>

@@ -118,6 +118,43 @@ public class SqlServerDualSubtreeTests
     });
 
     /// <summary>
+    /// Plan Q (revision del Bloque 1): los calificados del equipo binario leen el rango SOLO por el indice cubriente
+    /// UX_DualTeamTree_BinaryPath (lleva MemberId incluido). Con SELECT * el optimizador elegia a veces una interseccion
+    /// paralela de tres indices (400 a 1.660 ms en local con 119.000); por el indice cubriente, unos 200 ms estables.
+    /// El conteo es el mismo que por el rango completo.
+    /// </summary>
+    [SqlServerFact]
+    public Task Los_calificados_del_equipo_leen_el_rango_por_el_indice_cubriente() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        var raiz = await MiembroConMayorEquipoAsync(db);
+        var nodo = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == raiz.MemberId);
+        var activo = Domain.Entities.Membership.MembershipStatus.Active;
+        var consulta =
+            from id in DualSubtree.MemberIdsUnder(db, nodo)
+            join s in db.MembershipSubscriptions.AsNoTracking() on id equals s.MemberId
+            where s.SubscriptionStatus == activo
+            select s.Id;
+
+        consulta.ToQueryString().Should().Contain(DualSubtree.RecompileTag);
+        var plan = await PlanDeEjecucion.CompiladoAsync(db, consulta);
+        var indices = System.Xml.Linq.XDocument.Parse(plan).Descendants()
+            .Where(e => e.Name.LocalName == "Object" && (string?)e.Attribute("Table") == "[DualTeamTree]")
+            .Select(e => (string?)e.Attribute("Index"))
+            .ToList();
+        indices.Should().NotBeEmpty().And.OnlyContain(i => i == "[UX_DualTeamTree_BinaryPath]",
+            "el rango se lee por el indice cubriente, sin interseccion con otros indices ni lectura de la tabla");
+        plan.Should().Contain(PlanDeEjecucion.Seek);
+
+        var porElRango = await (
+            from s in db.MembershipSubscriptions.AsNoTracking()
+            join d in DualSubtree.Under(db, nodo).AsNoTracking() on s.MemberId equals d.MemberId
+            where s.SubscriptionStatus == activo
+            select s.Id).CountAsync();
+        (await consulta.CountAsync()).Should().Be(porElRango);
+    });
+
+    /// <summary>
     /// El miembro con el equipo binario mas grande (en local, la raiz AMB-700829, unas 119.400 personas), por el
     /// rango de cada raiz. Lo usan las mediciones de Mi equipo y del progreso de rango.
     /// </summary>
