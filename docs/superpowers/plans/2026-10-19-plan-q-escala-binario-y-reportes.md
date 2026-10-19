@@ -156,7 +156,7 @@ sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Es
 - Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/MLMConquerorGlobalEdition.RankEngine.Tests.csproj:33-36` (enlazar los ayudantes de SQL Server)
 - Create: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs`
 
-- [ ] **Paso 1.** Enlazar los ayudantes, junto al enlace de `EscalaDb.cs` que ya existe:
+- [x] **Paso 1.** Enlazar los ayudantes, junto al enlace de `EscalaDb.cs` que ya existe:
 
 ```xml
   <!-- Plan Q: [SqlServerFact], la base local y la siembra de los reportes, en un solo sitio. -->
@@ -166,7 +166,7 @@ sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Es
   </ItemGroup>
 ```
 
-- [ ] **Paso 2.** La prueba. Fija el resultado (tres suscripciones activas en el equipo: A una y C dos; B cancelada; la del propio R no cuenta). Además exige que ningún parámetro lleve el id de un miembro del equipo, que es lo que hoy hace el `Contains`: EF 10 traduce `lista.Contains(x)` por defecto con **un parámetro por elemento** (`@subtreeMembers1`, `@subtreeMembers2`, …), no con un único parámetro JSON (eso solo pasa con `EF.Parameter(lista)`, como en el Plan M). Por eso la aserción mira cada valor por separado: basta con que uno lleve el id de A o el de C.
+- [x] **Paso 2.** La prueba. Fija el resultado (tres suscripciones activas en el equipo: A una y C dos; B cancelada; la del propio R no cuenta). Además exige que ningún parámetro lleve el id de un miembro del equipo, que es lo que hoy hace el `Contains`: EF 10 traduce `lista.Contains(x)` por defecto con **un parámetro por elemento** (`@subtreeMembers1`, `@subtreeMembers2`, …), no con un único parámetro JSON (eso solo pasa con `EF.Parameter(lista)`, como en el Plan M). Por eso la aserción mira cada valor por separado: basta con que uno lleve el id de A o el de C.
 
 ```csharp
 using System.Data.Common;
@@ -260,7 +260,9 @@ public class SqlServerProgresoDeRangoTests
 }
 ```
 
-- [ ] **Paso 3.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter FullyQualifiedName~SqlServerProgresoDeRango`. **Esperado:** falla la segunda aserción, porque los parámetros `@subtreeMembers1`, `@subtreeMembers2` y `@subtreeMembers3` llevan los ids de A, B y C.
+- [x] **Paso 3.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter FullyQualifiedName~SqlServerProgresoDeRango`. **Esperado:** falla la segunda aserción, porque los parámetros `@subtreeMembers1`, `@subtreeMembers2` y `@subtreeMembers3` llevan los ids de A, B y C.
+
+> **Desviación (al implementar).** Con A hijo directo de R la prueba no podía ponerse en verde: `EnrollmentTeamPointsService.GetEnrollmentBranchPointsAsync` manda la lista de **hijos directos** (A y B) en un `Contains` (acotada por los patrocinados directos, no por el equipo; fuera de este bloque). La prueba cuelga A de B, así que el único hijo directo es B y A y C solo aparecen si se manda la lista del equipo. Comprobado: en rojo con el manejador viejo solo por la segunda aserción (el recuento ya daba 3).
 
 ### Tarea 2: una consulta y el índice de activas
 
@@ -269,7 +271,7 @@ public class SqlServerProgresoDeRangoTests
 - Modify: `MLMConquerorGlobalEdition.Repository/Configurations/MembershipSubscriptionConfiguration.cs:13-19`
 - Create: migración `SuscripcionesActivasPorMiembro`
 
-- [ ] **Paso 1.** Sustituir las líneas 122-138 por:
+- [x] **Paso 1.** Sustituir las líneas 122-138 por:
 
 ```csharp
         if (memberGenealogyNode is not null)
@@ -286,7 +288,7 @@ public class SqlServerProgresoDeRangoTests
         }
 ```
 
-- [ ] **Paso 2.** Índice filtrado: las dos consultas (inscripción y binario) unen el equipo con las activas por `MemberId`. Hace falta un nombre propio, porque `IX_MembershipSubscriptions_MemberId` ya existe sobre la misma columna. El filtro es **solo** el estado: `MembershipSubscription` no tiene filtro global de `IsDeleted` (no está entre los `HasQueryFilter` de `Repository/Configurations`) y ninguna de las dos consultas (`GetRankProgressHandler.cs:141-150` y la nueva) pide `IsDeleted = 0`. Con `[IsDeleted] = 0` en el filtro, SQL Server no podría usar el índice para ellas (revisión I4). Se cuenta lo mismo que hoy.
+- [x] **Paso 2.** Índice filtrado: las dos consultas (inscripción y binario) unen el equipo con las activas por `MemberId`. Hace falta un nombre propio, porque `IX_MembershipSubscriptions_MemberId` ya existe sobre la misma columna. El filtro es **solo** el estado: `MembershipSubscription` no tiene filtro global de `IsDeleted` (no está entre los `HasQueryFilter` de `Repository/Configurations`) y ninguna de las dos consultas (`GetRankProgressHandler.cs:141-150` y la nueva) pide `IsDeleted = 0`. Con `[IsDeleted] = 0` en el filtro, SQL Server no podría usar el índice para ellas (revisión I4). Se cuenta lo mismo que hoy.
 
 ```csharp
         // Plan Q: las suscripciones activas por miembro, para unir el equipo (millones de filas) con ellas sin leer la tabla.
@@ -296,7 +298,7 @@ public class SqlServerProgresoDeRangoTests
             .HasFilter("[SubscriptionStatus] = 1");
 ```
 
-- [ ] **Paso 3.** Crear y aplicar la migración:
+- [x] **Paso 3.** Crear y aplicar la migración:
 
 ```bash
 dotnet ef migrations add SuscripcionesActivasPorMiembro --project MLMConquerorGlobalEdition.Repository --startup-project MLMConquerorGlobalEdition.AdminAPI
@@ -305,8 +307,10 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 
 **Esperado:** el `Up` generado solo tiene `CreateIndex` con el filtro.
 
-- [ ] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` en verde, incluidas las de `GetRankProgressHandlerTests` (InMemory).
-- [ ] **Paso 5.** Commit: `Plan Q: el progreso de rango cuenta los calificados del equipo en una sola consulta con indice de suscripciones activas`.
+> **Desviación (al implementar).** Con solo el índice filtrado, EF daba por cubierta la FK `MemberId` y el `Up` borraba `IX_MembershipSubscriptions_MemberId`. Se declara también `builder.HasIndex(s => s.MemberId);` en la configuración y el `Up` queda con el único `CreateIndex`. `dotnet ef migrations add` no admite `--connection` (no se conecta); el `database update` sí lo lleva.
+
+- [x] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` en verde, incluidas las de `GetRankProgressHandlerTests` (InMemory).
+- [x] **Paso 5.** Commit: `Plan Q: el progreso de rango cuenta los calificados del equipo en una sola consulta con indice de suscripciones activas`.
 
 ### Tarea 3: medición rápida local y objetivo de escala a 1 s
 

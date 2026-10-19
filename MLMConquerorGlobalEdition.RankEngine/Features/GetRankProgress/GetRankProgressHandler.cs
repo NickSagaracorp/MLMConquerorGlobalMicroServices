@@ -121,20 +121,15 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
         if (memberGenealogyNode is not null)
         {
-            var subtreeRoot = memberGenealogyNode.Node; // Plan M: el equipo por Node
-
-            // Qualified = members with at least one active subscription in subtree
-            var subtreeMembers = await _db.GenealogyTree
-                .AsNoTracking()
-                .CurrentUnder(subtreeRoot)
-                .Where(g => g.MemberId != memberId)
-                .Select(g => g.MemberId)
-                .ToListAsync(ct);
-
-            enrollmentQualifiedCount = await _db.MembershipSubscriptions
-                .AsNoTracking()
-                .CountAsync(s => subtreeMembers.Contains(s.MemberId)
-                    && s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active, ct);
+            // Plan Q: una sola consulta, el rango del Node (CurrentUnder) unido a las suscripciones activas, igual que la
+            // parte binaria. Antes se cargaban en memoria los ids de todo el equipo para un Contains: con 450.000 se agotaba.
+            // Se cuentan suscripciones activas (no miembros), como antes.
+            enrollmentQualifiedCount = await (
+                from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(memberGenealogyNode.Node)
+                where g.MemberId != memberId
+                join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+                where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
+                select s.Id).CountAsync(ct);
         }
 
         // Placement qualified members in dual tree subtree

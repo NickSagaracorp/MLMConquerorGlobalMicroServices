@@ -8882,6 +8882,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MembershipLevelId");
 
+                    b.HasIndex(new[] { "MemberId" }, "IX_MembershipSubscriptions_Activas")
+                        .HasFilter("[SubscriptionStatus] = 1");
+
                     b.ToTable("MembershipSubscriptions");
                 });
 

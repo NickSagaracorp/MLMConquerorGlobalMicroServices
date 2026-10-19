@@ -35,4 +35,10 @@
     <Compile Include="..\MLMConquerorGlobalEdition.BizCenter.Tests\Binario\EscalaDb.cs" Link="Escala\EscalaDb.cs" />
   </ItemGroup>
 
+  <!-- Plan Q: [SqlServerFact], la base local y la siembra de los reportes, en un solo sitio. -->
+  <ItemGroup>
+    <Compile Include="..\MLMConquerorGlobalEdition.BizCenter.Tests\Reportes\SqlServerReportes.cs" Link="SqlServer\SqlServerReportes.cs" />
+    <Compile Include="..\MLMConquerorGlobalEdition.BizCenter.Tests\Reportes\ReportesDb.cs" Link="SqlServer\ReportesDb.cs" />
+  </ItemGroup>
+
 </Project>
