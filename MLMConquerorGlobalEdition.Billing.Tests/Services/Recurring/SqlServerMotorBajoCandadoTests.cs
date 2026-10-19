@@ -61,6 +61,7 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
                     INSERT @o SELECT Id FROM Orders WITH (NOLOCK) WHERE MemberId = {m};
                     DELETE FROM RecurringBillingAttempts WHERE MemberId = {m};
                     DELETE FROM SubscriptionBillingStates WHERE MemberId = {m};
+                    DELETE FROM DualLegDeltas WHERE StartMemberId = {m} AND OwnChange = 1;
                     DELETE FROM MembershipSubscriptions WHERE MemberId = {m};
                     DELETE d FROM OrderDetails d JOIN @o o ON o.Id = d.OrderId;
                     DELETE FROM PaymentHistories WHERE MemberId = {m};

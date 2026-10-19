@@ -16082,9 +16082,15 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int>("NodeCount")
                         .HasColumnType("int");
 
+                    b.Property<bool>("OwnChange")
+                        .HasColumnType("bit");
+
                     b.Property<decimal>("Points")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("QualifiedCount")
+                        .HasColumnType("int");
 
                     b.Property<int>("Side")
                         .HasColumnType("int");
@@ -16147,6 +16153,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<int>("LeftLegQualified")
+                        .HasColumnType("int");
+
                     b.Property<string>("MemberId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -16161,8 +16170,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<int>("RightLegQualified")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("SelfQualified")
+                        .HasColumnType("int");
 
                     b.Property<int>("Side")
                         .HasColumnType("int");

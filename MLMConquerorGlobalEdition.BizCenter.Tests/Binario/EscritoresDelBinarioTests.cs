@@ -26,7 +26,7 @@ public class EscritoresDelBinarioTests
         ["MLMConquerorGlobalEdition.Repository/Context/AppDbContext.cs"] =
             "declara el DbSet (DualTeamTree => Set<DualTeamEntity>()); no escribe",
         ["MLMConquerorGlobalEdition.Repository/Services/Teams/LegPointMaintenance.cs"] =
-            "solo puntos y contadores de pierna (UPDATE de LeftLeg*/RightLeg*), no la estructura",
+            "solo puntos, contadores y calificados (UPDATE de LeftLeg*/RightLeg*/SelfQualified), no la estructura",
         ["MLMConquerorGlobalEdition.Repository/Services/Teams/PlacementService.cs"] =
             "anade al contexto los nodos que construye DualTeamNodes, con el candado del hueco",
         ["MLMConquerorGlobalEdition.BizCenter/Features/Placement/PlaceMember/PlaceMemberHandler.cs"] =

@@ -55,6 +55,7 @@ public class SqlServerAdminRemovePlacementEsperaTests
             await using var db = SqlServerTestDb.Db();
             var patron = x + "%";
             await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PlacementLogs WHERE MemberId LIKE {patron}");
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId LIKE {patron}");   // Plan Q
             await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamTree WHERE MemberId LIKE {patron}");
         }
     }

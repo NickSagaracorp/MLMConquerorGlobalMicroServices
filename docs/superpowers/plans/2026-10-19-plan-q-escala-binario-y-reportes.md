@@ -1272,7 +1272,7 @@ Con eso vale la demostración de DQ2 sin cambios: un propio es un delta más, cu
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscritoresDeSuscripcionesTests.cs` (regla)
 - Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs` (el manejador lee los contadores)
 
-- [ ] **Paso 1.** Pruebas en rojo, InMemory (`QualifiedTeamDeltasTests`). Pasan por el `AppDbContext` real (`ReportesDb.Nueva()`), que registra el interceptor él mismo:
+- [x] **Paso 1.** Pruebas en rojo, InMemory (`QualifiedTeamDeltasTests`). Pasan por el `AppDbContext` real (`ReportesDb.Nueva()`), que registra el interceptor él mismo:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1350,7 +1350,7 @@ public class QualifiedTeamDeltasTests
 
   **Esperado:** no compila (no existen `OwnChange`, `QualifiedCount` ni `QualifiedTeamDeltas`).
 
-- [ ] **Paso 2.** Pruebas en rojo contra SQL Server (`SqlServerCalificadosDelBinarioTests`). Con `BinarioDb` y prefijo propio, porque el vaciado confirma sus transacciones. `BinarioDb.LimpiarAsync` borra además, antes que los perfiles, el historial y las suscripciones del prefijo:
+- [x] **Paso 2.** Pruebas en rojo contra SQL Server (`SqlServerCalificadosDelBinarioTests`). Con `BinarioDb` y prefijo propio, porque el vaciado confirma sus transacciones. `BinarioDb.LimpiarAsync` borra además, antes que los perfiles, el historial y las suscripciones del prefijo:
 
 ```csharp
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MembershipStatusHistories WHERE MemberId LIKE {patron}");
@@ -1569,7 +1569,7 @@ public class SqlServerCalificadosDelBinarioTests
 
   **Esperado:** no compila; con las columnas, la cola no las mantiene y el manejador sigue contando.
 
-- [ ] **Paso 3.** Entidades. En `DualTeamEntity`, junto a `LeftLegCount` y `RightLegCount`:
+- [x] **Paso 3.** Entidades. En `DualTeamEntity`, junto a `LeftLegCount` y `RightLegCount`:
 
 ```csharp
     /// <summary>
@@ -1597,7 +1597,7 @@ public class SqlServerCalificadosDelBinarioTests
 
   `dotnet ef migrations add CalificadosDelBinario …`. **Esperado:** el `Up` solo añade cinco columnas `int`/`bit` NOT NULL con valor por defecto 0. Aplicar en local con `--connection`.
 
-- [ ] **Paso 4.** El componente y el interceptor:
+- [x] **Paso 4.** El componente y el interceptor:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1713,7 +1713,7 @@ public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
 
   Las pruebas del Paso 1 pasan a verde.
 
-- [ ] **Paso 5.** `LegPointMaintenance` (Tarea 6).
+- [x] **Paso 5.** `LegPointMaintenance` (Tarea 6).
   - **Encolar lo ya aplicado.** En `EnqueueLeafAsync` la lista de columnas pasa a `(StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)` y el `SELECT` añade `d.SelfQualified, 0` detrás del `1` de nodos. En un nodo nuevo vale 0: su activación llega por su propio pendiente. En `EnqueueSubtreeAsync`, la misma lista, con `{sign} * (d.SelfQualified + d.LeftLegQualified + d.RightLegQualified), 0` detrás de los nodos.
   - **`ApplyBatchSql`.** Cambian la elección de arranques, la reclamación, la agregación y los `UPDATE`. El resto queda igual. Un propio sin nodo vivo no se elige ni se reclama: espera.
 
@@ -1802,7 +1802,7 @@ END
   - El trabajo nunca se queda en un bucle con los propios que esperan: `DrainAsync` termina cuando una tanda no aplica nada, y esa tanda no los elige.
   - Su coste: una búsqueda por `IX_DualTeamTree_MemberId` por cada miembro sin colocar con cambios pendientes (Q-R26).
 
-- [ ] **Paso 6.** `DualTeamNodes.RemoveAsync`. El borrado de la Tarea 7, Paso 2 pasa a conservar los propios y a devolver a la cola lo ya aplicado del miembro. Va antes de borrar el nodo, en la misma transacción, con `dual-tree` en exclusivo:
+- [x] **Paso 6.** `DualTeamNodes.RemoveAsync`. El borrado de la Tarea 7, Paso 2 pasa a conservar los propios y a devolver a la cola lo ya aplicado del miembro. Va antes de borrar el nodo, en la misma transacción, con `dual-tree` en exclusivo:
 
 ```csharp
         if (db.Database.IsRelational())
@@ -1823,7 +1823,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
 
   En `EscritoresDelBinarioTests`, el motivo de `LegPointMaintenance.cs` pasa a «solo puntos, contadores y calificados (UPDATE de LeftLeg*/RightLeg*/SelfQualified), no la estructura».
 
-- [ ] **Paso 7.** El manejador (`GetRankProgressHandler.cs:135-146`) deja de contar el binario:
+- [x] **Paso 7.** El manejador (`GetRankProgressHandler.cs:135-146`) deja de contar el binario:
 
 ```csharp
         // Plan Q (DQ13): los calificados del binario son contadores de pierna que mantiene la cola (Tarea 8b): O(1), con el
@@ -1833,7 +1833,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
 
   Se borra la declaración `var placementQualifiedCount = 0;` de `:115`. `DualSubtree.MemberIdsUnder` (Tarea 3b) se queda como el recuento de referencia de la verificación del script 04 (Paso 8) y de su prueba de plan.
 
-- [ ] **Paso 8.** `Scripts/sql/plan-p/04-contadores-y-colas.sql` recalcula también los calificados y `DualTeamSize`, en la misma pasada de abajo arriba, y neutraliza la cola de calificados.
+- [x] **Paso 8.** `Scripts/sql/plan-p/04-contadores-y-colas.sql` recalcula también los calificados y `DualTeamSize`, en la misma pasada de abajo arriba, y neutraliza la cola de calificados.
   - **Candado y cola.** Justo después de tomar `dual-tree` (`:40-42`) toma `dual-leg-deltas` en exclusivo. La Tarea 14 reutiliza este candado para neutralizar los contadores.
 
 ```sql
@@ -1903,7 +1903,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
 
   Ejecutar en local con los servicios parados: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/04-contadores-y-colas.sql`. **Esperado:** `CalificadosDistintos = 0`, y AMB-700829 con `LeftLegQualified + RightLegQualified` = 12.060 (el recuento de la Tarea 3b), salvo que haya cambiado el número de suscripciones activas. Una segunda ejecución cambia 0 filas.
 
-- [ ] **Paso 9.** La regla `EscritoresDeSuscripcionesTests`. Nadie escribe `MembershipSubscriptions` por fuera del seguimiento de cambios de EF, porque se saltaría el interceptor:
+- [x] **Paso 9.** La regla `EscritoresDeSuscripcionesTests`. Nadie escribe `MembershipSubscriptions` por fuera del seguimiento de cambios de EF, porque se saltaría el interceptor:
 
 ```csharp
 using System.Text.RegularExpressions;
@@ -2000,7 +2000,14 @@ public class EscritoresDeSuscripcionesTests
 
   En verde a la primera con el código de hoy (comprobado el 2026-10-19 con las mismas expresiones: solo salen los dos revisados).
 
-- [ ] **Paso 10.** En verde: `QualifiedTeamDeltasTests`, `SqlServerCalificadosDelBinarioTests`, `SqlServerColaDePiernasTests`, `EscritoresDelBinarioTests`, `EscritoresDeSuscripcionesTests` y `SinRutaEnElBinarioTests` (filtro `Binario` de BizCenter.Tests), `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` y, en serie, Signups.Tests, AdminAPI.Tests y Billing.Tests: el interceptor corre en todos sus guardados. Las pruebas de SQL Server que confirman suscripciones sin transacción que se deshace borran también sus propios al limpiar (`DELETE FROM DualLegDeltas WHERE StartMemberId = …`, junto a su borrado de `MemberStatisticDeltas`, hoy en `SqlServerEntraxSettlementTests.cs:69`). Para comprobar que ninguna deja filas en la base local, antes y después de las suites: `SELECT COUNT(*) FROM DualLegDeltas WHERE OwnChange = 1 AND CreatedBy = 'qualified-count'`. Commit: `Plan Q: los calificados del binario se mantienen por la cola de piernas desde un interceptor de suscripciones`.
+- [x] **Paso 10.** En verde: `QualifiedTeamDeltasTests`, `SqlServerCalificadosDelBinarioTests`, `SqlServerColaDePiernasTests`, `EscritoresDelBinarioTests`, `EscritoresDeSuscripcionesTests` y `SinRutaEnElBinarioTests` (filtro `Binario` de BizCenter.Tests), `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` y, en serie, Signups.Tests, AdminAPI.Tests y Billing.Tests: el interceptor corre en todos sus guardados. Las pruebas de SQL Server que confirman suscripciones sin transacción que se deshace borran también sus propios al limpiar (`DELETE FROM DualLegDeltas WHERE StartMemberId = …`, junto a su borrado de `MemberStatisticDeltas`, hoy en `SqlServerEntraxSettlementTests.cs:69`). Para comprobar que ninguna deja filas en la base local, antes y después de las suites: `SELECT COUNT(*) FROM DualLegDeltas WHERE OwnChange = 1 AND CreatedBy = 'qualified-count'`. Commit: `Plan Q: los calificados del binario se mantienen por la cola de piernas desde un interceptor de suscripciones`.
+
+> **Desviaciones y resultados (al implementar).**
+> - `SqlServerCalificadosDelBinarioTests` necesita además `using MLMConquerorGlobalEdition.Domain.Entities.Tree;` (por `DualTeamEntity`).
+> - `EscritoresDeSuscripcionesTests` no salía en verde a la primera: el propio `04-contadores-y-colas.sql` de este paso **lee** `MembershipSubscriptions` dentro de un `UPDATE` de la temporal `#n` y de un `INSERT` en `DualLegDeltas`, y la expresión lo toma por escritura. Se añade a `Revisados` con su motivo (es el recálculo de los calificados).
+> - Limpieza de la cola en las pruebas de SQL Server que confirman: `DualLegDeltas` del prefijo en `SqlServerAdminPlaceMemberConcurrenteTests`, `SqlServerAdminRemovePlacementEsperaTests` (AdminAPI.Tests), `SqlServerPlaceMemberConcurrenteTests` y `SqlServerUnplaceMemberEsperaTests` (Signups.Tests), que dejaban deltas de pierna sin nodo; y los propios del miembro en `SqlServerEntraxSettlementTests` (Signups.Tests) y `SqlServerMotorBajoCandadoTests` (Billing.Tests), que confirman suscripciones activas.
+> - `04` en local (servicios del árbol `-run` en marcha con el código viejo, ninguno escribía el binario en ese momento; la cola estaba vacía antes): `Nodos 119.433, ContadoresCambiados 71.016, TamanosCambiados 116.374, CalificadosDistintos 0, PropiosAparcados 5`, 25 s. AMB-700829: `LeftLegQualified + RightLegQualified = 12.060`, como el recuento de la Tarea 3b. Segunda ejecución: `ContadoresCambiados 0, TamanosCambiados 0, CalificadosDistintos 0` (las colas de derrame se rehacen siempre: 2.053 y 2.053).
+> - Paso 10: BizCenter.Tests 1.141, RankEngine.Tests 133, Signups.Tests 1.146, AdminAPI.Tests 630 (1 saltada), Billing.Tests 730, CommissionEngine.Tests 93, todo en verde y en serie; `SELECT COUNT(*) FROM DualLegDeltas WHERE OwnChange = 1 AND CreatedBy = 'qualified-count'` = 0 antes y después de cada suite.
 
 ### Tarea 9: los lectores que pagan vacían antes de leer
 

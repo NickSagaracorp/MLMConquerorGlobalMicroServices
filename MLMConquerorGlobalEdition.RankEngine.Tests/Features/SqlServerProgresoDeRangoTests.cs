@@ -32,9 +32,11 @@ public class SqlServerProgresoDeRangoTests
     private sealed class Capturador : DbCommandInterceptor
     {
         public readonly List<string> Valores = new();
+        public readonly List<string> Textos = new();
 
         private void Guardar(DbCommand c)
         {
+            Textos.Add(c.CommandText);
             foreach (DbParameter p in c.Parameters) Valores.Add(Convert.ToString(p.Value) ?? string.Empty);
         }
 
@@ -92,6 +94,30 @@ public class SqlServerProgresoDeRangoTests
         // deja el id de A o el de C en algun valor. La consulta nueva solo manda el Node y el id del propio R.
         cap.Valores.Should().NotContain(v => v.Contains(a) || v.Contains(c),
             "la pertenencia al equipo se resuelve en SQL por el rango del Node, no con la lista de ids");
+        await tx.RollbackAsync();
+    }
+
+    [SqlServerFact]
+    public async Task Los_calificados_del_binario_salen_de_los_contadores_del_nodo()
+    {
+        var cap = new Capturador();
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer(SqlServerReportes.ConnectionString).AddInterceptors(cap).Options);
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var r = SqlServerReportes.NuevoId("RB");
+        ReportesDb.Miembro(db, r);
+        var nodo = ReportesDb.NodoBinario(db, r, null, ReportesDb.Ruta(r), Domain.Enums.TreeSide.Left);
+        (nodo.LeftLegQualified, nodo.RightLegQualified) = (4, 3);
+        await db.SaveChangesAsync();
+        cap.Textos.Clear();
+
+        var res = await new GetRankProgressHandler(db, new Reloj(), new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)).Handle(new GetRankProgressQuery(r), CancellationToken.None);
+
+        res.IsSuccess.Should().BeTrue(res.Error);
+        res.Value!.CurrentMetrics.PlacementQualifiedTeamMembers.Should().Be(7);
+        cap.Textos.Should().NotContain(t => t.Contains("DualTeamTree") && t.Contains("MembershipSubscriptions"),
+            "los calificados del binario no se cuentan al vuelo (DQ13)");
         await tx.RollbackAsync();
     }
 

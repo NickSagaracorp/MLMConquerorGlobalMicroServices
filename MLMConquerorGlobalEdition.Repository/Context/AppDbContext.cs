@@ -206,9 +206,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         // SecurityFactorsInterceptor va aquí y no en el registro de cada anfitrión por la misma
         // razón que existe: un anfitrión que se olvidara de añadirlo cambiaría factores sin sellar.
         // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
-        // sin dejar historial.
+        // sin dejar historial. QualifiedTeamCountsInterceptor (Plan Q), por lo mismo: un anfitrión sin
+        // él cambiaría estados sin mover los calificados.
         optionsBuilder.AddInterceptors(
             new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor(),
+            new QualifiedTeamCountsInterceptor(),
             // Plan M: OPTION (RECOMPILE) en las consultas del equipo (GenealogySubtree.Under).
             new RecompileTaggedQueriesInterceptor());
 

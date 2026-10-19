@@ -43,10 +43,10 @@ public static class LegPointMaintenance
     {
         if (!db.Database.IsRelational()) { await ApplyInMemoryAsync(db, memberId, leaf: true, sign: 1, ct); return; }
         await db.Database.ExecuteSqlInterpolatedAsync($@"
-INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, CreationDate, CreatedBy)
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
 SELECT d.ParentMemberId, d.Side,
        ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0),
-       1, {now}, {by}
+       1, d.SelfQualified, 0, {now}, {by}
 FROM DualTeamTree d
 WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NULL;", ct);
     }
@@ -61,11 +61,12 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NU
         if (sign is not (1 or -1)) throw new ArgumentOutOfRangeException(nameof(sign));
         if (!db.Database.IsRelational()) { await ApplyInMemoryAsync(db, subtreeRootId, leaf: false, sign, ct); return; }
         await db.Database.ExecuteSqlInterpolatedAsync($@"
-INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, CreationDate, CreatedBy)
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
 SELECT d.ParentMemberId, d.Side,
        {sign} * (ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0)
                  + d.LeftLegPoints + d.RightLegPoints),
-       {sign} * (1 + d.LeftLegCount + d.RightLegCount), {now}, {by}
+       {sign} * (1 + d.LeftLegCount + d.RightLegCount),
+       {sign} * (d.SelfQualified + d.LeftLegQualified + d.RightLegQualified), 0, {now}, {by}
 FROM DualTeamTree d
 WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NULL;", ct);
     }
@@ -150,6 +151,8 @@ WITH a AS (
     SELECT TOP (@lote) q.StartMemberId, MIN(q.Id) AS Primero
     FROM DualLegDeltas q
     WHERE q.Id <= @hasta
+      AND (q.OwnChange = 0 OR EXISTS (SELECT 1 FROM DualTeamTree v
+                                      WHERE v.MemberId = q.StartMemberId AND v.IsDeleted = 0 AND v.BinaryPath IS NOT NULL))
     GROUP BY q.StartMemberId
     ORDER BY MIN(q.Id)),
 f AS (
@@ -162,26 +165,35 @@ INSERT INTO #arranques (StartMemberId)
 SELECT StartMemberId FROM f WHERE Rn = 1 OR Acumulado <= @maxFilas;
 
 CREATE TABLE #lote (StartMemberId nvarchar(450) COLLATE DATABASE_DEFAULT NOT NULL, Side int NOT NULL,
-                    Points decimal(18,4) NOT NULL, NodeCount int NOT NULL);
+                    Points decimal(18,4) NOT NULL, NodeCount int NOT NULL, QualifiedCount int NOT NULL, OwnChange bit NOT NULL);
 DELETE q
-OUTPUT deleted.StartMemberId, deleted.Side, deleted.Points, deleted.NodeCount INTO #lote
+OUTPUT deleted.StartMemberId, deleted.Side, deleted.Points, deleted.NodeCount, deleted.QualifiedCount, deleted.OwnChange INTO #lote
 FROM DualLegDeltas q
 JOIN #arranques r ON r.StartMemberId = q.StartMemberId
-WHERE q.Id <= @hasta;
+WHERE q.Id <= @hasta
+  AND (q.OwnChange = 0 OR EXISTS (SELECT 1 FROM DualTeamTree v
+                                  WHERE v.MemberId = q.StartMemberId AND v.IsDeleted = 0 AND v.BinaryPath IS NOT NULL));
 
+-- Un propio va a las piernas de los ascendientes (AncestorKey <> la clave del arranque) y al SelfQualified del arranque
+-- (AncestorKey = su clave); uno de pierna, como los puntos, a la pierna Side del arranque y a cada ascendiente.
 SELECT a.AncestorKey,
        SUM(CASE WHEN a.Side = 0 THEN l.Points    ELSE 0 END) AS LP,
        SUM(CASE WHEN a.Side = 1 THEN l.Points    ELSE 0 END) AS RP,
        SUM(CASE WHEN a.Side = 0 THEN l.NodeCount ELSE 0 END) AS LC,
-       SUM(CASE WHEN a.Side = 1 THEN l.NodeCount ELSE 0 END) AS RC
+       SUM(CASE WHEN a.Side = 1 THEN l.NodeCount ELSE 0 END) AS RC,
+       SUM(CASE WHEN a.Side = 0 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS LQ,
+       SUM(CASE WHEN a.Side = 1 AND (l.OwnChange = 0 OR a.AncestorKey <> s.BinaryPath) THEN l.QualifiedCount ELSE 0 END) AS RQ,
+       SUM(CASE WHEN l.OwnChange = 1 AND a.AncestorKey = s.BinaryPath THEN l.QualifiedCount ELSE 0 END) AS SQ
 INTO #deltas
-FROM (SELECT StartMemberId, Side, SUM(Points) AS Points, SUM(NodeCount) AS NodeCount FROM #lote GROUP BY StartMemberId, Side) l
+FROM (SELECT StartMemberId, Side, OwnChange, SUM(Points) AS Points, SUM(NodeCount) AS NodeCount,
+             SUM(QualifiedCount) AS QualifiedCount
+      FROM #lote GROUP BY StartMemberId, Side, OwnChange) l
 JOIN DualTeamTree s ON s.MemberId = l.StartMemberId AND s.IsDeleted = 0 AND s.BinaryPath IS NOT NULL
 CROSS APPLY dbo.DualAncestorKeys(s.BinaryPath, l.Side) a
 GROUP BY a.AncestorKey
 OPTION (MAXDOP 1);
 
-SELECT d.Id AS NodeId, d.MemberId, x.LP, x.RP, x.LC, x.RC, ROW_NUMBER() OVER (ORDER BY d.Id) AS Rn
+SELECT d.Id AS NodeId, d.MemberId, x.LP, x.RP, x.LC, x.RC, x.LQ, x.RQ, x.SQ, ROW_NUMBER() OVER (ORDER BY d.Id) AS Rn
 INTO #x
 FROM #deltas x
 JOIN DualTeamTree d ON d.BinaryPath = x.AncestorKey AND d.IsDeleted = 0
@@ -192,16 +204,21 @@ DECLARE @desde int = 1, @filas int = (SELECT COUNT(*) FROM #x);
 WHILE @desde <= @filas
 BEGIN
     UPDATE d
-    SET LeftLegPoints  = d.LeftLegPoints  + x.LP,
-        RightLegPoints = d.RightLegPoints + x.RP,
-        LeftLegCount   = d.LeftLegCount   + x.LC,
-        RightLegCount  = d.RightLegCount  + x.RC
+    SET LeftLegPoints     = d.LeftLegPoints     + x.LP,
+        RightLegPoints    = d.RightLegPoints    + x.RP,
+        LeftLegCount      = d.LeftLegCount      + x.LC,
+        RightLegCount     = d.RightLegCount     + x.RC,
+        LeftLegQualified  = d.LeftLegQualified  + x.LQ,
+        RightLegQualified = d.RightLegQualified + x.RQ,
+        SelfQualified     = d.SelfQualified     + x.SQ
     FROM DualTeamTree d
     JOIN #x x ON x.NodeId = d.Id
     WHERE x.Rn >= @desde AND x.Rn < @desde + @trozo;
 
+    -- DQ15: la copia del tamano del equipo binario en las estadisticas, junto a la de los puntos.
     UPDATE s
-    SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int)
+    SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int),
+        DualTeamSize   = d.LeftLegCount + d.RightLegCount
     FROM MemberStatistics s
     JOIN #x x ON x.MemberId = s.MemberId AND x.Rn >= @desde AND x.Rn < @desde + @trozo
     JOIN DualTeamTree d ON d.Id = x.NodeId;

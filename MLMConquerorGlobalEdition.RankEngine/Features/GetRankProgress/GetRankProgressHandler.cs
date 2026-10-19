@@ -112,7 +112,6 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
             .AsNoTracking()
             .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
-        var placementQualifiedCount = 0;
         var enrollmentQualifiedCount = 0;
 
         // ET points via the single source of truth (replaces the former headcount).
@@ -132,18 +131,9 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
                 select s.Id).CountAsync(ct);
         }
 
-        // Placement qualified members in dual tree subtree
-        if (dualNode is not null)
-        {
-            // Plan P: una sola consulta, el rango de la clave compacta unido a las suscripciones activas (antes,
-            // la lista de ids por prefijo de la ruta y luego Contains: no escala y falla con rutas largas).
-            // Plan Q: solo los MemberId del rango, por el indice cubriente (con el nodo entero, el plan era inestable).
-            placementQualifiedCount = await (
-                from id in DualSubtree.MemberIdsUnder(_db, dualNode)
-                join s in _db.MembershipSubscriptions.AsNoTracking() on id equals s.MemberId
-                where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
-                select s.Id).CountAsync(ct);
-        }
+        // Plan Q (DQ13): los calificados del binario son contadores de pierna que mantiene la cola (Tarea 8b): O(1), con el
+        // mismo atraso que los puntos de pierna (Q-R1). Antes, el rango de la clave unido a las activas: O(equipo).
+        var placementQualifiedCount = dualNode is null ? 0 : dualNode.LeftLegQualified + dualNode.RightLegQualified;
 
         // Direct sponsored members
         var directSponsored = await _db.MemberProfiles

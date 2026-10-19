@@ -178,12 +178,23 @@ public static class DualTeamNodes
         var (clave, _) = await KeyOfAsync(db, node, ct);
         if (await HangsFromParentByKeyAsync(db, node.ParentMemberId, clave, ct))
             await LegPointMaintenance.EnqueueSubtreeAsync(db, memberId, -1, now, by, ct);
-        // Plan Q (revision C1): los pendientes con arranque en este nodo no estan en el -T que se acaba de encolar (sale
-        // de las piernas ya aplicadas). En el valor verdadero se habrian sumado y restado; aqui se descartan. Si se
-        // dejaran, al volver a colocar al mismo miembro antes del vaciado subirian por su nodo nuevo, y su equipo ya
-        // vuelve con su propio +T: contaria dos veces.
+        // Plan Q (revision C1): los pendientes DE PIERNA con arranque en este nodo no estan en el -T que se acaba de
+        // encolar (sale de las piernas ya aplicadas). En el valor verdadero se habrian sumado y restado; aqui se
+        // descartan. Si se dejaran, al volver a colocar al mismo miembro antes del vaciado subirian por su nodo nuevo, y su
+        // equipo ya vuelve con su propio +T: contaria dos veces.
+        // Plan Q (DQ13): los PROPIOS son del miembro, no del nodo: se quedan, y lo ya aplicado de el (SelfQualified)
+        // vuelve a la cola como propio. Si se le vuelve a colocar, su nodo nuevo (SelfQualified = 0) lo recibe al vaciar;
+        // si no, espera.
         if (db.Database.IsRelational())
-            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualLegDeltas WHERE StartMemberId = {memberId}", ct);
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM DualLegDeltas WHERE StartMemberId = {memberId} AND OwnChange = 0", ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
+SELECT d.MemberId, 0, 0, 0, d.SelfQualified, 1, {now}, {by}
+FROM DualTeamTree d
+WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct);
+        }
         await InvalidateFrontiersAsync(db, new[] { node.ParentMemberId, memberId }, ct);
 
         if (children == DualTeamChildrenOnRemoval.Floating && hijos.Count > 0)

@@ -20,4 +20,13 @@ public class DualTeamEntity : AuditChangesStringKey, ITreeNode
     /// <summary>Plan P: nodos en cada pierna (mantenidos como los puntos, por LegPointMaintenance).</summary>
     public int LeftLegCount { get; set; }
     public int RightLegCount { get; set; }
+
+    /// <summary>
+    /// Plan Q (DQ13): suscripciones activas del propio miembro YA APLICADAS por la cola. Es lo que viaja con el nodo al
+    /// moverlo o retirarlo; no forma parte de sus piernas.
+    /// </summary>
+    public int SelfQualified { get; set; }
+    /// <summary>Plan Q (DQ13): suscripciones activas de cada pierna, mantenidas por LegPointMaintenance como los puntos.</summary>
+    public int LeftLegQualified { get; set; }
+    public int RightLegQualified { get; set; }
 }
