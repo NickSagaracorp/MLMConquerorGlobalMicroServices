@@ -25,14 +25,18 @@ public static class GridQueryableExtensions
         GridDataRequest request,
         string[] searchableFields,
         int maxPageSize = DefaultMaxPageSize,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int? unfilteredTotal = null)
     {
+        var unfiltered = string.IsNullOrWhiteSpace(request.Search) && (request.Filters is null || request.Filters.Count == 0);
         source = source.ApplySearch(request.Search, searchableFields);
         source = source.ApplyFilters(request.Filters);
 
         // Count AFTER filtering but BEFORE paging — this is the total matching set
-        // the grid pager reports, so paging reflects the filtered universe.
-        var total = await source.CountAsync(ct);
+        // the grid pager reports, so paging reflects the filtered universe. Plan P (Plan B del conteo): sin busqueda
+        // ni filtros, quien llama puede dar el total que ya conoce (p. ej. los contadores de pierna del binario) y no
+        // se cuenta un rango de un millon de filas.
+        var total = unfiltered && unfilteredTotal is { } conocido ? conocido : await source.CountAsync(ct);
 
         source = source.ApplySorts(request.Sorts);
 

@@ -43,6 +43,10 @@ public class EscritoresDelBinarioTests
         ["Scripts/sql/plan-p/02-recalcular-piernas.sql"] = "piernas desde cero, con cerrojos y candado dual-tree",
         ["Scripts/sql/plan-p/03-relleno-clave-binario.sql"] = "relleno de la clave, con cerrojos y candado dual-tree",
         ["Scripts/sql/plan-p/04-contadores-y-colas.sql"] = "contadores de pierna, con cerrojos y candado dual-tree",
+        ["Scripts/sql/plan-p/escala/altas/g-binario.sql"] =
+            "generador sintetico del Bloque D: solo en MLMConquerorGlobalEditionDb_Escala (DB_NAME y Confirmo=ESCALA)",
+        ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] =
+            "verificacion de solo lectura de la base de escala (el INSERT es a una tabla temporal)",
     };
 
     private static readonly Regex EscrituraEf = new(
