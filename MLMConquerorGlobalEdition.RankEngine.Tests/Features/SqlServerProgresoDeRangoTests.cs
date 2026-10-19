@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
+using Xunit.Abstractions;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Tests.Features;
 
@@ -17,6 +18,9 @@ namespace MLMConquerorGlobalEdition.RankEngine.Tests.Features;
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerProgresoDeRangoTests
 {
+    private readonly ITestOutputHelper _salida;
+    public SqlServerProgresoDeRangoTests(ITestOutputHelper salida) => _salida = salida;
+
     private sealed class Reloj : IDateTimeProvider
     {
         public DateTime Now => DateTime.Now;
@@ -88,5 +92,21 @@ public class SqlServerProgresoDeRangoTests
         cap.Valores.Should().NotContain(v => v.Contains(a) || v.Contains(c),
             "la pertenencia al equipo se resuelve en SQL por el rango del Node, no con la lista de ids");
         await tx.RollbackAsync();
+    }
+
+    [SqlServerFact]
+    [Trait("Categoria", "Medicion")]
+    public async Task El_progreso_de_la_raiz_mayor_local_responde_en_menos_de_un_segundo()
+    {
+        await using var db = SqlServerReportes.Db();
+        var handler = new GetRankProgressHandler(db, new Reloj(),
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
+        await handler.Handle(new GetRankProgressQuery("AMB-700829"), CancellationToken.None);   // calienta
+        var t = System.Diagnostics.Stopwatch.StartNew();
+        var r = await handler.Handle(new GetRankProgressQuery("AMB-700829"), CancellationToken.None);
+        t.Stop();
+        _salida.WriteLine($"[MEDICION] Progreso de rango de AMB-700829 (local) -> {t.ElapsedMilliseconds} ms");
+        r.IsSuccess.Should().BeTrue(r.Error);
+        t.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1));
     }
 }

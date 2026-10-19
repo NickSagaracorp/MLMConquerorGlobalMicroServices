@@ -8,7 +8,7 @@ namespace MLMConquerorGlobalEdition.RankEngine.Tests.Escala;
 
 /// <summary>
 /// Plan P, Bloque D: el progreso de rango completo (GetRankProgressHandler) de ESC-M en la base de escala, con 400.000
-/// o 1.000.000 en sus dos equipos. Mediana de 3 ejecuciones; objetivo menos de 2 s, con el tiempo de espera de
+/// o 1.000.000 en sus dos equipos. Mediana de 3 ejecuciones; objetivo menos de 1 s (Plan Q), con el tiempo de espera de
 /// comando de produccion (30 s). Solo con MLM_ESCALA_SQLSERVER.
 /// </summary>
 [Trait("Categoria", "Medicion")]
@@ -33,6 +33,6 @@ public class EscalaProgresoDeRangoTests
             var r = await handler.Handle(new GetRankProgressQuery("ESC-M"), CancellationToken.None);
             r.IsSuccess.Should().BeTrue(r.Error);
         });
-        t.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        t.Should().BeLessThan(TimeSpan.FromSeconds(1));
     }
 }

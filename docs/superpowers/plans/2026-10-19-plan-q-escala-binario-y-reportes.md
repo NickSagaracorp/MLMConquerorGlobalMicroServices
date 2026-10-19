@@ -318,7 +318,7 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
 - Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs`
 - Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Escala/EscalaProgresoDeRangoTests.cs:36`
 
-- [ ] **Paso 1.** Medición rápida contra la base local. AMB-700829 tiene 119.403 nodos en su equipo binario y es la raíz mayor de inscripción. Va con el rasgo `Medicion` para que no corra en la suite de siempre:
+- [x] **Paso 1.** Medición rápida contra la base local. AMB-700829 tiene 119.403 nodos en su equipo binario y es la raíz mayor de inscripción. Va con el rasgo `Medicion` para que no corra en la suite de siempre:
 
 ```csharp
     [SqlServerFact]
@@ -337,8 +337,12 @@ dotnet ef database update --project MLMConquerorGlobalEdition.Repository --start
     }
 ```
 
-- [ ] **Paso 2.** En `EscalaProgresoDeRangoTests.cs:36`, el objetivo pasa a 1 s (el que se fija para 1.000.000): `t.Should().BeLessThan(TimeSpan.FromSeconds(1));`. Se mide en el Bloque 7.
-- [ ] **Paso 3.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedName~SqlServerProgresoDeRango"` en verde. Commit: `Plan Q: medicion local del progreso de rango y objetivo de un segundo a escala`.
+- [x] **Paso 2.** En `EscalaProgresoDeRangoTests.cs:36`, el objetivo pasa a 1 s (el que se fija para 1.000.000): `t.Should().BeLessThan(TimeSpan.FromSeconds(1));`. Se mide en el Bloque 7.
+- [x] **Paso 3.** `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --filter "FullyQualifiedName~SqlServerProgresoDeRango"` en verde. Commit: `Plan Q: medicion local del progreso de rango y objetivo de un segundo a escala`.
+
+> **Medido (2026-10-19, base local, AMB-700829 con 119.404 nodos de inscripción):** seis ejecuciones de la prueba: 1.474 ms (la primera tras compilar, en rojo), 717, 731, 767, 826 y 653 ms. La consulta de calificados de inscripción sola tarda 58 a 116 ms y usa `IX_MembershipSubscriptions_Activas`; el resto del tiempo es del resto del manejador.
+>
+> **Desviación (al implementar).** La prueba escribe el tiempo con `ITestOutputHelper` (`[MEDICION] … ms`), para tener la cifra además de la aserción. El comentario de `EscalaProgresoDeRangoTests` pasa también a «menos de 1 s».
 
 ---
 
