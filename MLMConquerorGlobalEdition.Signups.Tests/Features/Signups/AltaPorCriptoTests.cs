@@ -169,6 +169,7 @@ public class AltaPorCriptoTests
         {
             MemberId       = SponsorId,
             HierarchyPath  = $"/{SponsorId}/",
+            Node           = HierarchyId.Parse("/1/"),
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -213,6 +214,7 @@ public class AltaPorCriptoTests
             MemberId       = MemberId,
             ParentMemberId = SponsorId,
             HierarchyPath  = $"/{SponsorId}/{MemberId}/",
+            Node           = HierarchyId.Parse("/1/1/"),
             Level          = 2,
             CreatedBy      = MemberEmail,
             CreationDate   = FixedNow,

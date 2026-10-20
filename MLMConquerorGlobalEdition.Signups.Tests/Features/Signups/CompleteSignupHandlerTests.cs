@@ -668,6 +668,7 @@ public class CompleteSignupHandlerTests
         {
             MemberId       = sponsorId,
             HierarchyPath  = $"/{sponsorId}/",
+            Node           = HierarchyId.Parse("/1/"),
             Level          = 1,
             CreatedBy      = sponsorEmail,
             CreationDate   = FixedNow,

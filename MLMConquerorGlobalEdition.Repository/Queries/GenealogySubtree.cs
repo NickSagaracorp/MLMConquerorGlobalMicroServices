@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 
 namespace MLMConquerorGlobalEdition.Repository.Queries;
@@ -36,6 +37,54 @@ public static class GenealogySubtree
             .ThenByDescending(g => g.Id)
             .Select(g => g.Node)
             .FirstOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Plan Q (revision del bloque 4): el Node del nodo vigente del miembro (<see cref="CurrentOfAsync"/>) contando lo que
+    /// <paramref name="context"/> va a guardar: un nodo nuevo seguido gana (es el mas reciente); el vigente de la base, con
+    /// sus valores seguidos si se esta cambiando; null si el vigente no tiene Node o se borra. Es la definicion unica de
+    /// «tiene nodo de inscripcion» al encolar (MembershipPointsDeltas, QualifiedTeamDeltas) y la misma que aplica
+    /// ApplyMemberStatisticDeltasJob (el TOP 1 vivo por CreationDate e Id, y despues Node no nulo): un vigente sin Node no
+    /// tiene linea, aunque un nodo vivo mas viejo la tenga.
+    /// </summary>
+    public static async Task<HierarchyId?> CurrentNodeAsync(this DbContext context, string memberId, CancellationToken ct = default)
+    {
+        var nuevo = context.ChangeTracker.Entries<GenealogyEntity>()
+            .Where(e => e.State == EntityState.Added && e.Entity.MemberId == memberId && !e.Entity.IsDeleted)
+            .Select(e => e.Entity)
+            .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (nuevo is not null) return nuevo.Node;
+
+        var vigente = await context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == memberId)
+            .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
+            .Select(g => new { g.Id, g.Node }).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (vigente is null) return null;
+        var seguido = context.ChangeTracker.Entries<GenealogyEntity>().FirstOrDefault(e => e.Entity.Id == vigente.Id);
+        if (seguido is null) return vigente.Node;
+        return seguido.State == EntityState.Deleted || seguido.Entity.IsDeleted ? null : seguido.Entity.Node;
+    }
+
+    /// <summary>
+    /// Plan Q (revision del bloque 4): el primer patrocinador de la cadena de <paramref name="memberId"/> (sin el) cuyo nodo
+    /// vigente tiene Node (<see cref="CurrentNodeAsync"/>), con guarda de ciclos; null si nadie lo tiene. Es donde va la
+    /// linea de quien aun no tiene nodo: quedara en el equipo de ese patrocinador.
+    /// </summary>
+    public static async Task<string?> FirstSponsorWithNodeAsync(this DbContext context, string memberId, CancellationToken ct = default)
+    {
+        var vistos = new HashSet<string>(StringComparer.Ordinal) { memberId };
+        var actual = memberId;
+        while (true)
+        {
+            var id = actual;
+            var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
+                                   .Where(e => e.Entity.MemberId == id).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
+                               ?? await context.Set<MemberProfile>().AsNoTracking().IgnoreQueryFilters().Where(m => m.MemberId == id)
+                                   .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(patrocinador) || !vistos.Add(patrocinador)) return null;
+            if (await context.CurrentNodeAsync(patrocinador, ct).ConfigureAwait(false) is not null) return patrocinador;
+            actual = patrocinador;
+        }
+    }
 
     /// <summary>
     /// Todos los nodos (vigentes u obsoletos) que cuelgan de <paramref name="root"/>, él incluido; ninguno

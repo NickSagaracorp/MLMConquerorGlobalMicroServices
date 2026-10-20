@@ -212,6 +212,8 @@ public class SignupRankInputsTests
         MemberId        = memberId,
         ParentMemberId  = parentMemberId,
         HierarchyPath   = hierarchyPath,
+        // Revision del bloque 4: con Node (un ordinal 1 por nivel de la ruta), como en la base.
+        Node            = HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, hierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length)) + "/"),
         Level           = level,
         CreatedBy       = "seed",
         CreationDate    = FixedNow,

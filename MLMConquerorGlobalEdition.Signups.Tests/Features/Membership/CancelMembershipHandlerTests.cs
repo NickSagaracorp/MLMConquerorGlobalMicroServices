@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -257,6 +258,7 @@ public class CancelMembershipHandlerTests
         {
             MemberId = "AMB-SPONSOR",
             HierarchyPath = "/AMB-SPONSOR/",
+            Node = HierarchyId.Parse("/1/"),
             CreatedBy = "seed",
             LastUpdateDate = FixedNow
         });
@@ -265,6 +267,7 @@ public class CancelMembershipHandlerTests
             MemberId = "AMB-000001",
             ParentMemberId = "AMB-SPONSOR",
             HierarchyPath = "/AMB-SPONSOR/AMB-000001",
+            Node = HierarchyId.Parse("/1/1/"),
             CreatedBy = "seed",
             LastUpdateDate = FixedNow
         });

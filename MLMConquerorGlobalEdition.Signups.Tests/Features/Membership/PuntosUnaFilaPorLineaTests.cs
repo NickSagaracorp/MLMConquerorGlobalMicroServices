@@ -42,6 +42,7 @@ public class PuntosUnaFilaPorLineaTests
             {
                 MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
                 HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                Node = HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, i + 1)) + "/"),
                 CreatedBy = "seed", CreationDate = Ahora
             });
         var sus = new MembershipSubscription

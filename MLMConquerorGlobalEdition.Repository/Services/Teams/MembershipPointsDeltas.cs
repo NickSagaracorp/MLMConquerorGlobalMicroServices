@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
@@ -379,33 +380,15 @@ public static class MembershipPointsDeltas
             IsApplied = false, CreatedBy = Actor, CreationDate = now
         };
 
-        if (await RutaAsync(context, memberId, ct).ConfigureAwait(false) is not null)
+        // Revision del bloque 4: «tiene nodo» es que su nodo vigente tenga Node (GenealogySubtree.CurrentNodeAsync), lo
+        // mismo que mira el trabajo al expandir. Antes bastaba una ruta de texto: un vigente sin Node dejaba una SponsorLine
+        // que el trabajo no podia expandir (los puntos se perdian) o que acreditaba un nodo vivo mas viejo.
+        if (await context.CurrentNodeAsync(memberId, ct).ConfigureAwait(false) is not null)
             return [Fila(memberId, MemberStatisticDeltaScope.SponsorLine)];
 
         var filas = new List<MemberStatisticDelta> { Fila(memberId, MemberStatisticDeltaScope.Member) };
-        var vistos = new HashSet<string>(StringComparer.Ordinal) { memberId };
-        var actual = memberId;
-        while (true)
-        {
-            var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
-                                   .Where(e => e.Entity.MemberId == actual).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
-                               ?? await context.Set<MemberProfile>().AsNoTracking().IgnoreQueryFilters().Where(m => m.MemberId == actual)
-                                   .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(patrocinador) || !vistos.Add(patrocinador)) return filas;
-            if (await RutaAsync(context, patrocinador, ct).ConfigureAwait(false) is not null)
-            {
-                filas.Add(Fila(patrocinador, MemberStatisticDeltaScope.SponsorLine));
-                return filas;
-            }
-            actual = patrocinador;
-        }
+        if (await context.FirstSponsorWithNodeAsync(memberId, ct).ConfigureAwait(false) is { } patrocinador)
+            filas.Add(Fila(patrocinador, MemberStatisticDeltaScope.SponsorLine));
+        return filas;
     }
-
-    private static async Task<string?> RutaAsync(DbContext context, string memberId, CancellationToken ct) =>
-        context.ChangeTracker.Entries<GenealogyEntity>()
-            .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == memberId)
-            .Select(e => e.Entity.HierarchyPath).FirstOrDefault()
-        ?? await context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == memberId)
-            .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
-            .Select(g => g.HierarchyPath).FirstOrDefaultAsync(ct).ConfigureAwait(false);
 }

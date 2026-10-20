@@ -105,20 +105,43 @@ public class ApplyMemberStatisticDeltasJob
             await using var tx = propia ? await _db.Database.BeginTransactionAsync(ct) : null;
             try
             {
-                var n = (await _db.Database.SqlQueryRaw<int>(ApplyBatchSql,
+                var r = (await _db.Database.SqlQueryRaw<Tanda>(ApplyBatchSql,
                         new SqlParameter("@lote", BatchSize),
                         new SqlParameter("@now", _dateTime.Now),
                         new SqlParameter("@enrollment", (int)RankEvaluationTrigger.Enrollment),
                         new SqlParameter("@niveles", GenealogyUpline.EnrollmentLevels))
                     .ToListAsync(ct)).Single();
                 if (tx is not null) await tx.CommitAsync(ct);
-                return n;
+                AvisarSinNodo(r.SinNodo, r.IdsSinNodo);
+                return r.Aplicadas;
             }
             catch (SqlException ex) when (ex.Number == 1205 && propia && intento < MaxDeadlockRetries)
             {
                 _logger.LogWarning(ex, "ApplyMemberStatisticDeltas: tanda victima de un interbloqueo, intento {Intento}.", intento);
             }
         }
+    }
+
+    /// <summary>Lo que devuelve una tanda en SQL Server.</summary>
+    private sealed class Tanda
+    {
+        public int Aplicadas { get; set; }
+        public int SinNodo { get; set; }
+        public string? IdsSinNodo { get; set; }
+    }
+
+    /// <summary>
+    /// Revision del bloque 4: una fila de linea (SponsorLine o AncestorsOf) cuyo miembro no tiene nodo vigente con Node se
+    /// marca aplicada sin acreditar a nadie y se avisa con cuantas y sus Id (las 100 primeras). Desde que al encolar se mira
+    /// lo mismo (GenealogySubtree.CurrentNodeAsync), solo pasa si el nodo cambia entre encolar y aplicar; la fila sigue en
+    /// MemberStatisticDeltas para volver a encolarla a mano. No se deja pendiente: cada tanda la volveria a tomar sin fin.
+    /// </summary>
+    private void AvisarSinNodo(int sinNodo, string? ids)
+    {
+        if (sinNodo > 0)
+            _logger.LogWarning(
+                "ApplyMemberStatisticDeltas: {SinNodo} filas de linea sin nodo vigente con Node, marcadas aplicadas sin acreditar a nadie. Ids: {Ids}",
+                sinNodo, ids);
     }
 
     /// <summary>
@@ -220,11 +243,19 @@ IF @candado < 0
 DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #exp; DROP TABLE IF EXISTS #agg;
 CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Scope int NOT NULL,
                     P int NOT NULL, T int NOT NULL, Q int NOT NULL, QQ int NOT NULL,
-                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL);
-INSERT INTO #lote
-SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta,
-       EnrollmentQualifiedTeamMembersDelta, CreatedBy
-FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id;
+                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Node hierarchyid NULL);
+-- Revision del bloque 4: el Node de partida de una fila de linea es el de su nodo vivo VIGENTE (el mas reciente, como
+-- GenealogySubtree.CurrentOfAsync y CurrentNodeAsync al encolar); si ese no tiene Node, no hay linea. Antes se tomaba el
+-- mas reciente CON Node: un vigente sin Node acreditaba una posicion vieja.
+INSERT INTO #lote (Id, MemberId, Scope, P, T, Q, QQ, CreatedBy, Node)
+SELECT d.Id, d.MemberId, d.Scope, d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta,
+       d.EnrollmentQualifiedTeamMembersDelta, d.CreatedBy, v.Node
+FROM (SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta,
+             EnrollmentQualifiedTeamMembersDelta, CreatedBy
+      FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id) d
+OUTER APPLY (SELECT TOP 1 g.Node FROM GenealogyTree g
+             WHERE d.Scope <> 0 AND g.MemberId = d.MemberId AND g.IsDeleted = 0
+             ORDER BY g.CreationDate DESC, g.Id DESC) v;
 
 -- Scope 0: la fila es del propio MemberId. Scope 1 (SponsorLine): MemberId es el patrocinador y el delta va a el y a cada
 -- ascendiente de su Node vigente. Scope 2 (AncestorsOf): MemberId es quien cambio y el delta va a sus ascendientes
@@ -237,13 +268,18 @@ CROSS APPLY (
     SELECT l.MemberId AS MemberId, 0 AS Distancia WHERE l.Scope = 0
     UNION ALL
     SELECT a.MemberId, an.Distancia
-    FROM (SELECT TOP 1 g.Node FROM GenealogyTree g
-          WHERE g.MemberId = l.MemberId AND g.IsDeleted = 0 AND g.Node IS NOT NULL
-          ORDER BY g.CreationDate DESC, g.Id DESC) s
-    CROSS APPLY dbo.GenealogyAncestors(s.Node) an
+    FROM dbo.GenealogyAncestors(l.Node) an
     JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
-    WHERE l.Scope = 1 OR (l.Scope = 2 AND an.Distancia >= 1)
+    WHERE l.Node IS NOT NULL AND (l.Scope = 1 OR (l.Scope = 2 AND an.Distancia >= 1))
 ) x;
+
+-- Filas de linea cuyo miembro no tiene nodo vigente con Node: no hay a quien aplicarlas. Se marcan aplicadas como las
+-- demas (pendientes, cada tanda las volveria a tomar sin fin), pero se cuentan y se devuelven sus Id para el aviso; la
+-- fila sigue en MemberStatisticDeltas. Una AncestorsOf de una raiz (con Node y sin ascendientes) no cuenta.
+DECLARE @sinNodo int = (SELECT COUNT(*) FROM #lote WHERE Scope <> 0 AND Node IS NULL);
+DECLARE @idsSinNodo nvarchar(max) =
+    (SELECT STRING_AGG(CAST(Id AS nvarchar(max)), N',') WITHIN GROUP (ORDER BY Id)
+     FROM (SELECT TOP (100) Id FROM #lote WHERE Scope <> 0 AND Node IS NULL ORDER BY Id) t);
 
 SELECT MemberId, SUM(P) AS P, SUM(T) AS T, SUM(Q) AS Q, SUM(QQ) AS QQ, MIN(CreatedBy) AS CreatedBy
 INTO #agg FROM #exp GROUP BY MemberId;
@@ -272,6 +308,6 @@ WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
                   WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
 
 UPDATE d SET IsApplied = 1, AppliedAt = @now FROM MemberStatisticDeltas d JOIN #lote l ON l.Id = d.Id;
-SELECT COUNT(*) AS [Value] FROM #lote;
+SELECT COUNT(*) AS Aplicadas, @sinNodo AS SinNodo, @idsSinNodo AS IdsSinNodo FROM #lote;
 DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;";
 }

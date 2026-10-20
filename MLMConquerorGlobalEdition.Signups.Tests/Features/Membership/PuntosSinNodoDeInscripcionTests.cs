@@ -33,8 +33,8 @@ public class PuntosSinNodoDeInscripcionTests
         });
         db.MemberProfiles.AddRange(Perfil("R", null), Perfil("A", "R"), Perfil("S", "A"), Perfil("M", "S"));
         db.GenealogyTree.AddRange(
-            new GenealogyEntity { MemberId = "R", HierarchyPath = "/R/", Level = 0, CreatedBy = "seed" },
-            new GenealogyEntity { MemberId = "A", ParentMemberId = "R", HierarchyPath = "/R/A/", Level = 1, CreatedBy = "seed" });
+            new GenealogyEntity { MemberId = "R", HierarchyPath = "/R/", Node = HierarchyId.Parse("/1/"), Level = 0, CreatedBy = "seed" },
+            new GenealogyEntity { MemberId = "A", ParentMemberId = "R", HierarchyPath = "/R/A/", Node = HierarchyId.Parse("/1/1/"), Level = 1, CreatedBy = "seed" });
         var sus = new MembershipSubscription
         {
             MemberId = "M", MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.Pending, StartDate = DateTime.Now,
