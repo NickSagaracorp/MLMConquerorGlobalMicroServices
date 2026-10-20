@@ -21,6 +21,6 @@ public class DualTeamLegFrontier : AuditChangesStringKey
     /// <summary>Current deepest node of the preferred-side chain (null until the first spill).</summary>
     public string? DeepestMemberId { get; set; }
 
-    /// <summary>Slash-count depth of <see cref="DeepestMemberId"/>'s HierarchyPath.</summary>
+    /// <summary>Depth of <see cref="DeepestMemberId"/> in the binary tree: its compact-key depth (DualTeamEntity.Depth, 0 = root).</summary>
     public int DeepestDepth { get; set; }
 }

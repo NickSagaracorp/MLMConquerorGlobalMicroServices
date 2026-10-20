@@ -86,20 +86,14 @@ public class DevSeedController : ControllerBase
     [HttpPost("backfill-frontier")]
     public async Task<ActionResult<ApiResponse<int>>> BackfillFrontier(CancellationToken ct)
     {
-        // Rebuild the frontier cache from the live tree. We compute it in memory rather than
-        // via a path-prefix SQL join: HierarchyPath is now nvarchar(max) and unindexed (see
-        // migration MakeHierarchyPathUnboundedDropPathIndex), so a per-leg-root
-        // `LIKE legRootPath + '%'` correlated subquery is O(fullSponsors × tree) full scans
-        // and times out on an 80k-node tree. Adjacency fits in memory; one descending-depth
-        // pass propagates each node's deepest descendant up to all its ancestors in O(N).
+        // Rebuild the frontier cache from the live tree, in memory: adjacency fits, and one
+        // descending-depth pass propagates each node's deepest descendant up to all its
+        // ancestors in O(N). Depth is the compact-key depth (DualTeamEntity.Depth, 0 = root),
+        // the same value PlacementService stores in DeepestDepth.
         var nodes = await _db.DualTeamTree.AsNoTracking()
             .Where(d => !d.IsDeleted)
             .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.Depth })
             .ToListAsync(ct);
-
-        // depth = slash count, matching DualTeamPlacementRules.Depth so DeepestDepth lines up
-        // with what PlaceAsync compares against.
-        static int Depth(string p) => p.Count(c => c == '/');
 
         var parentOf = new Dictionary<string, string?>(nodes.Count);
         var sideOf = new Dictionary<string, TreeSide>(nodes.Count);

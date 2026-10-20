@@ -148,7 +148,7 @@ public class TeamController : ControllerBase
         return Ok(ApiResponse<PagedResult<TeamMemberDto>>.Ok(result.Value!));
     }
 
-    /// <summary>GET /api/v1/bizcenter/team/all-members — full subtree via HierarchyPath LIKE query</summary>
+    /// <summary>GET /api/v1/bizcenter/team/all-members — full enrollment subtree (GenealogyTree hierarchyid range, CurrentUnder)</summary>
     [HttpGet("all-members")]
     public async Task<IActionResult> GetAllTeamMembers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
