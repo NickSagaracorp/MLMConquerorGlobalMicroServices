@@ -46,10 +46,15 @@ public class PuntosSinNodoDeInscripcionTests
         sus.SubscriptionStatus = MembershipStatus.Active;
         await db.SaveChangesAsync();
 
+        // Plan Q (Bloque 4, Q-R34): la suya (sin nodo) y UNA de linea sobre A, el primer ascendiente con nodo; el trabajo
+        // de deltas la expande a A y a R.
         var encolado = await db.MemberStatisticDeltas.AsNoTracking()
             .Where(d => d.SourceMemberId == "M" && d.CreatedBy == MembershipPointsDeltas.Actor)
-            .ToDictionaryAsync(d => d.MemberId, d => d.EnrollmentPointsDelta);
-        encolado.Should().BeEquivalentTo(new Dictionary<string, int> { ["M"] = 6, ["A"] = 6, ["R"] = 6 },
-            "S no tiene nodo: la linea es la de A, el primer ascendiente con nodo, A incluido");
+            .Select(d => new { d.MemberId, d.Scope, d.EnrollmentPointsDelta }).ToListAsync();
+        encolado.Should().BeEquivalentTo(new[]
+        {
+            new { MemberId = "M", Scope = MemberStatisticDeltaScope.Member, EnrollmentPointsDelta = 6 },
+            new { MemberId = "A", Scope = MemberStatisticDeltaScope.SponsorLine, EnrollmentPointsDelta = 6 }
+        }, "S no tiene nodo: la linea es la de A, el primer ascendiente con nodo, A incluido");
     }
 }

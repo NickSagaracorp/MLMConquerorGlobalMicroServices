@@ -45,9 +45,12 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// piernas acaban en PersonalPoints al vaciar (lo aplicado, PersonalPoints - pendientes, mas lo pendiente), igual que la
 /// hoja de <see cref="LegPointMaintenance.EnqueueLeafAsync"/>.</item>
 /// <item>Y sube como delta: un propio con puntos en DualLegDeltas (O(1); llega a las piernas de sus ascendientes del
-/// binario al vaciar, y espera si no esta colocado) y una fila de MemberStatisticDeltas para el propio y otra por
-/// ascendiente de su linea de patrocinio (hasta el Bloque 4). Un PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en
-/// el primer cambio del miembro: 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
+/// binario al vaciar, y espera si no esta colocado) y UNA fila de MemberStatisticDeltas para su linea de patrocinio, el
+/// propio incluido (Plan Q, Bloque 4, Q-R34; antes una por ascendiente): Scope = SponsorLine sobre el propio si tiene nodo
+/// de inscripcion; si no, una suya (Scope = Member) y una SponsorLine sobre el primer patrocinador de su cadena que lo
+/// tenga. ApplyMemberStatisticDeltasJob la expande en SQL y encola rango solo hasta GenealogyUpline.EnrollmentLevels. Un
+/// PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en el primer cambio del miembro:
+/// 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
 /// </list>
 /// Idempotente: un guardado que falla y se reintenta no aplica dos veces (lo ya ajustado en este contexto se recuerda
 /// hasta que el guardado se confirma). Todas sus lecturas son asincronas (revision 2 del bloque 2) y todas sus esperas
@@ -232,7 +235,8 @@ public static class MembershipPointsDeltas
                 ajustado.Remove(fila);
             }
 
-        // 4. El neto sube como delta: al binario (un propio con puntos) y a la linea de patrocinio, el propio incluido.
+        // 4. El neto sube como delta: al binario (un propio con puntos) y a la linea de patrocinio, el propio incluido, con
+        //    UNA fila (Plan Q, Bloque 4, Q-R34): ApplyMemberStatisticDeltasJob la expande por los ascendientes en SQL.
         var yaBinario = context.ChangeTracker.Entries<DualLegDelta>()
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
@@ -241,7 +245,8 @@ public static class MembershipPointsDeltas
             .Where(e => e.State == EntityState.Added && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.SourceMemberId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key,
-                // Cada vez se encola lo mismo a cada uno (el propio y sus ascendientes): lo ya encolado es lo del propio.
+                // Lo ya encolado es la fila cuyo MemberId es el propio: la SponsorLine sobre el (con nodo) o la suya de miembro
+                // (sin nodo; la SponsorLine va entonces sobre el primer patrocinador con nodo).
                 g => g.Where(e => string.Equals(e.Entity.MemberId, g.Key, StringComparison.Ordinal)).Sum(e => e.Entity.EnrollmentPointsDelta),
                 StringComparer.Ordinal);
 
@@ -259,12 +264,8 @@ public static class MembershipPointsDeltas
 
             var faltaInscripcion = meta - yaInscripcion.GetValueOrDefault(memberId);
             if (faltaInscripcion != 0)
-                foreach (var id in (await AscendientesAsync(context, memberId, ct).ConfigureAwait(false)).Prepend(memberId))
-                    context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
-                    {
-                        MemberId = id, EnrollmentPointsDelta = faltaInscripcion, SourceMemberId = memberId,
-                        IsApplied = false, CreatedBy = Actor, CreationDate = now
-                    });
+                foreach (var fila in await FilasDeLineaAsync(context, memberId, faltaInscripcion, now, ct).ConfigureAwait(false))
+                    context.Set<MemberStatisticDelta>().Add(fila);
         }
     }
 
@@ -363,30 +364,41 @@ public static class MembershipPointsDeltas
     }
 
     /// <summary>
-    /// Los ascendientes de inscripcion (sin el propio), por la ruta de su nodo vigente (el de mas reciente creacion),
-    /// seguido o en la base; sin nodo propio, la linea del primer patrocinador de su cadena que tenga nodo (tercera revision
-    /// del bloque 2: antes solo el patrocinador directo; sin nodo, la linea se quedaba sin nada). Sin nada de eso, ninguno.
+    /// Plan Q (Bloque 4, Q-R34): las filas de estadisticas de un cambio de <paramref name="puntos"/> en la linea de
+    /// patrocinio de <paramref name="memberId"/>, el incluido. Con nodo de inscripcion propio (seguido o en la base), una
+    /// sola: SponsorLine sobre el. Sin el (un alta que se activa antes de tenerlo), una suya (Member) y una SponsorLine sobre
+    /// el primer patrocinador de su cadena que tenga nodo (tercera revision del bloque 2, con guarda de ciclos); si nadie lo
+    /// tiene, solo la suya. QualifiedSponsoredMembersDelta y EnrollmentTeamSizeDelta van a 0: los pone el alta.
     /// </summary>
-    private static async Task<List<string>> AscendientesAsync(DbContext context, string memberId, CancellationToken ct)
+    private static async Task<List<MemberStatisticDelta>> FilasDeLineaAsync(
+        DbContext context, string memberId, int puntos, DateTime now, CancellationToken ct)
     {
-        var ruta = await RutaAsync(context, memberId, ct).ConfigureAwait(false);
-        // Sin nodo propio todavia (un alta que se activa antes de tenerlo): la linea de su patrocinador, el incluido, como la
-        // recorria la activacion; si el patrocinador tampoco lo tiene, la del siguiente de la cadena (con guarda de ciclos).
+        MemberStatisticDelta Fila(string id, MemberStatisticDeltaScope alcance) => new()
+        {
+            MemberId = id, Scope = alcance, EnrollmentPointsDelta = puntos, SourceMemberId = memberId,
+            IsApplied = false, CreatedBy = Actor, CreationDate = now
+        };
+
+        if (await RutaAsync(context, memberId, ct).ConfigureAwait(false) is not null)
+            return [Fila(memberId, MemberStatisticDeltaScope.SponsorLine)];
+
+        var filas = new List<MemberStatisticDelta> { Fila(memberId, MemberStatisticDeltaScope.Member) };
         var vistos = new HashSet<string>(StringComparer.Ordinal) { memberId };
         var actual = memberId;
-        while (ruta is null)
+        while (true)
         {
             var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
                                    .Where(e => e.Entity.MemberId == actual).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
                                ?? await context.Set<MemberProfile>().AsNoTracking().IgnoreQueryFilters().Where(m => m.MemberId == actual)
                                    .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(patrocinador) || !vistos.Add(patrocinador)) break;
-            ruta = await RutaAsync(context, patrocinador, ct).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(patrocinador) || !vistos.Add(patrocinador)) return filas;
+            if (await RutaAsync(context, patrocinador, ct).ConfigureAwait(false) is not null)
+            {
+                filas.Add(Fila(patrocinador, MemberStatisticDeltaScope.SponsorLine));
+                return filas;
+            }
             actual = patrocinador;
         }
-        return (ruta ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Where(id => !string.Equals(id, memberId, StringComparison.Ordinal))
-            .Distinct(StringComparer.Ordinal).ToList();
     }
 
     private static async Task<string?> RutaAsync(DbContext context, string memberId, CancellationToken ct) =>

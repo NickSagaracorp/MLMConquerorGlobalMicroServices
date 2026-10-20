@@ -43,10 +43,12 @@ public class SqlServerPuntosConcurrentesTests
     {
         var e = new Escenario($"{x}R", $"{x}P", $"{x}M");
         var ahora = DateTime.Now;
+        // Plan Q (Bloque 4): con Node, porque el trabajo de deltas expande la linea por el Node (raiz de ordinal alto al azar).
+        var raiz = Random.Shared.Next(1_000_000, int.MaxValue);
         db.GenealogyTree.AddRange(
-            new GenealogyEntity { MemberId = e.Raiz, HierarchyPath = $"/{e.Raiz}/", Level = 0, CreatedBy = "plan-q-prueba", CreationDate = ahora },
-            new GenealogyEntity { MemberId = e.Patrocinador, ParentMemberId = e.Raiz, HierarchyPath = $"/{e.Raiz}/{e.Patrocinador}/", Level = 1, CreatedBy = "plan-q-prueba", CreationDate = ahora },
-            new GenealogyEntity { MemberId = e.Miembro, ParentMemberId = e.Patrocinador, HierarchyPath = $"/{e.Raiz}/{e.Patrocinador}/{e.Miembro}/", Level = 2, CreatedBy = "plan-q-prueba", CreationDate = ahora });
+            new GenealogyEntity { MemberId = e.Raiz, HierarchyPath = $"/{e.Raiz}/", Node = HierarchyId.Parse($"/{raiz}/"), Level = 0, CreatedBy = "plan-q-prueba", CreationDate = ahora },
+            new GenealogyEntity { MemberId = e.Patrocinador, ParentMemberId = e.Raiz, HierarchyPath = $"/{e.Raiz}/{e.Patrocinador}/", Node = HierarchyId.Parse($"/{raiz}/1/"), Level = 1, CreatedBy = "plan-q-prueba", CreationDate = ahora },
+            new GenealogyEntity { MemberId = e.Miembro, ParentMemberId = e.Patrocinador, HierarchyPath = $"/{e.Raiz}/{e.Patrocinador}/{e.Miembro}/", Node = HierarchyId.Parse($"/{raiz}/1/1/"), Level = 2, CreatedBy = "plan-q-prueba", CreationDate = ahora });
         foreach (var id in new[] { e.Raiz, e.Patrocinador, e.Miembro })
             db.MemberStatistics.Add(new MemberStatisticEntity { MemberId = id, CreatedBy = "plan-q-prueba", CreationDate = ahora });
         await db.SaveChangesAsync();
@@ -65,8 +67,10 @@ public class SqlServerPuntosConcurrentesTests
     {
         await using var db = SqlServerReportes.Db();
         var pm = await db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == e.Miembro).OrderBy(s => s.Id).Select(s => s.PersonalPoints).FirstAsync();
+        // Plan Q (Bloque 4, Q-R34): una sola fila SponsorLine sobre M llega a toda su linea (P y R incluidos).
         int Encolado(string a) => db.MemberStatisticDeltas.AsNoTracking()
-            .Where(d => d.SourceMemberId == e.Miembro && d.MemberId == a).Sum(d => d.EnrollmentPointsDelta);
+            .Where(d => d.SourceMemberId == e.Miembro && (d.MemberId == a || d.Scope == MemberStatisticDeltaScope.SponsorLine))
+            .Sum(d => d.EnrollmentPointsDelta);
         // Una sola sentencia: el vaciado de cada minuto mueve lo pendiente a la pierna en su transaccion.
         var pierna = (await db.Database.SqlQuery<decimal>($@"
 SELECT (SELECT LeftLegPoints FROM DualTeamTree WHERE MemberId = {e.Patrocinador} AND IsDeleted = 0)

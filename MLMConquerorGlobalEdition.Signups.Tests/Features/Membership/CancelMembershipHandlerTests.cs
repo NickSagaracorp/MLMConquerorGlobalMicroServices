@@ -251,7 +251,15 @@ public class CancelMembershipHandlerTests
             CreatedBy = "seed"
         });
 
-        // Genealogy node showing sponsor relationship
+        // Genealogy node showing sponsor relationship. Plan Q (Bloque 4): la linea sube nodo a nodo, asi que el patrocinador
+        // tiene su nodo (como en la base: todo ascendiente tiene el suyo).
+        await db.GenealogyTree.AddAsync(new GenealogyEntity
+        {
+            MemberId = "AMB-SPONSOR",
+            HierarchyPath = "/AMB-SPONSOR/",
+            CreatedBy = "seed",
+            LastUpdateDate = FixedNow
+        });
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId = "AMB-000001",
