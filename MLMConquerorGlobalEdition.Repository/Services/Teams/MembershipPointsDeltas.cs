@@ -50,7 +50,9 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// el primer cambio del miembro: 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
 /// </list>
 /// Idempotente: un guardado que falla y se reintenta no aplica dos veces (lo ya ajustado en este contexto se recuerda
-/// hasta que el guardado se confirma). Todas sus lecturas son asincronas (revision 2 del bloque 2).
+/// hasta que el guardado se confirma). Todas sus lecturas son asincronas (revision 2 del bloque 2) y todas sus esperas
+/// llevan ConfigureAwait(false) (tercera revision): el SaveChanges sincrono las espera con GetAwaiter().GetResult() y, en
+/// un contexto de sincronizacion de un hilo, una espera que volviera a el se interbloquearia.
 /// </summary>
 public static class MembershipPointsDeltas
 {
@@ -62,7 +64,7 @@ public static class MembershipPointsDeltas
     public static async Task<int> LevelPointsAsync(DbContext context, int membershipLevelId, CancellationToken ct = default) =>
         await context.Set<Product>().AsNoTracking().IgnoreQueryFilters()
             .Where(p => p.MembershipLevelId == membershipLevelId)
-            .Select(p => (int?)p.QualificationPoins).MaxAsync(ct) ?? 0;
+            .Select(p => (int?)p.QualificationPoins).MaxAsync(ct).ConfigureAwait(false) ?? 0;
 
     /// <summary>Los puntos de calificacion de los productos de un pedido (como los sumaba el alta).</summary>
     public static async Task<int> OrderPointsAsync(DbContext context, string orderId, CancellationToken ct = default)
@@ -72,11 +74,11 @@ public static class MembershipPointsDeltas
             .Select(e => e.Entity.ProductId).ToList();
         var productos = seguidos.Count > 0
             ? seguidos
-            : await context.Set<OrderDetail>().AsNoTracking().Where(d => d.OrderId == orderId).Select(d => d.ProductId).ToListAsync(ct);
+            : await context.Set<OrderDetail>().AsNoTracking().Where(d => d.OrderId == orderId).Select(d => d.ProductId).ToListAsync(ct).ConfigureAwait(false);
         if (productos.Count == 0) return 0;
         var distintos = productos.Distinct().ToList();
         var puntos = (await context.Set<Product>().AsNoTracking().IgnoreQueryFilters().Where(p => distintos.Contains(p.Id))
-                .Select(p => new { p.Id, p.QualificationPoins }).ToListAsync(ct))
+                .Select(p => new { p.Id, p.QualificationPoins }).ToListAsync(ct).ConfigureAwait(false))
             .ToDictionary(p => p.Id, p => p.QualificationPoins);
         return productos.Sum(id => puntos.GetValueOrDefault(id));
     }
@@ -89,13 +91,13 @@ public static class MembershipPointsDeltas
         var nivelPuntos = new Dictionary<int, int>();
         var pedidoPuntos = new Dictionary<string, int>(StringComparer.Ordinal);
         async Task<int> Nivel(int nivel) =>
-            nivelPuntos.TryGetValue(nivel, out var p) ? p : nivelPuntos[nivel] = await LevelPointsAsync(context, nivel, ct);
+            nivelPuntos.TryGetValue(nivel, out var p) ? p : nivelPuntos[nivel] = await LevelPointsAsync(context, nivel, ct).ConfigureAwait(false);
         async Task<int> Pedido(string pedido) =>
-            pedidoPuntos.TryGetValue(pedido, out var q) ? q : pedidoPuntos[pedido] = await OrderPointsAsync(context, pedido, ct);
+            pedidoPuntos.TryGetValue(pedido, out var q) ? q : pedidoPuntos[pedido] = await OrderPointsAsync(context, pedido, ct).ConfigureAwait(false);
         // Al entrar en Active: el pedido si lo hay (y no es de otro nivel que el actual) o el producto del nivel.
         async Task<int> Actual(MembershipSubscription s, bool nivelCambiado, bool pedidoNuevo) =>
             !string.IsNullOrEmpty(s.LastOrderId) && (pedidoNuevo || !nivelCambiado)
-                ? await Pedido(s.LastOrderId) : await Nivel(s.MembershipLevelId);
+                ? await Pedido(s.LastOrderId).ConfigureAwait(false) : await Nivel(s.MembershipLevelId).ConfigureAwait(false);
 
         // 1. Lo que aporta cada suscripcion tras el guardado, y los miembros tocados.
         var entradas = context.ChangeTracker.Entries<MembershipSubscription>()
@@ -138,9 +140,9 @@ public static class MembershipPointsDeltas
                         if (i >= 0)
                         {
                             usadas.Add(i);
-                            c = Math.Max(0, salen[i].Aporte - await Nivel(salen[i].Nivel) + await Nivel(s.MembershipLevelId));
+                            c = Math.Max(0, salen[i].Aporte - await Nivel(salen[i].Nivel).ConfigureAwait(false) + await Nivel(s.MembershipLevelId).ConfigureAwait(false));
                         }
-                        else c = await Actual(s, nivelCambiado: false, pedidoNuevo: true);
+                        else c = await Actual(s, nivelCambiado: false, pedidoNuevo: true).ConfigureAwait(false);
                     }
                     Fijar(s, c);
                     break;
@@ -165,11 +167,11 @@ public static class MembershipPointsDeltas
                     }
 
                     if (!ahora) Fijar(s, 0);
-                    else if (!antes) Fijar(s, await Actual(s, nivelCambiado, pedidoNuevo));
+                    else if (!antes) Fijar(s, await Actual(s, nivelCambiado, pedidoNuevo).ConfigureAwait(false));
                     else if (nivelCambiado)
                         Fijar(s, pedidoNuevo && !string.IsNullOrEmpty(s.LastOrderId)
-                            ? await Pedido(s.LastOrderId)
-                            : Math.Max(0, aporte - await Nivel(nivelAntes) + await Nivel(s.MembershipLevelId)));
+                            ? await Pedido(s.LastOrderId).ConfigureAwait(false)
+                            : Math.Max(0, aporte - await Nivel(nivelAntes).ConfigureAwait(false) + await Nivel(s.MembershipLevelId).ConfigureAwait(false)));
                     // Activa que sigue activa sin cambiar de nivel (renovacion): se queda con lo que aportaba.
                     break;
                 }
@@ -366,7 +368,7 @@ public static class MembershipPointsDeltas
     /// </summary>
     private static async Task<List<string>> AscendientesAsync(DbContext context, string memberId, CancellationToken ct)
     {
-        var ruta = await RutaAsync(context, memberId, ct);
+        var ruta = await RutaAsync(context, memberId, ct).ConfigureAwait(false);
         if (ruta is null)
         {
             // Sin nodo propio todavia (un alta que se activa antes de tenerlo): la linea de su patrocinador, el incluido,
@@ -374,8 +376,8 @@ public static class MembershipPointsDeltas
             var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
                                    .Where(e => e.Entity.MemberId == memberId).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
                                ?? await context.Set<MemberProfile>().AsNoTracking().Where(m => m.MemberId == memberId)
-                                   .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct);
-            if (!string.IsNullOrEmpty(patrocinador)) ruta = await RutaAsync(context, patrocinador, ct);
+                                   .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(patrocinador)) ruta = await RutaAsync(context, patrocinador, ct).ConfigureAwait(false);
         }
         return (ruta ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Where(id => !string.Equals(id, memberId, StringComparison.Ordinal))
@@ -388,5 +390,5 @@ public static class MembershipPointsDeltas
             .Select(e => e.Entity.HierarchyPath).FirstOrDefault()
         ?? await context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == memberId)
             .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
-            .Select(g => g.HierarchyPath).FirstOrDefaultAsync(ct);
+            .Select(g => g.HierarchyPath).FirstOrDefaultAsync(ct).ConfigureAwait(false);
 }

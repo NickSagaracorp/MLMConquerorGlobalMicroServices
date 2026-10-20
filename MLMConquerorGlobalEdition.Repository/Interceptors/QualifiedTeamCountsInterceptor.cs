@@ -9,7 +9,8 @@ namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 /// (QualifiedTeamDeltas) y, por DQ16, los puntos del producto (MembershipPointsDeltas). Va en AppDbContext.OnConfiguring, como StatusHistoryInterceptor, para que ningun anfitrion lo
 /// olvide. Hora de servidor (DateTime.Now).
 /// Revision 2 del bloque 2: las lecturas de MembershipPointsDeltas son asincronas; el SaveChanges sincrono (que casi nadie
-/// usa) las espera en el acto.
+/// usa) las espera en el acto. Tercera revision: es aceptable porque toda la cadena (MembershipPointsDeltas,
+/// MemberPointsLocks y EF) espera con ConfigureAwait(false), asi que nada vuelve al contexto de sincronizacion bloqueado.
 /// </summary>
 public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
 {
