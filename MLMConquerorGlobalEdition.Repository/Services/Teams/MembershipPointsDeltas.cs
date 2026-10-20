@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -22,18 +23,32 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// Es el UNICO sitio que lo traduce, desde QualifiedTeamCountsInterceptor en cada guardado (como los calificados, DQ13):
 /// <list type="number">
 /// <item>Cada suscripcion guarda lo que aporta mientras esta activa (<see cref="MembershipSubscription.DualTeamContribution"/>
-/// y <see cref="MembershipSubscription.EnrollmentContribution"/>) al entrar en Active o al cambiar de nivel: los puntos de
-/// calificacion de los productos de su ultimo pedido (como los sumaba el alta) o, sin pedido (subida y bajada), los del
-/// producto de su nivel (el mayor si hay varios). Salir resta lo guardado, asi que editar despues los puntos de un
-/// producto no deja restos.</item>
-/// <item>El cambio neto de cada miembro va a su <see cref="MemberStatisticEntity.PersonalPoints"/> y a su
-/// <see cref="MemberStatisticEntity.EnrollmentPoints"/>, en el mismo guardado.</item>
+/// = <see cref="MembershipSubscription.EnrollmentContribution"/>; 0 fuera de Active):
+///   <list type="bullet">
+///   <item>al entrar en Active: los puntos de calificacion de los productos de su ultimo pedido (como los sumaba el alta)
+///   o, sin pedido, los del producto de su nivel (el mayor si hay varios);</item>
+///   <item>al cambiar de nivel sin pedido nuevo (revision 2 del bloque 2, I3 e I4): lo que aportaba MENOS los puntos de su
+///   nivel viejo MAS los del nuevo (conserva los productos extra del pedido en la misma base). En una subida o bajada la
+///   vieja caduca y nace otra activa sin pedido en el mismo guardado: la nueva parte de lo que aportaba la vieja. Con
+///   pedido nuevo, los puntos de ese pedido.</item>
+///   </list></item>
+/// <item>ABSOLUTO por miembro tocado (revision 2 del bloque 2, C1): para cada miembro con una suscripcion que cambia de
+/// estado, de nivel o de miembro (o que nace o se borra), sus PersonalPoints pasan a ser la suma de lo que aportan sus
+/// suscripciones activas tras el guardado, y la diferencia con lo que tenia es el cambio neto. Un miembro de antes de
+/// DQ16 con puntos y sin aporte guardado (retenido, pendiente con los puntos que sembraba el alta antiguo) no cuenta dos
+/// veces al reactivarse: queda corregido en su primer cambio. Una renovacion sin cambio de nivel no toca a nadie.</item>
+/// <item>El cambio neto va a su <see cref="MemberStatisticEntity.PersonalPoints"/> y a su
+/// <see cref="MemberStatisticEntity.EnrollmentPoints"/>, en el mismo guardado. PersonalPoints ya incluye los propios de
+/// puntos pendientes en la cola (se suman aqui al encolarlos), asi que el cambio neto es objetivo - PersonalPoints: las
+/// piernas acaban en PersonalPoints al vaciar (lo aplicado, PersonalPoints - pendientes, mas lo pendiente), igual que la
+/// hoja de <see cref="LegPointMaintenance.EnqueueLeafAsync"/>.</item>
 /// <item>Y sube como delta: un propio con puntos en DualLegDeltas (O(1); llega a las piernas de sus ascendientes del
 /// binario al vaciar, y espera si no esta colocado) y una fila de MemberStatisticDeltas por ascendiente de su linea de
-/// patrocinio. Un PersonalPoints escrito a mano (semillas, pruebas) no se propaga.</item>
+/// patrocinio (hasta el Bloque 4). Un PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en
+/// el primer cambio del miembro: 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
 /// </list>
 /// Idempotente: un guardado que falla y se reintenta no aplica dos veces (lo ya ajustado en este contexto se recuerda
-/// hasta que el guardado se confirma).
+/// hasta que el guardado se confirma). Todas sus lecturas son asincronas (revision 2 del bloque 2).
 /// </summary>
 public static class MembershipPointsDeltas
 {
@@ -42,24 +57,24 @@ public static class MembershipPointsDeltas
     private static readonly ConditionalWeakTable<DbContext, Dictionary<MemberStatisticEntity, int>> Ajustado = new();
 
     /// <summary>Los puntos que aporta una suscripcion activa de <paramref name="membershipLevelId"/> sin pedido.</summary>
-    public static int LevelPoints(DbContext context, int membershipLevelId) =>
-        context.Set<Product>().AsNoTracking()
+    public static async Task<int> LevelPointsAsync(DbContext context, int membershipLevelId, CancellationToken ct = default) =>
+        await context.Set<Product>().AsNoTracking()
             .Where(p => p.MembershipLevelId == membershipLevelId)
-            .Select(p => (int?)p.QualificationPoins).Max() ?? 0;
+            .Select(p => (int?)p.QualificationPoins).MaxAsync(ct) ?? 0;
 
     /// <summary>Los puntos de calificacion de los productos de un pedido (como los sumaba el alta).</summary>
-    public static int OrderPoints(DbContext context, string orderId)
+    public static async Task<int> OrderPointsAsync(DbContext context, string orderId, CancellationToken ct = default)
     {
         var seguidos = context.ChangeTracker.Entries<OrderDetail>()
             .Where(e => e.State != EntityState.Deleted && e.Entity.OrderId == orderId)
             .Select(e => e.Entity.ProductId).ToList();
         var productos = seguidos.Count > 0
             ? seguidos
-            : context.Set<OrderDetail>().AsNoTracking().Where(d => d.OrderId == orderId).Select(d => d.ProductId).ToList();
+            : await context.Set<OrderDetail>().AsNoTracking().Where(d => d.OrderId == orderId).Select(d => d.ProductId).ToListAsync(ct);
         if (productos.Count == 0) return 0;
         var distintos = productos.Distinct().ToList();
-        var puntos = context.Set<Product>().AsNoTracking().Where(p => distintos.Contains(p.Id))
-            .Select(p => new { p.Id, p.QualificationPoins }).ToList()
+        var puntos = (await context.Set<Product>().AsNoTracking().Where(p => distintos.Contains(p.Id))
+                .Select(p => new { p.Id, p.QualificationPoins }).ToListAsync(ct))
             .ToDictionary(p => p.Id, p => p.QualificationPoins);
         return productos.Sum(id => puntos.GetValueOrDefault(id));
     }
@@ -67,100 +82,137 @@ public static class MembershipPointsDeltas
     /// <summary>Tras un guardado confirmado: lo ajustado deja de estar pendiente.</summary>
     public static void Saved(DbContext context) => Ajustado.Remove(context);
 
-    public static void Record(DbContext context, DateTime now)
+    public static async Task RecordAsync(DbContext context, DateTime now, CancellationToken ct = default)
     {
-        // 1. Lo que aporta cada suscripcion y el cambio neto por miembro.
-        var neto = new Dictionary<string, int>(StringComparer.Ordinal);
-        void Sumar(string m, int d) => neto[m] = neto.GetValueOrDefault(m) + d;
         var nivelPuntos = new Dictionary<int, int>();
         var pedidoPuntos = new Dictionary<string, int>(StringComparer.Ordinal);
-        int Puntos(MembershipSubscription sub)
-        {
-            if (!string.IsNullOrEmpty(sub.LastOrderId))
-                return pedidoPuntos.TryGetValue(sub.LastOrderId, out var q)
-                    ? q : pedidoPuntos[sub.LastOrderId] = OrderPoints(context, sub.LastOrderId);
-            return nivelPuntos.TryGetValue(sub.MembershipLevelId, out var p)
-                ? p : nivelPuntos[sub.MembershipLevelId] = LevelPoints(context, sub.MembershipLevelId);
-        }
+        async Task<int> Nivel(int nivel) =>
+            nivelPuntos.TryGetValue(nivel, out var p) ? p : nivelPuntos[nivel] = await LevelPointsAsync(context, nivel, ct);
+        async Task<int> Pedido(string pedido) =>
+            pedidoPuntos.TryGetValue(pedido, out var q) ? q : pedidoPuntos[pedido] = await OrderPointsAsync(context, pedido, ct);
+        // Al entrar en Active: el pedido si lo hay (y no es de otro nivel que el actual) o el producto del nivel.
+        async Task<int> Actual(MembershipSubscription s, bool nivelCambiado, bool pedidoNuevo) =>
+            !string.IsNullOrEmpty(s.LastOrderId) && (pedidoNuevo || !nivelCambiado)
+                ? await Pedido(s.LastOrderId) : await Nivel(s.MembershipLevelId);
 
-        foreach (var e in context.ChangeTracker.Entries<MembershipSubscription>().ToList())
+        // 1. Lo que aporta cada suscripcion tras el guardado, y los miembros tocados.
+        var entradas = context.ChangeTracker.Entries<MembershipSubscription>()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
+        if (entradas.Count == 0 && !Ajustado.TryGetValue(context, out _)) return;
+
+        var tocados = new HashSet<string>(StringComparer.Ordinal);
+        // Las que salen de Active en este guardado: base de una subida o bajada sin pedido (la nueva nace en el mismo guardado).
+        var salen = entradas
+            .Where(e => e.State == EntityState.Modified
+                        && e.Property(x => x.SubscriptionStatus).OriginalValue == MembershipStatus.Active
+                        && e.Entity.SubscriptionStatus != MembershipStatus.Active)
+            .Select(e => (Miembro: e.Property(x => x.MemberId).OriginalValue, Nivel: e.Property(x => x.MembershipLevelId).OriginalValue,
+                          Aporte: e.Property(x => x.DualTeamContribution).OriginalValue))
+            .ToList();
+        var usadas = new HashSet<int>();
+
+        foreach (var e in entradas)
         {
             var s = e.Entity;
             switch (e.State)
             {
                 case EntityState.Added:
                 {
-                    var c = s.SubscriptionStatus == MembershipStatus.Active ? Puntos(s) : 0;
-                    s.DualTeamContribution = c;
-                    s.EnrollmentContribution = c;
-                    Sumar(s.MemberId, c);
+                    tocados.Add(s.MemberId);
+                    var c = 0;
+                    if (s.SubscriptionStatus == MembershipStatus.Active)
+                    {
+                        var i = string.IsNullOrEmpty(s.LastOrderId) ? Base(salen, usadas, s) : -1;
+                        if (i >= 0)
+                        {
+                            usadas.Add(i);
+                            c = Math.Max(0, salen[i].Aporte - await Nivel(salen[i].Nivel) + await Nivel(s.MembershipLevelId));
+                        }
+                        else c = await Actual(s, nivelCambiado: false, pedidoNuevo: true);
+                    }
+                    Fijar(s, c);
                     break;
                 }
                 case EntityState.Deleted:
-                    if (e.Property(x => x.SubscriptionStatus).OriginalValue == MembershipStatus.Active)
-                        Sumar(e.Property(x => x.MemberId).OriginalValue, -e.Property(x => x.DualTeamContribution).OriginalValue);
+                    tocados.Add(e.Property(x => x.MemberId).OriginalValue);
                     break;
                 case EntityState.Modified:
                 {
-                    var antes = e.Property(x => x.SubscriptionStatus).OriginalValue == MembershipStatus.Active;
+                    var estadoAntes = e.Property(x => x.SubscriptionStatus).OriginalValue;
+                    var antes = estadoAntes == MembershipStatus.Active;
                     var ahora = s.SubscriptionStatus == MembershipStatus.Active;
-                    var aporte = e.Property(x => x.DualTeamContribution).OriginalValue;
                     var nivelAntes = e.Property(x => x.MembershipLevelId).OriginalValue;
                     var miembroAntes = e.Property(x => x.MemberId).OriginalValue;
-                    if (antes && !ahora)
+                    var aporte = e.Property(x => x.DualTeamContribution).OriginalValue;
+                    var nivelCambiado = nivelAntes != s.MembershipLevelId;
+                    var pedidoNuevo = !string.Equals(e.Property(x => x.LastOrderId).OriginalValue, s.LastOrderId, StringComparison.Ordinal);
+                    if (estadoAntes != s.SubscriptionStatus || nivelCambiado || miembroAntes != s.MemberId)
                     {
-                        Sumar(miembroAntes, -aporte);
-                        s.DualTeamContribution = 0;
-                        s.EnrollmentContribution = 0;
+                        tocados.Add(miembroAntes);
+                        tocados.Add(s.MemberId);
                     }
-                    else if (!antes && ahora)
-                    {
-                        var c = Puntos(s);
-                        Sumar(s.MemberId, c);
-                        s.DualTeamContribution = c;
-                        s.EnrollmentContribution = c;
-                    }
-                    else if (antes && ahora && (nivelAntes != s.MembershipLevelId || miembroAntes != s.MemberId))
-                    {
-                        // Renovacion o cambio con otro nivel: la diferencia. Una renovacion sin cambio no toca nada.
-                        var c = Puntos(s);
-                        Sumar(miembroAntes, -aporte);
-                        Sumar(s.MemberId, c);
-                        s.DualTeamContribution = c;
-                        s.EnrollmentContribution = c;
-                    }
+
+                    if (!ahora) Fijar(s, 0);
+                    else if (!antes) Fijar(s, await Actual(s, nivelCambiado, pedidoNuevo));
+                    else if (nivelCambiado)
+                        Fijar(s, pedidoNuevo && !string.IsNullOrEmpty(s.LastOrderId)
+                            ? await Pedido(s.LastOrderId)
+                            : Math.Max(0, aporte - await Nivel(nivelAntes) + await Nivel(s.MembershipLevelId)));
+                    // Activa que sigue activa sin cambiar de nivel (renovacion): se queda con lo que aportaba.
                     break;
                 }
             }
         }
-        foreach (var m in neto.Where(kv => kv.Value == 0).Select(kv => kv.Key).ToList()) neto.Remove(m);
 
-        // 2. El neto, a PersonalPoints y a EnrollmentPoints del propio (idempotente: se aplica lo que falte respecto de lo
-        //    ya ajustado en este contexto).
-        var ajustado = Ajustado.GetOrCreateValue(context);
-        foreach (var (memberId, delta) in neto)
+        // 2. El objetivo de cada miembro tocado: la suma de lo que aportan sus suscripciones activas tras el guardado (las
+        //    seguidas con sus valores actuales y las demas de la base). Cuenta las activas borradas logicamente, como los
+        //    calificados (Q-R21) y 05-realinear-puntos-por-membresia.sql.
+        var objetivo = tocados.ToDictionary(m => m, _ => 0, StringComparer.Ordinal);
+        if (tocados.Count > 0)
         {
-            var fila = FilaDe(context, memberId)
-                       ?? context.Set<MemberStatisticEntity>().Add(new MemberStatisticEntity
-                       {
-                           MemberId = memberId, CreatedBy = Actor, CreationDate = now
-                       }).Entity;
-            var falta = delta - ajustado.GetValueOrDefault(fila);
-            if (falta == 0) continue;
-            fila.PersonalPoints += falta;
-            fila.EnrollmentPoints += falta;
-            ajustado[fila] = delta;
+            var seguidas = context.ChangeTracker.Entries<MembershipSubscription>().ToList();
+            var idsSeguidas = seguidas.Select(x => x.Entity.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var x in seguidas)
+                if (x.State is not (EntityState.Deleted or EntityState.Detached)
+                    && x.Entity.SubscriptionStatus == MembershipStatus.Active && objetivo.ContainsKey(x.Entity.MemberId))
+                    objetivo[x.Entity.MemberId] += x.Entity.DualTeamContribution;
+            var lista = tocados.ToList();
+            var enBase = await context.Set<MembershipSubscription>().AsNoTracking()
+                .Where(x => lista.Contains(x.MemberId) && x.SubscriptionStatus == MembershipStatus.Active)
+                .Select(x => new { x.Id, x.MemberId, x.DualTeamContribution }).ToListAsync(ct);
+            foreach (var x in enBase.Where(x => !idsSeguidas.Contains(x.Id)))
+                objetivo[x.MemberId] += x.DualTeamContribution;
+        }
+
+        // 3. El cambio neto (objetivo - PersonalPoints de la base), a PersonalPoints y a EnrollmentPoints del propio.
+        //    Idempotente: lo ya ajustado en este contexto (un guardado anterior que fallo) se descuenta.
+        var ajustado = Ajustado.GetOrCreateValue(context);
+        var neto = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (memberId, meta) in objetivo)
+        {
+            var fila = await FilaDeAsync(context, memberId, ct);
+            var ya = fila is null ? 0 : ajustado.GetValueOrDefault(fila);
+            var delta = meta - ((fila?.PersonalPoints ?? 0) - ya);
+            if (delta == 0 && ya == 0) continue;
+            fila ??= context.Set<MemberStatisticEntity>().Add(new MemberStatisticEntity
+            {
+                MemberId = memberId, CreatedBy = Actor, CreationDate = now
+            }).Entity;
+            fila.PersonalPoints += delta - ya;
+            fila.EnrollmentPoints += delta - ya;
+            if (delta == 0) ajustado.Remove(fila); else ajustado[fila] = delta;
+            if (delta != 0) neto[memberId] = delta;
         }
         foreach (var (fila, ya) in ajustado.ToList())
-            if (!neto.ContainsKey(fila.MemberId) && ya != 0)
+            if (!objetivo.ContainsKey(fila.MemberId) && ya != 0)
             {
-                // Un reintento en el que el neto de este miembro ya no existe: se deshace lo ajustado.
+                // Un reintento en el que este miembro ya no se toca: se deshace lo ajustado.
                 fila.PersonalPoints -= ya;
                 fila.EnrollmentPoints -= ya;
                 ajustado.Remove(fila);
             }
 
-        // 3. El neto sube como delta: al binario (un propio con puntos) y a los ascendientes de la linea de patrocinio.
+        // 4. El neto sube como delta: al binario (un propio con puntos) y a los ascendientes de la linea de patrocinio.
         var yaBinario = context.ChangeTracker.Entries<DualLegDelta>()
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
@@ -175,9 +227,9 @@ public static class MembershipPointsDeltas
 
         foreach (var memberId in neto.Keys.Union(yaBinario.Keys).Union(yaInscripcion.Keys).ToList())
         {
-            var objetivo = neto.GetValueOrDefault(memberId);
+            var meta = neto.GetValueOrDefault(memberId);
 
-            var faltaBinario = objetivo - yaBinario.GetValueOrDefault(memberId);
+            var faltaBinario = meta - yaBinario.GetValueOrDefault(memberId);
             if (faltaBinario != 0)
                 context.Set<DualLegDelta>().Add(new DualLegDelta
                 {
@@ -185,9 +237,9 @@ public static class MembershipPointsDeltas
                     OwnChange = true, CreationDate = now, CreatedBy = Actor
                 });
 
-            var faltaInscripcion = objetivo - yaInscripcion.GetValueOrDefault(memberId);
+            var faltaInscripcion = meta - yaInscripcion.GetValueOrDefault(memberId);
             if (faltaInscripcion != 0)
-                foreach (var id in Ascendientes(context, memberId))
+                foreach (var id in await AscendientesAsync(context, memberId, ct))
                     context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
                     {
                         MemberId = id, EnrollmentPointsDelta = faltaInscripcion, SourceMemberId = memberId,
@@ -196,46 +248,65 @@ public static class MembershipPointsDeltas
         }
     }
 
+    private static void Fijar(MembershipSubscription s, int aporte)
+    {
+        if (s.DualTeamContribution != aporte) s.DualTeamContribution = aporte;
+        if (s.EnrollmentContribution != aporte) s.EnrollmentContribution = aporte;
+    }
+
+    /// <summary>
+    /// La suscripcion que sale de Active en este guardado de la que parte una nueva activa sin pedido (subida o bajada): la
+    /// del mismo miembro con el nivel anterior de la nueva si lo tiene, si no la primera del mismo miembro. -1 si no hay.
+    /// </summary>
+    private static int Base(List<(string Miembro, int Nivel, int Aporte)> salen, HashSet<int> usadas, MembershipSubscription nueva)
+    {
+        var candidata = -1;
+        for (var i = 0; i < salen.Count; i++)
+        {
+            if (usadas.Contains(i) || !string.Equals(salen[i].Miembro, nueva.MemberId, StringComparison.Ordinal)) continue;
+            if (nueva.PreviousMembershipLevelId == salen[i].Nivel) return i;
+            if (candidata < 0) candidata = i;
+        }
+        return candidata;
+    }
+
     /// <summary>La fila de estadisticas del miembro (la primera por Id), seguida o leida y seguida.</summary>
-    private static MemberStatisticEntity? FilaDe(DbContext context, string memberId)
+    private static async Task<MemberStatisticEntity?> FilaDeAsync(DbContext context, string memberId, CancellationToken ct)
     {
         var seguida = context.ChangeTracker.Entries<MemberStatisticEntity>()
             .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == memberId)
             .OrderBy(e => e.Entity.Id == 0 ? long.MaxValue : e.Entity.Id)
             .Select(e => e.Entity).FirstOrDefault();
-        return seguida ?? context.Set<MemberStatisticEntity>().Where(s => s.MemberId == memberId).OrderBy(s => s.Id).FirstOrDefault();
+        return seguida ?? await context.Set<MemberStatisticEntity>().Where(s => s.MemberId == memberId).OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
     }
 
     /// <summary>
     /// Los ascendientes de inscripcion (sin el propio), por la ruta de su nodo vigente (el de mas reciente creacion),
     /// seguido o en la base; sin nodo propio, la linea de su patrocinador. Sin nada de eso, ninguno.
     /// </summary>
-    private static List<string> Ascendientes(DbContext context, string memberId)
+    private static async Task<List<string>> AscendientesAsync(DbContext context, string memberId, CancellationToken ct)
     {
-        var ruta = context.ChangeTracker.Entries<GenealogyEntity>()
-                       .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == memberId)
-                       .Select(e => e.Entity.HierarchyPath).FirstOrDefault()
-                   ?? context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == memberId)
-                       .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
-                       .Select(g => g.HierarchyPath).FirstOrDefault();
+        var ruta = await RutaAsync(context, memberId, ct);
         if (ruta is null)
         {
             // Sin nodo propio todavia (un alta que se activa antes de tenerlo): la linea de su patrocinador, el incluido,
             // como la recorria la activacion.
             var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
                                    .Where(e => e.Entity.MemberId == memberId).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
-                               ?? context.Set<MemberProfile>().AsNoTracking().Where(m => m.MemberId == memberId)
-                                   .Select(m => m.SponsorMemberId).FirstOrDefault();
-            if (!string.IsNullOrEmpty(patrocinador))
-                ruta = context.ChangeTracker.Entries<GenealogyEntity>()
-                           .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == patrocinador)
-                           .Select(e => e.Entity.HierarchyPath).FirstOrDefault()
-                       ?? context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == patrocinador)
-                           .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
-                           .Select(g => g.HierarchyPath).FirstOrDefault();
+                               ?? await context.Set<MemberProfile>().AsNoTracking().Where(m => m.MemberId == memberId)
+                                   .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct);
+            if (!string.IsNullOrEmpty(patrocinador)) ruta = await RutaAsync(context, patrocinador, ct);
         }
         return (ruta ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Where(id => !string.Equals(id, memberId, StringComparison.Ordinal))
             .Distinct(StringComparer.Ordinal).ToList();
     }
+
+    private static async Task<string?> RutaAsync(DbContext context, string memberId, CancellationToken ct) =>
+        context.ChangeTracker.Entries<GenealogyEntity>()
+            .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == memberId)
+            .Select(e => e.Entity.HierarchyPath).FirstOrDefault()
+        ?? await context.Set<GenealogyEntity>().AsNoTracking().Where(g => g.MemberId == memberId)
+            .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
+            .Select(g => g.HierarchyPath).FirstOrDefaultAsync(ct);
 }
