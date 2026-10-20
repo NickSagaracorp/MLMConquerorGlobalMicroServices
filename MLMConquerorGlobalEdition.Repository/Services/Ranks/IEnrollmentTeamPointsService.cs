@@ -28,8 +28,8 @@ public interface IEnrollmentTeamPointsService
         string memberId, RankRequirement requirement, CancellationToken ct = default);
 
     /// <summary>
-    /// Source-of-truth recompute: walk the full genealogy subtree (including the member
-    /// themselves) and re-sum <c>QualificationPoins</c> from Completed orders.
+    /// Recalculo de un miembro (Plan Q, DQ16): sobre el subarbol vigente (el propio incluido), la suma de
+    /// <c>EnrollmentContribution</c> de las suscripciones activas. Las colas lo mantienen; esto es para comprobar.
     /// Returns the correct value for <see cref="MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity.EnrollmentPoints"/>
     /// which is defined as own points + every downline member's points.
     /// </summary>

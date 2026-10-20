@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
@@ -99,54 +101,56 @@ public class EnrollmentTeamPointsServiceTests
     }
 
     // ── RecomputeEnrollmentPointsAsync ─────────────────────────────────────
+    // Plan Q (revision 2 del bloque 2, C2): EnrollmentPoints = la suma, sobre el subarbol vigente (el propio incluido), de
+    // lo que aportan las suscripciones ACTIVAS (MembershipSubscription.EnrollmentContribution), como DQ16 y
+    // 05-realinear-puntos-por-membresia.sql. Ya no son los pedidos completados (contaban membresias no activas).
 
-    [Fact]
-    public async Task RecomputeEnrollmentPoints_SumsCompletedOrderPointsAcrossSubtree()
+    private static Product ProductoDeNivel(string id, int nivel, int puntos) => new()
     {
-        await using var db = InMemoryDbHelper.Create();
-        await db.GenealogyTree.AddRangeAsync(
-            Geno("M", null, "/M/"),
-            Geno("A", "M", "/M/A/"));
+        Id = id, Name = id, Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = puntos,
+        MembershipLevelId = nivel, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now
+    };
 
-        var p1 = new Product { Id = "P1", Name = "P1", Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = 30, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        var p2 = new Product { Id = "P2", Name = "P2", Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = 20, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Products.AddRangeAsync(p1, p2);
+    private static MembershipSubscription Suscripcion(string memberId, int nivel, MembershipStatus estado) => new()
+    {
+        MemberId = memberId, MembershipLevelId = nivel, SubscriptionStatus = estado, StartDate = Now,
+        CreatedBy = "seed", CreationDate = Now
+    };
 
-        var order = new Orders { Id = "O1", MemberId = "A", Status = OrderStatus.Completed, OrderDate = Now, TotalAmount = 0, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Orders.AddAsync(order);
-        await db.OrderDetails.AddRangeAsync(
-            new OrderDetail { OrderId = "O1", ProductId = "P1", Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now },
-            new OrderDetail { OrderId = "O1", ProductId = "P2", Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now });
-        await db.SaveChangesAsync();
-
-        var svc = new EnrollmentTeamPointsService(db);
-        var result = await svc.RecomputeEnrollmentPointsAsync("M");
-
-        result.Should().Be(50);
+    private static Orders PedidoCompletado(string id, string memberId, string productId, Microsoft.EntityFrameworkCore.DbContext db)
+    {
+        db.Set<OrderDetail>().Add(new OrderDetail { OrderId = id, ProductId = productId, Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now });
+        return new Orders { Id = id, MemberId = memberId, Status = OrderStatus.Completed, OrderDate = Now, TotalAmount = 0, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
     }
 
     [Fact]
-    public async Task RecomputeEnrollmentPoints_ExcludesNonCompletedOrders()
+    public async Task RecomputeEnrollmentPoints_SumaLoQueAportanLasActivasDelSubarbolConElPropio()
     {
         await using var db = InMemoryDbHelper.Create();
-        await db.GenealogyTree.AddRangeAsync(
-            Geno("M", null, "/M/"),
-            Geno("A", "M", "/M/A/"));
-
-        var p1 = new Product { Id = "P1", Name = "P1", Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = 30, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Products.AddAsync(p1);
-
-        // Pending order — should be excluded from sum.
-        var order = new Orders { Id = "O1", MemberId = "A", Status = OrderStatus.Pending, OrderDate = Now, TotalAmount = 0, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Orders.AddAsync(order);
-        await db.OrderDetails.AddAsync(
-            new OrderDetail { OrderId = "O1", ProductId = "P1", Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now });
+        await db.GenealogyTree.AddRangeAsync(Geno("M", null, "/M/"), Geno("A", "M", "/M/A/"), Geno("B", "M", "/M/B/"));
+        await db.Products.AddRangeAsync(ProductoDeNivel("P1", 1, 40), ProductoDeNivel("P2", 2, 50));
+        await db.SaveChangesAsync(); // los productos antes: el interceptor lee de la base los puntos de cada nivel
+        await db.MembershipSubscriptions.AddRangeAsync(
+            Suscripcion("M", 1, MembershipStatus.Active),
+            Suscripcion("A", 2, MembershipStatus.Active),
+            Suscripcion("B", 2, MembershipStatus.HoldByBilling));
         await db.SaveChangesAsync();
 
-        var svc = new EnrollmentTeamPointsService(db);
-        var result = await svc.RecomputeEnrollmentPointsAsync("M");
+        (await new EnrollmentTeamPointsService(db).RecomputeEnrollmentPointsAsync("M")).Should().Be(90, "40 propios + 50 de A; B retenida no cuenta");
+    }
 
-        result.Should().Be(0);
+    [Fact]
+    public async Task RecomputeEnrollmentPoints_NoCuentaPedidosCompletadosDeMembresiasNoActivas()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.GenealogyTree.AddRangeAsync(Geno("M", null, "/M/"), Geno("A", "M", "/M/A/"));
+        await db.Products.AddAsync(ProductoDeNivel("P2", 2, 30));
+        await db.SaveChangesAsync();
+        await db.Orders.AddAsync(PedidoCompletado("O1", "A", "P2", db));
+        await db.MembershipSubscriptions.AddAsync(Suscripcion("A", 2, MembershipStatus.Cancelled));
+        await db.SaveChangesAsync();
+
+        (await new EnrollmentTeamPointsService(db).RecomputeEnrollmentPointsAsync("M")).Should().Be(0);
     }
 
     [Fact]
@@ -159,35 +163,5 @@ public class EnrollmentTeamPointsServiceTests
 
         // Plan M (revisión C1): sin nodo no hay dato; un 0 se persistiría como si el equipo no tuviera puntos.
         result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RecomputeEnrollmentPoints_IncludesMembersOwnCompletedOrders()
-    {
-        // M has a Completed order worth 40 points (own); child A has a Completed order
-        // worth 50 points (downline). RecomputeEnrollmentPointsAsync("M") must return 90
-        // because EnrollmentPoints = own + downline (the member is included in the subtree).
-        await using var db = InMemoryDbHelper.Create();
-        await db.GenealogyTree.AddRangeAsync(
-            Geno("M", null, "/M/"),
-            Geno("A", "M",  "/M/A/"));
-
-        var pM = new Product { Id = "PM", Name = "PM", Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = 40, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        var pA = new Product { Id = "PA", Name = "PA", Description = "d", ImageUrl = "u", MonthlyFee = 0, SetupFee = 0, QualificationPoins = 50, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Products.AddRangeAsync(pM, pA);
-
-        var orderM = new Orders { Id = "OM", MemberId = "M", Status = OrderStatus.Completed, OrderDate = Now, TotalAmount = 0, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        var orderA = new Orders { Id = "OA", MemberId = "A", Status = OrderStatus.Completed, OrderDate = Now, TotalAmount = 0, CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now };
-        await db.Orders.AddRangeAsync(orderM, orderA);
-        await db.OrderDetails.AddRangeAsync(
-            new OrderDetail { OrderId = "OM", ProductId = "PM", Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now },
-            new OrderDetail { OrderId = "OA", ProductId = "PA", Quantity = 1, UnitPrice = 0, CreatedBy = "seed", CreationDate = Now });
-        await db.SaveChangesAsync();
-
-        var svc = new EnrollmentTeamPointsService(db);
-        var result = await svc.RecomputeEnrollmentPointsAsync("M");
-
-        // M's own 40 + downline A's 50 = 90
-        result.Should().Be(90);
     }
 }

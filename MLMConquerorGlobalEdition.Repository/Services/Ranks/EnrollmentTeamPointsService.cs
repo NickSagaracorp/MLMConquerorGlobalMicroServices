@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Queries;
@@ -68,16 +68,16 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
         if (root is null)
             return null;
 
-        // EnrollmentPoints = the member's OWN points + every downline member's points, over the
-        // CURRENT nodes of the subtree (Plan M, I5: a member with two nodes counts once), joined in SQL
-        // instead of shipping every downline id back as a Contains() list.
+        // Plan Q (DQ16; revision 2 del bloque 2, C2): EnrollmentPoints = lo que aportan las suscripciones ACTIVAS del
+        // propio y de todo su equipo, sobre los nodos VIGENTES del subarbol (Plan M, I5: un miembro con dos nodos cuenta
+        // una vez). Antes sumaba los pedidos completados de todos, activos o no. Es la misma definicion que mantienen las
+        // colas y que recalcula 05-realinear-puntos-por-membresia.sql; nada la llama a diario (la instantanea nocturna ya
+        // no reescribe EnrollmentPoints): sirve para comprobar un miembro.
         return await (
             from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
-            join o in _db.Orders.AsNoTracking() on g.MemberId equals o.MemberId
-            join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
-            join p in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where o.Status == OrderStatus.Completed
-            select p.QualificationPoins
+            join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+            where s.SubscriptionStatus == MembershipStatus.Active
+            select s.EnrollmentContribution
         ).SumAsync(ct);
     }
 }

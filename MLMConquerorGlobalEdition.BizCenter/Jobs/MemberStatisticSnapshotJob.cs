@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
-using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
@@ -15,10 +14,12 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 ///
 /// Responsibilities:
 ///   1. Refresh QualifiedSponsoredMembers in MemberStatisticEntity from live
-///      MemberProfile data so the live counter never drifts. Also re-grounds
-///      EnrollmentPoints (own + downline) against actual completed orders via
-///      <see cref="IEnrollmentTeamPointsService.RecomputeEnrollmentPointsAsync"/>
-///      to correct drift from incremental signup / upline-aggregator updates.
+///      MemberProfile data so the live counter never drifts.
+///      Plan Q (revision 2 del bloque 2, C2): ya NO reescribe EnrollmentPoints. Lo recalculaba con la suma
+///      de los pedidos completados de todo el equipo, activos o no, y deshacia cada noche DQ16 (los puntos
+///      cuentan solo con la membresia activa). Ahora lo mantienen exacto las colas (MembershipPointsDeltas,
+///      ApplyMemberStatisticDeltasJob) y, si hiciera falta recalcularlo, 05-realinear-puntos-por-membresia.sql
+///      lo hace por conjuntos. Recalcularlo aqui seria O(equipo) por miembro: inviable con 1.000.000.
 ///   2. Upsert a row into MemberStatisticHistory for the current calendar
 ///      month per member, mirroring the live MemberStatisticEntity values
 ///      and joining the L/R leg points from DualTeamTree. Running multiple
@@ -35,18 +36,15 @@ public class MemberStatisticSnapshotJob
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<MemberStatisticSnapshotJob> _logger;
-    private readonly IEnrollmentTeamPointsService _enrollmentPoints;
 
     public MemberStatisticSnapshotJob(
         AppDbContext db,
         IDateTimeProvider dateTime,
-        ILogger<MemberStatisticSnapshotJob> logger,
-        IEnrollmentTeamPointsService enrollmentPoints)
+        ILogger<MemberStatisticSnapshotJob> logger)
     {
         _db               = db;
         _dateTime         = dateTime;
         _logger           = logger;
-        _enrollmentPoints = enrollmentPoints;
     }
 
     public async Task ExecuteAsync(CancellationToken ct = default)
@@ -68,8 +66,6 @@ public class MemberStatisticSnapshotJob
 
         var stats = await _db.MemberStatistics.ToListAsync(ct);
         var updated = 0;
-        var etUpdated = 0;
-        var sinNode = new List<string>();
 
         foreach (var stat in stats)
         {
@@ -79,37 +75,10 @@ public class MemberStatisticSnapshotJob
                 stat.QualifiedSponsoredMembers = count;
                 updated++;
             }
-
-            // Re-ground the materialized EnrollmentPoints (own + downline) against
-            // actual completed orders, correcting drift from the incremental
-            // signup / upline-aggregator updates.
-            // NOTE: _enrollmentPoints shares this job's scoped AppDbContext. Its
-            // queries are AsNoTracking, so they do not collide with the tracked
-            // `stats` entities above — keep them AsNoTracking if this is changed.
-            // This is one recompute (a small subtree + order aggregate query) per
-            // member; acceptable for a nightly batch. If the member base grows into
-            // the tens of thousands, rewrite as a single set-based aggregate query.
-            var recomputedEt = await _enrollmentPoints.RecomputeEnrollmentPointsAsync(stat.MemberId, ct);
-            if (recomputedEt is null)
-            {
-                // Plan M (revisión C1): sin Node no hay equipo que sumar. No se escribe 0: se deja el valor
-                // y se avisa al final, una sola vez (revisión M-i).
-                sinNode.Add(stat.MemberId);
-            }
-            else if (stat.EnrollmentPoints != recomputedEt.Value)
-            {
-                stat.EnrollmentPoints = recomputedEt.Value;
-                etUpdated++;
-            }
         }
 
-        if (updated > 0 || etUpdated > 0)
+        if (updated > 0)
             await _db.SaveChangesAsync(ct);
-
-        if (sinNode.Count > 0)
-            _logger.LogError(
-                "MemberStatisticSnapshotJob: {Count} miembros sin nodo de inscripción con Node; su EnrollmentPoints no se recalcula (relleno de GenealogyTree.Node pendiente). Ejemplos: {Examples}.",
-                sinNode.Count, string.Join(", ", sinNode.Take(5)));
 
         // ── 2. Upsert monthly history snapshot ──────────────────────────────
         var year  = now.Year;
@@ -164,8 +133,8 @@ public class MemberStatisticSnapshotJob
             await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "MemberStatisticSnapshotJob: completed — sponsor counts updated: {Updated}; EnrollmentPoints re-grounded: {EtUpdated}; history rows: +{Inserted} new, {Refreshed} refreshed for {Year}-{Month:00} at {Now}.",
-            updated, etUpdated, inserted, refreshed, year, month, now);
+            "MemberStatisticSnapshotJob: completed — sponsor counts updated: {Updated}; history rows: +{Inserted} new, {Refreshed} refreshed for {Year}-{Month:00} at {Now}.",
+            updated, inserted, refreshed, year, month, now);
     }
 
     private static void CopyStatToHistory(
