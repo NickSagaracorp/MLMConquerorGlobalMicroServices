@@ -543,7 +543,10 @@ internal static class Program
             WHERE m.ReplicateSiteSlug IS NOT NULL
               AND LEN(m.ReplicateSiteSlug) > 0
               AND m.MemberType = 0
-              AND (m.SponsorMemberId = 'AMB-700829' OR d.HierarchyPath LIKE '%/AMB-700829/%')
+              AND (m.SponsorMemberId = 'AMB-700829'
+                   OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a
+                              WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x
+                                                     WHERE x.MemberId = N'AMB-700829' AND x.IsDeleted = 0)))
             ORDER BY NEWID()";
         using var r = cmd.ExecuteReader();
         while (r.Read())

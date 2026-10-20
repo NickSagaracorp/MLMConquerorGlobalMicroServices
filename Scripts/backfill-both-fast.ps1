@@ -42,11 +42,11 @@ W "Got JWT" 'Green'
 # Load both subtrees once
 function Load-Subtree($conn, $directChild) {
     $cmd = $conn.CreateCommand()
-    $cmd.CommandText = "SELECT MemberId, ParentMemberId, Side, HierarchyPath FROM dbo.DualTeamTree WHERE HierarchyPath LIKE '/AMB-700829/$directChild/%' OR MemberId='$directChild'"
+    $cmd.CommandText = "SELECT d.MemberId, d.ParentMemberId, d.Side, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.MemberId='$directChild' OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = '$directChild' AND x.IsDeleted = 0)))"
     $r = $cmd.ExecuteReader()
     $nodes = New-Object System.Collections.Generic.List[object]
     while ($r.Read()) {
-        $nodes.Add([pscustomobject]@{ MemberId = $r['MemberId']; ParentMemberId = ($r['ParentMemberId'] -as [string]); Side = [int]$r['Side']; Path = [string]$r['HierarchyPath']; PathLen = ([string]$r['HierarchyPath']).Length })
+        $nodes.Add([pscustomobject]@{ MemberId = $r['MemberId']; ParentMemberId = ($r['ParentMemberId'] -as [string]); Side = [int]$r['Side']; Path = ''; Depth = [int]$r['Depth'] })
     }
     $r.Close()
     return ,$nodes
@@ -60,10 +60,10 @@ function Build-Slots($nodes) {
             if ($n.Side -eq 0) { $occupied[$n.ParentMemberId].Left = $true } else { $occupied[$n.ParentMemberId].Right = $true }
         }
     }
-    $sortedNodes = $nodes | Sort-Object PathLen
+    $sortedNodes = $nodes | Sort-Object Depth
     $slots = New-Object System.Collections.Queue
     foreach ($n in $sortedNodes) {
-        if ($n.PathLen -gt 1500) { continue }
+        if ($n.Depth -gt 12000) { continue }   # Plan Q: profundidad (DualBinaryPath.WarnDepth), no bytes de ruta
         $slot = $occupied[$n.MemberId]
         if (-not $slot) { $slot = @{Left=$false;Right=$false} }
         if (-not $slot.Left)  { $slots.Enqueue(@{ParentMemberId=$n.MemberId; ParentPath=$n.Path; Side='Left'}) }

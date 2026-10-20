@@ -40,6 +40,8 @@ IF N'$(Confirmo)' <> N'LOCAL'
     THROW 51041, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL.', 1;
 IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
     THROW 51042, N'El servidor no es la maquina local.', 1;
+IF COL_LENGTH(N'dbo.DualTeamTree', N'HierarchyPath') IS NULL
+    THROW 51104, N'Retirado por el Plan Q: el binario ya no tiene ruta de texto. La reparacion se hizo en el Plan P.', 1;
 IF N'$(SoloInforme)' NOT IN (N'0', N'1')
     THROW 51043, N'SoloInforme debe ser 0 o 1.', 1;
 GO

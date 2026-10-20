@@ -32,22 +32,23 @@ function Find-BfsFreeSlot {
        tree wide rather than deep.
        Returns @{ ParentMemberId; Side } or $null if everything is full.
     #>
-    param([string] $ConnString, [string] $SubtreeRootMember, [int] $MaxPathBytes = 1500)
+    param([string] $ConnString, [string] $SubtreeRootMember, [int] $MaxDepth = 12000)
     $cn = New-Object System.Data.SqlClient.SqlConnection $ConnString
     $cn.Open()
     try {
-        # BFS — load ALL nodes in this subtree, ordered by path length (shorter first = shallower)
+        # BFS — load ALL nodes in this subtree, ordered by depth (shallower first).
+        # Plan Q: el binario no tiene ruta de texto; la pertenencia sale de la clave compacta (dbo.DualAncestorKeys).
         $cmd = $cn.CreateCommand()
-        $cmd.CommandText = "SELECT MemberId, HierarchyPath, LEN(HierarchyPath) AS PathLen FROM dbo.DualTeamTree WHERE HierarchyPath LIKE '/AMB-700829/' + @r + '/%' OR MemberId=@r ORDER BY LEN(HierarchyPath) ASC, MemberId"
+        $cmd.CommandText = "SELECT d.MemberId, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.MemberId=@r OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = @r AND x.IsDeleted = 0))) ORDER BY d.Depth ASC, d.MemberId"
         [void]$cmd.Parameters.AddWithValue('@r', $SubtreeRootMember)
         $r = $cmd.ExecuteReader()
         $nodes = @()
-        while ($r.Read()) { $nodes += [pscustomobject]@{ MemberId=$r['MemberId']; Path=$r['HierarchyPath']; Len=[int]$r['PathLen'] } }
+        while ($r.Read()) { $nodes += [pscustomobject]@{ MemberId=$r['MemberId']; Depth=[int]$r['Depth'] } }
         $r.Close()
 
         # For each, check which sides are free
         foreach ($n in $nodes) {
-            if ($n.Len -gt $MaxPathBytes) { continue }  # skip too deep, would blow index
+            if ($n.Depth -gt $MaxDepth) { continue }  # skip too deep (DualBinaryPath.WarnDepth)
             $cmd2 = $cn.CreateCommand()
             $cmd2.CommandText = "SELECT Side FROM dbo.DualTeamTree WHERE ParentMemberId=@p"
             [void]$cmd2.Parameters.AddWithValue('@p', $n.MemberId)

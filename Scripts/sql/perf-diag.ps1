@@ -25,6 +25,7 @@ $r=$c.ExecuteReader(); while($r.Read()){ "  " + $r[0] }; $r.Close()
 "`n--- timings ---"
 $prefix = $gpath.Replace("'","''")
 Timed "GEN subtree count (StartsWith, nvarchar(max))" "SELECT COUNT_BIG(1) FROM GenealogyTree WHERE HierarchyPath LIKE N'$prefix%'"
-Timed "DUAL subtree count (LIKE)" "SELECT COUNT_BIG(1) FROM DualTeamTree WHERE HierarchyPath LIKE N'%$A%'"
+# Plan Q: el binario no tiene ruta de texto; la pertenencia sale de la clave compacta (dbo.DualAncestorKeys).
+Timed "DUAL subtree count (clave)" "SELECT COUNT_BIG(1) FROM DualTeamTree d WHERE d.IsDeleted = 0 AND EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = N'$A' AND x.IsDeleted = 0))"
 Timed "GEN direct children (adjacency ParentMemberId)" "SELECT COUNT_BIG(1) FROM GenealogyTree WHERE ParentMemberId='$A'"
 $conn.Close()

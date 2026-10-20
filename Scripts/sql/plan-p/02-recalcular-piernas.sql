@@ -36,6 +36,9 @@ IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
 IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NOT NULL
            GROUP BY ParentMemberId, Side HAVING COUNT(*) > 1)
     THROW 51052, N'Quedan huecos repetidos: ejecutar antes 01-reparar-huecos-binario.sql.', 1;
+-- Plan Q (Tarea 14): el nivel sale de Depth (el binario ya no tiene ruta de texto).
+IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND Depth IS NULL)
+    THROW 51105, N'Hay nodos vivos sin Depth: ejecutar antes Scripts/sql/plan-p/03-relleno-clave-binario.sql.', 1;
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -70,7 +73,7 @@ IF OBJECT_ID('tempdb..#n') IS NOT NULL DROP TABLE #n;
 SELECT CAST(d.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId,
        CAST(d.ParentMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS ParentMemberId,
        d.Side,
-       LEN(d.HierarchyPath) - LEN(REPLACE(d.HierarchyPath, N'/', N'')) - 1 AS Nivel,
+       d.Depth AS Nivel,   -- Plan Q: la profundidad bajo su raiz (antes, las barras de la ruta)
        CAST(ISNULL(s.PersonalPoints, 0) AS decimal(18,4)) AS Propios,
        CAST(0 AS decimal(18,4)) AS Izq, CAST(0 AS decimal(18,4)) AS Der
 INTO #n

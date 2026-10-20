@@ -21,7 +21,7 @@ WHERE c.IsDeleted = 0
   AND c.ParentMemberId IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM DualTeamTree p WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0);
 
-SELECT TOP (20) c.MemberId, c.ParentMemberId, c.HierarchyPath,
+SELECT TOP (20) c.MemberId, c.ParentMemberId, c.BinaryPath, c.Depth,
        CASE WHEN EXISTS (SELECT 1 FROM DualTeamTree p WHERE p.MemberId = c.ParentMemberId) THEN 'padre borrado' ELSE 'padre inexistente' END AS Motivo
 FROM DualTeamTree c
 WHERE c.IsDeleted = 0
