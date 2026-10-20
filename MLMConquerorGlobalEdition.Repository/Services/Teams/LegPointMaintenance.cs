@@ -68,7 +68,9 @@ public static class LegPointMaintenance
 
     /// <summary>
     /// Revision 2 del bloque 2 (I1): los UNICOS errores que pueden ser culpa de los datos de un arranque (desbordamiento,
-    /// conversion, division por cero, clave repetida, FK, nulo, truncado). Solo estos parten la ventana y anotan intentos.
+    /// conversion, division por cero, clave repetida, FK, nulo, truncado). Solo estos parten la ventana y anotan intentos, y
+    /// solo en la tanda de un solo arranque cuando el mismo error se repite al rehacerla (tercera revision del bloque 2: la
+    /// clave repetida y la FK pueden ser carreras con otro escritor, y una carrera no se repite).
     /// Cualquier otro (tiempo agotado -2; conexion o conmutacion -1, 53, 233, 10054, 40613, 4060; registro lleno 9002;
     /// archivo lleno 1105; memoria 701 y 8645; espera de candado 1222; un fallo del propio SQL de la tanda) no depende de
     /// ningun arranque: se propaga sin anotar nada, para no apartar deltas sanos (dinero) por un problema del servidor.
@@ -156,6 +158,8 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
             long ultimo = 0;
             var completa = Math.Max(1, options.WindowRows);
             var ventana = completa;
+            // Tercera revision del bloque 2: el error de la tanda de un solo arranque que aun no se confirmo repitiendola.
+            int? errorAislado = null;
             for (var i = 0; i < maxBatches; i++)
             {
                 BatchResult r;
@@ -177,6 +181,16 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                         i--;
                         continue;
                     }
+                    // Tercera revision del bloque 2: solo se anota el intento si el MISMO error se repite en la tanda de un
+                    // solo arranque. Una clave repetida (2627, 2601) o una FK (547) pueden ser una carrera con otro escritor
+                    // que ya paso: la primera vez se repite la tanda aislada sin anotar nada.
+                    if (errorAislado != ex.Number)
+                    {
+                        logger?.LogWarning(ex, "Cola de piernas: fallo la tanda aislada desde el Id {Ultimo} ({Numero}); se repite para confirmarlo.", ultimo, ex.Number);
+                        errorAislado = ex.Number;
+                        i--;
+                        continue;
+                    }
                     await RecordFailureAsync(db, hasta, ultimo, ex, lockTimeoutMs, logger, ct);
                     throw;
                 }
@@ -184,6 +198,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 sinNodo += r.WithoutNode;
                 // Revision 2 del bloque 2 (I1): tras una tanda partida que sale bien, la siguiente vuelve a la ventana entera.
                 ventana = completa;
+                errorAislado = null;
                 if (r.WindowRows == 0) break;
                 ultimo = r.LastId;
             }
