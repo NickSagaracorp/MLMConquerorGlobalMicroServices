@@ -21,6 +21,8 @@ public class EscritoresDeSuscripcionesTests
             "solo escribe los aportes (DualTeamContribution, EnrollmentContribution), nunca el estado: es el recalculo de DQ16 con los servicios parados; despues corre 02-recalcular-piernas.sql",
         ["Scripts/sql/plan-p/04-contadores-y-colas.sql"] =
             "solo lee las suscripciones (UPDATE de la temporal #n e INSERT de propios en DualLegDeltas): es el recalculo de los calificados",
+        ["Scripts/sql/plan-q/04-calificados-de-inscripcion.sql"] =
+            "solo lee las suscripciones (UPDATE de la temporal #g y de MemberStatistics): es el recalculo de los calificados de inscripcion (Tarea 19b)",
     };
 
     private static readonly Regex EscrituraSql = new(
