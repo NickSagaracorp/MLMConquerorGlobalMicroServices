@@ -40,8 +40,7 @@ public static class GridQueryableExtensions
 
         source = source.ApplySorts(request.Sorts);
 
-        var pageSize = Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, maxPageSize);
-        var page     = Math.Max(1, request.Page);
+        var (page, pageSize) = ResolvePage(request, maxPageSize);
 
         var items = await source
             .Skip((page - 1) * pageSize)
@@ -91,6 +90,13 @@ public static class GridQueryableExtensions
             PageSize   = pageSize
         };
     }
+
+    /// <summary>
+    /// La pagina (desde 1) y su tamano tal como los aplica <see cref="ToGridResultAsync{T}"/>: para quien pagina por su
+    /// cuenta antes de proyectar (Plan Q: Mi equipo por estructura pagina el arbol y despues une los perfiles).
+    /// </summary>
+    public static (int Page, int PageSize) ResolvePage(GridDataRequest request, int maxPageSize = DefaultMaxPageSize) =>
+        (Math.Max(1, request.Page), Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, maxPageSize));
 
     public static IQueryable<T> ApplySearch<T>(this IQueryable<T> source, string? search, string[] searchableFields)
     {

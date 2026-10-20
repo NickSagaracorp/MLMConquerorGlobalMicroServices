@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Queries;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 
@@ -65,5 +68,41 @@ public class SqlServerPlanesDeEjecucionTests
             .OrderByDescending(g => g.Node).Select(g => g.Node).Take(1));
 
         plan.Should().Contain("IX_GenealogyTree_NodeLevel_Node").And.Contain(PlanDeEjecucion.Seek);
+    }
+
+    /// <summary>
+    /// Plan Q, Tarea 26: Mi equipo de inscripcion sin orden pedido pagina por Node (Tarea 22) sin la antijoin del nodo
+    /// vigente (Tarea 21), y la pagina sale del recorrido de IX_GenealogyTree_Node sin ordenar el rango.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Mi_equipo_de_inscripcion_pagina_por_Node_sin_ordenar_el_rango()
+    {
+        const string raizMayor = "AMB-700829";
+        var cap = new CapturadorDeSql();
+        await using (var db = cap.Db())
+        {
+            var servicio = new EnrollmentTeamService(db, CalificadoEnLosEquiposTests.Rangos(db),
+                new EnrollmentTeamPointsService(db), CalificadoEnLosEquiposTests.Calificacion(db));
+            await servicio.GetMyTeamGridAsync(raizMayor, new GridDataRequest { Page = 1000, PageSize = 20 });
+        }
+        var delEquipo = cap.Textos.Where(t => t.Contains("[GenealogyTree]") && t.Contains("[MemberProfiles]")).ToList();
+        delEquipo.Should().Contain(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"ORDER BY \[\w+\]\.\[Node\]"));
+        delEquipo.Should().NotContain(t => t.Contains("NOT EXISTS"), "con un nodo vivo por miembro no hay antijoin (Tarea 21)");
+
+        await using var db2 = SqlServerReportes.Db();
+        var raiz = await db2.GenealogyTree.AsNoTracking().NodeOfAsync(raizMayor);
+        // La forma del servicio (desviacion de la Tarea 26): la pagina sale del arbol y despues se unen los perfiles.
+        var pagina =
+            from g in db2.GenealogyTree.AsNoTracking().CurrentUnder(raiz).Where(g => g.MemberId != raizMayor)
+                .OrderBy(g => g.Node).Skip(19_980).Take(20)
+            join m in db2.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            orderby g.Node
+            select new { m.MemberId, m.FirstName, m.LastName, g.Level };
+
+        var plan = await PlanDeEjecucion.CompiladoAsync(db2, pagina);
+
+        plan.Should().Contain("IX_GenealogyTree_Node").And.Contain(PlanDeEjecucion.Seek);
+        PlanDeEjecucion.Recorridos(plan, "GenealogyTree").Should().BeEmpty();
+        plan.Should().NotContain("PhysicalOp=\"Sort\"", "la pagina sale en el orden del indice");
     }
 }

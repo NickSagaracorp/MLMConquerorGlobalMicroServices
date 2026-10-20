@@ -136,12 +136,30 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             prefijo = request.Search;   // DQ8: por prefijo con indice; la rejilla no vuelve a buscar por subcadena
             request.Search = null;
         }
-        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
-                                          byStructure: request.Sorts.Count == 0, prefixTerm: prefijo);
-        // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo. Con el
-        // prefijo el resultado ya no es el equipo entero y se cuenta.
-        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
+        var byStructure = request.Sorts.Count == 0;
+        PagedResult<EnrollmentMyTeamMemberView> result;
+        if (byStructure && prefijo is null && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0)
+        {
+            // Plan Q (Tarea 26): sin busqueda, filtros ni orden pedido, la pagina se toma del arbol (el recorrido de
+            // IX_GenealogyTree_Node, cubriente) y solo despues se unen sus 20 perfiles. Con el OFFSET sobre la union, el
+            // optimizador unia el rango entero con los perfiles y lo ordenaba (un Sort de 119.000 filas en local). El
+            // total es el tamano guardado (DQ14).
+            var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
+            var items = await BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
+                                                   structurePage: ((page - 1) * pageSize, pageSize)).ToListAsync(ct);
+            result = new PagedResult<EnrollmentMyTeamMemberView>
+            {
+                Items = items, TotalCount = tamano, Page = page, PageSize = pageSize
+            };
+        }
+        else
+        {
+            var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure, prefixTerm: prefijo);
+            // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo.
+            // Con el prefijo el resultado ya no es el equipo entero y se cuenta.
+            result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
                                                    unfilteredTotal: prefijo is null ? tamano : null);
+        }
         await EnrichPageAsync(result.Items, ct);
         result.Limited = limitado;
         return result;
@@ -160,16 +178,39 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// requested PAGE only by <see cref="EnrichPageAsync"/>.
     /// </summary>
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
-        HierarchyId root, int rootLevel, string memberId, bool byStructure = false, string? prefixTerm = null)
+        HierarchyId root, int rootLevel, string memberId, bool byStructure = false, string? prefixTerm = null,
+        (int Skip, int Take)? structurePage = null)
     {
         var equipo = _db.GenealogyTree.AsNoTracking().CurrentUnder(root).Where(g => g.MemberId != memberId);
-        // Plan Q (DQ7): el orden por estructura va sobre el nodo, antes del join y de la proyeccion (la vista no lleva
-        // Node): la pagina sale del recorrido de IX_GenealogyTree_Node, sin ordenar el rango (la Tarea 26 lo comprueba).
-        if (byStructure) equipo = equipo.OrderBy(g => g.Node);
         // Plan Q (DQ8): con el limite, solo los perfiles cuyo nombre completo o id empieza por el termino (con indice).
         var perfiles = prefixTerm is null
             ? _db.MemberProfiles.AsNoTracking()
             : MemberNameSearch.Apply(_db, _db.MemberProfiles.AsNoTracking(), prefixTerm);
+        if (structurePage is { } pagina)
+        {
+            // Plan Q (Tarea 26): la pagina por estructura sale del arbol (Node, en el orden del indice) antes de unir los
+            // perfiles; el orden de fuera es el de esas pocas filas.
+            var nodos = equipo.OrderBy(g => g.Node).Skip(pagina.Skip).Take(pagina.Take);
+            return
+                from g in nodos
+                join m in perfiles on g.MemberId equals m.MemberId
+                orderby g.Node
+                select new EnrollmentMyTeamMemberView
+                {
+                    MemberId        = m.MemberId,
+                    FullName        = m.FirstName + " " + m.LastName,
+                    Email           = m.Email,
+                    Phone           = m.Phone,
+                    Country         = m.Country,
+                    Level           = g.Level - rootLevel,
+                    EnrollDate      = m.EnrollDate,
+                    SponsorMemberId = m.SponsorMemberId,
+                    AccountStatus   = m.Status.ToString()
+                };
+        }
+        // Plan Q (DQ7): con busqueda o filtros, el orden por estructura va sobre el nodo, antes del join y de la proyeccion
+        // (la vista no lleva Node).
+        if (byStructure) equipo = equipo.OrderBy(g => g.Node);
         return
             from g in equipo
             join m in perfiles on g.MemberId equals m.MemberId
