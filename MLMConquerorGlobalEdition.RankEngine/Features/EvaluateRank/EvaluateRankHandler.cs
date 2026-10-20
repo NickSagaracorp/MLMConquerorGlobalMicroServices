@@ -2,6 +2,7 @@ using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Jobs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
@@ -25,7 +26,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     /// Plan P (revision I3): cuantos niveles de la linea de inscripcion reciben el aviso «alguien de tu equipo subio
     /// de rango». Con el binario a 8.000 niveles, avisar a cada ascendiente eran miles de trabajos por subida.
     /// </summary>
-    public const int UplineNotificationLevels = 10;
+    public const int UplineNotificationLevels = GenealogyUpline.EnrollmentLevels;
 
     private readonly IBackgroundJobClient _jobs;
 
@@ -252,27 +253,12 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             .Select(d => d.ParentMemberId)
             .FirstOrDefaultAsync(ct);
 
-        var enrollmentLine = ParseAncestors(genealogyNode?.HierarchyPath, memberId)
-            .Reverse()                          // del patrocinador hacia arriba
-            .Take(UplineNotificationLevels);
+        // Plan Q (DQ5): la cota vive en GenealogyUpline (del patrocinador hacia arriba).
+        var enrollmentLine = GenealogyUpline.Closest(genealogyNode?.HierarchyPath, memberId, UplineNotificationLevels);
 
         var result = enrollmentLine.ToList();
         if (!string.IsNullOrEmpty(dualParent) && !result.Contains(dualParent))
             result.Add(dualParent);
         return result;
-    }
-
-    /// <summary>
-    /// Parses a materialized HierarchyPath ("/AMB-001/AMB-002/AMB-003/")
-    /// and returns all ancestor MemberIds, excluding the member themselves.
-    /// </summary>
-    private static IEnumerable<string> ParseAncestors(string? hierarchyPath, string selfMemberId)
-    {
-        if (string.IsNullOrWhiteSpace(hierarchyPath))
-            return Enumerable.Empty<string>();
-
-        return hierarchyPath
-            .Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Where(id => id != selfMemberId);
     }
 }
