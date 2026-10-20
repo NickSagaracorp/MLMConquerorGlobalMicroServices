@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
@@ -120,10 +121,20 @@ public class SqlServerVenenoEnLaColaTests
 
                 for (var i = 1; i <= LegPointMaintenance.MaxAttempts + 1; i++)
                 {
-                    await using var db = SqlServerReportes.Db();
-                    var fallo = async () => await LegPointMaintenance.DrainAsync(db, lockTimeoutMs: 1_000, isolateFailures: true,
-                        options: new LegDrainOptions { BatchCommandSeconds = 2 });
-                    (await fallo.Should().ThrowAsync<SqlException>()).Which.Number.Should().Be(-2);
+                    // Con los servicios -run vaciando cada minuto, el candado de la cola puede estar ocupado un momento
+                    // (DualTeamBusyException, espera de 1 s): esa vuelta no cuenta y se repite.
+                    for (var vuelta = 1; ; vuelta++)
+                    {
+                        await using var db = SqlServerReportes.Db();
+                        try
+                        {
+                            await LegPointMaintenance.DrainAsync(db, lockTimeoutMs: 1_000, isolateFailures: true,
+                                options: new LegDrainOptions { BatchCommandSeconds = 2 });
+                            throw new InvalidOperationException("El vaciado tenia que agotar su tiempo.");
+                        }
+                        catch (DualTeamBusyException) when (vuelta < 30) { await Task.Delay(1_000); }
+                        catch (SqlException ex) { ex.Number.Should().Be(-2); break; }
+                    }
                 }
                 await tx.RollbackAsync();
             }
