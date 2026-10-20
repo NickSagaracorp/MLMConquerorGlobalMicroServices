@@ -156,6 +156,10 @@ public static class ReportesDb
         AppDbContext db, string memberId, string? padre, string ruta, int nivel)
     {
         var nodo = Nodo(db, memberId, padre, ruta, nivel);
+        // Plan Q (DQ9): el obsoleto queda borrado, como lo deja 01-nodos-de-inscripcion-repetidos.sql. Asi no choca con
+        // UX_GenealogyTree_MemberId_Vivo aunque el vigente del mismo miembro se guarde a la vez.
+        nodo.IsDeleted = true;
+        nodo.DeletedBy = "plan-q-01";
         await db.SaveChangesAsync();
         nodo.CreationDate = new DateTime(2020, 1, 1);
         await db.SaveChangesAsync();

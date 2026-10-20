@@ -136,4 +136,20 @@ public class SqlServerNodoDeGenealogiaTests
 
         fraccionarios.Should().Be(0);
     }
+    /// <summary>Plan Q (DQ9): un segundo nodo vivo del mismo miembro choca con UX_GenealogyTree_MemberId_Vivo (2601).</summary>
+    [SqlServerFact]
+    public async Task Un_segundo_nodo_vivo_del_mismo_miembro_falla_con_el_indice_unico()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var x = SqlServerReportes.NuevoId("PQN");
+        ReportesDb.Nodo(db, x, null, ReportesDb.Ruta(x), 1);
+        await db.SaveChangesAsync();
+        ReportesDb.Nodo(db, x, null, ReportesDb.Ruta(x), 1);   // otra raiz (otro Node), el mismo miembro
+
+        var error = await FluentActions.Invoking(() => db.SaveChangesAsync()).Should().ThrowAsync<DbUpdateException>();
+        error.Which.InnerException.Should().BeOfType<Microsoft.Data.SqlClient.SqlException>().Which.Number.Should().Be(2601);
+        GenealogyNodes.IsDuplicateLiveMember(error.Which).Should().BeTrue();
+        await tx.RollbackAsync();
+    }
 }

@@ -117,10 +117,9 @@ public class SqlServerRevisionBloque4Tests
         var m = SqlServerReportes.NuevoId("RB");
         ReportesDb.Miembro(db, m, linea[1]);
         ReportesDb.Puntos(db, m, 0);
-        var viejo = ReportesDb.Nodo(db, m, otra[0], ReportesDb.Ruta(otra[0], m), 1);
-        await db.SaveChangesAsync();
-        viejo.CreationDate = new DateTime(2020, 1, 1);
-        await db.SaveChangesAsync();
+        // Plan Q (DQ9): con UX_GenealogyTree_MemberId_Vivo el nodo viejo ya no puede seguir vivo; queda borrado, como lo
+        // deja 01-nodos-de-inscripcion-repetidos.sql, y tampoco se acredita.
+        await ReportesDb.NodoObsoletoAsync(db, m, otra[0], ReportesDb.Ruta(otra[0], m), 1);
         NodoSinNode(db, m, linea[1], ReportesDb.Ruta(linea[0], linea[1], m), 2);
         await db.SaveChangesAsync();
         var seis = await MembershipPointsDeltas.LevelPointsAsync(db, 3);

@@ -58,8 +58,8 @@ public class NodosVigentesEnLosEquiposTests
         var ganador = string.CompareOrdinal(a.Id, b.Id) > 0 ? a : b;
 
         (await db.GenealogyTree.AsNoTracking().NodeOfAsync("AMB-X")).Should().Be(ganador.Node);
-        (await db.GenealogyTree.AsNoTracking().CurrentUnder(HierarchyId.GetRoot()).Where(g => g.MemberId == "AMB-X").CountAsync())
-            .Should().Be(1);
+        // Plan Q (DQ9): que CurrentUnder no repita al miembro lo garantiza ahora UX_GenealogyTree_MemberId_Vivo (dos nodos
+        // vivos del mismo miembro no se pueden guardar en SQL Server; InMemory no aplica indices unicos).
     }
 
     [Fact]

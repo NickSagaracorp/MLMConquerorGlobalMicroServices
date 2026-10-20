@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Repository.Configurations;
 using MLMConquerorGlobalEdition.Repository.Context;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
@@ -58,6 +59,19 @@ public class NodoDeGenealogiaModeloTests
 
         tipo.FindProperty("NodeLevel")!.GetComputedColumnSql().Should().Be("[Node].GetLevel()");
         tipo.GetIndexes().Should().Contain(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "NodeLevel", "Node" }));
+    }
+
+    /// <summary>Plan Q (DQ9): un solo nodo vivo por miembro.</summary>
+    [Fact]
+    public void Indice_unico_de_un_nodo_vivo_por_miembro()
+    {
+        using var db = SqlServerSinUseHierarchyId();
+        var tipo = db.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(GenealogyEntity))!;
+
+        var vivo = tipo.GetIndexes().Single(i => i.GetDatabaseName() == GenealogyConfiguration.LiveMemberIndexName);
+        vivo.Properties.Select(p => p.Name).Should().Equal("MemberId");
+        vivo.IsUnique.Should().BeTrue();
+        vivo.GetFilter().Should().Be("[IsDeleted] = 0");
     }
 
     [Fact]

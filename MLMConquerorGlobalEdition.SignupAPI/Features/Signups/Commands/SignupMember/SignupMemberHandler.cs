@@ -221,7 +221,8 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         }
         // Plan M (R5): dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;
         // el índice único rechaza a la segunda, que reintenta con el siguiente ordinal.
-        catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)) && idAttempt < 5)
+        catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)
+                                            || GenealogyNodes.IsDuplicateLiveMember(ex)) && idAttempt < 5)
         {
             // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
             _db.ChangeTracker.Clear();

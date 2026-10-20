@@ -15,6 +15,9 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
     /// <summary>CHECK de ordinales enteros (revisión M4).</summary>
     public const string NodeIntegerOrdinalsCheck = "CK_GenealogyTree_Node_OrdinalesEnteros";
 
+    /// <summary>Plan Q (DQ9): un solo nodo vivo por miembro.</summary>
+    public const string LiveMemberIndexName = "UX_GenealogyTree_MemberId_Vivo";
+
     public void Configure(EntityTypeBuilder<GenealogyEntity> builder)
     {
         builder.HasKey(x => x.Id);
@@ -22,6 +25,10 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
         // Ya no se filtra por ella: el equipo va por Node.
         builder.Property(x => x.HierarchyPath).IsRequired();
         builder.HasIndex(x => new { x.MemberId, x.CreationDate });
+        // Plan Q (DQ9): un solo nodo vivo por miembro. Con el, el nodo vigente es el unico y CurrentUnder no necesita la
+        // antijoin (medida en el Plan P: el conteo del equipo de inscripcion tardaba 2,8 s con 1.000.000).
+        builder.HasIndex(new[] { nameof(GenealogyEntity.MemberId) }, LiveMemberIndexName)
+            .IsUnique().HasFilter("[IsDeleted] = 0");
         // Revisión M5: los hermanos de un nodo (NextChildAsync, el relleno) se buscan por ParentMemberId y se
         // leen por Node; incluido, sin ir a la tabla.
         builder.HasIndex(x => x.ParentMemberId).IncludeProperties(x => x.Node);

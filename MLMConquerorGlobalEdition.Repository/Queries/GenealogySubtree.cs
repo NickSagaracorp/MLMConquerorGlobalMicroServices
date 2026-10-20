@@ -118,15 +118,10 @@ public static class GenealogySubtree
     }
 
     /// <summary>
-    /// Los nodos VIGENTES (el más reciente de cada miembro) que cuelgan de <paramref name="root"/>, él
-    /// incluido. Parte del rango de IX_GenealogyTree_Node (seek, <see cref="Under"/>) y descarta los
-    /// obsoletos con el índice (MemberId, CreationDate). Es la forma B: para el equipo entero. Ninguno si
-    /// root es null. Es lo que usan Mi equipo, clientes, eventos, puntos y comisiones (revisión I5): con
-    /// Under, un miembro con dos nodos bajo el mismo equipo saldría dos veces.
+    /// Los nodos vigentes que cuelgan de <paramref name="root"/>, el incluido. Plan Q: con UX_GenealogyTree_MemberId_Vivo
+    /// cada miembro tiene un solo nodo vivo, asi que el vigente es el unico y basta el rango (<see cref="Under"/>). Se
+    /// mantiene el nombre: es lo que usan Mi equipo, clientes, eventos, puntos y comisiones.
     /// </summary>
     public static IQueryable<GenealogyEntity> CurrentUnder(this IQueryable<GenealogyEntity> tree, HierarchyId? root) =>
-        tree.Under(root)
-            .Where(g => !tree.Any(o => o.MemberId == g.MemberId
-                                    && (o.CreationDate > g.CreationDate
-                                        || (o.CreationDate == g.CreationDate && string.Compare(o.Id, g.Id) > 0))));
+        tree.Under(root);
 }

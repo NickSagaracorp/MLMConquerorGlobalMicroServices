@@ -69,6 +69,15 @@ public static class GenealogyNodes
     public static bool IsDuplicateNode(DbUpdateException ex)
         => ex.InnerException?.Message is { } m
            && m.Contains(GenealogyConfiguration.NodeIndexName, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Plan Q (DQ9): el guardado choco con UX_GenealogyTree_MemberId_Vivo, otro nodo vivo con el mismo MemberId. En el alta
+    /// solo pasa si dos altas sacaron el mismo id libre a la vez (el nodo puede insertarse antes que el perfil y chocar
+    /// aqui en vez de en AK_MemberProfiles_MemberId): se reintenta con otro id.
+    /// </summary>
+    public static bool IsDuplicateLiveMember(DbUpdateException ex)
+        => ex.InnerException?.Message is { } m
+           && m.Contains(GenealogyConfiguration.LiveMemberIndexName, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -16404,6 +16404,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("NodeLevel", "Node");
 
+                    b.HasIndex(new[] { "MemberId" }, "UX_GenealogyTree_MemberId_Vivo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.ToTable("GenealogyTree", t =>
                         {
                             t.HasCheckConstraint("CK_GenealogyTree_Node_OrdinalesEnteros", "[Node] IS NULL OR CHARINDEX('.', [Node].ToString()) = 0");
