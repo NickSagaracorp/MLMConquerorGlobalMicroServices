@@ -220,4 +220,34 @@ public class DualBinaryPathTests
             }
         }
     }
+    /// <summary>
+    /// Revision del bloque 3: la profundidad del ascendiente comun mas hondo de dos claves es la mayor d con
+    /// Ancestor(a, d) == Ancestor(b, d); -1 si son de raices distintas.
+    /// </summary>
+    [Fact]
+    public void CommonDepth_es_la_del_ascendiente_comun_mas_hondo()
+    {
+        DualBinaryPath.CommonDepth(Camino(L, R, L), Camino(L, R, R, L)).Should().Be(2);
+        DualBinaryPath.CommonDepth(Camino(L, R), Camino(L, R, R, L)).Should().Be(2);   // a es ascendiente de b
+        DualBinaryPath.CommonDepth(Camino(L), Camino(R)).Should().Be(0);
+        DualBinaryPath.CommonDepth(Camino(), Camino()).Should().Be(0);
+        DualBinaryPath.CommonDepth(DualBinaryPath.Root(1), DualBinaryPath.Root(2)).Should().Be(-1);
+
+        var rnd = new Random(20261020);
+        for (var caso = 0; caso < 300; caso++)
+        {
+            var a = DualBinaryPath.Root(7);
+            var comun = rnd.Next(0, 40);
+            for (var i = 0; i < comun; i++) a = DualBinaryPath.Child(a, rnd.Next(2) == 0 ? L : R);
+            var b = a;
+            var ra = rnd.Next(0, 30); var rb = rnd.Next(0, 30);
+            if (ra > 0 && rb > 0) { a = DualBinaryPath.Child(a, L); b = DualBinaryPath.Child(b, R); ra--; rb--; }
+            for (var i = 0; i < ra; i++) a = DualBinaryPath.Child(a, rnd.Next(2) == 0 ? L : R);
+            for (var i = 0; i < rb; i++) b = DualBinaryPath.Child(b, rnd.Next(2) == 0 ? L : R);
+            var esperado = Enumerable.Range(0, Math.Min(DualBinaryPath.Depth(a), DualBinaryPath.Depth(b)) + 1)
+                .Last(d => DualBinaryPath.Ancestor(a, d).AsSpan().SequenceEqual(DualBinaryPath.Ancestor(b, d)));
+            DualBinaryPath.CommonDepth(a, b).Should().Be(esperado);
+            DualBinaryPath.CommonDepth(b, a).Should().Be(esperado);
+        }
+    }
 }

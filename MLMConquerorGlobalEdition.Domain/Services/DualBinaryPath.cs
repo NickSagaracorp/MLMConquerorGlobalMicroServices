@@ -119,6 +119,23 @@ public static class DualBinaryPath
         return GetBit(key, depth) ? TreeSide.Right : TreeSide.Left;
     }
 
+    /// <summary>
+    /// Revision del bloque 3: la profundidad del ascendiente comun mas hondo de <paramref name="a"/> y
+    /// <paramref name="b"/> (la mayor d con Ancestor(a, d) == Ancestor(b, d)); -1 si son de raices distintas.
+    /// Compara byte a byte, sin construir claves intermedias.
+    /// </summary>
+    public static int CommonDepth(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
+    {
+        if (!a[..RootBytes].SequenceEqual(b[..RootBytes])) return -1;
+        var tope = Math.Min(Depth(a), Depth(b));
+        for (var i = RootBytes; (i - RootBytes) * 8 < tope; i++)
+        {
+            var x = a[i] ^ b[i];
+            if (x != 0) return Math.Min(tope, (i - RootBytes) * 8 + BitOperations.LeadingZeroCount((uint)x) - 24);
+        }
+        return tope;
+    }
+
     private static bool GetBit(ReadOnlySpan<byte> k, int pathBit) =>
         (k[RootBytes + pathBit / 8] & (0x80 >> (pathBit % 8))) != 0;
 
