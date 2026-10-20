@@ -88,12 +88,13 @@ public class AdminPlaceMemberHandlerTests
         var parent = db.DualTeamTree.FirstOrDefault(d => d.MemberId == "nonexistent-parent");
         parent.Should().NotBeNull();
         parent!.ParentMemberId.Should().BeNull();
-        parent.HierarchyPath.Should().Be("/nonexistent-parent/");
+        parent.Depth.Should().Be(0);
 
         var placed = db.DualTeamTree.FirstOrDefault(d => d.MemberId == "amb-001");
         placed.Should().NotBeNull();
         placed!.ParentMemberId.Should().Be("nonexistent-parent");
-        placed.HierarchyPath.Should().Be("/nonexistent-parent/amb-001/");
+        placed.Side.Should().Be(TreeSide.Left);
+        placed.Depth.Should().Be(1);
     }
 
     [Fact]
@@ -163,7 +164,9 @@ public class AdminPlaceMemberHandlerTests
             CancellationToken.None);
 
         var node = db.DualTeamTree.First(d => d.MemberId == "amb-001");
-        node.HierarchyPath.Should().Be("/parent-001/amb-001/");
+        node.ParentMemberId.Should().Be("parent-001");
+        node.Side.Should().Be(TreeSide.Left);
+        node.Depth.Should().Be(1);
     }
 
     /// <summary>
@@ -217,7 +220,8 @@ public class AdminPlaceMemberHandlerTests
         result.IsSuccess.Should().BeTrue(result.Error);
         db.DualTeamTree.First(d => d.MemberId == "amb-b").ParentMemberId.Should().Be("parent-001");
         db.DualTeamTree.First(d => d.MemberId == "amb-c").ParentMemberId.Should().Be("amb-b");
-        db.DualTeamTree.First(d => d.MemberId == "amb-d").HierarchyPath.Should().Be("/parent-001/amb-b/amb-c/amb-d/");
+        db.DualTeamTree.First(d => d.MemberId == "amb-d").ParentMemberId.Should().Be("amb-c");
+        db.DualTeamTree.First(d => d.MemberId == "amb-d").Depth.Should().Be(3, "parent-001 -> amb-b -> amb-c -> amb-d");
         var padre = db.DualTeamTree.First(d => d.MemberId == "parent-001");
         padre.LeftLegPoints.Should().Be(70);
         padre.LeftLegCount.Should().Be(3);

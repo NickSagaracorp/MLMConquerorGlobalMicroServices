@@ -106,15 +106,17 @@ public class AdminRemovePlacementHandlerTests
 
         // Descendants stay linked to amb-001 (kept as ParentMemberId) so that when
         // amb-001 is re-placed later, the whole subtree moves with them. Their
-        // hierarchy path is rebased onto the floating root /amb-001/.
+        // key is rebased onto amb-001's virtual (floating) root, one level below it.
         var leftChild  = db.DualTeamTree.First(d => d.MemberId == "child-left");
         var rightChild = db.DualTeamTree.First(d => d.MemberId == "child-right");
 
         leftChild.ParentMemberId.Should().Be("amb-001");
-        leftChild.HierarchyPath.Should().Be("/amb-001/child-left/");
+        leftChild.Side.Should().Be(TreeSide.Left);
+        leftChild.Depth.Should().Be(1);
 
         rightChild.ParentMemberId.Should().Be("amb-001");
-        rightChild.HierarchyPath.Should().Be("/amb-001/child-right/");
+        rightChild.Side.Should().Be(TreeSide.Right);
+        rightChild.Depth.Should().Be(1);
     }
 
     [Fact]

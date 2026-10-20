@@ -77,13 +77,12 @@ public class SqlServerRaizProvisionalTests
                 (nodos["B"].ParentMemberId, nodos["B"].Side).Should().Be(($"{x}A", TreeSide.Left));
                 (nodos["C"].ParentMemberId, nodos["C"].Side).Should().Be(($"{x}B", TreeSide.Left));
                 (nodos["D"].ParentMemberId, nodos["D"].Side).Should().Be(($"{x}C", TreeSide.Left));
-                // Clave y ruta coherentes en todo el subarbol movido.
+                // Clave y profundidad coherentes en todo el subarbol movido (Plan Q: sin ruta de texto).
                 foreach (var n in new[] { "B", "C", "D" })
                 {
                     var padre = nodos[nodos[n].ParentMemberId![x.Length..]];
                     nodos[n].BinaryPath.Should().Equal(DualBinaryPath.Child(padre.BinaryPath!, nodos[n].Side));
                     nodos[n].Depth.Should().Be(padre.Depth + 1);
-                    nodos[n].HierarchyPath.Should().Be(padre.HierarchyPath + nodos[n].MemberId + "/");
                 }
                 // El volumen acumulado (10 + 20 + 40 = 70) sube a A y a P por la pierna izquierda, con sus 3 nodos.
                 nodos["A"].LeftLegPoints.Should().Be(70);
@@ -161,7 +160,7 @@ public class SqlServerRaizProvisionalTests
             {
                 var p = porId[n.ParentMemberId!];
                 n.BinaryPath.Should().Equal(DualBinaryPath.Child(p.BinaryPath!, n.Side));
-                n.HierarchyPath.Should().Be(p.HierarchyPath + n.MemberId + "/");
+                n.Depth.Should().Be(p.Depth + 1);
             }
             porId[$"{x}P"].LeftLegCount.Should().Be(nodos.Count - 1);
         }

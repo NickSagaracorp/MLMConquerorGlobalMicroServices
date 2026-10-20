@@ -43,13 +43,12 @@ public enum DualTeamChildrenOnRemoval
 
 /// <summary>
 /// Plan P: el unico sitio que construye nodos del binario y reescribe su posicion (ParentMemberId, Side) y sus
-/// claves (HierarchyPath, BinaryPath, Depth). Lo vigila EscritoresDelBinarioTests.
+/// claves (BinaryPath, Depth). Lo vigila EscritoresDelBinarioTests. Plan Q (Bloque 3): ya no escribe la ruta de texto.
 /// <list type="bullet">
 /// <item>Altas: <see cref="ChildAsync"/> y <see cref="RootAsync"/>; quien llama tiene el candado del hueco.</item>
 /// <item>Movimientos y retiradas: <see cref="MoveSubtreeAsync"/> y <see cref="RemoveAsync"/>; exigen
 /// <c>dual-tree</c> en exclusivo (DualTeamGate.EnterTreeExclusiveAsync) y lo comprueban. Las claves del
-/// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; la ruta de texto, con un
-/// SUBSTRING en SQL; las piernas, encolando el subarbol con signo (LegPointMaintenance.EnqueueSubtreeAsync, Plan Q); y se vacian las
+/// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; las piernas, encolando el subarbol con signo (LegPointMaintenance.EnqueueSubtreeAsync, Plan Q); y se vacian las
 /// colas de derrame que apuntaban al punto donde se engancha o se suelta el subarbol. Las demas no hace falta
 /// tocarlas: el motor valida la cola al leerla por la clave (sigue en la pierna, existe y tiene hueco) y la rehace
 /// si no (recorrer los 8.000 ascendientes para vaciar las suyas costaba casi un segundo por movimiento).</item>
@@ -73,7 +72,7 @@ public static class DualTeamNodes
         CancellationToken ct = default) => new()
     {
         MemberId = memberId, ParentMemberId = null, Side = TreeSide.Left,
-        HierarchyPath = $"/{memberId}/", BinaryPath = DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)), Depth = 0,
+        HierarchyPath = string.Empty, BinaryPath = DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)), Depth = 0,
         CreationDate = now, CreatedBy = createdBy, LastUpdateDate = now, LastUpdateBy = createdBy
     };
 
@@ -86,7 +85,7 @@ public static class DualTeamNodes
         return new DualTeamEntity
         {
             MemberId = memberId, ParentMemberId = parent.MemberId, Side = side,
-            HierarchyPath = DualTeamPlacementRules.ChildPath(parent.HierarchyPath, memberId),
+            HierarchyPath = string.Empty,
             BinaryPath = DualBinaryPath.Child(key, side), Depth = depth + 1,
             CreationDate = now, CreatedBy = createdBy, LastUpdateDate = now, LastUpdateBy = createdBy
         };
@@ -108,7 +107,6 @@ public static class DualTeamNodes
         string? newParentId;
         TreeSide newSide;
         byte[] newKey;
-        string newPath;
         switch (to)
         {
             case DualTeamDestination.UnderParent u:
@@ -116,16 +114,13 @@ public static class DualTeamNodes
                 var (pKey, _) = await KeyOfAsync(db, parent, ct);
                 if (parent.MemberId == rootId || DualBinaryPath.Contains(oldKey, pKey))
                     throw new InvalidOperationException($"{parent.MemberId} is inside the subtree of {rootId}: circular move.");
-                (newParentId, newSide, newKey, newPath) = (parent.MemberId, u.Side, DualBinaryPath.Child(pKey, u.Side),
-                    DualTeamPlacementRules.ChildPath(parent.HierarchyPath, rootId));
+                (newParentId, newSide, newKey) = (parent.MemberId, u.Side, DualBinaryPath.Child(pKey, u.Side));
                 break;
             case DualTeamDestination.Floating f:
-                (newParentId, newSide, newKey, newPath) = (f.ParentMemberId, f.Side, DualBinaryPath.Child(f.VirtualParentKey, f.Side),
-                    $"/{f.ParentMemberId}/{rootId}/");
+                (newParentId, newSide, newKey) = (f.ParentMemberId, f.Side, DualBinaryPath.Child(f.VirtualParentKey, f.Side));
                 break;
             default:
-                (newParentId, newSide, newKey, newPath) = (null, TreeSide.Left, DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)),
-                    $"/{rootId}/");
+                (newParentId, newSide, newKey) = (null, TreeSide.Left, DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)));
                 break;
         }
 
@@ -137,9 +132,9 @@ public static class DualTeamNodes
             await LegPointMaintenance.EnqueueSubtreeAsync(db, rootId, -1, now, by, ct);
 
         if (db.Database.IsSqlServer())
-            await RewriteSubtreeSqlAsync(db, root, oldKey, newKey, newPath, newParentId, newSide, now, by, ct);
+            await RewriteSubtreeSqlAsync(db, root, oldKey, newKey, newParentId, newSide, now, by, ct);
         else
-            await RewriteSubtreeInMemoryAsync(db, root, oldKey, newKey, newPath, newParentId, newSide, now, by, ct);
+            await RewriteSubtreeInMemoryAsync(db, root, oldKey, newKey, newParentId, newSide, now, by, ct);
 
         if (adjustLegs && newParentId is not null && to is DualTeamDestination.UnderParent)
             await LegPointMaintenance.EnqueueSubtreeAsync(db, rootId, +1, now, by, ct);
@@ -218,7 +213,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     /// <summary>
     /// Revision I1: tras dar nodo a <paramref name="memberId"/>, recuelga bajo el a los hijos que lo esperaban de una
     /// retirada del admin (<paramref name="floating"/>, leidos con <see cref="FloatingChildrenAsync"/> ANTES de crear su
-    /// nodo), cada uno por su lado y con su subarbol: claves, rutas y piernas (su volumen sube a la linea nueva).
+    /// nodo), cada uno por su lado y con su subarbol: claves y piernas (su volumen sube a la linea nueva).
     /// Exige dual-tree en exclusivo, asi que quien coloca a un miembro con flotantes toma el exclusivo desde el
     /// principio. La llaman todos los caminos que crean la hoja: motor, BizCenter, admin y SignupAPI.
     /// </summary>
@@ -268,7 +263,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     }
 
     private static async Task RewriteSubtreeSqlAsync(AppDbContext db, DualTeamEntity root, byte[] oldKey, byte[] newKey,
-        string newPath, string? newParentId, TreeSide newSide, DateTime now, string by, CancellationToken ct)
+        string? newParentId, TreeSide newSide, DateTime now, string by, CancellationToken ct)
     {
         var (lo, hi) = DualBinaryPath.SubtreeBounds(oldKey);
         var conn = (SqlConnection)db.Database.GetDbConnection();
@@ -301,15 +296,12 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
 
             await using var escribir = new SqlCommand("""
                 UPDATE d SET BinaryPath = m.Clave, Depth = m.Prof,
-                             HierarchyPath = @nueva + SUBSTRING(d.HierarchyPath, LEN(@vieja) + 1, 2147483647),
                              LastUpdateDate = @now, LastUpdateBy = @by
                 FROM DualTeamTree d JOIN #mv m ON m.MemberId = d.MemberId
                 WHERE d.IsDeleted = 0;
                 UPDATE DualTeamTree SET ParentMemberId = @padre, Side = @lado
                 WHERE MemberId = @raiz AND IsDeleted = 0;
                 """, conn, tx) { CommandTimeout = 0 };
-            escribir.Parameters.Add("@nueva", SqlDbType.NVarChar, -1).Value = newPath;
-            escribir.Parameters.Add("@vieja", SqlDbType.NVarChar, -1).Value = root.HierarchyPath;
             escribir.Parameters.Add("@now", SqlDbType.DateTime2).Value = now;
             escribir.Parameters.Add("@by", SqlDbType.NVarChar, -1).Value = by;
             escribir.Parameters.Add("@padre", SqlDbType.NVarChar, 900).Value = (object?)newParentId ?? DBNull.Value;
@@ -334,7 +326,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     }
 
     private static async Task RewriteSubtreeInMemoryAsync(AppDbContext db, DualTeamEntity root, byte[] oldKey, byte[] newKey,
-        string newPath, string? newParentId, TreeSide newSide, DateTime now, string by, CancellationToken ct)
+        string? newParentId, TreeSide newSide, DateTime now, string by, CancellationToken ct)
     {
         var raiz = await db.DualTeamTree.FirstAsync(d => d.MemberId == root.MemberId, ct);
         var subarbol = new List<DualTeamEntity> { raiz };
@@ -350,7 +342,6 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
         {
             n.BinaryPath = DualBinaryPath.Rebase(n.BinaryPath!, oldKey, newKey);
             n.Depth = DualBinaryPath.Depth(n.BinaryPath);
-            n.HierarchyPath = newPath + n.HierarchyPath[Math.Min(root.HierarchyPath.Length, n.HierarchyPath.Length)..];
             n.LastUpdateDate = now;
             n.LastUpdateBy = by;
         }

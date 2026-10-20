@@ -96,23 +96,6 @@ public class DualTeamPlacementRulesTests
         DualTeamPlacementRules.ExtendsPreferredSide(d, Sponsor, TreeSide.Left).Should().BeFalse();
     }
 
-    // ── Depth ────────────────────────────────────────────────────────────────
-    [Theory]
-    [InlineData("/A/", 2)]
-    [InlineData("/A/B/", 3)]
-    [InlineData("/A/B/C/", 4)]
-    public void Depth_CountsSlashes(string path, int expected)
-        => DualTeamPlacementRules.Depth(path).Should().Be(expected);
-
-    // ── ChildPath ──────────────────────────────────────────────────────────--
-    [Fact]
-    public void ChildPath_AppendsWithSingleSeparator()
-        => DualTeamPlacementRules.ChildPath("/A/B/", "C").Should().Be("/A/B/C/");
-
-    [Fact]
-    public void ChildPath_WhenParentMissingTrailingSlash_StillSingleSeparator()
-        => DualTeamPlacementRules.ChildPath("/A/B", "C").Should().Be("/A/B/C/");
-
     // ── Chain advancement: simulate stacking under a sponsor ─────────────────-
     [Fact]
     public void Decide_DeepestChain_AdvancesDownLeftSpine()

@@ -808,7 +808,7 @@ public class SignupAmbassadorHandlerTests
             "a sponsor-less signup must seed the binary tree's root node — " +
             "see RootAmbassadorSeeder for the canonical shape.");
         dualNode!.ParentMemberId.Should().BeNull();
-        dualNode.HierarchyPath.Should().Be($"/{result.Value!.MemberId}/");
+        dualNode.Depth.Should().Be(0);
         dualNode.LeftLegPoints.Should().Be(0);
         dualNode.RightLegPoints.Should().Be(0);
     }

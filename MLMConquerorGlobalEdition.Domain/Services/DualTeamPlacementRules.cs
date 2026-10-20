@@ -50,11 +50,4 @@ public static class DualTeamPlacementRules
     /// </summary>
     public static bool ExtendsPreferredSide(SlotDecision decision, string sponsorMemberId, TreeSide preferredSide)
         => decision.IsSpill || (decision.ParentMemberId == sponsorMemberId && decision.Side == preferredSide);
-
-    /// <summary>Depth indicator = slash count of the materialized path ('/A/' = 1, '/A/B/' = 2).</summary>
-    public static int Depth(string hierarchyPath) => hierarchyPath.Count(c => c == '/');
-
-    /// <summary>Build a child's materialized path, guaranteeing exactly one separator.</summary>
-    public static string ChildPath(string parentPath, string memberId)
-        => $"{parentPath.TrimEnd('/')}/{memberId}/";
 }

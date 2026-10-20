@@ -126,7 +126,7 @@ public class PlaceMemberHandlerTests
         node.Should().NotBeNull();
         node!.ParentMemberId.Should().Be("AMB-000003"); // BFS placed under existing left child
         node.Side.Should().Be(TreeSide.Left);
-        node.HierarchyPath.Should().Be("/AMB-000001/AMB-000003/AMB-000002/");
+        node.Depth.Should().Be(2);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class PlaceMemberHandlerTests
         node.Should().NotBeNull();
         node!.ParentMemberId.Should().Be("AMB-000001");
         node.Side.Should().Be(TreeSide.Right);
-        node.HierarchyPath.Should().Be("/AMB-000001/AMB-000002/");
+        node.Depth.Should().Be(1);
 
         var log = db.PlacementLogs.FirstOrDefault(l => l.MemberId == "AMB-000002");
         log.Should().NotBeNull();
@@ -227,10 +227,10 @@ public class PlaceMemberHandlerTests
         result.IsSuccess.Should().BeTrue();
 
         var node = db.DualTeamTree.First(n => n.MemberId == "AMB-000002");
-        // The defensive normalize must insert a single '/' between the two IDs.
-        // Without the fix this would be "/AMB-000001AMB-000002/" (Bug 10).
-        node.HierarchyPath.Should().Be("/AMB-000001/AMB-000002/");
-        node.HierarchyPath.Should().NotContain("AMB-000001AMB-000002");
+        // Plan Q: el binario ya no tiene ruta de texto; la posicion es el padre, el lado y la profundidad.
+        node.ParentMemberId.Should().Be("AMB-000001");
+        node.Side.Should().Be(TreeSide.Left);
+        node.Depth.Should().Be(1);
     }
 
     /// <summary>

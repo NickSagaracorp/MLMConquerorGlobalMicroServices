@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
@@ -108,9 +109,11 @@ public class SqlServerColocacionConcurrenteTests
             (await BinarioDb.HuecosRepetidosAsync(lectura, x)).Should().Be(0);
             var nodos = await lectura.DualTeamTree.AsNoTracking().Where(d => d.MemberId.StartsWith(x)).ToListAsync();
             nodos.Should().HaveCount(42, "la raiz, L y los 40 colocados");
-            var rutas = nodos.ToDictionary(n => n.MemberId, n => n.HierarchyPath);
+            // Plan Q: la posicion es la clave compacta (sin ruta de texto).
+            var porId = nodos.ToDictionary(n => n.MemberId);
             nodos.Where(n => n.ParentMemberId != null).Should().OnlyContain(n =>
-                rutas.ContainsKey(n.ParentMemberId!) && n.HierarchyPath == rutas[n.ParentMemberId!] + n.MemberId + "/");
+                porId.ContainsKey(n.ParentMemberId!) && n.Depth == porId[n.ParentMemberId!].Depth + 1
+                && n.BinaryPath!.SequenceEqual(DualBinaryPath.Child(porId[n.ParentMemberId!].BinaryPath!, n.Side)));
             (await lectura.PlacementLogs.CountAsync(l => l.MemberId.StartsWith(x))).Should().Be(40);
         }
         finally
