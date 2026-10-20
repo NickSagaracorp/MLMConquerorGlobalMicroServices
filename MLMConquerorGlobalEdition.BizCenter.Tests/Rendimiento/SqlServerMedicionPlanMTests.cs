@@ -96,8 +96,13 @@ public class SqlServerMedicionPlanMTests
 
         var t = await MedianaAsync($"Mi equipo {raiz}", () =>
             servicio.GetMyTeamGridAsync(raiz, new GridDataRequest { PageSize = 20 }));
+        // Plan Q (Tarea 28): la pagina 1.000 por estructura (Node) y una busqueda con el limite de 20.000 (por prefijo).
+        var t1000 = await MedianaAsync($"Mi equipo {raiz}, pagina 1.000", () =>
+            servicio.GetMyTeamGridAsync(raiz, new GridDataRequest { Page = 1000, PageSize = 20 }));
+        var tBusqueda = await MedianaAsync($"Mi equipo {raiz}, busqueda «amb-7»", () =>
+            servicio.GetMyTeamGridAsync(raiz, new GridDataRequest { PageSize = 20, Search = "amb-7" }));
 
-        t.Should().BeLessThan(ObjetivoReporte);
+        new[] { t, t1000, tBusqueda }.Should().OnlyContain(x => x < ObjetivoReporte);
         await tx.RollbackAsync();
     });
 

@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
+using MLMConquerorGlobalEdition.SharedKernel;
 using Xunit.Abstractions;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
@@ -127,8 +128,23 @@ public class SqlServerMedicionPlanPTests
              where s.SubscriptionStatus == MembershipStatus.Active
              select s.Id).CountAsync());
 
+        // Plan Q (Tarea 28, DQ8): la busqueda por el comienzo del nombre, con el equipo por encima de TeamGridLimits (la
+        // rejilla pasa a SearchUnder) y la del visualizador. El termino: las 4 primeras letras del nombre de un miembro
+        // del equipo, en minusculas y sin tildes como lo escribiria el usuario.
+        var nombre = await (from d in DualSubtree.Under(db, nodo).AsNoTracking()
+                            join m in db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
+                            orderby d.MemberId
+                            select m.FirstName).FirstAsync();
+        var termino = nombre.Length > 4 ? nombre[..4].ToLowerInvariant() : nombre.ToLowerInvariant();
+        PagedResult<DualTeamMyTeamMemberView>? busqueda = null;
+        var t4 = await MideAsync($"Mi equipo de {miembro}, busqueda por nombre «{termino}»", async () =>
+            busqueda = await servicio.GetMyTeamGridAsync(miembro, new GridDataRequest { PageSize = 20, Search = termino }));
+        _salida.WriteLine($"  limitada: {busqueda!.Limited}, resultados: {busqueda.TotalCount}");
+        var t5 = await MideAsync($"Visualizador de {miembro}, busqueda «{termino}» (25 con camino)", () =>
+            servicio.SearchBinarySubtreeAsync(miembro, termino, 25));
+
         await tx.RollbackAsync();
-        new[] { t1, t2, t3 }.Should().OnlyContain(t => t < Objetivo);
+        new[] { t1, t2, t3, t4, t5 }.Should().OnlyContain(t => t < Objetivo);
     }
 
     /// <summary>
