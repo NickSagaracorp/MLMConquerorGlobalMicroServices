@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
@@ -109,4 +110,30 @@ public class SqlServerClientesTests
 
         longitudes.Should().Equal(450, 450);
     });
+
+    /// <summary>Plan Q: el equipo de clientes parte de los clientes (pocos) y comprueba el rango, sin recorrer GenealogyTree.</summary>
+    [SqlServerFact]
+    public async Task El_equipo_de_clientes_parte_del_indice_de_clientes()
+    {
+        const string raizMayor = "AMB-700829";
+        await using (var db = SqlServerReportes.Db())
+        {
+            var raiz = await db.GenealogyTree.AsNoTracking().NodeOfAsync(raizMayor);
+            var plan = await Rendimiento.PlanDeEjecucion.CompiladoAsync(db,
+                from m in db.MemberProfiles.AsNoTracking()
+                where m.MemberType == MemberType.ExternalMember && m.MemberId != raizMayor
+                join g in db.GenealogyTree.AsNoTracking().Under(raiz) on m.MemberId equals g.MemberId
+                select new { m.MemberId, m.FirstName, m.LastName, m.EnrollDate, m.SponsorMemberId, g.Level });
+
+            plan.Should().Contain("IX_MemberProfiles_Clientes");
+            Rendimiento.PlanDeEjecucion.Recorridos(plan, "GenealogyTree").Should().BeEmpty();
+        }
+
+        var cap = new CapturadorDeSql();
+        await using (var db = cap.Db())
+            await ClientesDelEquipoTests.Servicio(db).GetCustomersGridAsync(raizMayor, new GridDataRequest { PageSize = 20 }, CustomerScope.Team);
+        var pagina = cap.Textos.Last(t => t.Contains("[GenealogyTree]") && t.Contains("[MemberProfiles]"));
+        pagina.IndexOf("FROM [MemberProfiles]", StringComparison.Ordinal)
+            .Should().BeLessThan(pagina.IndexOf("[GenealogyTree]", StringComparison.Ordinal), "la consulta parte de los clientes");
+    }
 }

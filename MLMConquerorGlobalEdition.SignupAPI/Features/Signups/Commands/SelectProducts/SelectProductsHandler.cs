@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -108,6 +109,12 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
         order.LastUpdateDate = now;
         order.LastUpdateBy   = member.Email;
 
+        await _db.SaveChangesAsync(ct);
+
+        // Plan Q (DQ10): el nivel de alta con los productos ya guardados (ComputeAsync lee la base). El perfil de arriba
+        // va sin seguimiento: se carga seguido para asignarlo.
+        var perfil = await _db.MemberProfiles.FirstAsync(m => m.MemberId == order.MemberId, ct);
+        await SignupMembershipLevel.RefreshAsync(_db, perfil, ct);
         await _db.SaveChangesAsync(ct);
 
         return Result<bool>.Success(true);

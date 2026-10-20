@@ -8220,8 +8220,23 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<string>("SearchName")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(201)
+                        .HasColumnType("nvarchar(201)")
+                        .HasComputedColumnSql("CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", true);
+
+                    b.Property<string>("SearchNameReversed")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(201)
+                        .HasColumnType("nvarchar(201)")
+                        .HasComputedColumnSql("CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", true);
+
                     b.Property<bool>("ShowBusinessName")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("SignupMembershipLevelId")
+                        .HasColumnType("int");
 
                     b.Property<string>("SponsorMemberId")
                         .HasMaxLength(450)
@@ -8257,7 +8272,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[BinaryNodeId] IS NOT NULL");
 
-                    b.HasIndex("EnrollDate");
+                    b.HasIndex("EnrollDate")
+                        .HasDatabaseName("IX_MemberProfiles_EnrollDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("EnrollDate"), new[] { "SponsorMemberId", "MemberType", "SignupMembershipLevelId" });
 
                     b.HasIndex("EnrollmentNodeId")
                         .IsUnique()
@@ -8270,10 +8288,25 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[ReplicateSiteSlug] IS NOT NULL");
 
+                    b.HasIndex("SearchName")
+                        .HasDatabaseName("IX_MemberProfiles_SearchName");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("SearchName"), new[] { "MemberId" });
+
+                    b.HasIndex("SearchNameReversed")
+                        .HasDatabaseName("IX_MemberProfiles_SearchNameReversed");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("SearchNameReversed"), new[] { "MemberId" });
+
                     b.HasIndex("UserId")
                         .IsUnique();
 
                     b.HasIndex("SponsorMemberId", "EnrollDate");
+
+                    b.HasIndex(new[] { "MemberId" }, "IX_MemberProfiles_Clientes")
+                        .HasFilter("[MemberType] = 1 AND [IsDeleted] = 0");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex(new[] { "MemberId" }, "IX_MemberProfiles_Clientes"), new[] { "EnrollDate", "SponsorMemberId" });
 
                     b.ToTable("MemberProfiles");
                 });

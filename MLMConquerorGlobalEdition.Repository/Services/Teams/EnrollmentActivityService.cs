@@ -10,13 +10,10 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <inheritdoc />
 /// <remarks>
-/// En SQL, cuatro consultas: las altas del rango cuyo patrocinador está en el equipo (Node de
-/// genealogía del que mira, él incluido, por el nodo más reciente de cada patrocinador, R8), las
-/// órdenes de membresía de esos inscritos con el nivel más alto de cada una (la regla de
-/// <see cref="OrderMembershipLevelQueries"/>), y los nombres y puntos de los patrocinadores. En
-/// memoria: la orden de alta de cada inscrito (la primera), el pivote por tipo y nivel, la
-/// búsqueda, el orden y la página. El rango de actividad (3 meses hacia atrás como mucho, N4)
-/// acota cuántas altas se traen (R5); los Contains van sobre esas filas ya materializadas (R16).
+/// Plan Q: una sola consulta agrupada y paginada en SQL. Las altas del rango (3 meses hacia atrás como mucho, N4) cuyo
+/// patrocinador cuelga del Node del que mira (él incluido; un nodo vivo por miembro, DQ9) se agrupan por patrocinador,
+/// con el tipo y el nivel de alta guardado de cada inscrito (MemberProfiles.SignupMembershipLevelId, regla N2 del Plan J,
+/// <see cref="SignupMembershipLevel"/>). Búsqueda, orden y página también en SQL.
 /// </remarks>
 public sealed class EnrollmentActivityService : IEnrollmentActivityService
 {
@@ -67,102 +64,54 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
         var end    = range.End;
         var root   = me.Node;
 
-        // Las altas del rango cuyo patrocinador está en el equipo. La pertenencia del patrocinador
-        // la decide su nodo MÁS RECIENTE (R8): un JOIN directo a GenealogyTree contaría dos veces a
-        // quien tiene dos nodos y metería a quien se fue con un nodo obsoleto bajo el Node del que mira.
-        // Se materializa UNA vez (R16): todo lo demás sale de estas filas, sin repetir la consulta.
-        var rows = await (
-                from m in _db.MemberProfiles.AsNoTracking()
-                where m.EnrollDate >= start && m.EnrollDate < end && m.SponsorMemberId != null
-                let sponsorNode = _db.GenealogyTree
-                    .Where(g => g.MemberId == m.SponsorMemberId)
-                    .OrderByDescending(g => g.CreationDate)
-                    .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
-                    .Select(g => new { g.Node, g.Level })
-                    .FirstOrDefault()
-                where sponsorNode != null && sponsorNode.Node!.IsDescendantOf(root)
-                select new
-                {
-                    m.MemberId,
-                    SponsorMemberId = m.SponsorMemberId!,
-                    m.MemberType,
-                    SponsorLevel    = sponsorNode!.Level
-                })
-            .ToListAsync(ct);
-        if (rows.Count == 0) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
-
-        var enrolledIds = rows.Select(r => r.MemberId).Distinct().ToList();
-        var sponsorIds  = rows.Select(r => r.SponsorMemberId).Distinct().ToList();
-
-        // Corrección de Nick N2: el nivel del inscrito lo da su ORDEN DE ALTA (la primera suya con
-        // productos de membresía), el más alto de sus productos. Ni la suscripción ni una compra
-        // posterior lo mueven de columna. No se filtra por estado del pedido: el alta ocurrió.
-        // Una sola consulta (R16): las órdenes de membresía de los inscritos con el nivel más alto
-        // de cada una, la misma regla que OrderMembershipLevelQueries (g.Max()); la primera de cada
-        // miembro se elige en memoria.
-        var membershipOrders = await (
-                from o in _db.Orders.AsNoTracking()
-                where enrolledIds.Contains(o.MemberId)
-                join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
-                join p in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-                where p.MembershipLevelId != null
-                group p.MembershipLevelId!.Value by new { o.Id, o.MemberId, o.OrderDate, o.CreationDate } into g
-                select new { g.Key.MemberId, g.Key.OrderDate, g.Key.CreationDate, LevelId = g.Max() })
-            .ToListAsync(ct);
-
-        var signupLevel = membershipOrders
-            .GroupBy(o => o.MemberId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderBy(o => o.OrderDate).ThenBy(o => o.CreationDate).First().LevelId);
-
-        var names = await _db.MemberProfiles.AsNoTracking()
-            .Where(p => sponsorIds.Contains(p.MemberId))
-            .Select(p => new { p.MemberId, FullName = p.FirstName + " " + p.LastName })
-            .ToDictionaryAsync(x => x.MemberId, x => x.FullName, ct);
-
-        var points = (await _db.MemberStatistics.AsNoTracking()
-                .Where(st => sponsorIds.Contains(st.MemberId))
-                .Select(st => new { st.MemberId, st.EnrollmentPoints })
-                .ToListAsync(ct))
-            .GroupBy(x => x.MemberId)
-            .ToDictionary(g => g.Key, g => g.First().EnrollmentPoints);
-
-        var result = rows
-            .GroupBy(r => r.SponsorMemberId)
-            .Select(g =>
+        // Plan Q: las altas del rango cuyo patrocinador cuelga del que mira, agrupadas por patrocinador EN SQL. El nodo del
+        // patrocinador es unico (UX_GenealogyTree_MemberId_Vivo); el nivel de alta viene guardado (SignupMembershipLevelId,
+        // regla N2). Antes: TOP 1 correlacionado con IsDescendantOf por alta, los pedidos de los inscritos por lista de ids
+        // y el pivote en memoria (mas de 30 s con 1.000.000).
+        var porPatrocinador =
+            from m in _db.MemberProfiles.AsNoTracking()
+            where m.EnrollDate >= start && m.EnrollDate < end && m.SponsorMemberId != null
+            join g in _db.GenealogyTree.AsNoTracking().Under(root) on m.SponsorMemberId equals g.MemberId
+            group new { m.MemberType, m.SignupMembershipLevelId } by new { g.MemberId, g.Level } into grp
+            select new
             {
-                var row = new EnrollmentActivityRowView
-                {
-                    MemberId             = g.Key,
-                    FullName             = names.GetValueOrDefault(g.Key, g.Key),
-                    Level                = g.Min(x => x.SponsorLevel) - me.Level,
-                    EnrollmentTeamPoints = points.GetValueOrDefault(g.Key)
-                };
+                grp.Key.MemberId,
+                grp.Key.Level,
+                Customers   = grp.Count(x => x.MemberType == MemberType.ExternalMember),
+                Ambassadors = grp.Count(x => x.MemberType != MemberType.ExternalMember),
+                Level1      = grp.Count(x => x.SignupMembershipLevelId == 1),
+                Level2      = grp.Count(x => x.SignupMembershipLevelId == 2),
+                Level3      = grp.Count(x => x.SignupMembershipLevelId == 3),
+                Level4      = grp.Count(x => x.SignupMembershipLevelId == 4),
+                OtherLevel  = grp.Count(x => x.SignupMembershipLevelId == null
+                                          || (x.SignupMembershipLevelId != 1 && x.SignupMembershipLevelId != 2
+                                              && x.SignupMembershipLevelId != 3 && x.SignupMembershipLevelId != 4))
+            };
 
-                foreach (var e in g)
-                {
-                    if (e.MemberType == MemberType.ExternalMember) row.Customers++;
-                    else row.Ambassadors++;
-
-                    switch (signupLevel.GetValueOrDefault(e.MemberId))
-                    {
-                        case 1:  row.Level1++;     break;
-                        case 2:  row.Level2++;     break;
-                        case 3:  row.Level3++;     break;
-                        case 4:  row.Level4++;     break;
-                        default: row.OtherLevel++; break;
-                    }
-                }
-
-                return row;
-            })
-            .ToList();
+        var query =
+            from a in porPatrocinador
+            join p in _db.MemberProfiles.AsNoTracking() on a.MemberId equals p.MemberId
+            select new EnrollmentActivityRowView
+            {
+                MemberId             = a.MemberId,
+                FullName             = p.FirstName + " " + p.LastName,
+                Level                = a.Level - me.Level,
+                Customers            = a.Customers,
+                Ambassadors          = a.Ambassadors,
+                Level1               = a.Level1,
+                Level2               = a.Level2,
+                Level3               = a.Level3,
+                Level4               = a.Level4,
+                OtherLevel           = a.OtherLevel,
+                EnrollmentTeamPoints = _db.MemberStatistics.Where(s => s.MemberId == a.MemberId)
+                                          .OrderBy(s => s.Id).Select(s => s.EnrollmentPoints).FirstOrDefault()
+            };
 
         if (request.Sorts.Count == 0)
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentActivityRowView.Ambassadors), Direction = "desc" });
 
-        return Result<PagedResult<EnrollmentActivityRowView>>.Success(result.ToGridResult(request, SearchableFields));
+        return Result<PagedResult<EnrollmentActivityRowView>>.Success(
+            await query.ToGridResultAsync(request, SearchableFields, ct: ct));
     }
 
     private static PagedResult<EnrollmentActivityRowView> Empty(GridDataRequest request) => new()

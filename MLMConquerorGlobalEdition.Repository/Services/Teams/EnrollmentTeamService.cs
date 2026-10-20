@@ -130,9 +130,18 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var tamano   = await TeamSizeAsync(memberId, ct);
         var limitado = TeamGridLimits.Limit(request, tamano);
 
-        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure: request.Sorts.Count == 0);
-        // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo.
-        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct, unfilteredTotal: tamano);
+        string? prefijo = null;
+        if (limitado && !string.IsNullOrWhiteSpace(request.Search))
+        {
+            prefijo = request.Search;   // DQ8: por prefijo con indice; la rejilla no vuelve a buscar por subcadena
+            request.Search = null;
+        }
+        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
+                                          byStructure: request.Sorts.Count == 0, prefixTerm: prefijo);
+        // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo. Con el
+        // prefijo el resultado ya no es el equipo entero y se cuenta.
+        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
+                                                   unfilteredTotal: prefijo is null ? tamano : null);
         await EnrichPageAsync(result.Items, ct);
         result.Limited = limitado;
         return result;
@@ -151,15 +160,19 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// requested PAGE only by <see cref="EnrichPageAsync"/>.
     /// </summary>
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
-        HierarchyId root, int rootLevel, string memberId, bool byStructure = false)
+        HierarchyId root, int rootLevel, string memberId, bool byStructure = false, string? prefixTerm = null)
     {
         var equipo = _db.GenealogyTree.AsNoTracking().CurrentUnder(root).Where(g => g.MemberId != memberId);
         // Plan Q (DQ7): el orden por estructura va sobre el nodo, antes del join y de la proyeccion (la vista no lleva
         // Node): la pagina sale del recorrido de IX_GenealogyTree_Node, sin ordenar el rango (la Tarea 26 lo comprueba).
         if (byStructure) equipo = equipo.OrderBy(g => g.Node);
+        // Plan Q (DQ8): con el limite, solo los perfiles cuyo nombre completo o id empieza por el termino (con indice).
+        var perfiles = prefixTerm is null
+            ? _db.MemberProfiles.AsNoTracking()
+            : MemberNameSearch.Apply(_db, _db.MemberProfiles.AsNoTracking(), prefixTerm);
         return
             from g in equipo
-            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            join m in perfiles on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {
                 MemberId        = m.MemberId,
@@ -608,13 +621,14 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 };
         }
 
-        // Plan M (M16, forma B): se parte del rango de Node del que mira y se queda con el nodo VIGENTE de
-        // cada miembro (R8): ni duplica a quien tiene dos nodos ni mete a quien se fue con uno obsoleto.
-        // Los llamadores no llegan aquí sin Node en el alcance Equipo.
+        // Plan Q: se parte de los clientes (IX_MemberProfiles_Clientes, pocos) y se comprueba que su nodo cae en el rango
+        // del que mira. Con un nodo vivo por miembro (Tarea 21), Under es el equipo vigente: sin antijoin. Antes se partia
+        // del rango del equipo entero (un millon de filas) para quedarse con los clientes. Los llamadores no llegan aqui
+        // sin Node en el alcance Equipo.
         return
-            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root!)
-            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            from m in _db.MemberProfiles.AsNoTracking()
             where m.MemberType == MemberType.ExternalMember && m.MemberId != memberId
+            join g in _db.GenealogyTree.AsNoTracking().Under(root!) on m.MemberId equals g.MemberId
             select new EnrollmentCustomerView
             {
                 MemberId        = m.MemberId,

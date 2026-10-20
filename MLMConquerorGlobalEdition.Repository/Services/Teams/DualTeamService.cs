@@ -111,11 +111,24 @@ public class DualTeamService : IDualTeamService
         // indice de la clave. Antes se anadia EnrollDate desc, que con un millon de filas ordenaba el rango entero.
         var ordenPedido = request.Sorts.Any(s => DualRowSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
                                               || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase));
-        var filas = MyTeamRows(myNode);
+        IQueryable<DualMyTeamRow> filas;
+        int? totalSinFiltros = tamano;
+        if (limitado && !string.IsNullOrWhiteSpace(request.Search))
+        {
+            // Plan Q (DQ8): por encima del limite, por el comienzo del nombre o del id, con indice (SearchUnder). El
+            // termino sale de la peticion (la rejilla no lo vuelve a aplicar por subcadena) y el total se cuenta.
+            filas = Project(DualSubtree.SearchUnder(_db, myNode, request.Search).AsNoTracking());
+            request.Search  = null;
+            totalSinFiltros = null;
+        }
+        else
+        {
+            filas = MyTeamRows(myNode);
+        }
         if (!ordenPedido) filas = ByStructure(filas);
 
         // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
-        var paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: tamano);
+        var paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: totalSinFiltros);
 
         var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode, memberId, ct);
         return new PagedResult<DualTeamMyTeamMemberView>
@@ -340,12 +353,10 @@ public class DualTeamService : IDualTeamService
         var rootNode = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == rootMemberId, ct);
         if (rootNode is null) return new();
 
-        // Plan P: el subarbol por el rango de la clave; los mas cercanos primero. (La busqueda pasa a prefijo en la Tarea 23.)
-        var s = term.Trim().ToLower();
+        // Plan Q (DQ8): por el comienzo del nombre completo o del id, con indice; los mas cercanos primero.
         var matches = await (
-            from d in DualSubtree.Under(_db, rootNode).AsNoTracking()
+            from d in DualSubtree.SearchUnder(_db, rootNode, term).AsNoTracking()
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
-            where m.MemberId.ToLower().Contains(s) || (m.FirstName + " " + m.LastName).ToLower().Contains(s)
             orderby d.Depth, d.MemberId
             select new { Node = d, m.FirstName, m.LastName }
         ).Take(take).ToListAsync(ct);

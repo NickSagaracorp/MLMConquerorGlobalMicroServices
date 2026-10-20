@@ -18,6 +18,11 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     // Personal info
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+
+    /// <summary>Plan Q (DQ8): «nombre apellido», calculada y persistida (CI_AI), para buscar por prefijo con indice.</summary>
+    public string? SearchName { get; private set; }
+    /// <summary>Plan Q (DQ8): «apellido nombre», para encontrar por el apellido.</summary>
+    public string? SearchNameReversed { get; private set; }
     public DateTime DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? WhatsApp { get; set; }
@@ -43,6 +48,12 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public DateTime EnrollDate { get; set; }
     public string? SponsorMemberId { get; set; }
     public string? ReplicateSiteSlug { get; set; }
+
+    /// <summary>
+    /// Plan Q (DQ10): el nivel del alta (regla N2 del Plan J: el nivel mas alto del primer pedido con productos de membresia).
+    /// Lo mantiene SignupMembershipLevel.RefreshAsync; null si el miembro no tiene pedido de membresia.
+    /// </summary>
+    public int? SignupMembershipLevelId { get; set; }
 
     /// <summary>
     /// Marca de mantener calificado (Plan J, corrección de Nick N3): con la membresía activa, cuenta

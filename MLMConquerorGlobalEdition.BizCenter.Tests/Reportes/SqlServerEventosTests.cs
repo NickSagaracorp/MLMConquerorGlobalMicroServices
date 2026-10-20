@@ -99,4 +99,25 @@ public class SqlServerEventosTests
 
         await tx.RollbackAsync();
     });
+
+    /// <summary>Plan Q: inscritos y totales unen con el rango del equipo, sin el TOP 1 correlacionado con IsDescendantOf.</summary>
+    [SqlServerFact]
+    public Task Inscritos_y_totales_unen_con_el_rango_sin_IsDescendantOf() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        var cap = new CapturadorDeSql();
+        await using var db = cap.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var id = Nuevos();
+        await TeamEventRegistrationsServiceTests.EscenarioAsync(db, id, sembrarRango: false);
+        var servicio = TeamEventRegistrationsServiceTests.Servicio(db);
+        cap.Limpiar();
+
+        var inscritos = (await servicio.GetGridAsync(id.Yo, id.Evento, true, new GridDataRequest { PageSize = 50 })).Value!.Items.ToList();
+        var totales   = (await servicio.GetTotalsAsync(id.Yo, id.Evento)).Value!;
+
+        inscritos.Select(f => f.MemberId).Should().BeEquivalentTo(new[] { id.A, id.Yo });
+        (totales.Registered, totales.Tickets).Should().Be((2, 6));
+        cap.Textos.Should().NotContain(t => t.Contains("IsDescendantOf"));
+        await tx.RollbackAsync();
+    });
 }

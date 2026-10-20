@@ -58,7 +58,8 @@ public class EnrollmentActivityServiceTests
         ReportesDb.Suscripcion(db, $"{prefijo}5", 2, MembershipStatus.Active, new DateTime(2026, 3, 21));
 
         ReportesDb.Miembro(db, $"{prefijo}6", otro, alta: new DateTime(2026, 3, 15));
-        await db.SaveChangesAsync();
+        // Plan Q (DQ10): el servicio lee el nivel de alta guardado; se rellena como lo harian el alta y el script.
+        await ReportesDb.NivelesDeAltaAsync(db);
         return db;
     }
 

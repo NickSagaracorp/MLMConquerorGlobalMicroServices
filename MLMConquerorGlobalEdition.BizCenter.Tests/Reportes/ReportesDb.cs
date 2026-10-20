@@ -233,6 +233,18 @@ public static class ReportesDb
     }
 
     /// <summary>
+    /// Plan Q (DQ10): rellena SignupMembershipLevelId de los perfiles seguidos con la regla N2, como hacen el alta
+    /// (SignupMembershipLevel) y 02-nivel-de-alta.sql. Guarda antes, porque la regla consulta los pedidos en la base.
+    /// </summary>
+    public static async Task NivelesDeAltaAsync(AppDbContext db)
+    {
+        await db.SaveChangesAsync();
+        foreach (var perfil in db.MemberProfiles.Local.ToList())
+            await Repository.Queries.SignupMembershipLevel.RefreshAsync(db, perfil);
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Un pedido de <paramref name="memberId"/> con un producto por cada nivel de
     /// <paramref name="niveles"/> (null = un producto que no es de membresía). Un pedido de alta
     /// lleva Lifestyle Ambassador (1) y, si acaso, VIP, Elite o Turbo: su nivel es el más alto.

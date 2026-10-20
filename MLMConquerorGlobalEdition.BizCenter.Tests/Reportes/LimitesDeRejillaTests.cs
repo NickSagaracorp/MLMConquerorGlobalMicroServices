@@ -130,4 +130,23 @@ public class LimitesDeRejillaTests
             (await Dual(db).GetMyTeamAsync(Yo, 1, 20, "AMB-000003", null, null)).TotalCount.Should().Be(1);
         }
     }
+
+    /// <summary>Plan Q (DQ8): por encima del limite, la busqueda es por el comienzo del nombre o del id.</summary>
+    [Fact]
+    public async Task Dual_con_mas_de_20000_busca_por_prefijo_y_no_por_subcadena()
+    {
+        await using var db = await DualAsync(30_000);
+        (await Dual(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "000003" })).Items.Should().BeEmpty();
+        (await Dual(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "amb-000003" }))
+            .Items.Select(i => i.MemberId).Should().Equal(B);
+    }
+
+    [Fact]
+    public async Task Inscripcion_con_mas_de_20000_busca_por_prefijo_y_no_por_subcadena()
+    {
+        await using var db = await InscripcionAsync(30_000);
+        (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "000003" })).Items.Should().BeEmpty();
+        (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "amb-000003" }))
+            .Items.Select(i => i.MemberId).Should().Equal(B);
+    }
 }

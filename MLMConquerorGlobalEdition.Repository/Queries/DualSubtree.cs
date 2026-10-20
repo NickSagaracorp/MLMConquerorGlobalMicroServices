@@ -33,6 +33,30 @@ public static class DualSubtree
     }
 
     /// <summary>
+    /// Plan Q (DQ8): los nodos bajo <paramref name="node"/> (el no) cuyo miembro casa con <paramref name="term"/> por el
+    /// comienzo del nombre completo o del id (MemberNameSearch). Parte de los perfiles que casan, unos pocos, y comprueba el
+    /// rango de la clave; asi el optimizador, recompilado por la etiqueta, busca primero por el indice de nombre.
+    /// </summary>
+    public static IQueryable<DualTeamEntity> SearchUnder(AppDbContext db, DualTeamEntity node, string term)
+    {
+        if (!db.Database.IsSqlServer())
+        {
+            var ids = MemberNameSearch.Apply(db, db.MemberProfiles, term).Select(m => m.MemberId);
+            return Under(db, node).Where(d => ids.Contains(d.MemberId));
+        }
+        var (lo, hi) = DualBinaryPath.SubtreeBounds(Key(node));
+        return db.DualTeamTree
+            .FromSqlRaw(@"SELECT d.* FROM MemberProfiles m
+JOIN DualTeamTree d ON d.MemberId = m.MemberId AND d.IsDeleted = 0
+WHERE m.IsDeleted = 0 AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t OR m.MemberId LIKE @t)
+  AND d.BinaryPath > @lo AND d.BinaryPath < @hi AND d.MemberId <> @self",
+                new SqlParameter("@t", SqlDbType.NVarChar, 210) { Value = MemberNameSearch.Pattern(term) },
+                Param("@lo", lo), Param("@hi", hi),
+                new SqlParameter("@self", SqlDbType.NVarChar, 450) { Value = node.MemberId })
+            .TagWith(RecompileTag);
+    }
+
+    /// <summary>
     /// Plan Q: solo los MemberId de los descendientes de <paramref name="node"/>, leidos por el indice cubriente
     /// UX_DualTeamTree_BinaryPath (con la pista: con SELECT * el optimizador elegia a veces una interseccion paralela
     /// de tres indices, de 400 a 1.660 ms con 119.000; asi, unos 200 ms sin carga). Para contar o unir con otra tabla.

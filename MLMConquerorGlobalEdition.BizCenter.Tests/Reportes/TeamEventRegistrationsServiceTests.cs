@@ -181,4 +181,22 @@ public class TeamEventRegistrationsServiceTests
 
         (t.Value!.Registered, t.Value.Tickets).Should().Be((2, 6));
     }
+
+    /// <summary>Plan Q (DQ7): «Todo el equipo» por encima de TeamGridLimits.FreeMaxRows ordena por estructura y lo avisa.</summary>
+    [Theory]
+    [InlineData(30_000, true)]
+    [InlineData(2, false)]
+    public async Task Todo_el_equipo_por_encima_del_limite_ordena_por_estructura_y_lo_avisa(int tamano, bool limitado)
+    {
+        await using var db = ReportesDb.Nueva();
+        var id = Ids.Fijos;
+        await EscenarioAsync(db, id);
+        ReportesDb.Puntos(db, id.Yo, 0).EnrollmentTeamSize = tamano;
+        await db.SaveChangesAsync();
+
+        var r = (await Servicio(db).GetGridAsync(id.Yo, id.Evento, false, new GridDataRequest { PageSize = 50 })).Value!;
+
+        r.Limited.Should().Be(limitado);
+        r.Items.Should().HaveCount(3);
+    }
 }

@@ -2,6 +2,7 @@ using System.Data;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using Xunit.Abstractions;
 
@@ -101,4 +102,39 @@ public class SqlServerActividadTests
 
         await tx.RollbackAsync();
     });
+
+    /// <summary>Plan Q: la actividad agrupa en SQL; ni IsDescendantOf ni los ids de los inscritos viajan como lista.</summary>
+    [SqlServerFact]
+    public Task La_actividad_no_manda_IsDescendantOf_ni_listas_de_ids() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        var cap = new CapturadorDeSql();
+        await using var db = cap.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var yo = SqlServerReportes.NuevoId();
+        var a  = SqlServerReportes.NuevoId();
+        var prefijo = SqlServerReportes.NuevoId("TN")[..13];   // los inscritos son {prefijo}1 .. {prefijo}6
+        await EnrollmentActivityServiceTests.EquipoAsync(db, yo, a, SqlServerReportes.NuevoId(), prefijo);
+        cap.Limpiar();
+
+        var r = await new EnrollmentActivityService(db, EnrollmentActivityServiceTests.Reloj).GetGridAsync(
+            yo, new DateTime(2026, 3, 1), new DateTime(2026, 3, 31), new GridDataRequest { PageSize = 50 });
+
+        r.IsSuccess.Should().BeTrue();
+        cap.Textos.Should().NotContain(t => t.Contains("IsDescendantOf"));
+        cap.Valores.Should().NotContain(v => v.Contains(prefijo), "las altas del rango se cuentan en SQL, no viajan como lista de ids");
+        await tx.RollbackAsync();
+    });
+
+    /// <summary>Plan Q (DQ10): tras 02-nivel-de-alta.sql la columna coincide con la regla N2 (2.000 miembros al azar).</summary>
+    [SqlServerFact]
+    public async Task El_nivel_de_alta_guardado_coincide_con_la_regla()
+    {
+        await using var db = SqlServerReportes.Db();
+        var muestra = await db.MemberProfiles.AsNoTracking()
+            .OrderBy(m => Guid.NewGuid()).Take(2000)
+            .Select(m => new { m.MemberId, m.SignupMembershipLevelId }).ToListAsync();
+
+        foreach (var m in muestra)
+            m.SignupMembershipLevelId.Should().Be(await SignupMembershipLevel.ComputeAsync(db, m.MemberId), m.MemberId);
+    }
 }

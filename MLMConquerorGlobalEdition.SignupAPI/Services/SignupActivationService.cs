@@ -49,6 +49,8 @@ public class SignupActivationService : ISignupActivationService
         member.Status         = MemberAccountStatus.Active;
         member.LastUpdateDate = now;
         member.LastUpdateBy   = actorEmail;
+        // Plan Q (DQ10): el nivel de alta guardado (regla N2), por si la eleccion de productos no lo dejo puesto.
+        await SignupMembershipLevel.RefreshAsync(_db, member, ct);
 
         // El mes de membresía arranca cuando el dinero está cobrado, no cuando se rellenó el
         // formulario. En la vía de cripto eso puede ser días después.

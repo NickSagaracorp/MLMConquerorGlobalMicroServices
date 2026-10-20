@@ -19,8 +19,16 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         // admite índice: se indexa con la fecha de alta para los clientes personales y la actividad.
         builder.Property(x => x.SponsorMemberId).HasMaxLength(450);
         builder.HasIndex(x => new { x.SponsorMemberId, x.EnrollDate });
-        // Plan J: la actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto.
-        builder.HasIndex(x => x.EnrollDate);
+        // Plan J: la actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto. Plan Q (DQ10): con
+        // el patrocinador, el tipo y el nivel de alta incluidos, Actividad agrupa sin ir a la tabla.
+        builder.HasIndex(m => m.EnrollDate).HasDatabaseName("IX_MemberProfiles_EnrollDate")
+            .IncludeProperties(m => new { m.SponsorMemberId, m.MemberType, m.SignupMembershipLevelId });
+
+        // Plan Q: los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
+        // global de MemberProfile anade IsDeleted = 0 a todas sus consultas, asi que el indice filtrado sirve.
+        builder.HasIndex(new[] { nameof(MemberProfile.MemberId) }, "IX_MemberProfiles_Clientes")
+            .HasFilter("[MemberType] = 1 AND [IsDeleted] = 0")
+            .IncludeProperties(m => new { m.EnrollDate, m.SponsorMemberId });
 
         // Plan J (N3): las filas que ya existen quedan sin la marca; nadie pasa a calificado solo.
         builder.Property(x => x.KeepQualified).IsRequired().HasDefaultValue(false);
@@ -35,6 +43,14 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
 
         builder.Property(x => x.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(x => x.LastName).IsRequired().HasMaxLength(100);
+        // Plan Q (DQ8): nombre completo y nombre invertido, calculados y persistidos con intercalacion sin tildes ni
+        // mayusculas, para buscar por el comienzo con un Index Seek (Full-Text no esta instalado). MemberNameSearch los usa.
+        builder.Property(m => m.SearchName).HasMaxLength(201)
+            .HasComputedColumnSql("CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", stored: true);
+        builder.Property(m => m.SearchNameReversed).HasMaxLength(201)
+            .HasComputedColumnSql("CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", stored: true);
+        builder.HasIndex(m => m.SearchName).HasDatabaseName("IX_MemberProfiles_SearchName").IncludeProperties(m => m.MemberId);
+        builder.HasIndex(m => m.SearchNameReversed).HasDatabaseName("IX_MemberProfiles_SearchNameReversed").IncludeProperties(m => m.MemberId);
         builder.Property(x => x.Phone).HasMaxLength(30);
         builder.Property(x => x.Country).IsRequired().HasMaxLength(100);
         builder.Property(x => x.State).HasMaxLength(100);
