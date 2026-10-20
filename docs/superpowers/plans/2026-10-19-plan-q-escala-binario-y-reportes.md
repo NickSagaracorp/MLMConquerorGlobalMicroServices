@@ -3058,7 +3058,7 @@ Dos importantes, cinco menores y una investigación. Lo que cambió:
 - Create: `MLMConquerorGlobalEdition.Domain.Tests/GenealogyUplineTests.cs`
 - Modify: `MLMConquerorGlobalEdition.RankEngine/Features/EvaluateRank/EvaluateRankHandler.cs:24-28, 255-257`
 
-- [ ] **Paso 1.** Prueba en rojo:
+- [x] **Paso 1.** Prueba en rojo:
 
 ```csharp
 using MLMConquerorGlobalEdition.Domain.Services;
@@ -3079,7 +3079,7 @@ public class GenealogyUplineTests
 }
 ```
 
-- [ ] **Paso 2.** Implementación:
+- [x] **Paso 2.** Implementación:
 
 ```csharp
 namespace MLMConquerorGlobalEdition.Domain.Services;
@@ -3108,11 +3108,11 @@ public static class GenealogyUpline
 }
 ```
 
-- [ ] **Paso 3.** `EvaluateRankHandler`:
+- [x] **Paso 3.** `EvaluateRankHandler`:
   - `public const int UplineNotificationLevels = GenealogyUpline.EnrollmentLevels;` (`:28`);
   - las líneas 255-257 pasan a `GenealogyUpline.Closest(genealogyNode?.HierarchyPath, memberId)`;
   - se borra `ParseAncestors` si queda sin usos.
-- [ ] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter FullyQualifiedName~GenealogyUpline` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` en verde. Commit: `Plan Q: la cota de la linea de inscripcion vive en GenealogyUpline`.
+- [x] **Paso 4.** `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter FullyQualifiedName~GenealogyUpline` y `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests` en verde. Commit: `Plan Q: la cota de la linea de inscripcion vive en GenealogyUpline`.
 
 ### Tarea 17: el alta encola y avisa a 10 niveles
 
@@ -3123,7 +3123,7 @@ public static class GenealogyUpline
 - Modify: `MLMConquerorGlobalEdition.Signups.Tests/Features/Signups/SignupAmbassadorHandlerTests.cs` (prueba nueva)
 - Create: `MLMConquerorGlobalEdition.Billing.Tests/Services/Recurring/DownstreamTriggersTests.cs` (hoy `DownstreamTriggers` no tiene pruebas)
 
-- [ ] **Paso 1.** Pruebas en rojo (InMemory).
+- [x] **Paso 1.** Pruebas en rojo (InMemory).
   - En `SignupAmbassadorHandlerTests`, un patrocinador a 15 niveles de la raíz: el alta deja exactamente 10 filas de `RankEvaluationQueue` con `TriggerEvent = Enrollment`, para el patrocinador y sus 9 ascendientes más cercanos, y el `Mock<IPushNotificationService>` recibe `DownlineEnrolled` una vez para cada uno de esos 10 y ninguna para los otros 5. Solo el nodo del patrocinador hace falta: la línea sale de su ruta, y el `Node` de 15 niveles es para `NextChildAsync`.
 
 ```csharp
@@ -3220,7 +3220,7 @@ public class DownstreamTriggersTests
 ```
 
   `IDateTimeProvider` aquí es el de `Billing.Services` (el que pide el constructor); `IPushNotificationService` va con alias porque `SharedKernel.Interfaces` también define un `IDateTimeProvider` y los dos `using` chocarían. **Esperado:** hoy salen 15 en las dos.
-- [ ] **Paso 2.** En los dos manejadores, en los dos bucles de cada uno (cola de rango y avisos), la lista de ascendientes pasa a ser la línea acotada; el cuerpo de cada bucle no cambia:
+- [x] **Paso 2.** En los dos manejadores, en los dos bucles de cada uno (cola de rango y avisos), la lista de ascendientes pasa a ser la línea acotada; el cuerpo de cada bucle no cambia:
 
 ```csharp
             // Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
@@ -3229,8 +3229,8 @@ public class DownstreamTriggersTests
 ```
 
   Sustituye a `var uplineIds = sponsorNode.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries);` (cola de rango, `SignupAmbassadorHandler.cs:315-316`, `SignupMemberHandler.cs:198-199`) y a la misma expresión con `.ToList()` (avisos, `SignupAmbassadorHandler.cs:355-357`, `SignupMemberHandler.cs:238-240`). `using MLMConquerorGlobalEdition.Domain.Services;` en los dos ficheros.
-- [ ] **Paso 3.** `DownstreamTriggers.ParseUplineIds` (`:189-198`) se borra, y la llamada de `:75` pasa a `var uplineIds = GenealogyUpline.Closest(row.HierarchyPath, row.MemberId);`.
-- [ ] **Paso 4.** Las pruebas existentes de las dos suites siembran un patrocinador de un solo nivel, así que siguen dando una fila y un aviso. En verde: `dotnet test MLMConquerorGlobalEdition.Signups.Tests` y `dotnet test MLMConquerorGlobalEdition.Billing.Tests`, en serie. Commit: `Plan Q: el alta y la facturacion encolan rango y avisan a la linea de patrocinio hasta 10 niveles`.
+- [x] **Paso 3.** `DownstreamTriggers.ParseUplineIds` (`:189-198`) se borra, y la llamada de `:75` pasa a `var uplineIds = GenealogyUpline.Closest(row.HierarchyPath, row.MemberId);`.
+- [x] **Paso 4.** Las pruebas existentes de las dos suites siembran un patrocinador de un solo nivel, así que siguen dando una fila y un aviso. En verde: `dotnet test MLMConquerorGlobalEdition.Signups.Tests` y `dotnet test MLMConquerorGlobalEdition.Billing.Tests`, en serie. Commit: `Plan Q: el alta y la facturacion encolan rango y avisan a la linea de patrocinio hasta 10 niveles`.
 
 ### Tarea 18: un delta por alta (`Scope = SponsorLine`)
 
@@ -3244,7 +3244,7 @@ public class DownstreamTriggersTests
 
 **Las Tareas 18 y 19 no se despliegan por separado.** Con la 18 sola, el trabajo de deltas de hoy trataría la fila `SponsorLine` como una fila del propio patrocinador: los ascendientes dejarían de recibir sus puntos de inscripción. En local se hacen en commits seguidos y no se arranca SignupAPI entre los dos; en producción van en la misma ventana (lo son todas las migraciones del plan, ver «Despliegue») (Q-R23).
 
-- [ ] **Paso 1.** Prueba en rojo (InMemory). Activar un alta cuyo patrocinador está a 12 niveles deja **una** fila de `MemberStatisticDeltas`: `MemberId` = el patrocinador, `Scope = SponsorLine`, `EnrollmentPointsDelta` = los puntos de calificación del pedido, `EnrollmentTeamSizeDelta = 1` y `QualifiedSponsoredMembersDelta = 1`. **Esperado:** hoy no compila (no existe `Scope`); con el enum y la propiedad, salen 12 filas.
+- [x] **Paso 1.** Prueba en rojo (InMemory). Activar un alta cuyo patrocinador está a 12 niveles deja **una** fila de `MemberStatisticDeltas`: `MemberId` = el patrocinador, `Scope = SponsorLine`, `EnrollmentPointsDelta` = los puntos de calificación del pedido, `EnrollmentTeamSizeDelta = 1` y `QualifiedSponsoredMembersDelta = 1`. **Esperado:** hoy no compila (no existe `Scope`); con el enum y la propiedad, salen 12 filas.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -3300,7 +3300,7 @@ public class ActivacionUnDeltaPorAltaTests
 }
 ```
 
-- [ ] **Paso 2.** El enum y la propiedad:
+- [x] **Paso 2.** El enum y la propiedad:
 
 ```csharp
 namespace MLMConquerorGlobalEdition.Domain.Entities.Member;
@@ -3320,7 +3320,7 @@ public enum MemberStatisticDeltaScope
     public MemberStatisticDeltaScope Scope { get; set; }
 ```
 
-- [ ] **Paso 3.** `dotnet ef migrations add DeltaPorLineaDePatrocinio …`. Al final del `Up`:
+- [x] **Paso 3.** `dotnet ef migrations add DeltaPorLineaDePatrocinio …`. Al final del `Up`:
 
 ```csharp
             // Plan Q: los ascendientes de un Node de inscripcion, el mismo incluido (Distancia 0), sin leer la tabla.
@@ -3332,7 +3332,7 @@ FROM dbo.Numeros(@node.GetLevel() - 1) n;");
 ```
 
   En el `Down`: `DROP FUNCTION IF EXISTS dbo.GenealogyAncestors;`.
-- [ ] **Paso 4.** `SignupActivationService.cs:69-106` pasa a:
+- [x] **Paso 4.** `SignupActivationService.cs:69-106` pasa a:
 
 ```csharp
             if (sponsorNode is not null)
@@ -3356,7 +3356,7 @@ FROM dbo.Numeros(@node.GetLevel() - 1) n;");
 ```
 
   Se borra `ParseHierarchyPath` (`:153-154`), que queda sin usos.
-- [ ] **Paso 5.** La prueba del Paso 1 en verde. Aplicar la migración en local. Commit (el trabajo se cambia en la Tarea 19, que va a continuación sin arrancar SignupAPI entre medias): `Plan Q: la activacion encola un solo delta de estadisticas por alta para toda la linea de patrocinio`.
+- [x] **Paso 5.** La prueba del Paso 1 en verde. Aplicar la migración en local. Commit (el trabajo se cambia en la Tarea 19, que va a continuación sin arrancar SignupAPI entre medias): `Plan Q: la activacion encola un solo delta de estadisticas por alta para toda la linea de patrocinio`.
 
 ### Tarea 19: el trabajo de deltas, por conjuntos
 
@@ -3366,7 +3366,7 @@ FROM dbo.Numeros(@node.GetLevel() - 1) n;");
 - Modify: `MLMConquerorGlobalEdition.Signups.Tests/Jobs/ApplyMemberStatisticDeltasJobTests.cs` (InMemory: caso `SponsorLine`)
 - Sin cambios, pero tiene que seguir en verde: `MLMConquerorGlobalEdition.Signups.Tests/Features/Signups/SignupRankInputsTests.cs` (siembra nodos **sin** `Node` en `:206-218` y `:308-326` y exige que el abuelo reciba los puntos en `:371-375`; por eso la rama InMemory sube por `ParentMemberId`, no por `Node`, revisión I6)
 
-- [ ] **Paso 1.** Prueba en rojo, `[SqlServerFact]` dentro de una transacción que se deshace. Una línea de 12 niveles (L0 a L11), cada uno con su `MemberStatistics`, y un delta `SponsorLine` sobre L11 con 6 puntos. Tras el trabajo:
+- [x] **Paso 1.** Prueba en rojo, `[SqlServerFact]` dentro de una transacción que se deshace. Una línea de 12 niveles (L0 a L11), cada uno con su `MemberStatistics`, y un delta `SponsorLine` sobre L11 con 6 puntos. Tras el trabajo:
   - los 12 tienen `EnrollmentPoints` +6 y `EnrollmentTeamSize` +1;
   - solo L11 tiene `QualifiedSponsoredMembers` +1;
   - hay una evaluación de rango pendiente para L11 a L2 (10) y ninguna para L1 ni L0;
@@ -3462,7 +3462,7 @@ public class SqlServerDeltasPorLineaTests
 
   (`using MLMConquerorGlobalEdition.Domain.Entities.Tree;` en ese fichero.) **Esperado:** las dos fallan (hoy solo L11 recibe el delta).
 
-- [ ] **Paso 2.** El trabajo. En SQL Server, cada tanda es **un** comando por conjuntos y **una** transacción (revisión C2): sin ella, el `MERGE`, la cola de rango y la marca `IsApplied` se confirmaban por separado, y una caída (o una víctima de interbloqueo) entre el `MERGE` y la marca volvía a aplicar el `MERGE` en la siguiente pasada. El interbloqueo es probable: el vaciado de piernas actualiza `MemberStatistics.DualTeamPoints` de las mismas filas en otro orden. La tanda se reintenta entera si es víctima (1205). La rama InMemory expande `SponsorLine` subiendo por `ParentMemberId` del nodo vigente de cada miembro (revisión I6).
+- [x] **Paso 2.** El trabajo. En SQL Server, cada tanda es **un** comando por conjuntos y **una** transacción (revisión C2): sin ella, el `MERGE`, la cola de rango y la marca `IsApplied` se confirmaban por separado, y una caída (o una víctima de interbloqueo) entre el `MERGE` y la marca volvía a aplicar el `MERGE` en la siguiente pasada. El interbloqueo es probable: el vaciado de piernas actualiza `MemberStatistics.DualTeamPoints` de las mismas filas en otro orden. La tanda se reintenta entera si es víctima (1205). La rama InMemory expande `SponsorLine` subiendo por `ParentMemberId` del nodo vigente de cada miembro (revisión I6).
 
 ```csharp
 using Hangfire;
@@ -3691,7 +3691,7 @@ DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;";
   - El `MERGE`, la cola y la marca van en la misma transacción: o se aplica la tanda entera o no se aplica nada y los deltas siguen pendientes.
   - Con la base actual hay un solo `MemberStatistics` por miembro; si hubiera varios, el `MERGE` los actualizaría todos, igual que el `MERGE` de hoy.
   - La cota de la cola de rango es `GenealogyUpline.EnrollmentLevels`, la misma constante que usan las Tareas 16 y 17: cambiarla (Q1) es cambiar un número.
-- [ ] **Paso 3.** En verde: la prueba nueva, `ApplyMemberStatisticDeltasJobTests` y `SignupRankInputsTests` (`dotnet test MLMConquerorGlobalEdition.Signups.Tests` entero y el filtro `SqlServerDeltasPorLinea` de BizCenter.Tests). Commit: `Plan Q: el trabajo de deltas expande la linea de patrocinio en SQL y aplica las estadisticas con un MERGE por tanda en una transaccion`.
+- [x] **Paso 3.** En verde: la prueba nueva, `ApplyMemberStatisticDeltasJobTests` y `SignupRankInputsTests` (`dotnet test MLMConquerorGlobalEdition.Signups.Tests` entero y el filtro `SqlServerDeltasPorLinea` de BizCenter.Tests). Commit: `Plan Q: el trabajo de deltas expande la linea de patrocinio en SQL y aplica las estadisticas con un MERGE por tanda en una transaccion`.
 
 ### Tarea 19b: calificados de inscripción mantenidos por la cola de estadísticas (DQ13)
 
@@ -3720,7 +3720,7 @@ El progreso de rango lee el contador.
 - Modify: `MLMConquerorGlobalEdition.Signups.Tests/Features/Signups/ActivacionUnDeltaPorAltaTests.cs` (de la Tarea 18), `AltaPorCriptoTests.cs:560, :627, :695` y `CompleteSignupHandlerTests.cs:741, :826`
 - Modify: `MLMConquerorGlobalEdition.RankEngine.Tests/Features/SqlServerProgresoDeRangoTests.cs:55-95`
 
-- [ ] **Paso 1.** Pruebas en rojo.
+- [x] **Paso 1.** Pruebas en rojo.
   - **InMemory, en `QualifiedTeamDeltasTests`.** La activación y la cancelación dejan una fila `AncestorsOf` con su signo:
 
 ```csharp
@@ -3828,7 +3828,7 @@ El progreso de rango lee el contador.
 
   **Esperado:** no compilan (no existen `AncestorsOf`, `EnrollmentQualifiedTeamMembers` ni su delta).
 
-- [ ] **Paso 2.** Entidades, junto a sus vecinas:
+- [x] **Paso 2.** Entidades, junto a sus vecinas:
 
 ```csharp
     // MemberStatisticEntity, despues de EnrollmentTeamSize
@@ -3852,7 +3852,7 @@ El progreso de rango lee el contador.
 
   `dotnet ef migrations add CalificadosDeInscripcion …`. **Esperado:** dos columnas `int` NOT NULL con valor 0. Aplicar en local con `--connection`.
 
-- [ ] **Paso 3.** `QualifiedTeamDeltas.Record` (Tarea 8b) encola también la fila de estadísticas, con la misma idempotencia. Dentro del bucle, después del `DualLegDelta`, y con `yaEncoladosInscripcion` calculado como `yaEncolados` pero sobre las `MemberStatisticDelta` añadidas con `Scope == AncestorsOf` y `CreatedBy == Actor`:
+- [x] **Paso 3.** `QualifiedTeamDeltas.Record` (Tarea 8b) encola también la fila de estadísticas, con la misma idempotencia. Dentro del bucle, después del `DualLegDelta`, y con `yaEncoladosInscripcion` calculado como `yaEncolados` pero sobre las `MemberStatisticDelta` añadidas con `Scope == AncestorsOf` y `CreatedBy == Actor`:
 
 ```csharp
             var faltaInscripcion = cambios.GetValueOrDefault(memberId) - yaEncoladosInscripcion.GetValueOrDefault(memberId);
@@ -3867,7 +3867,7 @@ El progreso de rango lee el contador.
 
   El `continue` de `falta == 0` se cambia para que cada cola decida por su cuenta: primero las dos cuentas y después cada `if`. El resumen de la clase dice «un delta propio de la cola de piernas y una fila `AncestorsOf` de la cola de estadísticas».
 
-- [ ] **Paso 4.** `ApplyMemberStatisticDeltasJob` (Tarea 19).
+- [x] **Paso 4.** `ApplyMemberStatisticDeltasJob` (Tarea 19).
   - **`ApplyBatchSql`.** Empieza tomando el candado de la cola de estadísticas, con el que `04-calificados-de-inscripcion.sql` la excluye (Paso 6). Sus filas llevan el alcance y el delta nuevo, y la cola de rango ignora `AncestorsOf`. Sustituye al de la Tarea 19:
 
 ```sql
@@ -3941,7 +3941,7 @@ DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;
     - el grupo suma `QQ = g.Sum(f => f.Delta.EnrollmentQualifiedTeamMembersDelta)` y lo aplica a `EnrollmentQualifiedTeamMembers` al actualizar y al crear;
     - `Encolar` pasa a `g.Any(f => f.Delta.Scope != MemberStatisticDeltaScope.AncestorsOf && f.Distancia < GenealogyUpline.EnrollmentLevels)`.
 
-- [ ] **Paso 5.** El manejador. Las líneas 110-133 (el nodo de inscripción y el recuento) pasan a:
+- [x] **Paso 5.** El manejador. Las líneas 110-133 (el nodo de inscripción y el recuento) pasan a:
 
 ```csharp
         // Plan Q (DQ13): los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas, Tarea 19b): O(1),
@@ -3957,7 +3957,7 @@ DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;
 
   Sale el `using MLMConquerorGlobalEdition.Repository.Queries;` si ya no se usa. Con la Tarea 8b, el manejador no cuenta ningún equipo: lee el nodo binario, una fila de estadísticas y los servicios de puntos.
 
-- [ ] **Paso 6.** `Scripts/sql/plan-q/04-calificados-de-inscripcion.sql`, el relleno y el recálculo desde cero. Va de abajo arriba por `Level`, por conjuntos, con los servicios parados, y neutraliza en la cola la parte que recalcula.
+- [x] **Paso 6.** `Scripts/sql/plan-q/04-calificados-de-inscripcion.sql`, el relleno y el recálculo desde cero. Va de abajo arriba por `Level`, por conjuntos, con los servicios parados, y neutraliza en la cola la parte que recalcula.
 
 ```sql
 /*
@@ -4064,14 +4064,14 @@ END CATCH
 
   Ejecutar en local. **Esperado:** en la verificación, `Contador = AlVuelo` en las cinco raíces, y para AMB-700829, el valor de la Tarea 2. Una segunda ejecución da `Cambiados = 0` y `Creados = 0`.
 
-- [ ] **Paso 7.** Las pruebas que cuentan filas de `MemberStatisticDeltas` después de una activación ven ahora una fila más, la `AncestorsOf` del activado. Hoy son estas, y cada una filtra `d.Scope != MemberStatisticDeltaScope.AncestorsOf` y añade la aserción de que hay exactamente una `AncestorsOf` con `+1` para el activado:
+- [x] **Paso 7.** Las pruebas que cuentan filas de `MemberStatisticDeltas` después de una activación ven ahora una fila más, la `AncestorsOf` del activado. Hoy son estas, y cada una filtra `d.Scope != MemberStatisticDeltaScope.AncestorsOf` y añade la aserción de que hay exactamente una `AncestorsOf` con `+1` para el activado:
   - `ActivacionUnDeltaPorAltaTests` (Tarea 18): el `ContainSingle()` pasa a ser sobre `Scope == SponsorLine`;
   - `AltaPorCriptoTests.cs:560`, `:627` y `:695`;
   - `CompleteSignupHandlerTests.cs:741` y `:826`.
 
   Las que esperan 0 filas (`AltaPorCriptoTests.cs:357`, `DescuentoCerradoEnElAltaTests.cs:67`, `TarjetaApagadaEnElAltaTests.cs:104`) no activan, así que siguen en 0; si alguna falla, es que activa y se corrige igual. `BinarioDb.LimpiarAsync` borra también `DELETE FROM MemberStatisticDeltas WHERE MemberId LIKE {patron}`.
 
-- [ ] **Paso 8.** En verde, en serie:
+- [x] **Paso 8.** En verde, en serie:
   - `dotnet test MLMConquerorGlobalEdition.Signups.Tests` entero;
   - en BizCenter.Tests, los filtros `Binario` y `SqlServerDeltasPorLinea`;
   - `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests`;
@@ -4084,7 +4084,7 @@ END CATCH
 **Files:**
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanQTests.cs` (de la Tarea 10)
 
-- [ ] **Paso 1.** Prueba de medición contra la base local, en una transacción que se deshace. Simula 1.000 altas bajo el miembro más profundo de la inscripción local (la rama más larga): una fila `SponsorLine` por alta, como deja la activación (Tarea 18). Comprueba que:
+- [x] **Paso 1.** Prueba de medición contra la base local, en una transacción que se deshace. Simula 1.000 altas bajo el miembro más profundo de la inscripción local (la rama más larga): una fila `SponsorLine` por alta, como deja la activación (Tarea 18). Comprueba que:
   - quedan 1.000 filas de deltas (antes, 1.000 × profundidad);
   - el trabajo las aplica en menos de 10 s;
   - `EnrollmentTeamSize` de la raíz sube 1.000.
@@ -4129,7 +4129,38 @@ END CATCH
     }
 ```
 
-- [ ] **Paso 2.** Anotar en «Resultados medidos». Commit: `Plan Q: medicion local del alta acotada y del trabajo de deltas por conjuntos`.
+- [x] **Paso 2.** Anotar en «Resultados medidos». Commit: `Plan Q: medicion local del alta acotada y del trabajo de deltas por conjuntos`.
+
+### Notas de ejecución del bloque 4 (2026-10-20)
+
+Commits: Tarea 16 `9b55b8e`, Tarea 17 `b3316e7`, Tarea 18 `a6ad12b`, Tarea 19 `3deec17`, inventario de los puntos por membresía (Q-R34) `d6188a6`, Tarea 19b `f66da1d` y `c1efbff` (la regla `EscritoresDeSuscripcionesTests` admite `04-calificados-de-inscripcion.sql`: solo lee las suscripciones, como `04-contadores-y-colas.sql`), Tarea 20 en el commit de estas notas. Q1 sigue con su valor por defecto: `GenealogyUpline.EnrollmentLevels = 10`.
+
+Migraciones aplicadas en local con `--connection`: `DeltaPorLineaDePatrocinio` (columna `MemberStatisticDeltas.Scope`, `int NOT NULL DEFAULT 0`, y la función `dbo.GenealogyAncestors`) y `CalificadosDeInscripcion` (`MemberStatistics.EnrollmentQualifiedTeamMembers` y `MemberStatisticDeltas.EnrollmentQualifiedTeamMembersDelta`, `int NOT NULL DEFAULT 0`). Son aditivas: el código del árbol `-run` (`a97e96f`) sigue funcionando, porque no las mapea y sus inserciones toman el valor por defecto.
+
+Desviaciones respecto al texto de las tareas:
+- **Tarea 18.** La fila del alta lleva `EnrollmentPointsDelta = 0`, no los puntos del pedido: desde DQ16 los puntos los encola `MembershipPointsDeltas` al pasar la suscripción a `Active` (la activación ya escribía 0). La prueba lo espera así. `Scope` lleva `HasDefaultValue(Member)` en la configuración.
+- **Inventario del Bloque 4 (Q-R34), commit propio entre la 19 y la 19b.** El paso 2 del inventario es anterior a la tercera revisión del bloque 2 (I-b): desde entonces el propio también recibe su cambio de `EnrollmentPoints` por la cola, así que una fila `AncestorsOf` (sin el propio) no basta. Queda así:
+  - con nodo de inscripción propio: **una** fila `SponsorLine` sobre el propio, con `EnrollmentPointsDelta` = el neto y los demás contadores a 0; el trabajo la aplica al propio y a cada ascendiente de su `Node`;
+  - sin nodo propio: una fila suya (`Member`) y una `SponsorLine` sobre el primer patrocinador de su cadena que tenga nodo (la regla de la tercera revisión, con guarda de ciclos); si nadie lo tiene, solo la suya;
+  - la cola de rango sigue la regla común `Distancia < @niveles` desde el `MemberId` de la fila: con la `SponsorLine` sobre el propio, se evalúan el propio y sus 9 ascendientes más cercanos (10 en total). El paso 3 del inventario (que las `AncestorsOf` con puntos encolen rango) no hace falta: `AncestorsOf` queda solo para los calificados y nunca encola;
+  - la idempotencia (paso 4) no cambia: lo ya encolado es la fila cuyo `MemberId` es el propio. `Un_guardado_que_falla_y_se_reintenta_cuenta_una_vez` sigue en verde;
+  - prueba nueva `PuntosUnaFilaPorLineaTests` (InMemory, Signups): activar a 12 niveles deja una fila `member-points` y, tras el trabajo, el propio y sus 12 ascendientes suman los puntos y solo el propio y sus 9 más cercanos tienen evaluación pendiente;
+  - pruebas ajustadas: `PuntosSinNodoDeInscripcionTests` (comprueba las dos filas), `AltaPorCriptoTests` (una fila de puntos, no dos), `CancelMembershipHandlerTests` (siembra el nodo del patrocinador: la línea sube nodo a nodo, como en la base), y `SqlServerPuntosPorMembresiaTests` y `SqlServerPuntosConcurrentesTests`, que sembraban nodos de inscripción sin `Node` y ahora lo llevan (el trabajo expande la línea por el `Node`; en local no hay ningún nodo vivo sin `Node`).
+- **Tarea 19b.**
+  - `SqlServerProgresoDeRangoTests`: además de lo que dice el paso, se vacía `cap.Textos` junto con `cap.Valores` tras aplicar la cola, para que la aserción mire solo los comandos del manejador.
+  - `BinarioDb.LimpiarAsync` ya borraba `MemberStatisticDeltas` por `MemberId` y por `SourceMemberId` (segunda revisión del bloque 2): sin cambio.
+  - `CompleteSignupHandlerTests.cs:741, :826` no cambian: filtran por el patrocinador o por el propio sin nodo, y la fila `AncestorsOf` del activado no entra en esos filtros. Sí cambian `ActivacionUnDeltaPorAltaTests` y `AltaPorCriptoTests` (las tres), con la aserción de una sola `AncestorsOf` con `+1`.
+  - `04-calificados-de-inscripcion.sql` se ejecutó en local con los servicios `-run` en marcha. Es seguro porque el código `-run` no escribe filas `AncestorsOf` ni toca el contador. Resultado: 119.446 nodos, 501 contadores cambiados, 0 filas creadas, 7 s; AMB-700829 `Contador = AlVuelo = 12.060` (el valor de la Tarea 2) y ROOT001 5 = 5. Segunda pasada: `Cambiados = 0`, `Creados = 0`.
+- **Tarea 20.** El equipo «antes» de la raíz se lee dentro de la transacción, no fuera, para que una alta de los servicios `-run` entre las dos lecturas no descuadre la diferencia.
+
+Pendiente o a vigilar:
+- **Árbol `-run`.** Sigue en `a97e96f`, con el trabajo de deltas y la activación viejos. Mientras siga así:
+  - sus activaciones y cancelaciones no mueven `EnrollmentQualifiedTeamMembers`. Al actualizarlo, volver a ejecutar `04-calificados-de-inscripcion.sql` con los servicios parados;
+  - una fila `SponsorLine` creada por el código nuevo la aplicaría el trabajo viejo solo al `MemberId` (Q-R23). Solo la crean las pruebas que confirman (`SqlServerPuntosConcurrentesTests`), y estas limpian por prefijo. No arrancar SignupAPI con el código nuevo sin el trabajo nuevo, ni al revés.
+- **Cota de los cambios de estado (Q1).** En un alta, la línea evaluada es el propio y sus 10 ascendientes más cercanos (la `SponsorLine` del alta sobre el patrocinador más la de puntos sobre el propio). En una cancelación, retención o reactivación sin alta, es el propio y sus 9 más cercanos: el décimo pasa al barrido nocturno. Si Nick quiere 10 ascendientes también ahí, se cambia en el SQL (`Distancia <= @niveles` para las filas de puntos), sin tocar la constante.
+- `05-realinear-puntos-por-membresia.sql` no toma el candado `member-statistic-deltas` que ahora pide el trabajo en cada tanda. No hace falta, porque `05` exige todos los servicios parados, pero se puede añadir si algún día se ejecuta con la cola en uso.
+- No se midió el progreso de rango de AMB-700829 con el contador (no es una medición del bloque). Va en el Bloque 7.
+- Suites en serie, con los servicios `-run` en marcha y `dotnet build` sin errores: Domain 150, BizCenter 1.175 de 1.177, Signups 1.158, AdminAPI 632 (1 saltada), RankEngine 134, CommissionEngine 94 y Billing 735. Los dos fallos de BizCenter: `EscritoresDeSuscripcionesTests`, por el script nuevo (corregido en `c1efbff`), y el frágil conocido `SqlServerVenenoEnLaColaTests.Un_tiempo_agotado_no_cuenta_como_intento_ni_aparta_deltas` (el candado lo tenía el trabajo `-run`). Repetidas solas, las 12 de esas dos clases pasan.
 
 ---
 
@@ -5908,6 +5939,8 @@ Tarea 15 (base local, `Medicion.runsettings`, 2026-10-20; 119.433 nodos, profund
 
 Revisión del bloque 3 (base local, `Medicion.runsettings`, 2026-10-20; los mismos datos, con los servicios `-run` en marcha; `Escrituras_a_mas_de_8000_niveles` con las esperas medidas aparte; tres pasadas): espera de los candados del vaciado 5 / 6 / 4 ms; vaciar el delta de la hoja (2 deltas aplicados) **2.046 / 1.693 / 2.317 ms, mediana 2.046 ms** ❌ por 46 ms frente a los 2 s (CPU de la sesión 2.372 / 1.840 / 2.671 ms, ~199.000 lecturas lógicas, ninguna espera `LCK_*`); espera del árbol en exclusivo 3 / 3 / 5 ms; colocar la raíz provisional con 50, 632 / 641 / 723 ms (mediana 641 ms ✅); colocar una hoja sin la subida 41 / 40 / 38 ms ✅ (en frío 494 / 878 / 714 ms); retirar un nodo con equipo 458 / 271 / 476 ms ✅. En las 6 pasadas de diagnóstico anteriores, el vaciado fue de 1.294 a 3.968 ms y la espera de su candado nunca pasó de 8 ms. El reparto y la conclusión están en la «Revisión del bloque 3»: es CPU de la tanda, no espera de candado ni regresión del bloque 3.
 
+Tarea 20 (base local, `Medicion.runsettings`, 2026-10-20; con los servicios `-run` en marcha; transacción que se deshace): 1.000 altas bajo el miembro más profundo de la inscripción local (AMB-629094, nivel 8; raíz AMB-700829) dejan **1.000 filas** `SponsorLine` en `MemberStatisticDeltas` (antes, una por ascendiente: 8.000) y el trabajo las aplica en 4.569 (en frío) / 1.910 / 1.184 / 1.219 ms ✅ (< 10 s); la raíz suma exactamente 1.000 a `EnrollmentTeamSize`. La inscripción local solo tiene 8 niveles: la medida a profundidad real es la del Bloque 7 (nivel máximo de inscripción 429 con 500.000).
+
 Espacio tras `RetiraRutaDelBinario` y `03-recuperar-espacio-de-la-ruta.sql` (base local, 2026-10-20, recuperación SIMPLE): `DualTeamTree` baja de **3.013 MB a 153 MB**; el registro se queda en 8.200 MB, sin cambio.
 
 ---
@@ -5962,7 +5995,7 @@ Si en algún momento hay que ejecutar `02-recalcular-piernas.sql` o `04-contador
 | Q-R9 | **Nodos de inscripción repetidos en producción.** La migración `UnNodoPorMiembro` falla cerrada (51108) si los hay. | Script `01` con `SoloInforme` (pregunta Q2). Marca como borrados, no borra: es reversible. |
 | Q-R10 | **Eliminar `HierarchyPath` no se deshace con la migración.** El `Down` vuelve a crear la columna vacía. | Volver atrás es restaurar la copia del paso 2 del despliegue. Ningún lector la necesita (Tareas 11 a 14, con la regla). |
 | Q-R11 | **La base vacía puede diferir de la real.** `HelpdeskModule` reproduce `fix_helpdesk_tables.sql`, pero las bases reales pudieron recibir otros arreglos a mano. | La prueba compara la base vacía con el modelo, no con la local. Se puede comparar además con la local en solo lectura y anotar las diferencias. |
-| Q-R12 | **Escrituras por ascendiente que no vienen del alta.** | DQ16 (revisión del bloque 2): `UplineAggregator` ya no escribe estadísticas, y los puntos de la cancelación los encola `MembershipPointsDeltas` (al binario en O(1); a la línea de patrocinio una fila por ascendiente hasta el Bloque 4). `CancelMembershipHandler` y `ProcessScheduledCancellationsJob` siguen restando `EnrollmentTeamSize` y `QualifiedSponsoredMembers` por ascendiente, sin cota: el mismo patrón del Bloque 4 (un delta `SponsorLine` con signo) lo resolvería. Segunda revisión del bloque 2 (I2): `MembershipPointsDeltas` escribe una fila por ascendiente en **cada** activación, cancelación, retención, reactivación y cambio de nivel, y el trabajo de deltas encola una evaluación de rango por cada una, sin cota (Q-R34). Los pasos exactos están en el inventario del Bloque 4. |
+| Q-R12 | **Escrituras por ascendiente que no vienen del alta.** | DQ16 (revisión del bloque 2): `UplineAggregator` ya no escribe estadísticas, y los puntos de la cancelación los encola `MembershipPointsDeltas` (al binario en O(1); a la línea de patrocinio, desde el Bloque 4, una sola fila). `CancelMembershipHandler` y `ProcessScheduledCancellationsJob` siguen restando `EnrollmentTeamSize` y `QualifiedSponsoredMembers` por ascendiente, sin cota: el mismo patrón del Bloque 4 (un delta `SponsorLine` con signo) lo resolvería. Segunda revisión del bloque 2 (I2): `MembershipPointsDeltas` escribía una fila por ascendiente en cada cambio de estado o de nivel (Q-R34); **resuelto en el Bloque 4** (una fila, rango acotado). |
 | Q-R13 | **La fase 2 del barrido nocturno evalúa a todos los embajadores activos**, sin medir con 1.000.000. | Sin medir. Si Q1 se acepta, pasa a ser la vía de los ascendientes lejanos: medirlo antes de producción con la base de escala. |
 | Q-R14 | **`SignupMembershipLevelId` debe mantenerse.** Un camino nuevo que cree el pedido de alta sin llamar a `SignupMembershipLevel` dejaría al miembro en «Otro» en Actividad. | Un único componente, llamado desde la elección de productos y la activación. `02-verificar-escala.sql` y la prueba de contraste lo vigilan. |
 | Q-R15 | **Actividad con 1.000.000** puede seguir por encima de 2 s si la ventana de 3 meses abarca casi todo el equipo (el peor caso sintético). | Si no cumple: una tabla resumen diaria por patrocinador, nivel y tipo, que alimenta el alta. Se decide con la cifra. |
@@ -5978,12 +6011,12 @@ Si en algún momento hay que ejecutar `02-recalcular-piernas.sql` o `04-contador
 | Q-R26 | **Deltas propios que esperan en la cola de piernas.** Un miembro activo sin nodo binario vivo (sin colocar, o retirado y no recolocado) deja sus propios en `DualLegDeltas` hasta que se le coloca (DQ13). | Es una fila por cambio de estado de alguien sin colocar. El vaciado no los elige (una búsqueda por `MemberId` por arranque) y `04` los rehace como uno por miembro. Si con 1.000.000 fueran muchos, se pasan a una tabla propia; `02-verificar-escala.sql` los cuenta. |
 | Q-R27 | **Un miembro con dos suscripciones activas cuenta dos**, y una suscripción activa borrada lógicamente sigue contando. | Es lo que cuenta hoy el recuento al vuelo (Q-R21), y la prueba del Bloque 1 lo fija. Cambiarlo sería un cambio de regla, fuera de este plan. |
 | Q-R28 | **Nada mueve nodos de inscripción hoy.** Si se añade un cambio de patrocinador, los contadores de inscripción (`EnrollmentPoints`, `EnrollmentTeamSize`, `EnrollmentQualifiedTeamMembers`) no se moverían solos. | Ese cambio tendría que encolar los negativos en la línea vieja y los positivos en la nueva, como el binario, o ejecutar después los recálculos. Hoy solo escriben nodos las tres altas (Tarea 21). |
-| Q-R29 | **Una activación deja dos filas en `MemberStatisticDeltas`**: la `SponsorLine` del alta y la `AncestorsOf` del cambio de estado. | Sigue siendo O(1) por alta. El trabajo las expande igual, y la `AncestorsOf` no encola evaluaciones de rango. |
+| Q-R29 | **Una activación deja tres filas en `MemberStatisticDeltas`**: la `SponsorLine` del alta (sobre el patrocinador: tamaño del equipo y patrocinados), la `AncestorsOf` de los calificados y la `SponsorLine` de los puntos (sobre el propio; Q-R34). | Sigue siendo O(1) por alta. El trabajo las expande igual, y la `AncestorsOf` no encola evaluaciones de rango. |
 | Q-R30 | **Deltas apartados de la cola de piernas** (revisión del bloque 2, M-2 y M-3): un delta de pierna sin nodo vivo en su arranque, o los de un arranque cuya tanda falla tres veces, pasan a `DualLegDeltaDeadLetters` y sus piernas quedan sin ellos. | Segunda revisión del bloque 2 (I1): solo un error de **datos** (8115, 8114, 220, 232, 517, 8134, 245, 2627, 2601, 547, 515, 8152, 2628) cuenta como intento, y solo en el trabajo de cada minuto; un tiempo agotado, una caída o conmutación, el registro o un archivo llenos, la memoria o una espera de candado se propagan sin anotar nada, así que no apartan deltas sanos. Cada apartado se avisa en el registro; además, mientras la tabla tenga filas, cada pasada del trabajo lo registra como error con la cuenta y la salud del sistema (`GET api/v1/admin/system/health`, comprobación `dualLegDeadLetters`) deja AdminAPI en `Degraded`. Para reponer uno, con los servicios parados se vuelve a insertar en `DualLegDeltas` y se borra de la tabla. |
 | Q-R31 | **La instantánea nocturna contradecía DQ16 en la inscripción.** `MemberStatisticSnapshotJob` reescribía cada noche `EnrollmentPoints` con la suma de los pedidos completados de todo el equipo, activos o no. | **Resuelto** (segunda revisión del bloque 2, C2): la instantánea ya no reescribe `EnrollmentPoints` (solo lo copia al historial); lo mantienen las colas y lo recalcula `05-realinear-puntos-por-membresia.sql` por conjuntos. `RecomputeEnrollmentPointsAsync` pasa a ser la suma de lo que aportan las activas del subárbol vigente. Se descartó recalcularlo cada noche con la definición nueva: sería O(equipo) por miembro (con 1.000.000, inviable) y las colas ya lo dejan exacto. Con ello desaparece el aviso de miembros sin `Node` de la instantánea (ya no recalcula nada). |
 | Q-R32 | **Datos que no cumplían DQ16.** En local, 106.195 miembros con `PersonalPoints` distinto de 0 sin ninguna suscripción activa (106.193 retenidos por cobro y 2 pendientes; otros 38 eran restos de pruebas `PQ*`/`TSK-`, ya borrados); todos los que tienen una activa cumplían la regla. Con el interceptor relativo, reactivar a uno de ellos sumaba sus puntos otra vez (C1). Siguen sin tocar la suscripción la devolución o el contracargo de un pedido y la suspensión de la cuenta desde el admin (Q3). | **Resuelto** (segunda revisión del bloque 2, C1): el interceptor es absoluto por miembro tocado (se corrige en su primer cambio) y `05-realinear-puntos-por-membresia.sql` + `02-recalcular-piernas.sql` dejan toda la base en la regla (paso 6c del despliegue, obligatorio). Ejecutado en local (segunda revisión del bloque 2). |
 | Q-R33 | **Un `PersonalPoints` escrito a mano** (semillas, pruebas, SQL) que no esté en las piernas. | Con el interceptor absoluto, el primer cambio de suscripción de ese miembro deja `PersonalPoints` en la suma de lo que aportan sus activas y encola la diferencia: las piernas, que nunca tuvieron lo escrito a mano, quedan descuadradas en esa cantidad. En producción nadie escribe `PersonalPoints` fuera de `MembershipPointsDeltas`. Tras una escritura así: `05` y `02`. Las pruebas que siembran puntos a mano los escriben después de guardar las suscripciones (`RankScenarioBuilder`). |
-| Q-R34 | **Abanico de inscripción de los cambios de estado** (segunda revisión del bloque 2, I2): cada activación, cancelación, retención, reactivación o cambio de nivel escribe una fila de `MemberStatisticDeltas` por ascendiente y una evaluación de rango por cada uno. | No se arregla en este bloque: lo hace el Bloque 4 con una sola fila (`AncestorsOf` con puntos, o `SponsorLine` sin nodo) y con la misma cota de evaluación de rango que el alta (`GenealogyUpline.EnrollmentLevels`). Pasos en el inventario del Bloque 4. |
+| Q-R34 | **Abanico de inscripción de los cambios de estado** (segunda revisión del bloque 2, I2): cada activación, cancelación, retención, reactivación o cambio de nivel escribe una fila de `MemberStatisticDeltas` por ascendiente y una evaluación de rango por cada uno. | **Resuelto en el Bloque 4** (ver sus notas de ejecución): una sola fila por cambio, `SponsorLine` sobre el propio si tiene nodo (o la suya y una `SponsorLine` sobre el primer patrocinador con nodo), y la misma cota de evaluación de rango que el alta (`GenealogyUpline.EnrollmentLevels`, contando desde el propio). |
 | Q-R24 | **`03-recuperar-espacio-de-la-ruta.sql` hace crecer el registro** en recuperación completa (decenas de GB a escala). | Se ejecuta fuera de la ventana, vigilando `log_reuse_wait_desc` y con copias del registro durante la ejecución si hace falta (Tarea 13). |
 
 ## Preguntas para Nick

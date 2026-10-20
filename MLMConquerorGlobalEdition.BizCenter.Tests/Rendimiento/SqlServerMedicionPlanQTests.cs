@@ -152,4 +152,47 @@ public class SqlServerMedicionPlanQTests
             await BinarioDb.LimpiarAsync(x);
         }
     }
+
+    /// <summary>
+    /// Tarea 20: 1.000 altas bajo el miembro mas profundo de la inscripcion local, una fila SponsorLine por alta (como la
+    /// activacion, Tarea 18). Quedan 1.000 filas (antes, 1.000 por la profundidad), el trabajo las aplica en menos de 10 s y
+    /// la raiz suma 1.000 a su equipo. En una transaccion que se deshace.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Mil_altas_bajo_el_miembro_mas_profundo_se_aplican_en_menos_de_10_s()
+    {
+        await using var db = SqlServerReportes.Db();
+        db.Database.SetCommandTimeout(300);
+        var hondo = await db.GenealogyTree.AsNoTracking().Where(g => g.Node != null)
+            .OrderByDescending(g => g.Level).ThenBy(g => g.Id).FirstAsync();
+        var nodoRaiz = hondo.Node!.GetAncestor(hondo.Node.GetLevel() - 1);
+        var raiz = await db.GenealogyTree.AsNoTracking().Where(g => g.Node == nodoRaiz).Select(g => g.MemberId).SingleAsync();
+        int Equipo(List<Domain.Entities.Member.MemberStatisticEntity> s) => s.OrderBy(x => x.Id).First().EnrollmentTeamSize;
+        _salida.WriteLine($"Miembro mas profundo de inscripcion: {hondo.MemberId}, nivel {hondo.Level}; raiz {raiz}");
+
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var antes = Equipo(await db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == raiz).ToListAsync());
+        // Los pendientes de la base local no son de esta medicion: se dan por aplicados dentro de la transaccion.
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        for (var i = 0; i < 1000; i++)
+            db.MemberStatisticDeltas.Add(new Domain.Entities.Member.MemberStatisticDelta
+            {
+                MemberId = hondo.MemberId, Scope = Domain.Entities.Member.MemberStatisticDeltaScope.SponsorLine,
+                EnrollmentPointsDelta = 6, EnrollmentTeamSizeDelta = 1, QualifiedSponsoredMembersDelta = 1,
+                SourceMemberId = $"MEDQ{i:0000}", CreatedBy = "medicion", CreationDate = DateTime.Now
+            });
+        await db.SaveChangesAsync();
+        (await db.MemberStatisticDeltas.CountAsync(d => !d.IsApplied)).Should().Be(1000, "una fila por alta, no una por ascendiente");
+
+        var t = Stopwatch.StartNew();
+        await new Repository.Jobs.ApplyMemberStatisticDeltasJob(db, new Reloj(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Repository.Jobs.ApplyMemberStatisticDeltasJob>.Instance).ExecuteAsync();
+        t.Stop();
+        var despues = Equipo(await db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == raiz).ToListAsync());
+        await tx.RollbackAsync();
+
+        _salida.WriteLine($"Aplicar 1.000 altas a {hondo.Level} niveles: {t.ElapsedMilliseconds} ms");
+        (despues - antes).Should().Be(1000);
+        t.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
+    }
 }
