@@ -104,11 +104,11 @@ public class AnnualFeeMemberQueriesTests
         (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeFalse();
     }
 
+    // Revision de Q3 (I4): OnHold tambien excluye (La_membresia_vigente_retenida_OnHold_esta_en_espera).
     [Theory]
-    [InlineData(MembershipStatus.OnHold)]
     [InlineData(MembershipStatus.Expired)]
     [InlineData(MembershipStatus.Cancelled)]
-    public async Task Solo_HoldByBilling_excluye(MembershipStatus estado)
+    public async Task Solo_HoldByBilling_y_OnHold_excluyen(MembershipStatus estado)
     {
         await using var db = await ConPerfilAsync();
         Suscripcion(db, estado, Hoy.AddMonths(-2));
@@ -152,5 +152,31 @@ public class AnnualFeeMemberQueriesTests
         await db.SaveChangesAsync();
 
         (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipCancelled.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Revision de Q3 (I4): la membresia vigente retenida por el admin (OnHold, al suspender o inactivar la cuenta) cuenta
+    /// como en espera igual que HoldByBilling: la cuota anual se pospone y "Pagar ahora" no se ofrece.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task La_membresia_vigente_retenida_OnHold_esta_en_espera(bool conMarcaDelAdmin)
+    {
+        await using var db = await ConPerfilAsync();
+        Suscripcion(db, MembershipStatus.Active, Hoy.AddYears(-1));
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            MemberId = Miembro, MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.OnHold, StartDate = Hoy.AddMonths(-2),
+            HeldByAccountStatus = conMarcaDelAdmin ? MemberAccountStatus.Inactive : null, IsAutoRenew = true, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+
+        var hechos = await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy);
+
+        hechos.MembershipOnHold.Should().BeTrue();
+        AnnualFeeEligibility.ForAutomaticCharge(hechos with { Status = MemberAccountStatus.Inactive, KeepQualified = false },
+                Hoy, null, Hoy, force: true)
+            .Should().Be(new AnnualFeeDecision(AnnualFeeDecisionKind.Postpone, AnnualFeeEligibility.ReasonMembershipOnHold));
     }
 }

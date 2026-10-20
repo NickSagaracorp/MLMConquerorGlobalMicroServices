@@ -7,7 +7,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 /// <summary>
 /// Lo que importa del miembro para decidir. Un perfil borrado cuenta como inexistente.
 /// <paramref name="MembershipOnHold"/>: su membresía vigente está en HoldByBilling (decisión de Nick,
-/// 2026-10-17: entonces no se cobra la cuota). Lo calcula <see cref="AnnualFeeMemberQueries.FactsAsync"/>.
+/// 2026-10-17: entonces no se cobra la cuota) u OnHold (revisión de Q3, I4). Lo calcula <see cref="AnnualFeeMemberQueries.FactsAsync"/>.
 /// </summary>
 public sealed record AnnualFeeMemberFacts(
     bool Exists, MemberType MemberType, MemberAccountStatus Status, DateTime EnrollDate, bool KeepQualified,
@@ -95,8 +95,9 @@ public static class AnnualFeeEligibility
         if (member.Status == MemberAccountStatus.Pending)
             return new(AnnualFeeDecisionKind.Postpone, ReasonAccountPending);
 
-        // 3b. Membresía en HoldByBilling (decisión de Nick, 2026-10-17): excluida de la cuota mientras
-        //     siga así. Temporal como la suspensión: se mira mañana sin mover el vencimiento.
+        // 3b. Membresía en HoldByBilling (decisión de Nick, 2026-10-17) u OnHold (revisión de Q3, I4: la
+        //     retenida por el admin al suspender o inactivar la cuenta): excluida de la cuota mientras siga
+        //     así. Temporal como la suspensión: se mira mañana sin mover el vencimiento.
         if (member.MembershipOnHold)
             return new(AnnualFeeDecisionKind.Postpone, ReasonMembershipOnHold);
 

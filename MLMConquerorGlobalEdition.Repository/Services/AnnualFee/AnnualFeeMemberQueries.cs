@@ -11,7 +11,8 @@ namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 public static class AnnualFeeMemberQueries
 {
     /// <summary>
-    /// El perfil y el estado de su membresía vigente: en HoldByBilling (decisión de Nick, 2026-10-17) o
+    /// El perfil y el estado de su membresía vigente: en HoldByBilling (decisión de Nick, 2026-10-17) u OnHold (revisión
+    /// de Q3, I4), o
     /// cancelada (Cancelled o con la cancelación programada cumplida; decisión de Nick, M-8). La vigente es
     /// la suscripción no borrada más reciente por StartDate y luego CreationDate, la misma regla que
     /// QualificationService. Sin perfil: <see cref="AnnualFeeMemberFacts.Missing"/>.
@@ -30,7 +31,9 @@ public static class AnnualFeeMemberQueries
             .FirstOrDefaultAsync(ct);
 
         return AnnualFeeMemberFacts.Of(profile,
-            membershipOnHold: current?.SubscriptionStatus == MembershipStatus.HoldByBilling,
+            // Revision de Q3 (I4): la retenida (OnHold, p. ej. por el admin al suspender o inactivar la cuenta) cuenta igual que
+            // HoldByBilling: la cuota se pospone y "Pagar ahora" no se ofrece.
+            membershipOnHold: current?.SubscriptionStatus is MembershipStatus.HoldByBilling or MembershipStatus.OnHold,
             membershipCancelled: current is not null
                 && Billing.MembershipBillingStops.IsCancelled(current.SubscriptionStatus, current.IsAutoRenew, current.CancellationDate, now));
     }
