@@ -5,6 +5,8 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -19,6 +21,12 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.UpdateMemberStatus
 /// del alta (el primero del miembro) está en Processing —cripto o Entrax esperando— o hay un pago de Entrax en
 /// AwaitingPayment, responde PAYMENT_IN_FLIGHT (409) sin cambiar nada; ahí lo correcto es confirmar la
 /// cripto o hacer Re-check.
+/// <para>
+/// Plan Q (Q3, decidido por Nick): Suspended o Inactive retienen (OnHold) las membresias activas y paran su cobro;
+/// Terminated las cancela; volver a Active reactiva solo las que retuvo el admin (<see cref="AccountStatusMemberships"/>).
+/// Los puntos de toda la linea los resta y los devuelve el interceptor. Volver a Active desde Terminated no se bloquea
+/// (como hasta ahora), pero no reactiva nada: sus membresias quedaron canceladas.
+/// </para>
 /// </summary>
 public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusCommand, Result<AdminMemberDto>>
 {
@@ -57,6 +65,23 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
                 "This member has a signup payment in progress (crypto or SBP). Confirm the crypto payment or use " +
                 "Re-check instead of activating manually.");
 
+        // Plan Q (Q3): el candado de puntos del miembro ANTES de leer sus suscripciones (como la subida y la bajada): sin el,
+        // un cambio de nivel a la vez podia dejar una activa nueva sin retener. El guardado lo reutiliza y lo suelta al
+        // confirmar; si no se llega a guardar, el finally.
+        await MemberPointsLocks.AcquireAsync(_db, new[] { member.MemberId }, cancellationToken);
+        try
+        {
+            return await ChangeAsync(member, request, cancellationToken);
+        }
+        finally
+        {
+            await MemberPointsLocks.ReleaseAsync(_db);
+        }
+    }
+
+    private async Task<Result<AdminMemberDto>> ChangeAsync(
+        MemberProfile member, UpdateMemberStatusCommand request, CancellationToken cancellationToken)
+    {
         var oldStatus = member.Status;
         var now = _dateTime.Now;
 
@@ -109,6 +134,22 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
                 pendingOrder.LastUpdateDate  = now;
                 pendingOrder.LastUpdateBy    = _currentUser.UserId;
             }
+
+            // Plan Q (Q3): vuelven a Active solo las que retuvo el admin (HeldByAccountStatus); su cobro se reanuda. Una
+            // OnHold de otro origen se queda como esta. Tras Terminated no hay nada que reanudar: se cancelaron.
+            await AccountStatusMemberships.RestoreAsync(_db, member.MemberId, now, _currentUser.UserId, cancellationToken);
+        }
+        // Plan Q (Q3, decidido por Nick): suspender o inactivar retiene las activas (OnHold, con la marca) y para su cobro;
+        // terminar cancela las activas y las retenidas por el admin. El interceptor resta los puntos de toda la linea.
+        else if (request.Request.Status is MemberAccountStatus.Suspended or MemberAccountStatus.Inactive)
+        {
+            await AccountStatusMemberships.HoldAsync(
+                _db, member.MemberId, request.Request.Status, now, _currentUser.UserId, cancellationToken);
+        }
+        else if (request.Request.Status == MemberAccountStatus.Terminated)
+        {
+            await AccountStatusMemberships.CancelForTerminationAsync(
+                _db, member.MemberId, now, _currentUser.UserId, cancellationToken);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
