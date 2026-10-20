@@ -198,7 +198,8 @@ public class ApplyMemberStatisticDeltasJob
             QQ        = g.Sum(f => f.Delta.EnrollmentQualifiedTeamMembersDelta),
             CreatedBy = g.OrderBy(f => f.Delta.Id).First().Delta.CreatedBy,
             // La evaluacion de rango no lee los calificados del equipo: las filas solo de calificados no encolan.
-            Encolar   = g.Any(f => EncolaRango(f.Delta) && f.Distancia < GenealogyUpline.EnrollmentLevels)
+            Encolar   = g.Any(f => EncolaRango(f.Delta) && f.Distancia < GenealogyUpline.EnrollmentLevels
+                                   + (string.Equals(f.Delta.SourceMemberId, f.Delta.MemberId, StringComparison.Ordinal) ? 1 : 0))
         }).ToList();
 
         foreach (var grp in grupos)
@@ -254,15 +255,16 @@ IF @candado < 0
 DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #exp; DROP TABLE IF EXISTS #agg;
 CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Scope int NOT NULL,
                     P int NOT NULL, T int NOT NULL, Q int NOT NULL, QQ int NOT NULL,
-                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Node hierarchyid NULL);
+                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Node hierarchyid NULL,
+                    Propio bit NOT NULL);
 -- Revision del bloque 4: el Node de partida de una fila de linea es el de su nodo vivo VIGENTE (el mas reciente, como
 -- GenealogySubtree.CurrentOfAsync y CurrentNodeAsync al encolar); si ese no tiene Node, no hay linea. Antes se tomaba el
 -- mas reciente CON Node: un vigente sin Node acreditaba una posicion vieja.
-INSERT INTO #lote (Id, MemberId, Scope, P, T, Q, QQ, CreatedBy, Node)
+INSERT INTO #lote (Id, MemberId, Scope, P, T, Q, QQ, CreatedBy, Node, Propio)
 SELECT d.Id, d.MemberId, d.Scope, d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta,
-       d.EnrollmentQualifiedTeamMembersDelta, d.CreatedBy, v.Node
+       d.EnrollmentQualifiedTeamMembersDelta, d.CreatedBy, v.Node, CASE WHEN d.SourceMemberId = d.MemberId THEN 1 ELSE 0 END
 FROM (SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta,
-             EnrollmentQualifiedTeamMembersDelta, CreatedBy
+             EnrollmentQualifiedTeamMembersDelta, CreatedBy, SourceMemberId
       FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id) d
 OUTER APPLY (SELECT TOP 1 g.Node FROM GenealogyTree g
              WHERE d.Scope <> 0 AND g.MemberId = d.MemberId AND g.IsDeleted = 0
@@ -275,7 +277,7 @@ SELECT x.MemberId, x.Distancia, l.Scope, l.P, l.T,
        CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.QQ, l.CreatedBy,
        -- Encola rango: las filas de miembro y las SponsorLine que mueven algo que lee el rango (no la de respaldo de los
        -- calificados, que solo lleva QQ); nunca las AncestorsOf.
-       CASE WHEN l.Scope = 0 OR (l.Scope = 1 AND (l.P <> 0 OR l.T <> 0 OR l.Q <> 0)) THEN 1 ELSE 0 END AS Rango
+       CASE WHEN l.Scope = 0 OR (l.Scope = 1 AND (l.P <> 0 OR l.T <> 0 OR l.Q <> 0)) THEN 1 ELSE 0 END AS Rango, l.Propio
 INTO #exp
 FROM #lote l
 CROSS APPLY (
@@ -312,12 +314,14 @@ WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, 
         CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
     VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, s.QQ, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
 
--- Evaluacion de rango inmediata solo hasta @niveles del patrocinador (DQ5), y nunca por filas solo de calificados
--- (Rango = 0): el rango no lee los calificados del equipo.
+-- Evaluacion de rango inmediata acotada (DQ5), y nunca por filas solo de calificados (Rango = 0): el rango no lee los
+-- calificados del equipo. La cota son 10 por encima de quien cambio (revision del bloque 4, Q1): en un alta, la fila va
+-- sobre el patrocinador (Distancia < @niveles: el y sus 9, los 10 por encima del nuevo); en una fila propia (SourceMemberId
+-- = MemberId: los puntos de una activacion, cancelacion, retencion o reactivacion), el propio y sus @niveles ascendientes.
 INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,
                                  ProcessedBy, ErrorMessage, RetryCount, CreationDate, CreatedBy)
 SELECT e.MemberId, e.MemberId, @enrollment, @now, 0, NULL, NULL, NULL, 0, @now, N'delta-apply'
-FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles AND Rango = 1) e
+FROM (SELECT DISTINCT MemberId FROM #exp WHERE Rango = 1 AND Distancia < @niveles + Propio) e
 WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
                   WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
 

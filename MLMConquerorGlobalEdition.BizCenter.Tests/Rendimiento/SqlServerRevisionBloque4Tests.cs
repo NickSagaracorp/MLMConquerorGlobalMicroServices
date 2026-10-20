@@ -202,4 +202,26 @@ public class SqlServerRevisionBloque4Tests
         ids.Select(i => Calificados(db, i)).Should().Equal(1, 1, 1);
         (await EncoladosAsync(db, ids)).Should().BeEmpty("el rango no lee los calificados del equipo");
     }
+
+    [SqlServerFact]
+    public async Task Cancelar_encola_al_miembro_y_a_sus_10_ascendientes()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        var ids = Linea(db, "RB", 13);
+        var s = ReportesDb.Suscripcion(db, ids[12], 3, MembershipStatus.Active, DateTime.Now);
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+        (await EncoladosAsync(db, ids)).Should().BeEquivalentTo(ids[2..], "la activacion: el propio y sus 10 ascendientes");
+        await db.RankEvaluationQueue.Where(q => ids.Contains(q.EvaluateMemberId))
+            .ExecuteUpdateAsync(q => q.SetProperty(x => x.IsProcessed, true));
+
+        db.MembershipSubscriptions.Attach(s);
+        s.SubscriptionStatus = MembershipStatus.Cancelled;
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+
+        (await EncoladosAsync(db, ids)).Should().BeEquivalentTo(ids[2..], "la cancelacion: el propio y sus 10 ascendientes");
+    }
 }

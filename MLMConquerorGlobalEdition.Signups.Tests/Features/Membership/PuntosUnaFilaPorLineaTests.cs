@@ -14,7 +14,7 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Membership;
 
 /// <summary>
 /// Plan Q (Bloque 4, Q-R34): un cambio de estado encola UNA fila de estadisticas para la linea de patrocinio (antes, una por
-/// ascendiente) y la evaluacion de rango llega solo a la linea cercana (GenealogyUpline.EnrollmentLevels, contando al propio).
+/// ascendiente) y la evaluacion de rango llega solo a la linea cercana: el propio y sus GenealogyUpline.EnrollmentLevels ascendientes.
 /// </summary>
 public class PuntosUnaFilaPorLineaTests
 {
@@ -68,6 +68,6 @@ public class PuntosUnaFilaPorLineaTests
         var stats = await db.MemberStatistics.AsNoTracking().ToDictionaryAsync(s => s.MemberId);
         linea.Should().OnlyContain(id => stats[id].EnrollmentPoints == 6, "el propio y sus 12 ascendientes");
         (await db.RankEvaluationQueue.Where(q => !q.IsProcessed).Select(q => q.EvaluateMemberId).ToListAsync())
-            .Should().BeEquivalentTo(linea[^10..], "el propio y sus 9 ascendientes mas cercanos; el resto, el barrido nocturno");
+            .Should().BeEquivalentTo(linea[^11..], "el propio y sus 10 ascendientes mas cercanos (revision del bloque 4, como en un alta); el resto, el barrido nocturno");
     }
 }
