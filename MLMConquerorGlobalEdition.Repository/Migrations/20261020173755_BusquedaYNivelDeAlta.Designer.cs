@@ -8227,13 +8227,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(201)
                         .HasColumnType("nvarchar(201)")
-                        .HasComputedColumnSql("CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", true);
+                        .HasComputedColumnSql("CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", false);
 
                     b.Property<string>("SearchNameReversed")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(201)
                         .HasColumnType("nvarchar(201)")
-                        .HasComputedColumnSql("CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", true);
+                        .HasComputedColumnSql("CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", false);
 
                     b.Property<bool>("ShowBusinessName")
                         .HasColumnType("bit");
@@ -8292,12 +8292,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasFilter("[ReplicateSiteSlug] IS NOT NULL");
 
                     b.HasIndex("SearchName")
-                        .HasDatabaseName("IX_MemberProfiles_SearchName");
+                        .HasDatabaseName("IX_MemberProfiles_SearchName")
+                        .HasFilter("[IsDeleted] = 0");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("SearchName"), new[] { "MemberId" });
 
                     b.HasIndex("SearchNameReversed")
-                        .HasDatabaseName("IX_MemberProfiles_SearchNameReversed");
+                        .HasDatabaseName("IX_MemberProfiles_SearchNameReversed")
+                        .HasFilter("[IsDeleted] = 0");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("SearchNameReversed"), new[] { "MemberId" });
 

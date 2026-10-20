@@ -6,6 +6,14 @@ namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile>
 {
+    /// <summary>Plan Q (DQ8): MemberProfiles.SearchName, «nombre apellido» sin tildes ni mayusculas.</summary>
+    public const string MemberSearchNameSql =
+        "CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI";
+
+    /// <summary>Plan Q (DQ8): MemberProfiles.SearchNameReversed, «apellido nombre».</summary>
+    public const string MemberSearchNameReversedSql =
+        "CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI";
+
     public void Configure(EntityTypeBuilder<MemberProfile> builder)
     {
         builder.HasKey(x => x.Id);
@@ -43,14 +51,20 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
 
         builder.Property(x => x.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(x => x.LastName).IsRequired().HasMaxLength(100);
-        // Plan Q (DQ8): nombre completo y nombre invertido, calculados y persistidos con intercalacion sin tildes ni
-        // mayusculas, para buscar por el comienzo con un Index Seek (Full-Text no esta instalado). MemberNameSearch los usa.
+        // Plan Q (DQ8): nombre completo y nombre invertido, calculados con intercalacion sin tildes ni mayusculas, para buscar
+        // por el comienzo con un Index Seek (Full-Text no esta instalado). MemberNameSearch los usa. Revision del bloque 5
+        // (I5): NO persistidas. Anadir una persistida reescribe MemberProfiles entera con un candado Sch-M en una sola
+        // transaccion; una no persistida es solo metadatos y el indice guarda su valor (deterministica y precisa).
+        // I3: los indices filtran IsDeleted = 0 (las consultas llevan ese literal): sin el filtro, cada coincidencia iba a
+        // la tabla a mirar IsDeleted (4.757 lecturas frente a 24).
         builder.Property(m => m.SearchName).HasMaxLength(201)
-            .HasComputedColumnSql("CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", stored: true);
+            .HasComputedColumnSql(MemberSearchNameSql, stored: false);
         builder.Property(m => m.SearchNameReversed).HasMaxLength(201)
-            .HasComputedColumnSql("CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI", stored: true);
-        builder.HasIndex(m => m.SearchName).HasDatabaseName("IX_MemberProfiles_SearchName").IncludeProperties(m => m.MemberId);
-        builder.HasIndex(m => m.SearchNameReversed).HasDatabaseName("IX_MemberProfiles_SearchNameReversed").IncludeProperties(m => m.MemberId);
+            .HasComputedColumnSql(MemberSearchNameReversedSql, stored: false);
+        builder.HasIndex(m => m.SearchName).HasDatabaseName("IX_MemberProfiles_SearchName")
+            .IncludeProperties(m => m.MemberId).HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(m => m.SearchNameReversed).HasDatabaseName("IX_MemberProfiles_SearchNameReversed")
+            .IncludeProperties(m => m.MemberId).HasFilter("[IsDeleted] = 0");
         builder.Property(x => x.Phone).HasMaxLength(30);
         builder.Property(x => x.Country).IsRequired().HasMaxLength(100);
         builder.Property(x => x.State).HasMaxLength(100);

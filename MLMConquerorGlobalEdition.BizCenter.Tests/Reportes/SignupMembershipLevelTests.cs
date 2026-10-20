@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
@@ -53,5 +54,30 @@ public class SignupMembershipLevelTests
         await SignupMembershipLevel.RefreshAsync(db, m);
 
         m.SignupMembershipLevelId.Should().Be(2, "gana el pedido de Id menor");
+    }
+}
+
+/// <summary>
+/// Revision del bloque 5 (I6): el nivel que guardo 02-nivel-de-alta.sql en la base local es el de la regla en C#
+/// (SignupMembershipLevel), en una muestra de 500 perfiles con nivel. Solo lectura.
+/// </summary>
+[Collection(SqlServerReportesCollection.Nombre)]
+public class SqlServerNivelDeAltaGuardadoTests
+{
+    [SqlServerFact]
+    public async Task El_nivel_guardado_por_el_script_es_el_de_la_regla()
+    {
+        await using var db = SqlServerReportes.Db();
+        var muestra = await db.MemberProfiles.AsNoTracking()
+            .Where(m => m.SignupMembershipLevelId != null)
+            .OrderBy(m => m.Id).Select(m => new { m.MemberId, m.SignupMembershipLevelId })
+            .Take(500).ToListAsync();
+
+        var distintos = new List<string>();
+        foreach (var m in muestra)
+            if (await SignupMembershipLevel.ComputeAsync(db, m.MemberId) != m.SignupMembershipLevelId)
+                distintos.Add(m.MemberId);
+
+        distintos.Should().BeEmpty();
     }
 }
