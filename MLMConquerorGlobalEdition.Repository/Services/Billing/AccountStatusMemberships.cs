@@ -12,7 +12,8 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Billing;
 /// <list type="bullet">
 /// <item>Suspended o Inactive: <see cref="HoldAsync"/>, sus activas pasan a OnHold con la marca
 /// <see cref="MembershipSubscription.HeldByAccountStatus"/> y su cobro se para.</item>
-/// <item>Terminated: <see cref="CancelForTerminationAsync"/>, sus activas y las que retuvo el admin pasan a Cancelled.</item>
+/// <item>Terminated: <see cref="CancelForTerminationAsync"/>, sus activas, las que retuvo el admin, las retenidas por el
+/// cobro (HoldByBilling) y las caducadas sin reemplazo pasan a Cancelled y su cobro se para.</item>
 /// <item>De vuelta a Active: <see cref="RestoreAsync"/>, solo las OnHold con la marca vuelven a Active y su cobro se
 /// reanuda. Una OnHold de otro origen (sin marca) se queda como esta.</item>
 /// </list>
@@ -44,11 +45,20 @@ public static class AccountStatusMemberships
     public static async Task<int> CancelForTerminationAsync(
         AppDbContext db, string memberId, DateTime now, string actor, CancellationToken ct = default)
     {
-        var vivas = await db.MembershipSubscriptions
+        // Revision de Q3 (I3): tambien la retenida por el cobro (HoldByBilling) y la caducada sin reemplazo, que el motor
+        // podia cobrar y reactivar en una cuenta terminada. La caducada reemplazada por una subida o bajada ya no se cobra
+        // ni se reactiva: se queda como esta.
+        var candidatas = await db.MembershipSubscriptions
             .Where(s => s.MemberId == memberId && !s.IsDeleted
                      && (s.SubscriptionStatus == MembershipStatus.Active
+                         || s.SubscriptionStatus == MembershipStatus.HoldByBilling
+                         || s.SubscriptionStatus == MembershipStatus.Expired
                          || (s.SubscriptionStatus == MembershipStatus.OnHold && s.HeldByAccountStatus != null)))
             .ToListAsync(ct);
+        var vivas = new List<MembershipSubscription>(candidatas.Count);
+        foreach (var s in candidatas)
+            if (!await MembershipBillingStops.IsReplacedAsync(db, s, ct))
+                vivas.Add(s);
         foreach (var s in vivas)
         {
             s.SubscriptionStatus  = MembershipStatus.Cancelled;

@@ -152,6 +152,31 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             });
         }
 
+        // Revision de Q3 (I3): la cuenta terminada o suspendida no se cobra, tampoco forzado (como la cuota anual). Si no,
+        // una HoldByBilling o una caducada se cobraba y LiftTerminalMembershipStatusAsync la volvia a Active en una cuenta
+        // cerrada. Terminada: el estado se para para siempre. Suspendida: se pospone sin tocar el estado (ni se revive).
+        var accountStatus = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == subscriptionToCheck!.MemberId && !m.IsDeleted)
+            .Select(m => (MLMConquerorGlobalEdition.Domain.Entities.Member.MemberAccountStatus?)m.Status)
+            .FirstOrDefaultAsync(ct);
+        var accountStop = MembershipBillingStops.WhyAccountNotBillable(accountStatus);
+        if (accountStop is not null)
+        {
+            if (accountStop == MembershipBillingStops.ReasonAccountTerminated)
+            {
+                MembershipBillingStops.Stop(state, accountStop, now, Actor);
+                await _db.SaveChangesAsync(ct);
+            }
+            _logger.LogInformation("Renovación {StateId} de {MemberId}: no se cobra por el estado de la cuenta ({Reason}).",
+                state.Id, state.MemberId, accountStop);
+            return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
+            {
+                BillingStateId = billingStateId,
+                Outcome        = "Skipped",
+                FailureReason  = accountStop
+            });
+        }
+
         // When forcing a bill: revive Stopped state
         if (state.Status == RecurringBillingStatus.Stopped && forceBillNow)
         {

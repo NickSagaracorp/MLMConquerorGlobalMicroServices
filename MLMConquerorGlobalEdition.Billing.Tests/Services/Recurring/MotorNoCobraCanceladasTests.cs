@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -177,5 +178,77 @@ public class MotorNoCobraCanceladasTests
         estado.Status.Should().Be(RecurringBillingStatus.Stopped);
         estado.LastFailureReason.Should().Be(RecurringBillingProcessor.ReasonSubscriptionMissing);
         (await db.Orders.CountAsync()).Should().Be(0);
+    }
+
+    private static async Task CuentaAsync(AppDbContext db, MemberAccountStatus estado)
+    {
+        db.MemberProfiles.Add(new MemberProfile
+        {
+            MemberId = Miembro, FirstName = "T", LastName = "U", Country = "US", Status = estado,
+            MemberType = MemberType.Ambassador, EnrollDate = Ahora.AddYears(-1), CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Revision de Q3 (I3): una cuenta terminada no se cobra nunca mas (como la cuota anual): el estado se para, tambien
+    /// forzado. Asi una HoldByBilling o una caducada no se cobra y se reactiva en una cuenta terminada.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Una_cuenta_terminada_no_se_cobra_y_su_estado_se_para(bool forzado)
+    {
+        await using var db = await SembrarAsync(s => s.SubscriptionStatus = MembershipStatus.HoldByBilling);
+        await CuentaAsync(db, MemberAccountStatus.Terminated);
+
+        var r = await Procesador(db).ProcessAsync("estado-1", forceBillNow: forzado);
+
+        r.Value!.Outcome.Should().Be("Skipped");
+        r.Value.FailureReason.Should().Be(MembershipBillingStops.ReasonAccountTerminated);
+        (await db.Orders.CountAsync()).Should().Be(0);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        estado.Status.Should().Be(RecurringBillingStatus.Stopped);
+        estado.LastFailureReason.Should().Be(MembershipBillingStops.ReasonAccountTerminated);
+        (await db.MembershipSubscriptions.AsNoTracking().SingleAsync()).SubscriptionStatus.Should().Be(MembershipStatus.HoldByBilling);
+    }
+
+    /// <summary>
+    /// Revision de Q3 (I3): una cuenta suspendida no se cobra mientras lo este (como la cuota anual, se pospone): ni el
+    /// estado se para ni se revive forzado, y la membresia no se reactiva.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Una_cuenta_suspendida_no_se_cobra_ni_se_revive_y_su_estado_no_cambia(bool forzado)
+    {
+        await using var db = await SembrarAsync(s => s.SubscriptionStatus = MembershipStatus.HoldByBilling);
+        await CuentaAsync(db, MemberAccountStatus.Suspended);
+        var antes = await db.SubscriptionBillingStates.SingleAsync();
+        antes.Status = forzado ? RecurringBillingStatus.Stopped : RecurringBillingStatus.Retrying;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var r = await Procesador(db).ProcessAsync("estado-1", forceBillNow: forzado);
+
+        r.Value!.Outcome.Should().Be("Skipped");
+        r.Value.FailureReason.Should().Be(MembershipBillingStops.ReasonAccountSuspended);
+        (await db.Orders.CountAsync()).Should().Be(0);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+        (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync()).Status
+            .Should().Be(forzado ? RecurringBillingStatus.Stopped : RecurringBillingStatus.Retrying);
+        (await db.MembershipSubscriptions.AsNoTracking().SingleAsync()).SubscriptionStatus.Should().Be(MembershipStatus.HoldByBilling);
+    }
+
+    [Fact]
+    public async Task Una_cuenta_inactiva_con_la_membresia_activa_sigue_cobrando()
+    {
+        await using var db = await SembrarAsync(_ => { });
+        await CuentaAsync(db, MemberAccountStatus.Inactive);
+
+        var r = await Procesador(db).ProcessAsync("estado-1");
+
+        r.Value!.Outcome.Should().Be("Success");
     }
 }

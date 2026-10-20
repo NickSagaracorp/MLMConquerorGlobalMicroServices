@@ -189,4 +189,58 @@ public class EstadoDeCuentaYMembresiaTests
 
         (await SubAsync(db, "sub-activa")).SubscriptionStatus.Should().Be(MembershipStatus.Cancelled);
     }
+
+    /// <summary>
+    /// Revision de Q3 (I3): terminar tambien cancela la retenida por el cobro (HoldByBilling) y la caducada sin reemplazo,
+    /// y para su cobro: el motor no puede cobrarlas y reactivarlas en una cuenta terminada. La caducada reemplazada por una
+    /// subida o bajada y la OnHold de otro origen no cambian.
+    /// </summary>
+    [Fact]
+    public async Task Terminar_cancela_tambien_la_retenida_por_el_cobro_y_la_caducada_sin_reemplazo_y_para_su_cobro()
+    {
+        await using var db = await SembrarAsync();
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-cobro", MemberId = Miembro, MembershipLevelId = 2, SubscriptionStatus = MembershipStatus.HoldByBilling,
+            StartDate = Ahora.AddDays(-70), IsAutoRenew = true, CreatedBy = "prueba"
+        });
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-caducada", MemberId = Miembro, MembershipLevelId = 4, SubscriptionStatus = MembershipStatus.Expired,
+            StartDate = Ahora.AddDays(-120), IsAutoRenew = true, CreatedBy = "prueba"
+        });
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-reemplazada", MemberId = Miembro, MembershipLevelId = 5, SubscriptionStatus = MembershipStatus.Expired,
+            StartDate = Ahora.AddDays(-150), CreatedBy = "prueba"
+        });
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-de-la-subida", MemberId = Miembro, MembershipLevelId = 6, PreviousMembershipLevelId = 5,
+            SubscriptionStatus = MembershipStatus.Cancelled, StartDate = Ahora.AddDays(-140), CreatedBy = "prueba"
+        });
+        db.SubscriptionBillingStates.Add(new SubscriptionBillingState
+        {
+            Id = "estado-cobro", MembershipSubscriptionId = "sub-cobro", MemberId = Miembro, RecurringBillingPlanId = 1,
+            BillingAnchorDate = Ahora.AddDays(-70), NextBillingDate = Ahora.AddDays(-10), NextAttemptDate = Ahora.AddDays(1),
+            Status = RecurringBillingStatus.Retrying, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await CambiarAsync(db, MemberAccountStatus.Terminated);
+
+        foreach (var id in new[] { "sub-activa", "sub-cobro", "sub-caducada" })
+        {
+            var sub = await SubAsync(db, id);
+            sub.SubscriptionStatus.Should().Be(MembershipStatus.Cancelled, id);
+            sub.CancellationDate.Should().Be(Ahora, id);
+            sub.IsAutoRenew.Should().BeFalse(id);
+        }
+        (await SubAsync(db, "sub-reemplazada")).SubscriptionStatus.Should().Be(MembershipStatus.Expired);
+        (await SubAsync(db, "sub-retenida")).SubscriptionStatus.Should().Be(MembershipStatus.OnHold);
+        var cobro = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync(e => e.Id == "estado-cobro");
+        cobro.Status.Should().Be(RecurringBillingStatus.Stopped);
+        cobro.LastFailureReason.Should().Be(MembershipBillingStops.ReasonMembershipCancelled);
+    }
 }

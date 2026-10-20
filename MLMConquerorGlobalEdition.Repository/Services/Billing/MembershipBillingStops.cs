@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -31,6 +32,18 @@ public static class MembershipBillingStops
     /// </summary>
     public const string ReasonMembershipOnHold    = "MEMBERSHIP_ON_HOLD";
 
+    /// <summary>
+    /// Revision de Q3 (I3): la cuenta del miembro esta terminada. No se cobra nunca mas (como la cuota anual): el estado
+    /// se para, tambien forzado.
+    /// </summary>
+    public const string ReasonAccountTerminated   = "ACCOUNT_TERMINATED";
+
+    /// <summary>
+    /// Revision de Q3 (I3): la cuenta del miembro esta suspendida. No se cobra mientras lo este (como la cuota anual, se
+    /// pospone): el estado no se para ni se revive forzado.
+    /// </summary>
+    public const string ReasonAccountSuspended    = "ACCOUNT_SUSPENDED";
+
     /// <summary>La suscripción del estado está borrada o no existe: no hay nada que renovar.</summary>
     public const string ReasonSubscriptionMissing = "SUBSCRIPTION_MISSING";
 
@@ -49,6 +62,19 @@ public static class MembershipBillingStops
         if (subscription.SubscriptionStatus == MembershipStatus.OnHold) return ReasonMembershipOnHold;
         return null;
     }
+
+    /// <summary>
+    /// Revision de Q3 (I3): null si la cuenta del miembro deja cobrar su membresia; si no, el motivo. Terminated
+    /// (<see cref="ReasonAccountTerminated"/>) y Suspended (<see cref="ReasonAccountSuspended"/>) no se cobran, igual que la
+    /// cuota anual. Inactive si: es la cuenta de quien cancelo su membresia, y la que retuvo el admin ya la para
+    /// <see cref="WhyNotBillable"/> (OnHold). Sin perfil no se decide aqui.
+    /// </summary>
+    public static string? WhyAccountNotBillable(MemberAccountStatus? accountStatus) => accountStatus switch
+    {
+        MemberAccountStatus.Terminated => ReasonAccountTerminated,
+        MemberAccountStatus.Suspended  => ReasonAccountSuspended,
+        _                              => null
+    };
 
     /// <summary>
     /// Plan Q (Q3): desde cuando cuentan los dias sin cobrar del tope del plan (StopAfterUnbilledDays): lo mas reciente
