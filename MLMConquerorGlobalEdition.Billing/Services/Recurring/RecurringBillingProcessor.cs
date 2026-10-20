@@ -460,7 +460,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         // Lift any terminal membership status on success
         if (subscription.SubscriptionStatus is MembershipStatus.HoldByBilling or MembershipStatus.Expired)
-            await LiftTerminalMembershipStatusAsync(state.MemberId, now, ct);
+            await LiftTerminalMembershipStatusAsync(state.MembershipSubscriptionId, now, ct);
 
         await _db.SaveChangesAsync(ct);
 
@@ -622,7 +622,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         _db.RecurringBillingAttempts.Add(successAttempt);
 
         if (subscription.SubscriptionStatus is MembershipStatus.HoldByBilling or MembershipStatus.Expired)
-            await LiftTerminalMembershipStatusAsync(state.MemberId, now, ct);
+            await LiftTerminalMembershipStatusAsync(state.MembershipSubscriptionId, now, ct);
 
         await _db.SaveChangesAsync(ct);
 
@@ -771,10 +771,14 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         }
     }
 
-    private async Task LiftTerminalMembershipStatusAsync(string memberId, DateTime now, CancellationToken ct)
+    /// <summary>
+    /// Plan Q (revision 2 del bloque 2, I5): reactiva la suscripcion DEL ESTADO que se acaba de cobrar. Antes tomaba
+    /// cualquiera del miembro retenida o caducada, sin orden: tras una subida podia reactivar la vieja caducada.
+    /// </summary>
+    private async Task LiftTerminalMembershipStatusAsync(string membershipSubscriptionId, DateTime now, CancellationToken ct)
     {
         var subscription = await _db.MembershipSubscriptions
-            .Where(s => s.MemberId == memberId
+            .Where(s => s.Id == membershipSubscriptionId
                      && (s.SubscriptionStatus == MembershipStatus.HoldByBilling
                          || s.SubscriptionStatus == MembershipStatus.Expired)
                      && !s.IsDeleted)
