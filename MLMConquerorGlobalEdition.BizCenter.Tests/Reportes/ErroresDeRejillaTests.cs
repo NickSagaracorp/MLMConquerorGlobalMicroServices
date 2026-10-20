@@ -52,6 +52,27 @@ public class ErroresDeRejillaTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
+    /// <summary>Plan Q (DQ7): el adaptador avisa al anfitrion si el servidor limito orden y busqueda por el tamano.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OnLimited_recibe_si_el_servidor_limito_la_rejilla(bool limitado)
+    {
+        var json = """{"success":true,"data":{"items":[],"totalCount":0,"page":1,"pageSize":20,"limited":LIMITADO}}"""
+            .Replace("LIMITADO", limitado ? "true" : "false");
+        bool? recibido = null;
+        var adaptador = new ServerGridAdaptor<Fila>
+        {
+            Http      = new HttpClient(new Manejador(HttpStatusCode.OK, json)) { BaseAddress = new Uri("https://api.pruebas/") },
+            Endpoint  = "api/v1/bizcenter/team/enrollment/grid",
+            OnLimited = l => { recibido = l; return Task.CompletedTask; }
+        };
+
+        await adaptador.ReadAsync(new DataManagerRequest { RequiresCounts = true });
+
+        recibido.Should().Be(limitado);
+    }
+
     [Theory]
     [InlineData("REPORT_RANGE_INVALID",   "Reports.RangeInvalid")]
     [InlineData("REPORT_RANGE_TOO_OLD",   "Reports.RangeTooOld")]

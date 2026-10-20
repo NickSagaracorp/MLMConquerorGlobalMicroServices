@@ -633,6 +633,7 @@
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>Punti gamba sinistra dell'albero dual — accumulati sulla gamba SINISTRA. 0 = nessun discendente.</value></data>
   <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>Punti gamba destra dell'albero dual — accumulati sulla gamba DESTRA. 0 = nessun discendente.</value></data>
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>Punti Gamba Sinistra</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>Il tuo team è molto grande: è ordinato secondo la struttura dell'albero e la ricerca trova nomi o codici che iniziano con il testo inserito.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>Punti Gamba Destra</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>Qualificato</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>Non Qualificato</value></data>

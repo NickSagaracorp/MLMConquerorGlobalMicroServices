@@ -68,8 +68,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     {
         request.Sorts   = request.Sorts.Where(s => MyTeamDbFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)).ToList();
         request.Filters = request.Filters.Where(f => MyTeamDbFields.Contains(f.Field, StringComparer.OrdinalIgnoreCase)).ToList();
-        if (request.Sorts.Count == 0)
-            request.Sorts.Add(new GridSort { Field = nameof(EnrollmentMyTeamMemberView.EnrollDate), Direction = "desc" });
+        // Plan Q (DQ7): sin orden pedido, por estructura (Node), en BuildMyTeamQueryable; ya no se anade EnrollDate desc.
     }
 
     // ─── My Team ───────────────────────────────────────────────────────────
@@ -94,7 +93,11 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (from.HasValue) query = query.Where(v => v.EnrollDate >= from.Value);
         if (to.HasValue)   query = query.Where(v => v.EnrollDate <= to.Value);
 
-        var total = await query.CountAsync(ct);
+        // Plan Q (DQ14): sin busqueda ni fechas el total es el tamano guardado; con filtros se cuenta el resultado.
+        var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
+        var total = sinFiltros
+            ? await TeamSizeAsync(memberId, ct)
+            : await query.CountAsync(ct);
         var items = await query
             .OrderByDescending(v => v.EnrollDate)
             .Skip((page - 1) * pageSize).Take(pageSize)
@@ -122,32 +125,40 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         SanitizeGridRequest(request);
+        // Plan Q (DQ7): el tamano del equipo de inscripcion lo guarda MemberStatistics (diferido por la cola de deltas;
+        // basta para decidir un limite).
+        var tamano   = await TeamSizeAsync(memberId, ct);
+        var limitado = TeamGridLimits.Limit(request, tamano);
 
-        // DB-side search/filter/sort/page over the projected downline query — only the
-        // requested page (≤ pageSize rows) is materialized, instead of the whole subtree.
-        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId);
-        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct);
+        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure: request.Sorts.Count == 0);
+        // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo.
+        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct, unfilteredTotal: tamano);
         await EnrichPageAsync(result.Items, ct);
+        result.Limited = limitado;
         return result;
     }
+
+    /// <summary>Plan Q (DQ7, DQ14): el tamano guardado del equipo de inscripcion (MemberStatistics.EnrollmentTeamSize).</summary>
+    private Task<int> TeamSizeAsync(string memberId, CancellationToken ct) =>
+        _db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == memberId)
+            .OrderBy(s => s.Id).Select(s => s.EnrollmentTeamSize).FirstOrDefaultAsync(ct);
 
     /// <summary>
     /// LIGHT DB projection of the viewer's enrollment downline — only directly-translatable
     /// profile columns, so the grid's search · filter · sort · COUNT · page all run fast in SQL
-    /// with NO per-row subqueries and NO full-subtree materialization (the previous version
-    /// loaded the WHOLE subtree — 120k+ rows × 7 tables via Contains(allIds) — and paged in
-    /// memory, taking &gt;60s). The enriched columns (sponsor/upline name, membership, rank,
-    /// points, dates, NextRankPercent) are filled for the requested PAGE only by
-    /// <see cref="EnrichPageAsync"/>. Search/sort on those enriched columns therefore falls back
-    /// to the page (they are null in this projection) — acceptable since the load path uses the
-    /// default EnrollDate sort, and enriched-column search at 120k scale needs denormalization.
+    /// with NO per-row subqueries and NO full-subtree materialization. The enriched columns
+    /// (sponsor/upline name, membership, rank, points, dates, NextRankPercent) are filled for the
+    /// requested PAGE only by <see cref="EnrichPageAsync"/>.
     /// </summary>
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
-        HierarchyId root, int rootLevel, string memberId)
+        HierarchyId root, int rootLevel, string memberId, bool byStructure = false)
     {
+        var equipo = _db.GenealogyTree.AsNoTracking().CurrentUnder(root).Where(g => g.MemberId != memberId);
+        // Plan Q (DQ7): el orden por estructura va sobre el nodo, antes del join y de la proyeccion (la vista no lleva
+        // Node): la pagina sale del recorrido de IX_GenealogyTree_Node, sin ordenar el rango (la Tarea 26 lo comprueba).
+        if (byStructure) equipo = equipo.OrderBy(g => g.Node);
         return
-            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
-            where g.MemberId != memberId
+            from g in equipo
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {

@@ -633,6 +633,7 @@
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>Points de la jambe gauche de l'arbre dual — accumulés sur la jambe GAUCHE du membre. 0 = aucun descendant sur cette jambe.</value></data>
   <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>Points de la jambe droite de l'arbre dual — accumulés sur la jambe DROITE du membre. 0 = aucun descendant sur cette jambe.</value></data>
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>Points Jambe Gauche</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>Votre équipe est très grande : elle est triée selon la structure de l'arbre et la recherche trouve les noms ou identifiants qui commencent par votre saisie.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>Points Jambe Droite</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>Qualifié</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>Non Qualifié</value></data>

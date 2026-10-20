@@ -39,6 +39,10 @@
         @* to the server via ServerGridAdaptor, so they span EVERY member — not   *@
         @* just the current page. Filter by join date via the EnrollDate Excel    *@
         @* column filter (the previous date-range picker is no longer needed).    *@
+        @if (_limitado)
+        {
+            <p class="text-muted small">@L["Team.LargeTeamLimited"]</p>
+        }
         <SfGrid TValue="EnrollmentMyTeamMemberDto" @ref="_grid"
                 AllowPaging="true" AllowSorting="true" AllowResizing="true"
                 AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -46,7 +50,8 @@
                 <ServerGridAdaptor TValue="EnrollmentMyTeamMemberDto"
                                    Http="Http"
                                    Endpoint="@($"{ApiBaseUrl}/my-team/grid")"
-                                   AccessTokenProvider="GetTokenAsync" />
+                                   AccessTokenProvider="GetTokenAsync"
+                                   OnLimited="AlLimitar" />
             </SfDataManager>
             <GridEvents TValue="EnrollmentMyTeamMemberDto" RowSelected="OnRowSelected" />
             <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
@@ -376,6 +381,16 @@
 }
 
 @code {
+    // Plan Q (DQ7): el servidor avisa si el equipo supera TeamGridLimits.FreeMaxRows (orden por estructura, busqueda por
+    // prefijo); la rejilla lo explica encima.
+    private bool _limitado;
+    private Task AlLimitar(bool limitado)
+    {
+        if (_limitado == limitado) return Task.CompletedTask;
+        _limitado = limitado;
+        return InvokeAsync(StateHasChanged);
+    }
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team/enrollment";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;

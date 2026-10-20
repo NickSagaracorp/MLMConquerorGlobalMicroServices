@@ -637,6 +637,7 @@
 
   <!-- Team -->
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>Pontos Perna Esquerda</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>Sua equipe é muito grande: ela é ordenada pela estrutura da árvore e a busca encontra nomes ou códigos que começam com o que você digita.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>Pontos Perna Direita</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>Qualificado</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>Não Qualificado</value></data>

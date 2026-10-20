@@ -97,6 +97,12 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     /// </summary>
     [Parameter] public Func<string?, Task>? OnServerError { get; set; }
 
+    /// <summary>
+    /// Opcional (Plan Q). Se llama tras cada lectura con <c>true</c> si el servidor limito el orden y la busqueda por el
+    /// tamano del equipo (TeamGridLimits), para que el anfitrion lo explique.
+    /// </summary>
+    [Parameter] public Func<bool, Task>? OnLimited { get; set; }
+
     private HttpClient Client => Http ?? InjectedHttp;
 
     /// <inheritdoc />
@@ -155,6 +161,8 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
         var payload = await resp.Content
             .ReadFromJsonAsync<GridApiResponse<GridPagedResult<TValue>>>()
             .ConfigureAwait(false);
+
+        if (OnLimited is not null) await OnLimited(payload?.Data?.Limited ?? false).ConfigureAwait(false);
 
         var items = payload?.Data?.Items ?? new List<TValue>();
         var count = payload?.Data?.TotalCount ?? 0;

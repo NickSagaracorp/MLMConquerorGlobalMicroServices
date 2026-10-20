@@ -557,6 +557,7 @@
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>双树左腿积分 — 该会员二叉树左腿累积的积分。0 表示该腿没有后代。</value></data>
   <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>双树右腿积分 — 该会员二叉树右腿累积的积分。0 表示该腿没有后代。</value></data>
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>左腿积分</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>您的团队非常大：按树结构排序，搜索仅匹配以您输入内容开头的姓名或编号。</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>右腿积分</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>已合格</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>未合格</value></data>

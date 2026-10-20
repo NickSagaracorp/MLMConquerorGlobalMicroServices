@@ -38,6 +38,8 @@ public class TextosDeReportesTests
         "Sidebar.Events", "PageTitle.TeamEvents", "Events.Select", "Events.None",
         "Events.RegisteredOnly", "Events.Registered", "Events.Tickets", "Events.RegistrationDate",
         "Events.ImportPending", "Reports.EnrollmentDate", "Reports.Rank",
+        // Plan Q, Tarea 22 — equipo grande (DQ7)
+        "Team.LargeTeamLimited",
     };
 
     public static IEnumerable<object[]> Archivos() => Culturas.Select(c => new object[] { c });

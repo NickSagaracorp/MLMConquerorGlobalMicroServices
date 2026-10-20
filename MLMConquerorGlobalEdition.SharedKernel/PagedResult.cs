@@ -9,4 +9,10 @@ public class PagedResult<T>
     public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
     public bool HasNextPage => Page < TotalPages;
     public bool HasPreviousPage => Page > 1;
+
+    /// <summary>
+    /// Plan Q (DQ7): el equipo supero TeamGridLimits.FreeMaxRows, asi que el orden es por estructura y la busqueda por
+    /// prefijo. La rejilla lo avisa.
+    /// </summary>
+    public bool Limited { get; set; }
 }

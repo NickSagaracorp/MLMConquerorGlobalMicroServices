@@ -74,7 +74,9 @@ public class DualTeamService : IDualTeamService
         if (from.HasValue) q = q.Where(r => r.EnrollDate >= from.Value);
         if (to.HasValue)   q = q.Where(r => r.EnrollDate <= to.Value);
 
-        var total = await q.CountAsync(ct);
+        // Plan Q (DQ14): sin busqueda ni fechas el total es el de los contadores de pierna; con filtros se cuenta.
+        var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
+        var total = sinFiltros ? myNode.LeftLegCount + myNode.RightLegCount : await q.CountAsync(ct);
         var rows  = await q.OrderByDescending(r => r.EnrollDate)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
@@ -101,22 +103,35 @@ public class DualTeamService : IDualTeamService
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<DualTeamMyTeamMemberView>();
 
-        // Ensure a deterministic DB sort even if the request only sorts on non-projected columns.
-        if (!request.Sorts.Any(s => DualRowSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
-                                 || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase)))
-            request.Sorts.Add(new GridSort { Field = nameof(DualMyTeamRow.EnrollDate), Direction = "desc" });
+        // Plan Q (DQ7): el tamano sale de los contadores de pierna (diferidos hasta 1 minuto, Q-R1; basta para un limite).
+        var tamano   = myNode.LeftLegCount + myNode.RightLegCount;
+        var limitado = TeamGridLimits.Limit(request, tamano);
 
-        // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, que el nodo guarda en sus contadores de
-        // pierna (exactos por construccion); contar el rango con 1.000.000 de nodos tardaba 4 s.
-        var paged = await MyTeamRows(myNode).ToGridResultAsync(request, DualRowSearchableFields, ct: ct,
-            unfilteredTotal: myNode.LeftLegCount + myNode.RightLegCount);
+        // Sin orden sobre una columna de la consulta (o con el limite, que los quita), por estructura: el recorrido del
+        // indice de la clave. Antes se anadia EnrollDate desc, que con un millon de filas ordenaba el rango entero.
+        var ordenPedido = request.Sorts.Any(s => DualRowSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
+                                              || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase));
+        var filas = MyTeamRows(myNode);
+        if (!ordenPedido) filas = ByStructure(filas);
+
+        // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
+        var paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: tamano);
 
         var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode, memberId, ct);
         return new PagedResult<DualTeamMyTeamMemberView>
         {
-            Items = items, TotalCount = paged.TotalCount, Page = paged.Page, PageSize = paged.PageSize
+            Items = items, TotalCount = paged.TotalCount, Page = paged.Page, PageSize = paged.PageSize, Limited = limitado
         };
     }
+
+    /// <summary>
+    /// Plan Q (DQ7): el orden por estructura. En SQL Server, la clave (el orden del indice UX_DualTeamTree_BinaryPath);
+    /// en InMemory, donde un byte[] no se puede ordenar, profundidad e id.
+    /// </summary>
+    private IQueryable<DualMyTeamRow> ByStructure(IQueryable<DualMyTeamRow> filas) =>
+        _db.Database.IsSqlServer()
+            ? filas.OrderBy(r => r.BinaryPath)
+            : filas.OrderBy(r => r.Depth).ThenBy(r => r.MemberId);
 
     /// <summary>Light, fully DB-translatable row: profile columns + the node's compact key and depth
     /// (Plan P: Leg sale de comparar claves y Level de Depth; la ruta de texto no se carga). Property names that the grid searches/sorts on

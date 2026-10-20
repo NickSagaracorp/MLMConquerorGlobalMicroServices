@@ -42,6 +42,10 @@
         @* to the server via ServerGridAdaptor, so they span EVERY member — not   *@
         @* just the current page. The Excel filter menu's distinct-value reads    *@
         @* are served by the same endpoint.                                       *@
+        @if (_limitado)
+        {
+            <p class="text-muted small">@L["Team.LargeTeamLimited"]</p>
+        }
         <SfGrid TValue="DualTeamMyTeamMemberDto" @ref="_grid"
                 AllowPaging="true" AllowSorting="true" AllowResizing="true"
                 AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -50,7 +54,8 @@
                                    Http="Http"
                                    Endpoint="@($"{ApiBaseUrl}/my-team/grid")"
                                    QueryStringProvider="BuildQueryString"
-                                   AccessTokenProvider="GetTokenAsync" />
+                                   AccessTokenProvider="GetTokenAsync"
+                                   OnLimited="AlLimitar" />
             </SfDataManager>
             <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
@@ -223,6 +228,16 @@
 </div>
 
 @code {
+    // Plan Q (DQ7): el servidor avisa si el equipo supera TeamGridLimits.FreeMaxRows (orden por estructura, busqueda por
+    // prefijo); la rejilla lo explica encima.
+    private bool _limitado;
+    private Task AlLimitar(bool limitado)
+    {
+        if (_limitado == limitado) return Task.CompletedTask;
+        _limitado = limitado;
+        return InvokeAsync(StateHasChanged);
+    }
+
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team/dual-tree";

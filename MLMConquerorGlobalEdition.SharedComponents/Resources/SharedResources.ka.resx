@@ -557,6 +557,7 @@
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>ბინარული ხის მარცხენა ფეხის ქულები — დაგროვებული წევრის მარცხენა ფეხზე. 0 = შთამომავლები არ არის.</value></data>
   <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>ბინარული ხის მარჯვენა ფეხის ქულები — დაგროვებული წევრის მარჯვენა ფეხზე. 0 = შთამომავლები არ არის.</value></data>
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>მარცხენა ფეხის ქულები</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>თქვენი გუნდი ძალიან დიდია: ის დალაგებულია ხის სტრუქტურით, ხოლო ძიება პოულობს სახელებს ან ID-ებს, რომლებიც თქვენი ტექსტით იწყება.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>მარჯვენა ფეხის ქულები</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>კვალიფიცირებული</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>არაკვალიფიცირებული</value></data>

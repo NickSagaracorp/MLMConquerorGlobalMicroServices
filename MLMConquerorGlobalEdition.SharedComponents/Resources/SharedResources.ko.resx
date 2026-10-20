@@ -633,6 +633,7 @@
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>듀얼 트리 왼쪽 다리 점수 — 회원의 왼쪽 다리에 누적된 점수. 0은 후손이 없음을 의미합니다.</value></data>
   <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>듀얼 트리 오른쪽 다리 점수 — 회원의 오른쪽 다리에 누적된 점수. 0은 후손이 없음을 의미합니다.</value></data>
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>왼쪽 다리 점수</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>팀 규모가 매우 큽니다. 트리 구조 순으로 정렬되며, 검색은 입력한 텍스트로 시작하는 이름이나 ID를 찾습니다.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>오른쪽 다리 점수</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>자격 충족</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>자격 미충족</value></data>

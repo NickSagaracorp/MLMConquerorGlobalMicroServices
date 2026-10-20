@@ -637,6 +637,7 @@
 
   <!-- Team — Dual Team Binary Tree -->
   <data name="Team.LeftLegPoints" xml:space="preserve"><value>Puntos Pierna Izquierda</value></data>
+  <data name="Team.LargeTeamLimited" xml:space="preserve"><value>Tu equipo es muy grande: se ordena por la estructura del árbol y la búsqueda encuentra nombres o códigos que empiezan por lo que escribes.</value></data>
   <data name="Team.RightLegPoints" xml:space="preserve"><value>Puntos Pierna Derecha</value></data>
   <data name="Team.LegendQualified" xml:space="preserve"><value>Calificado</value></data>
   <data name="Team.LegendUnqualified" xml:space="preserve"><value>No Calificado</value></data>

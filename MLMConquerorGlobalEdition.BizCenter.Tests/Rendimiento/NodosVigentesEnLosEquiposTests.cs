@@ -29,6 +29,8 @@ public class NodosVigentesEnLosEquiposTests
         ReportesDb.Nodo(db, "AMB-A", Yo, ReportesDb.Ruta(Yo, "AMB-A"), 2);
         await ReportesDb.NodoObsoletoAsync(db, "AMB-B", Yo, ReportesDb.Ruta(Yo, "AMB-B"), 2);
         ReportesDb.Nodo(db, "AMB-B", "AMB-A", ReportesDb.Ruta(Yo, "AMB-A", "AMB-B"), 3);
+        // Plan Q (DQ14): el total sin filtros de la rejilla sale del contador guardado, como lo deja la cola.
+        ReportesDb.Puntos(db, Yo, 0).EnrollmentTeamSize = 2;
         await db.SaveChangesAsync();
         return db;
     }
