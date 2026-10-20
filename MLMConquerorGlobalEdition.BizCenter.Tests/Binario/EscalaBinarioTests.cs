@@ -66,7 +66,6 @@ public class EscalaBinarioTests
             FROM sys.dm_db_partition_stats ps JOIN sys.indexes i ON i.object_id = ps.object_id AND i.index_id = ps.index_id
             WHERE ps.object_id = OBJECT_ID('DualTeamTree') GROUP BY i.name
             """).ToListAsync();
-        var lob = await db.Database.SqlQuery<long>($"SELECT CAST(SUM(CAST(DATALENGTH(HierarchyPath) AS bigint)) / 1048576 AS bigint) AS [Value] FROM DualTeamTree").SingleAsync();
         var clave = await db.Database.SqlQuery<int>($"SELECT MAX(DATALENGTH(BinaryPath)) AS [Value] FROM DualTeamTree").SingleAsync();
         var prof = await db.DualTeamTree.MaxAsync(d => d.Depth);
         var gen = await db.GenealogyTree.AsNoTracking().CurrentOfAsync(Medido);
@@ -77,7 +76,6 @@ public class EscalaBinarioTests
                           $"inscripcion {equipoGen}; ESC-P: {p.LeftLegCount + p.RightLegCount + 1} con el; profundidad maxima {prof}, " +
                           $"clave maxima {clave} B, nivel maximo de inscripcion {nivelGen}");
         foreach (var t in tam) _salida.WriteLine($"[ESCALA] DualTeamTree {t.Indice}: {t.Mb} MB, {t.Filas} filas");
-        _salida.WriteLine($"[ESCALA] HierarchyPath del binario: {lob} MB");
 
         clave.Should().BeLessThan(DualBinaryPath.MaxBytes);
         (p.LeftLegCount + p.RightLegCount + 1).Should().Be(50_000);

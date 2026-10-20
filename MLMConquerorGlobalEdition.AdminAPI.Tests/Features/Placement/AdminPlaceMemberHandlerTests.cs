@@ -46,7 +46,6 @@ public class AdminPlaceMemberHandlerTests
         MemberId       = memberId,
         ParentMemberId = parentId,
         Side           = side,
-        HierarchyPath  = path ?? $"/{memberId}/",
         CreationDate   = FixedNow,
         LastUpdateDate = FixedNow,
         CreatedBy      = "seed",
@@ -152,7 +151,7 @@ public class AdminPlaceMemberHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValidPlacement_SetsCorrectHierarchyPath()
+    public async Task Handle_WhenValidPlacement_SetsParentSideAndDepth()
     {
         await using var db = InMemoryDbHelper.Create();
         db.MemberProfiles.Add(BuildProfile("amb-001"));

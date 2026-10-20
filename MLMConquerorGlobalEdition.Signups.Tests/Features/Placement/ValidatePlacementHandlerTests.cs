@@ -108,7 +108,6 @@ public class ValidatePlacementHandlerTests
             MemberId = "AMB-000003",
             ParentMemberId = "AMB-000001",
             Side = TreeSide.Right,
-            HierarchyPath = "/AMB-000001/AMB-000003",
             CreatedBy = "seed",
             LastUpdateDate = FixedNow
         });

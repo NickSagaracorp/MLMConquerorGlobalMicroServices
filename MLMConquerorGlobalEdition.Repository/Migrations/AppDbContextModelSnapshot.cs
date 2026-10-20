@@ -16194,10 +16194,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int?>("Depth")
                         .HasColumnType("int");
 
-                    b.Property<string>("HierarchyPath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 

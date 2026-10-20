@@ -107,10 +107,10 @@ public class PlaceMemberHandlerTests
         // BFS should find that empty slot and place AMB-000002 there.
         await db.DualTeamTree.AddRangeAsync(
             new DualTeamEntity { MemberId = "AMB-000001", ParentMemberId = null,
-                                  Side = TreeSide.Left,  HierarchyPath = "/AMB-000001/",
+                                  Side = TreeSide.Left,
                                   CreatedBy = "seed", LastUpdateDate = FixedNow },
             new DualTeamEntity { MemberId = "AMB-000003", ParentMemberId = "AMB-000001",
-                                  Side = TreeSide.Left,  HierarchyPath = "/AMB-000001/AMB-000003/",
+                                  Side = TreeSide.Left,
                                   CreatedBy = "seed", LastUpdateDate = FixedNow }
         );
         await db.SaveChangesAsync();
@@ -144,7 +144,6 @@ public class PlaceMemberHandlerTests
             MemberId = "AMB-000001",
             ParentMemberId = null,
             Side = TreeSide.Left,
-            HierarchyPath = "/AMB-000001/",
             CreatedBy = "seed",
             LastUpdateDate = FixedNow
         });
@@ -192,48 +191,6 @@ public class PlaceMemberHandlerTests
     }
 
     /// <summary>
-    /// Sprint-15 Bug 10 — defensive HierarchyPath normalize. Legacy parent
-    /// rows historically existed where HierarchyPath was missing its trailing
-    /// slash (e.g. "/AMB-000001"). Concatenating "{path}{newId}/" against such
-    /// a parent glued IDs together: "/AMB-000001AMB-000002/". The handler now
-    /// uses TrimEnd('/') + '/' to guarantee exactly one separator regardless.
-    /// We simulate the malformed state by inserting a parent row directly into
-    /// the in-memory DB with no trailing slash, then placing under it.
-    /// </summary>
-    [Fact]
-    public async Task Handle_WhenSponsorPathMissingTrailingSlash_NewPathHasSlashBetweenIds()
-    {
-        await using var db = InMemoryDbHelper.Create();
-        await db.MemberProfiles.AddRangeAsync(
-            BuildMember("AMB-000002", FixedNow.AddDays(-5)),
-            BuildMember("AMB-000001", FixedNow.AddDays(-60))
-        );
-        // MALFORMED parent — no trailing slash on HierarchyPath.
-        await db.DualTeamTree.AddAsync(new DualTeamEntity {
-            MemberId       = "AMB-000001",
-            ParentMemberId = null,
-            Side           = TreeSide.Left,
-            HierarchyPath  = "/AMB-000001",
-            CreatedBy      = "seed",
-            LastUpdateDate = FixedNow
-        });
-        await db.SaveChangesAsync();
-
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
-
-        var result = await handler.Handle(
-            new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-
-        var node = db.DualTeamTree.First(n => n.MemberId == "AMB-000002");
-        // Plan Q: el binario ya no tiene ruta de texto; la posicion es el padre, el lado y la profundidad.
-        node.ParentMemberId.Should().Be("AMB-000001");
-        node.Side.Should().Be(TreeSide.Left);
-        node.Depth.Should().Be(1);
-    }
-
-    /// <summary>
     /// Plan P (revision I3): ya no hay tope de 1.500 caracteres de ruta (comparaba caracteres, no bytes). El limite
     /// real es la clave compacta: un padre con una ruta muy larga se puede usar.
     /// </summary>
@@ -247,7 +204,7 @@ public class PlaceMemberHandlerTests
             BuildMember(longId, FixedNow.AddDays(-60)));
         await db.DualTeamTree.AddAsync(new DualTeamEntity {
             MemberId = longId, ParentMemberId = null, Side = TreeSide.Left,
-            HierarchyPath = $"/{longId}/", CreatedBy = "seed", LastUpdateDate = FixedNow });
+            CreatedBy = "seed", LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 
         var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
@@ -268,7 +225,7 @@ public class PlaceMemberHandlerTests
         await db.MemberStatistics.AddAsync(new MemberStatisticEntity { MemberId = "AMB-000002", PersonalPoints = 40, CreatedBy = "seed" });
         await db.DualTeamTree.AddAsync(new DualTeamEntity {
             MemberId = "AMB-000001", ParentMemberId = null, Side = TreeSide.Left,
-            HierarchyPath = "/AMB-000001/", CreatedBy = "seed", LastUpdateDate = FixedNow });
+            CreatedBy = "seed", LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 
         var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)
@@ -306,8 +263,8 @@ public class PlaceMemberHandlerTests
             BuildMember("AMB-000002", FixedNow.AddDays(-5)),
             BuildMember("AMB-000001", FixedNow.AddDays(-60)));
         await db.DualTeamTree.AddRangeAsync(
-            new DualTeamEntity { MemberId = "AMB-000001", Side = TreeSide.Left, HierarchyPath = "/AMB-000001/", CreatedBy = "seed", LastUpdateDate = FixedNow },
-            new DualTeamEntity { MemberId = "AMB-000002", ParentMemberId = "AMB-000001", Side = TreeSide.Left, HierarchyPath = "/AMB-000001/AMB-000002/", CreatedBy = "seed", LastUpdateDate = FixedNow });
+            new DualTeamEntity { MemberId = "AMB-000001", Side = TreeSide.Left, CreatedBy = "seed", LastUpdateDate = FixedNow },
+            new DualTeamEntity { MemberId = "AMB-000002", ParentMemberId = "AMB-000001", Side = TreeSide.Left, CreatedBy = "seed", LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 
         var result = await new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object)

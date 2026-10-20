@@ -161,10 +161,10 @@ public class GetMemberStatsHandlerTests
         // overwrite CreationDate to our deterministic test offsets and re-save.
         var rows = new[]
         {
-            new DualTeamEntity { MemberId = "AMB-001", Side = TreeSide.Left,  HierarchyPath = "/AMB-001/", CreatedBy = "system" },
-            new DualTeamEntity { MemberId = "AMB-002", Side = TreeSide.Right, HierarchyPath = "/AMB-002/", CreatedBy = "system" },
-            new DualTeamEntity { MemberId = "AMB-003", Side = TreeSide.Left,  HierarchyPath = "/AMB-003/", CreatedBy = "system" },
-            new DualTeamEntity { MemberId = "AMB-004", Side = TreeSide.Right, HierarchyPath = "/AMB-004/", CreatedBy = "system" }
+            new DualTeamEntity { MemberId = "AMB-001", Side = TreeSide.Left,  CreatedBy = "system" },
+            new DualTeamEntity { MemberId = "AMB-002", Side = TreeSide.Right, CreatedBy = "system" },
+            new DualTeamEntity { MemberId = "AMB-003", Side = TreeSide.Left,  CreatedBy = "system" },
+            new DualTeamEntity { MemberId = "AMB-004", Side = TreeSide.Right, CreatedBy = "system" }
         };
         await db.DualTeamTree.AddRangeAsync(rows);
         await db.SaveChangesAsync();

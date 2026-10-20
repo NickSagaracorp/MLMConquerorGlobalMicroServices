@@ -95,7 +95,6 @@ public sealed class RankScenarioBuilder
         _db.DualTeamTree.Add(new DualTeamEntity
         {
             MemberId = subjectId,
-            HierarchyPath = $"/{subjectId}/",
             LeftLegPoints = (decimal)(int)Math.Ceiling(dtTarget / 2.0),
             RightLegPoints = (decimal)(int)Math.Floor(dtTarget / 2.0),
             CreatedBy = Tag, CreationDate = Now, LastUpdateDate = Now

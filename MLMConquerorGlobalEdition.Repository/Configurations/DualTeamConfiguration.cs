@@ -10,13 +10,8 @@ public class DualTeamConfiguration : IEntityTypeConfiguration<DualTeamEntity>
     public void Configure(EntityTypeBuilder<DualTeamEntity> builder)
     {
         builder.HasKey(x => x.Id);
-        // HierarchyPath is an unbounded materialized path. It is intentionally NOT a
-        // B-tree index key: the deepest-on-side spillover rule produces deep chains
-        // whose path length exceeds SQL Server's 1700-byte nonclustered-index key
-        // limit, which previously made placement inserts fail. Subtree membership is
-        // handled by the adjacency list (ParentMemberId) + incremental leg points,
-        // not by indexed LIKE scans on this column.
-        builder.Property(x => x.HierarchyPath).IsRequired();
+        // Plan Q (Bloque 3): el binario no tiene ruta de texto (HierarchyPath, eliminada por RetiraRutaDelBinario).
+        // La posicion es la clave compacta (BinaryPath, Depth) y el equipo, su rango (DualSubtree).
         builder.Property(x => x.LeftLegPoints).HasPrecision(18, 4);
         builder.Property(x => x.RightLegPoints).HasPrecision(18, 4);
         // A member may occupy at most ONE position in the dual tree. This unique

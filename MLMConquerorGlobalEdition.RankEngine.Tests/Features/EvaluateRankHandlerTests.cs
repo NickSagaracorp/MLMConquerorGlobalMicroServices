@@ -440,7 +440,7 @@ public class EvaluateRankHandlerTests
         var binario = "/" + string.Join("/", Enumerable.Range(0, 500).Select(i => $"BIN-{i:000}")) + "/AMB-001/";
         await db.DualTeamTree.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity
         {
-            MemberId = "AMB-001", ParentMemberId = "BIN-499", Side = TreeSide.Left, HierarchyPath = binario,
+            MemberId = "AMB-001", ParentMemberId = "BIN-499", Side = TreeSide.Left,
             CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
         });
         var inscripcion = "/" + string.Join("/", Enumerable.Range(0, 50).Select(i => $"ENR-{i:00}")) + "/AMB-001/";

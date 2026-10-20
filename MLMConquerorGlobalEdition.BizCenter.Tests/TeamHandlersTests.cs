@@ -221,8 +221,8 @@ public class TeamHandlersTests : IDisposable
     public async Task GetDualTree_WhenMemberHasLeftAndRightChildren_ReturnsBoth()
     {
         _db.DualTeamTree.AddRange(
-            new DualTeamEntity { MemberId = "left-child",  ParentMemberId = MemberId, Side = TreeSide.Left,  HierarchyPath = $"/{MemberId}/left-child/" },
-            new DualTeamEntity { MemberId = "right-child", ParentMemberId = MemberId, Side = TreeSide.Right, HierarchyPath = $"/{MemberId}/right-child/" }
+            new DualTeamEntity { MemberId = "left-child",  ParentMemberId = MemberId, Side = TreeSide.Left },
+            new DualTeamEntity { MemberId = "right-child", ParentMemberId = MemberId, Side = TreeSide.Right }
         );
         _db.MemberProfiles.AddRange(
             BuildProfile("left-child"),
@@ -254,7 +254,7 @@ public class TeamHandlersTests : IDisposable
     {
         // Child in tree but no MemberProfile
         _db.DualTeamTree.Add(
-            new DualTeamEntity { MemberId = "orphan", ParentMemberId = MemberId, Side = TreeSide.Left, HierarchyPath = $"/{MemberId}/orphan/" }
+            new DualTeamEntity { MemberId = "orphan", ParentMemberId = MemberId, Side = TreeSide.Left }
         );
         await _db.SaveChangesAsync();
 
@@ -268,7 +268,7 @@ public class TeamHandlersTests : IDisposable
     public async Task GetDualTree_WhenOtherMemberHasChildren_DoesNotReturnThem()
     {
         _db.DualTeamTree.Add(
-            new DualTeamEntity { MemberId = "other-child", ParentMemberId = "other-parent", Side = TreeSide.Left, HierarchyPath = "/other-parent/other-child/" }
+            new DualTeamEntity { MemberId = "other-child", ParentMemberId = "other-parent", Side = TreeSide.Left }
         );
         _db.MemberProfiles.Add(BuildProfile("other-child"));
         await _db.SaveChangesAsync();

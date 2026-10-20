@@ -29,7 +29,6 @@ public class UnplaceMemberHandlerTests
             MemberId = memberId,
             ParentMemberId = "AMB-000001",
             Side = TreeSide.Left,
-            HierarchyPath = $"/AMB-000001/{memberId}",
             CreatedBy = "seed",
             LastUpdateDate = FixedNow
         });

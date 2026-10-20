@@ -90,7 +90,7 @@ public class RankQualificationServiceTests
         db.MemberProfiles.Add(Member("M"));
         await ActiveMembershipAsync(db, "M", 0);                    // 0 PCP => gate fails
         db.DualTeamTree.Add(new DualTeamEntity { MemberId = "M", LeftLegPoints = 1000,
-            RightLegPoints = 1000, HierarchyPath = "/M/", CreatedBy = "seed",
+            RightLegPoints = 1000, CreatedBy = "seed",
             CreationDate = Now, LastUpdateDate = Now });
         await db.SaveChangesAsync();
 
@@ -115,7 +115,7 @@ public class RankQualificationServiceTests
         db.MemberProfiles.Add(Member("M"));
         await ActiveMembershipAsync(db, "M", 12);   // 12 PCP => gate passes
         db.DualTeamTree.Add(new DualTeamEntity { MemberId = "M", LeftLegPoints = 200,
-            RightLegPoints = 200, HierarchyPath = "/M/", CreatedBy = "seed",
+            RightLegPoints = 200, CreatedBy = "seed",
             CreationDate = Now, LastUpdateDate = Now });
         await db.SaveChangesAsync();
 

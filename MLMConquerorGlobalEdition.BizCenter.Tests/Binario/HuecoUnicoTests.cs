@@ -38,7 +38,7 @@ public class SqlServerHuecoUnicoTests
 
         db.DualTeamTree.Add(new DualTeamEntity
         {
-            MemberId = $"{x}B", ParentMemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/{x}B/",
+            MemberId = $"{x}B", ParentMemberId = $"{x}P", Side = TreeSide.Left,
             CreationDate = DateTime.Now, CreatedBy = "plan-p-prueba", LastUpdateDate = DateTime.Now
         });
         var act = () => db.SaveChangesAsync();
@@ -57,7 +57,7 @@ public class SqlServerHuecoUnicoTests
         await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}A", $"{x}P", TreeSide.Left));
         db.DualTeamTree.Add(new DualTeamEntity
         {
-            MemberId = $"{x}B", ParentMemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/{x}B/",
+            MemberId = $"{x}B", ParentMemberId = $"{x}P", Side = TreeSide.Left,
             IsDeleted = true, CreationDate = DateTime.Now, CreatedBy = "plan-p-prueba", LastUpdateDate = DateTime.Now
         });
 

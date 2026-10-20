@@ -72,7 +72,7 @@ public static class DualTeamNodes
         CancellationToken ct = default) => new()
     {
         MemberId = memberId, ParentMemberId = null, Side = TreeSide.Left,
-        HierarchyPath = string.Empty, BinaryPath = DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)), Depth = 0,
+        BinaryPath = DualBinaryPath.Root(await NextRootOrdinalAsync(db, ct)), Depth = 0,
         CreationDate = now, CreatedBy = createdBy, LastUpdateDate = now, LastUpdateBy = createdBy
     };
 
@@ -85,7 +85,6 @@ public static class DualTeamNodes
         return new DualTeamEntity
         {
             MemberId = memberId, ParentMemberId = parent.MemberId, Side = side,
-            HierarchyPath = string.Empty,
             BinaryPath = DualBinaryPath.Child(key, side), Depth = depth + 1,
             CreationDate = now, CreatedBy = createdBy, LastUpdateDate = now, LastUpdateBy = createdBy
         };

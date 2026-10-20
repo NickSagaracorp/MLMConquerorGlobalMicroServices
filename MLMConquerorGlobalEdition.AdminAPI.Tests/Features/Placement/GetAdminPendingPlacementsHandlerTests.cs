@@ -85,7 +85,6 @@ public class GetAdminPendingPlacementsHandlerTests
             MemberId       = "amb-001",
             ParentMemberId = "sponsor-001",
             Side           = TreeSide.Left,
-            HierarchyPath  = "/sponsor-001/amb-001/",
             CreationDate   = FixedNow,
             LastUpdateDate = FixedNow,
             CreatedBy      = "seed",
@@ -166,7 +165,7 @@ public class GetAdminPendingPlacementsHandlerTests
         db.MemberProfiles.Add(BuildProfile("amb-001", "sponsor-001", enrolledDaysAgo: 5));
         db.DualTeamTree.Add(new DualTeamEntity
         {
-            MemberId = "amb-001", ParentMemberId = null, Side = TreeSide.Left, HierarchyPath = "/amb-001/",
+            MemberId = "amb-001", ParentMemberId = null, Side = TreeSide.Left,
             CreationDate = FixedNow, LastUpdateDate = FixedNow, CreatedBy = "seed", LastUpdateBy = "seed"
         });
         await db.SaveChangesAsync();

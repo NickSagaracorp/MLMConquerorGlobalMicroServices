@@ -3,8 +3,6 @@ using Microsoft.Data.SqlClient;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Services;
-using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
 
@@ -93,34 +91,5 @@ public class SqlServerClaveCompactaTests
             using (var r = cmd.ExecuteReader()) while (r.Read()) ids.Add(r.GetInt32(0));
             ids.Should().BeEquivalentTo(Subarbol(x.Id), $"subarbol del nodo {x.Id}");
         }
-    }
-
-    private sealed class Reloj : MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider
-    {
-        public DateTime Now => DateTime.Now;
-        public DateTime UtcNow => DateTime.UtcNow;
-    }
-
-    /// <summary>Plan Q, Tarea 12: colocar y mover ya no escriben la ruta de texto (se quita con la columna, Tarea 13).</summary>
-    [SqlServerFact]
-    public async Task Ni_colocar_ni_mover_escriben_la_ruta_de_texto()
-    {
-        var x = BinarioDb.Prefijo("PQR");
-        try
-        {
-            await using (var db = SqlServerReportes.Db())
-            {
-                await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}A", $"{x}P", TreeSide.Left));
-                await BinarioDb.SembrarPerfilAsync(db, $"{x}B", $"{x}A");
-                await BinarioDb.SembrarPerfilAsync(db, $"{x}C", $"{x}B");
-                var motor = new PlacementService(db, new Reloj());
-                (await motor.PlaceAsync($"{x}C", $"{x}B")).IsSuccess.Should().BeTrue();   // B raiz provisional
-                (await motor.PlaceAsync($"{x}B", $"{x}A")).IsSuccess.Should().BeTrue();   // se mueve con C
-            }
-            await using (var db = SqlServerReportes.Db())
-                (await db.Database.SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM DualTeamTree WHERE MemberId LIKE {x + "%"} AND HierarchyPath <> N''").SingleAsync())
-                    .Should().Be(0);
-        }
-        finally { await BinarioDb.LimpiarAsync(x); }
     }
 }

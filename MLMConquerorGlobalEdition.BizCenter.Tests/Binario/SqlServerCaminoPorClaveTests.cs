@@ -18,8 +18,6 @@ public class SqlServerCaminoPorClaveTests
         await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left),
             ($"{x}LR", $"{x}L", TreeSide.Right), ($"{x}LRL", $"{x}LR", TreeSide.Left));
         await BinarioDb.SembrarPerfilesAsync(db, $"{x}P", $"{x}L", $"{x}LR", $"{x}LRL");
-        // Se quita en la Tarea 13, con la columna.
-        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE DualTeamTree SET HierarchyPath = N'' WHERE MemberId LIKE {x + "%"}");
         var svc = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
 
         var hondo = await svc.GetDeepestNodeAsync($"{x}P", TreeSide.Left);

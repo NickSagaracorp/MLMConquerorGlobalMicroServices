@@ -46,7 +46,6 @@ public class RunAutoPlacementHandlerTests
         MemberId       = memberId,
         ParentMemberId = parentId,
         Side           = side,
-        HierarchyPath  = path ?? $"/{memberId}/",
         CreationDate   = FixedNow,
         LastUpdateDate = FixedNow,
         CreatedBy      = "seed",

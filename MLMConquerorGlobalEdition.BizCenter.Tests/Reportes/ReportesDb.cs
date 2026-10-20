@@ -184,7 +184,6 @@ public static class ReportesDb
         {
             MemberId       = memberId,
             ParentMemberId = padre,
-            HierarchyPath  = ruta,
             Side           = lado,
             BinaryPath     = clave,
             Depth          = prof,

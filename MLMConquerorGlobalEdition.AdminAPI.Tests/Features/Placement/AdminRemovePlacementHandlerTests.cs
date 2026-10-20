@@ -30,7 +30,6 @@ public class AdminRemovePlacementHandlerTests
         MemberId       = memberId,
         ParentMemberId = parentId,
         Side           = side,
-        HierarchyPath  = string.IsNullOrEmpty(path) ? $"/{memberId}/" : path,
         CreationDate   = FixedNow,
         LastUpdateDate = FixedNow,
         CreatedBy      = "seed",

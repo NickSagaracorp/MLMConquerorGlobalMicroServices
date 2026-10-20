@@ -21,9 +21,9 @@ public class SqlServerAdminRemovePlacementEsperaTests
             {
                 var claveP = ClaveDePrueba.Raiz(db);
                 db.DualTeamTree.AddRange(
-                    new DualTeamEntity { MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/", BinaryPath = claveP, Depth = 0,
+                    new DualTeamEntity { MemberId = $"{x}P", Side = TreeSide.Left, BinaryPath = claveP, Depth = 0,
                         CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba" },
-                    new DualTeamEntity { MemberId = $"{x}M", ParentMemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/{x}M/",
+                    new DualTeamEntity { MemberId = $"{x}M", ParentMemberId = $"{x}P", Side = TreeSide.Left,
                         BinaryPath = ClaveDePrueba.Hijo(claveP, TreeSide.Left), Depth = 1, CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba" });
                 await db.SaveChangesAsync();
             }

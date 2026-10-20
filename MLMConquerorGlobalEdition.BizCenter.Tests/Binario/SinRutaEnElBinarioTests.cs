@@ -36,9 +36,8 @@ public class SinRutaEnElBinarioTests
         ["Scripts/sql/plan-p/01-reparar-huecos-binario.sql"] = "retirado por su guarda (51104): no se ejecuta sin la columna",
         ["Scripts/sql/plan-p/escala/altas/g-binario.sql"] = "lo cambia la Tarea 32 (generador de escala)",
         ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "lo cambia la Tarea 32 (verificacion de escala)",
-        // Temporal: la Tarea 13 se aplica despues que esta (la migracion espera a reiniciar los servicios) y la quita.
-        ["MLMConquerorGlobalEdition.Repository/Queries/DualTeamNodes.cs"] =
-            "pone HierarchyPath = string.Empty mientras la columna sea NOT NULL; se quita con la columna (Tarea 13)",
+        ["Scripts/sql/plan-q/03-recuperar-espacio-de-la-ruta.sql"] =
+            "solo comprueba que la columna ya no existe (COL_LENGTH, 51103) antes de liberar su espacio",
     };
 
     /// <summary>True si la sentencia (ya sin comentarios) usa la ruta de texto DEL BINARIO.</summary>

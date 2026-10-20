@@ -174,7 +174,6 @@ public class CalculatePresidentialBonusHandlerTests
         MemberId       = memberId,
         ParentMemberId = null,
         Side           = TreeSide.Left,
-        HierarchyPath  = $"/{memberId}/",
         LeftLegPoints  = left,
         RightLegPoints = right,
         CreatedBy      = "seed",

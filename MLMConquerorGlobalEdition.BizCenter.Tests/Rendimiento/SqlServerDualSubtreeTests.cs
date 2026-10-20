@@ -65,13 +65,13 @@ public class SqlServerDualSubtreeTests
     });
 
     /// <summary>
-    /// Revision C1: con una ruta de mas de 4.000 caracteres, el filtro por prefijo de HierarchyPath falla en SQL
-    /// Server (lo que hacian Mi equipo por encima de la CTE, la busqueda, el nodo mas profundo, el listado del admin,
-    /// el progreso de rango y el visualizador). Tras la reparacion casi todos los nodos estan asi. Por la clave
-    /// compacta no falla: se comprueban la busqueda y el nodo mas profundo, que antes filtraban por la ruta.
+    /// Revision C1: en una cadena de 300 niveles (antes, rutas de mas de 4.000 caracteres, donde el filtro por prefijo
+    /// de HierarchyPath fallaba con el error 8152), la clave compacta acota el subarbol, y la busqueda y el nodo mas
+    /// profundo dan lo que tienen que dar. Plan Q (Tarea 13): la ruta de texto del binario ya no existe; se quita la
+    /// parte que demostraba el 8152.
     /// </summary>
     [SqlServerFact]
-    public Task Con_una_ruta_de_mas_de_4000_caracteres_el_prefijo_falla_y_la_clave_no() => SqlServerReportes.ConReintentoAsync(async () =>
+    public Task En_una_cadena_de_300_niveles_la_clave_acota_el_subarbol() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
         await using var tx = await db.Database.BeginTransactionAsync();
@@ -85,12 +85,6 @@ public class SqlServerDualSubtreeTests
         foreach (var id in ids) ReportesDb.Miembro(db, id);
         await db.SaveChangesAsync();
         var medio = ids[290];
-        var rutaMedio = await db.DualTeamTree.Where(d => d.MemberId == medio).Select(d => d.HierarchyPath).SingleAsync();
-        rutaMedio.Length.Should().BeGreaterThan(4000);
-
-        // Hoy (el filtro por prefijo): falla.
-        var prefijo = () => db.DualTeamTree.AsNoTracking().CountAsync(d => d.HierarchyPath.StartsWith(rutaMedio));
-        (await prefijo.Should().ThrowAsync<SqlException>()).Which.Number.Should().Be(8152);
 
         // Por la clave: funciona y da lo que tiene que dar.
         var servicio = new DualTeamService(db, Reportes.CalificadoEnLosEquiposTests.Rangos(db), Reportes.CalificadoEnLosEquiposTests.Calificacion(db));

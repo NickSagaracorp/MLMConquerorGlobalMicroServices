@@ -61,10 +61,10 @@ public class PropiedadEnElCentroDeNegociosTests : IDisposable
 
         // Binario: Propio es la raíz y Descendiente cuelga de él. Ajeno vive en otro árbol.
         _db.DualTeamTree.AddRange(
-            new DualTeamEntity { MemberId = Propio,       HierarchyPath = $"/{Propio}/" },
+            new DualTeamEntity { MemberId = Propio },
             new DualTeamEntity { MemberId = Descendiente, ParentMemberId = Propio,
-                                 Side = TreeSide.Left,    HierarchyPath = $"/{Propio}/{Descendiente}/" },
-            new DualTeamEntity { MemberId = Ajeno,        HierarchyPath = $"/{Ajeno}/" });
+                                 Side = TreeSide.Left },
+            new DualTeamEntity { MemberId = Ajeno });
 
         // Patrocinio: la misma forma, en el otro árbol.
         _db.GenealogyTree.AddRange(

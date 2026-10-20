@@ -43,7 +43,7 @@ public class AvisoDeProfundidadTests
     {
         var k = DualBinaryPath.Root(1);
         for (var i = 0; i < profundidad; i++) k = DualBinaryPath.Child(k, TreeSide.Left);
-        return new DualTeamEntity { MemberId = id, HierarchyPath = $"/{id}/", BinaryPath = k, Depth = profundidad, CreatedBy = "prueba" };
+        return new DualTeamEntity { MemberId = id, BinaryPath = k, Depth = profundidad, CreatedBy = "prueba" };
     }
 
     [Fact]

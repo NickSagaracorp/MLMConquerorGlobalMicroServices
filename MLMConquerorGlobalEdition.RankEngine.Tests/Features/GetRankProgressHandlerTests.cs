@@ -148,7 +148,6 @@ public class GetRankProgressHandlerTests
             MemberId       = "AMB-001",
             LeftLegPoints  = 300,
             RightLegPoints = 200,
-            HierarchyPath  = "/AMB-001/",
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
             LastUpdateDate = FixedNow

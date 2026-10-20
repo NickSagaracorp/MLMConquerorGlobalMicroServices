@@ -38,7 +38,7 @@ public class SqlServerPlaceMemberConcurrenteTests
             {
                 db.DualTeamTree.Add(new DualTeamEntity
                 {
-                    MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/", BinaryPath = ClaveDePrueba.Raiz(db), Depth = 0,
+                    MemberId = $"{x}P", Side = TreeSide.Left, BinaryPath = ClaveDePrueba.Raiz(db), Depth = 0,
                     CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
                 });
                 foreach (var m in new[] { $"{x}P", $"{x}M1", $"{x}M2" })

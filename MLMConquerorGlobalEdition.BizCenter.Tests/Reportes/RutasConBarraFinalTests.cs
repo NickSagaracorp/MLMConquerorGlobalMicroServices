@@ -19,9 +19,7 @@ public class RutasConBarraFinalTests
     /// <summary>Archivo (relativo, con "/") → cuántas escrituras de HierarchyPath tiene.</summary>
     private static readonly Dictionary<string, int> Revisados = new()
     {
-        // Plan Q (Tarea 12): el binario ya no escribe la ruta; DualTeamNodes pone string.Empty en altas y raices
-        // mientras la columna sea NOT NULL. Se quita con la columna (Tarea 13).
-        ["MLMConquerorGlobalEdition.Repository/Queries/DualTeamNodes.cs"]                                            = 2,
+        // Plan Q (Tarea 13): el binario ya no tiene ruta de texto (DualTeamNodes dejo de escribirla).
         // Arbol de inscripcion (GenealogyTree).
         ["MLMConquerorGlobalEdition.Repository/Seeders/RootAmbassadorSeeder.cs"]                                     = 1,
         ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs"] = 1,
