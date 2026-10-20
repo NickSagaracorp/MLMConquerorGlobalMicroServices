@@ -16,6 +16,12 @@ public static class MembershipBillingStops
     public const string ReasonMembershipCancelled = "MEMBERSHIP_CANCELLED";
     public const string ReasonMembershipFree      = "MEMBERSHIP_FREE";
 
+    /// <summary>
+    /// Plan Q (tercera revisión del bloque 2, C-a): otra suscripción reemplazó a esta (subida o bajada). Su estado de cobro
+    /// se para y no se cobra ni se reactiva nunca más: la que se renueva es la nueva.
+    /// </summary>
+    public const string ReasonMembershipReplaced  = "MEMBERSHIP_REPLACED";
+
     /// <summary>La suscripción del estado está borrada o no existe: no hay nada que renovar.</summary>
     public const string ReasonSubscriptionMissing = "SUBSCRIPTION_MISSING";
 
@@ -39,6 +45,28 @@ public static class MembershipBillingStops
     public static bool IsCancelled(MembershipStatus status, bool isAutoRenew, DateTime? cancellationDate, DateTime now) =>
         status == MembershipStatus.Cancelled
         || (!isAutoRenew && cancellationDate is { } c && c.Date <= now.Date);
+
+    /// <summary>
+    /// Plan Q (tercera revisión del bloque 2, C-a): ¿la reemplazó otra? Caducada y con otra suscripción del mismo miembro,
+    /// no borrada, creada a la vez o después y que viene de su nivel (PreviousMembershipLevelId; una renovación no lo
+    /// cambia). Una caducada por el motor sin reemplazo no lo está: se cobra y se reactiva como siempre.
+    /// </summary>
+    public static async Task<bool> IsReplacedAsync(AppDbContext db, MembershipSubscription subscription, CancellationToken ct = default) =>
+        subscription.SubscriptionStatus == MembershipStatus.Expired
+        && await db.MembershipSubscriptions.AsNoTracking().AnyAsync(o =>
+               o.MemberId == subscription.MemberId
+               && o.Id != subscription.Id
+               && !o.IsDeleted
+               && o.PreviousMembershipLevelId == subscription.MembershipLevelId
+               && o.CreationDate >= subscription.CreationDate, ct).ConfigureAwait(false);
+
+    /// <summary>
+    /// Plan Q (tercera revisión del bloque 2, C-a): una subida o bajada caduca la suscripción vieja; su estado de cobro se
+    /// para en el mismo guardado (no guarda). La nueva tendrá el suyo (el barrido lo crea si falta): uno vivo por miembro.
+    /// </summary>
+    public static Task StopForReplacedAsync(AppDbContext db, string replacedSubscriptionId, DateTime now, string actor,
+        CancellationToken ct = default) =>
+        StopForSubscriptionsAsync(db, new[] { replacedSubscriptionId }, ReasonMembershipReplaced, now, actor, ct);
 
     /// <summary>Para el estado (lo deja rastreado; guarda quien llama).</summary>
     public static void Stop(SubscriptionBillingState state, string reason, DateTime now, string actor)

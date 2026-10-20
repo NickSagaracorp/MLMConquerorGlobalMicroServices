@@ -56,6 +56,9 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     /// <summary>La membresía es gratuita: el estado se para sin cobrar.</summary>
     public const string ReasonMembershipFree = MembershipBillingStops.ReasonMembershipFree;
 
+    /// <summary>Otra suscripción reemplazó a la del estado (subida o bajada): el estado se para sin cobrar.</summary>
+    public const string ReasonMembershipReplaced = MembershipBillingStops.ReasonMembershipReplaced;
+
     /// <summary>La suscripción del estado está borrada o no existe: el estado se para (revisión M-9).</summary>
     public const string ReasonSubscriptionMissing = MembershipBillingStops.ReasonSubscriptionMissing;
 
@@ -131,7 +134,10 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // motivo en vez de fallar SUBSCRIPTION_NOT_FOUND en cada pasada.
         var notBillable = subscriptionToCheck is null
             ? MembershipBillingStops.ReasonSubscriptionMissing
-            : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now);
+            : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now)
+              // Plan Q (tercera revisión del bloque 2, C-a): la reemplazada por una subida o bajada no se cobra.
+              ?? (await MembershipBillingStops.IsReplacedAsync(_db, subscriptionToCheck, ct)
+                  ? MembershipBillingStops.ReasonMembershipReplaced : null);
         if (notBillable is not null)
         {
             MembershipBillingStops.Stop(state, notBillable, now, Actor);
@@ -773,7 +779,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
     /// <summary>
     /// Plan Q (revision 2 del bloque 2, I5): reactiva la suscripcion DEL ESTADO que se acaba de cobrar. Antes tomaba
-    /// cualquiera del miembro retenida o caducada, sin orden: tras una subida podia reactivar la vieja caducada.
+    /// cualquiera del miembro retenida o caducada, sin orden: tras una subida podia reactivar la vieja caducada. Y nunca una
+    /// reemplazada (tercera revision, C-a).
     /// </summary>
     private async Task LiftTerminalMembershipStatusAsync(string membershipSubscriptionId, DateTime now, CancellationToken ct)
     {
@@ -785,6 +792,13 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             .FirstOrDefaultAsync(ct);
 
         if (subscription is null) return;
+        // Plan Q (tercera revisión del bloque 2, C-a): nunca reactiva una reemplazada (dos activas, los puntos dos veces).
+        if (await MembershipBillingStops.IsReplacedAsync(_db, subscription, ct))
+        {
+            _logger.LogWarning("Suscripción {SubscriptionId} reemplazada por una subida o bajada: no se reactiva.",
+                membershipSubscriptionId);
+            return;
+        }
 
         subscription.SubscriptionStatus = MembershipStatus.Active;
         subscription.LastUpdateDate     = now;

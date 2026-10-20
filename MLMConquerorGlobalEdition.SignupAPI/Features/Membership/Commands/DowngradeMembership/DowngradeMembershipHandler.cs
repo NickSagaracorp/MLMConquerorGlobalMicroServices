@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -59,6 +60,8 @@ public class DowngradeMembershipHandler : IRequestHandler<DowngradeMembershipCom
         };
 
         await _db.MembershipSubscriptions.AddAsync(newSub, ct);
+        // Plan Q (tercera revisión del bloque 2, C-a): la vieja deja de cobrarse en el mismo guardado.
+        await MembershipBillingStops.StopForReplacedAsync(_db, currentSub.Id, now, command.MemberId, ct);
         await _db.SaveChangesAsync(ct);
 
         return Result<bool>.Success(true);
