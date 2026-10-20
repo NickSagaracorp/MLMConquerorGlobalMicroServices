@@ -117,4 +117,30 @@ public class CancelacionParaElCobroRecurrenteTests
         (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync(s => s.Id == "otro"))
             .Status.Should().Be(RecurringBillingStatus.Active);
     }
+
+    /// <summary>
+    /// Revision de Q3 (M1): una retenida por el admin (OnHold con la marca) cuya cancelacion programada llega se cancela sin
+    /// la marca, y su cobro parado por retencion queda sellado como cancelado: reactivar la cuenta ya no la reanuda.
+    /// </summary>
+    [Fact]
+    public async Task El_trabajo_de_cancelaciones_programadas_quita_la_marca_de_la_retenida_por_el_admin()
+    {
+        var (db, subId) = await SembrarAsync(cancelacion: Ahora.AddDays(-1));
+        await using var _db = db;
+        var sub = await db.MembershipSubscriptions.SingleAsync(s => s.Id == subId);
+        sub.SubscriptionStatus  = MembershipStatus.OnHold;
+        sub.HeldByAccountStatus = MemberAccountStatus.Suspended;
+        var estado = await db.SubscriptionBillingStates.SingleAsync();
+        estado.Status            = RecurringBillingStatus.Stopped;
+        estado.LastFailureReason = "MEMBERSHIP_ON_HOLD";
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await new ProcessScheduledCancellationsJob(db, Reloj(), Mock.Of<ISponsorBonusService>()).ExecuteAsync();
+
+        var cancelada = await db.MembershipSubscriptions.AsNoTracking().SingleAsync(s => s.Id == subId);
+        cancelada.SubscriptionStatus.Should().Be(MembershipStatus.Cancelled);
+        cancelada.HeldByAccountStatus.Should().BeNull();
+        (await EstadoAsync(db)).LastFailureReason.Should().Be("MEMBERSHIP_CANCELLED");
+    }
 }

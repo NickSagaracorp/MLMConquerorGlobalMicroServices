@@ -90,6 +90,9 @@ public class ProcessScheduledCancellationsJob
             subscription.SubscriptionStatus = MembershipStatus.Cancelled;
             subscription.EndDate = now;
             subscription.IsAutoRenew = false;
+            // Revision de Q3 (M1): una retenida por el admin deja de estarlo; si no, reactivar la cuenta la contaria como
+            // suya. Su cobro parado por retencion se vuelve a sellar como cancelado (StopForSubscriptionsAsync, abajo).
+            subscription.HeldByAccountStatus = null;
             subscription.LastUpdateBy = "system";
 
             // Flip member account status
