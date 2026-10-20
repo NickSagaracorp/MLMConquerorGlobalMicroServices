@@ -244,6 +244,7 @@ public class ApplyMemberStatisticDeltasJobTests
             {
                 MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
                 HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                Node = HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, i + 1)) + "/"),
                 CreatedBy = "test", CreationDate = FixedNow
             });
         var delta = BuildDelta(linea[11], enrollmentPoints: 6, teamSize: 1, qsm: 1);
@@ -270,6 +271,7 @@ public class ApplyMemberStatisticDeltasJobTests
             {
                 MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
                 HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                Node = HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, i + 1)) + "/"),
                 CreatedBy = "test", CreationDate = FixedNow
             });
         var delta = BuildDelta(linea[11], enrollmentPoints: 0, teamSize: 0, qsm: 0);
@@ -285,5 +287,72 @@ public class ApplyMemberStatisticDeltasJobTests
         stats.ContainsKey(linea[11]).Should().BeFalse("el propio no esta en su equipo");
         (await db.RankEvaluationQueue.CountAsync()).Should().Be(0, "la evaluacion de rango no lee los calificados");
         (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
+    }
+
+    // ─── Plan Q, revision del bloque 4: InMemory se comporta como SQL Server ─────────────────────────────────
+
+    private sealed class Captura : ILogger<ApplyMemberStatisticDeltasJob>
+    {
+        public readonly List<(LogLevel Nivel, string Texto)> Mensajes = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Mensajes.Add((logLevel, formatter(state, exception)));
+    }
+
+    /// <summary>Doce nodos L00..L11, cada uno hijo del anterior; con Node salvo los de <paramref name="sinNode"/>.</summary>
+    private static string[] SembrarLinea(MLMConquerorGlobalEdition.Repository.Context.AppDbContext db, params int[] sinNode)
+    {
+        var linea = Enumerable.Range(0, 12).Select(i => $"AMB-L{i:D2}").ToArray();
+        for (var i = 0; i < linea.Length; i++)
+            db.GenealogyTree.Add(new GenealogyEntity
+            {
+                MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
+                HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                Node = sinNode.Contains(i) ? null : HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, i + 1)) + "/"),
+                CreatedBy = "test", CreationDate = FixedNow
+            });
+        return linea;
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SponsorLine_SinNodeEnElVigente_NoAcreditaANadieYAvisa()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var linea = SembrarLinea(db, sinNode: 11);
+        var delta = BuildDelta(linea[11], enrollmentPoints: 6, teamSize: 1, qsm: 1);
+        delta.Scope = MemberStatisticDeltaScope.SponsorLine;
+        db.MemberStatisticDeltas.Add(delta);
+        await db.SaveChangesAsync();
+        var log = new Captura();
+
+        await new ApplyMemberStatisticDeltasJob(db, DateTimeMock(), log).ExecuteAsync(CancellationToken.None);
+
+        (await db.MemberStatistics.CountAsync()).Should().Be(0, "sin Node en su nodo vigente no hay linea, como en SQL Server");
+        (await db.RankEvaluationQueue.CountAsync()).Should().Be(0);
+        (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
+        log.Mensajes.Should().ContainSingle(m => m.Nivel == LogLevel.Warning && m.Texto.Contains(delta.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SponsorLine_SaltaLosNodosSinNodeOBorradosYNoLesCuentaPuesto()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var linea = SembrarLinea(db, sinNode: 7);
+        await db.SaveChangesAsync();
+        var borrado = await db.GenealogyTree.SingleAsync(g => g.MemberId == linea[4]);
+        borrado.IsDeleted = true;
+        var delta = BuildDelta(linea[11], enrollmentPoints: 6, teamSize: 1, qsm: 1);
+        delta.Scope = MemberStatisticDeltaScope.SponsorLine;
+        db.MemberStatisticDeltas.Add(delta);
+        await db.SaveChangesAsync();
+
+        await CreateJob(db).ExecuteAsync(CancellationToken.None);
+
+        var vivos = linea.Where((_, i) => i is not (4 or 7)).ToArray();
+        var stats = await db.MemberStatistics.ToDictionaryAsync(s => s.MemberId);
+        stats.Keys.Should().BeEquivalentTo(vivos);
+        // Los 10 vivos mas cercanos al patrocinador (L11): L11, L10, L09, L08, L06, L05, L03, L02, L01, L00.
+        (await db.RankEvaluationQueue.Select(q => q.EvaluateMemberId).ToListAsync()).Should().BeEquivalentTo(vivos);
     }
 }

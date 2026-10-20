@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.Repository.Jobs;
@@ -157,8 +158,8 @@ public class ApplyMemberStatisticDeltasJob
             && (d.EnrollmentPointsDelta != 0 || d.EnrollmentTeamSizeDelta != 0 || d.QualifiedSponsoredMembersDelta != 0));
 
     /// <summary>
-    /// Una tanda en InMemory (pruebas). SponsorLine sube por ParentMemberId del nodo vigente de cada miembro (las pruebas
-    /// siembran nodos sin Node, revision I6); el patrocinador sin nodo no recibe nada, como en SQL.
+    /// Una tanda en InMemory (pruebas), con la semantica de la de SQL Server (revision del bloque 4): la linea sale del Node
+    /// del nodo vivo vigente, se saltan las posiciones sin nodo vivo y la cota de rango es la misma.
     /// </summary>
     private async Task<int> ApplyBatchInMemoryAsync(CancellationToken ct)
     {
@@ -166,7 +167,12 @@ public class ApplyMemberStatisticDeltasJob
         if (batch.Count == 0) return 0;
         var now = _dateTime.Now;
 
+        // Revision del bloque 4: como en SQL Server, la linea sale del Node del nodo vivo vigente (sin Node no hay linea y
+        // se avisa) y sube por las posiciones de sus ascendientes; una posicion sin nodo vivo se salta y no cuenta en la
+        // Distancia. Los nodos vivos con Node se leen una vez por tanda (solo pruebas).
+        Dictionary<string, string>? vivosPorNode = null;
         var filas = new List<(string MemberId, int Distancia, MemberStatisticDelta Delta)>();
+        var sinNodo = new List<long>();
         foreach (var d in batch)
         {
             if (d.Scope == MemberStatisticDeltaScope.Member)
@@ -174,19 +180,24 @@ public class ApplyMemberStatisticDeltasJob
                 filas.Add((d.MemberId, 0, d));
                 continue;
             }
-            var vistos = new HashSet<string>(StringComparer.Ordinal);
-            var distancia = 0;
-            for (var actual = d.MemberId; actual is not null && vistos.Add(actual); distancia++)
+            var nodo = (await _db.GenealogyTree.AsNoTracking().CurrentOfAsync(d.MemberId, ct))?.Node;
+            if (nodo is null)
             {
-                var id = actual;
-                var nodo = await _db.GenealogyTree.AsNoTracking().Where(g => g.MemberId == id)
-                    .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
-                    .Select(g => new { g.ParentMemberId }).FirstOrDefaultAsync(ct);
-                if (nodo is null) break;
+                sinNodo.Add(d.Id);
+                continue;
+            }
+            vivosPorNode ??= (await _db.GenealogyTree.AsNoTracking().Where(g => g.Node != null)
+                    .Select(g => new { g.MemberId, g.Node }).ToListAsync(ct))
+                .ToDictionary(g => g.Node!.ToString(), g => g.MemberId, StringComparer.Ordinal);
+            var distancia = 0;
+            for (var nivel = 0; nivel < nodo.GetLevel(); nivel++)
+            {
+                if (!vivosPorNode.TryGetValue(nodo.GetAncestor(nivel)!.ToString(), out var id)) continue;
                 if (d.Scope != MemberStatisticDeltaScope.AncestorsOf || distancia > 0) filas.Add((id, distancia, d));
-                actual = nodo.ParentMemberId;
+                distancia++;
             }
         }
+        AvisarSinNodo(sinNodo.Count, sinNodo.Count == 0 ? null : string.Join(",", sinNodo.Take(100)));
 
         var grupos = filas.GroupBy(f => f.MemberId).Select(g => new
         {
