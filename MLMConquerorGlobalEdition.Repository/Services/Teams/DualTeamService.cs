@@ -125,10 +125,23 @@ public class DualTeamService : IDualTeamService
         {
             filas = MyTeamRows(myNode);
         }
-        if (!ordenPedido) filas = ByStructure(filas);
-
-        // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
-        var paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: totalSinFiltros);
+        PagedResult<DualMyTeamRow> paged;
+        if (!ordenPedido && totalSinFiltros is not null
+            && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0)
+        {
+            // Plan Q (Tarea 28): sin busqueda, filtros ni orden pedido, la pagina sale de la clave y despues se unen sus
+            // perfiles (DualSubtree.PageUnder); el total, de los contadores de pierna.
+            var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
+            var rows = await ByStructure(Project(DualSubtree.PageUnder(_db, myNode, (page - 1) * pageSize, pageSize).AsNoTracking()))
+                .ToListAsync(ct);
+            paged = new PagedResult<DualMyTeamRow> { Items = rows, TotalCount = tamano, Page = page, PageSize = pageSize };
+        }
+        else
+        {
+            if (!ordenPedido) filas = ByStructure(filas);
+            // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
+            paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: totalSinFiltros);
+        }
 
         var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode, memberId, ct);
         return new PagedResult<DualTeamMyTeamMemberView>

@@ -105,4 +105,24 @@ public class SqlServerPlanesDeEjecucionTests
         PlanDeEjecucion.Recorridos(plan, "GenealogyTree").Should().BeEmpty();
         plan.Should().NotContain("PhysicalOp=\"Sort\"", "la pagina sale en el orden del indice");
     }
+
+    /// <summary>
+    /// Plan Q (Tarea 28): Mi equipo binario sin orden pedido toma la pagina de la clave (UX_DualTeamTree_BinaryPath,
+    /// cubriente para MemberId) antes de unir los perfiles; con el OFFSET sobre la union se ordenaba el rango entero.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Mi_equipo_binario_toma_la_pagina_de_la_clave_antes_de_unir_los_perfiles()
+    {
+        const string raizMayor = "AMB-700829";
+        var cap = new CapturadorDeSql();
+        await using (var db = cap.Db())
+        {
+            var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
+            var r = await servicio.GetMyTeamGridAsync(raizMayor, new GridDataRequest { Page = 1000, PageSize = 20 });
+            r.Items.Should().HaveCount(20);
+        }
+        var pagina = cap.Textos.Single(t => t.Contains("FETCH NEXT") && t.Contains("[MemberProfiles]"));
+        pagina.IndexOf("FETCH NEXT", StringComparison.Ordinal)
+            .Should().BeLessThan(pagina.IndexOf("[MemberProfiles]", StringComparison.Ordinal), "la pagina sale de la clave");
+    }
 }
