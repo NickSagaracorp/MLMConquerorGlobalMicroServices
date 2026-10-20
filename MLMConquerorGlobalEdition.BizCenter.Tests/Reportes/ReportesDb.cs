@@ -249,10 +249,15 @@ public static class ReportesDb
     /// <paramref name="niveles"/> (null = un producto que no es de membresía). Un pedido de alta
     /// lleva Lifestyle Ambassador (1) y, si acaso, VIP, Elite o Turbo: su nivel es el más alto.
     /// </summary>
-    public static OrdersEntity Orden(AppDbContext db, string memberId, DateTime fecha, params int?[] niveles)
+    public static OrdersEntity Orden(AppDbContext db, string memberId, DateTime fecha, params int?[] niveles) =>
+        Orden(db, Guid.NewGuid().ToString(), memberId, fecha, niveles);
+
+    /// <summary>Como el otro, con el Id del pedido (para probar desempates por Id).</summary>
+    public static OrdersEntity Orden(AppDbContext db, string id, string memberId, DateTime fecha, params int?[] niveles)
     {
         var orden = new OrdersEntity
         {
+            Id        = id,
             MemberId  = memberId,
             OrderDate = fecha,
             Status    = OrderStatus.Completed,

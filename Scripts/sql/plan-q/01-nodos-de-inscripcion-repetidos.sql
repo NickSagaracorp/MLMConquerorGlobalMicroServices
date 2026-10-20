@@ -4,7 +4,12 @@ borrados (IsDeleted = 1, DeletedBy = 'plan-q-01'), por lotes de 5.000, cada lote
 reciente por (CreationDate, Id), el mismo criterio que GenealogySubtree.CurrentOfAsync. Idempotente. Va antes de la
 migracion UnNodoPorMiembro, cuya guarda (51108) falla si quedan repetidos.
   sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -v SoloInforme=1 -i Scripts/sql/plan-q/01-nodos-de-inscripcion-repetidos.sql
+Con QUOTED_IDENTIFIER ON en su propio lote, como los scripts de los Planes M y P: las tablas con columnas calculadas
+indexadas (MemberProfiles, tras BusquedaYNivelDeAlta) rechazan escrituras sin el, y sqlcmd sin -I lo deja apagado.
 */
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 IF N'$(Confirmo)' NOT IN (N'LOCAL', N'ESCALA')
