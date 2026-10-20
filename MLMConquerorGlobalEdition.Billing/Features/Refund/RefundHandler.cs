@@ -5,6 +5,8 @@ using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Billing.Features.Refund;
@@ -85,9 +87,10 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
         payment.LastUpdateBy = _currentUser.UserId;
 
         // Update linked order if present
+        Orders? order = null;
         if (!string.IsNullOrWhiteSpace(payment.OrderId))
         {
-            var order = await _db.Orders
+            order = await _db.Orders
                 .FirstOrDefaultAsync(o => o.Id == payment.OrderId && !o.IsDeleted, ct);
 
             if (order is not null)
@@ -98,7 +101,26 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
             }
         }
 
-        await _db.SaveChangesAsync(ct);
+        // Plan Q (Q3, decidido por Nick): la devolucion TOTAL del pedido vigente de una membresia activa la cancela; el
+        // interceptor resta sus puntos del miembro y de su linea. Una parcial (un ajuste de importe) no la toca. Bajo el
+        // candado de puntos del miembro, tomado antes de leer la suscripcion (como la subida y la bajada); el guardado lo
+        // reutiliza y lo suelta al confirmar, y si no se llega a guardar, el finally.
+        if (order is null || !RefundedMembershipOrders.IsFullRefund(refundAmount, payment.Amount))
+        {
+            await _db.SaveChangesAsync(ct);
+            return Result<bool>.Success(true);
+        }
+
+        await MemberPointsLocks.AcquireAsync(_db, new[] { order.MemberId }, ct);
+        try
+        {
+            await RefundedMembershipOrders.CancelSubscriptionAsync(_db, order.Id, Now, _currentUser.UserId, ct);
+            await _db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            await MemberPointsLocks.ReleaseAsync(_db);
+        }
         return Result<bool>.Success(true);
     }
 }
