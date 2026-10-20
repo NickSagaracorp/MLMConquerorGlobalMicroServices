@@ -10,6 +10,10 @@ IF DB_NAME() <> N'MLMConquerorGlobalEditionDb_Escala'
     THROW 51062, N'Este script es solo para MLMConquerorGlobalEditionDb_Escala.', 1;
 IF N'$(Confirmo)' <> N'ESCALA'
     THROW 51063, N'Ejecutar con -v Confirmo=ESCALA.', 1;
+-- Revision del bloque 3 del Plan Q: escribe (o lee) DualTeamTree.HierarchyPath, que el Plan Q retira; hasta que la
+-- Tarea 32 lo pase a la clave compacta, no se ejecuta contra una base sin la columna.
+IF COL_LENGTH('dbo.DualTeamTree', 'HierarchyPath') IS NULL
+    THROW 51106, N'Pendiente de la Tarea 32 del Plan Q: DualTeamTree ya no tiene HierarchyPath y este script aun la usa.', 1;
 IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
     THROW 51064, N'Solo en la maquina local.', 1;
 IF OBJECT_ID('escala.Altas') IS NULL

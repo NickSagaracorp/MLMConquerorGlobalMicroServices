@@ -22,6 +22,10 @@ IF DB_NAME() <> N'MLMConquerorGlobalEditionDb_Escala'
     THROW 51070, N'Este script es solo para MLMConquerorGlobalEditionDb_Escala.', 1;
 IF N'$(Confirmo)' <> N'ESCALA'
     THROW 51071, N'Ejecutar con -v Confirmo=ESCALA.', 1;
+-- Revision del bloque 3 del Plan Q: escribe (o lee) DualTeamTree.HierarchyPath, que el Plan Q retira; hasta que la
+-- Tarea 32 lo pase a la clave compacta, no se ejecuta contra una base sin la columna.
+IF COL_LENGTH('dbo.DualTeamTree', 'HierarchyPath') IS NULL
+    THROW 51107, N'Pendiente de la Tarea 32 del Plan Q: DualTeamTree ya no tiene HierarchyPath y este script aun la usa.', 1;
 GO
 SET NOCOUNT ON;
 DECLARE @inicio datetime2 = SYSDATETIME();
