@@ -39,6 +39,9 @@ namespace MLMConquerorGlobalEdition.Repository.Jobs;
 /// (Scope = SponsorLine: MemberId es el patrocinador y el delta se aplica a el y a cada ascendiente de su Node, con
 /// QualifiedSponsoredMembersDelta solo a el). En SQL Server cada tanda es un comando por conjuntos en una transaccion;
 /// la cola de rango se llena solo hasta GenealogyUpline.EnrollmentLevels de distancia del patrocinador.
+/// Tarea 19b (DQ13): Scope = AncestorsOf (MemberId es quien cambio) aplica EnrollmentQualifiedTeamMembersDelta a cada
+/// ascendiente de su Node (distancia 1 en adelante), no a el, y no encola evaluaciones de rango. Cada tanda toma el candado
+/// de la cola (member-statistic-deltas) con el que 04-calificados-de-inscripcion.sql la excluye mientras recalcula.
 /// </summary>
 [Queue("signups")]
 public class ApplyMemberStatisticDeltasJob
@@ -145,7 +148,7 @@ public class ApplyMemberStatisticDeltasJob
                     .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
                     .Select(g => new { g.ParentMemberId }).FirstOrDefaultAsync(ct);
                 if (nodo is null) break;
-                filas.Add((id, distancia, d));
+                if (d.Scope != MemberStatisticDeltaScope.AncestorsOf || distancia > 0) filas.Add((id, distancia, d));
                 actual = nodo.ParentMemberId;
             }
         }
@@ -157,8 +160,11 @@ public class ApplyMemberStatisticDeltasJob
             T         = g.Sum(f => f.Delta.EnrollmentTeamSizeDelta),
             Q         = g.Sum(f => f.Delta.Scope == MemberStatisticDeltaScope.Member || f.Distancia == 0
                                    ? f.Delta.QualifiedSponsoredMembersDelta : 0),
+            QQ        = g.Sum(f => f.Delta.EnrollmentQualifiedTeamMembersDelta),
             CreatedBy = g.OrderBy(f => f.Delta.Id).First().Delta.CreatedBy,
-            Encolar   = g.Any(f => f.Distancia < GenealogyUpline.EnrollmentLevels)
+            // La evaluacion de rango no lee los calificados del equipo: AncestorsOf no encola.
+            Encolar   = g.Any(f => f.Delta.Scope != MemberStatisticDeltaScope.AncestorsOf
+                                   && f.Distancia < GenealogyUpline.EnrollmentLevels)
         }).ToList();
 
         foreach (var grp in grupos)
@@ -169,13 +175,15 @@ public class ApplyMemberStatisticDeltasJob
                 existing.EnrollmentPoints          += grp.P;
                 existing.EnrollmentTeamSize        += grp.T;
                 existing.QualifiedSponsoredMembers += grp.Q;
+                existing.EnrollmentQualifiedTeamMembers += grp.QQ;
             }
             else
             {
                 await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
                 {
                     MemberId = grp.MemberId, EnrollmentPoints = grp.P, EnrollmentTeamSize = grp.T,
-                    QualifiedSponsoredMembers = grp.Q, CreatedBy = grp.CreatedBy, CreationDate = now
+                    QualifiedSponsoredMembers = grp.Q, EnrollmentQualifiedTeamMembers = grp.QQ,
+                    CreatedBy = grp.CreatedBy, CreationDate = now
                 }, ct);
             }
         }
@@ -205,17 +213,24 @@ public class ApplyMemberStatisticDeltasJob
     private const string ApplyBatchSql = @"
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+DECLARE @candado int;
+EXEC @candado = sp_getapplock @Resource = N'member-statistic-deltas', @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 30000;
+IF @candado < 0
+    THROW 51115, N'La cola de estadisticas esta ocupada (member-statistic-deltas): un recalculo en curso.', 1;
 DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #exp; DROP TABLE IF EXISTS #agg;
 CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Scope int NOT NULL,
-                    P int NOT NULL, T int NOT NULL, Q int NOT NULL, CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL);
+                    P int NOT NULL, T int NOT NULL, Q int NOT NULL, QQ int NOT NULL,
+                    CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL);
 INSERT INTO #lote
-SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta, CreatedBy
+SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta,
+       EnrollmentQualifiedTeamMembersDelta, CreatedBy
 FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id;
 
--- Scope 0: la fila es del propio MemberId (filas anteriores al Plan Q). Scope 1: MemberId es el patrocinador y el delta
--- sube por los ascendientes de su Node vigente (el mismo criterio que CurrentOfAsync).
-SELECT x.MemberId, x.Distancia, l.P, l.T,
-       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.CreatedBy
+-- Scope 0: la fila es del propio MemberId. Scope 1 (SponsorLine): MemberId es el patrocinador y el delta va a el y a cada
+-- ascendiente de su Node vigente. Scope 2 (AncestorsOf): MemberId es quien cambio y el delta va a sus ascendientes
+-- (Distancia >= 1), no a el.
+SELECT x.MemberId, x.Distancia, l.Scope, l.P, l.T,
+       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.QQ, l.CreatedBy
 INTO #exp
 FROM #lote l
 CROSS APPLY (
@@ -227,29 +242,32 @@ CROSS APPLY (
           ORDER BY g.CreationDate DESC, g.Id DESC) s
     CROSS APPLY dbo.GenealogyAncestors(s.Node) an
     JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
-    WHERE l.Scope = 1
+    WHERE l.Scope = 1 OR (l.Scope = 2 AND an.Distancia >= 1)
 ) x;
 
-SELECT MemberId, SUM(P) AS P, SUM(T) AS T, SUM(Q) AS Q, MIN(CreatedBy) AS CreatedBy
+SELECT MemberId, SUM(P) AS P, SUM(T) AS T, SUM(Q) AS Q, SUM(QQ) AS QQ, MIN(CreatedBy) AS CreatedBy
 INTO #agg FROM #exp GROUP BY MemberId;
 
 MERGE INTO MemberStatistics WITH (HOLDLOCK) AS t
 USING #agg AS s ON t.MemberId = s.MemberId
 WHEN MATCHED THEN UPDATE SET
-    EnrollmentPoints          = t.EnrollmentPoints          + s.P,
-    EnrollmentTeamSize        = t.EnrollmentTeamSize        + s.T,
-    QualifiedSponsoredMembers = t.QualifiedSponsoredMembers + s.Q
+    EnrollmentPoints               = t.EnrollmentPoints               + s.P,
+    EnrollmentTeamSize             = t.EnrollmentTeamSize             + s.T,
+    QualifiedSponsoredMembers      = t.QualifiedSponsoredMembers      + s.Q,
+    EnrollmentQualifiedTeamMembers = t.EnrollmentQualifiedTeamMembers + s.QQ
 WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize,
         EnrollmentTeamSize, DualTeamPoints, EnrollmentPoints, QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
+        EnrollmentQualifiedTeamMembers,
         EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth, DualTeamPointsGrowth,
         CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
-    VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
+    VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, s.QQ, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
 
--- Evaluacion de rango inmediata solo hasta @niveles de distancia del patrocinador (DQ5).
+-- Evaluacion de rango inmediata solo hasta @niveles del patrocinador (DQ5), y nunca por AncestorsOf: el rango no lee
+-- los calificados del equipo.
 INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,
                                  ProcessedBy, ErrorMessage, RetryCount, CreationDate, CreatedBy)
 SELECT e.MemberId, e.MemberId, @enrollment, @now, 0, NULL, NULL, NULL, 0, @now, N'delta-apply'
-FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles) e
+FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles AND Scope <> 2) e
 WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
                   WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
 

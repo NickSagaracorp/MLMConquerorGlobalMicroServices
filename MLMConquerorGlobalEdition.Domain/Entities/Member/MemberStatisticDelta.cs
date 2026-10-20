@@ -26,6 +26,9 @@ public class MemberStatisticDelta : AuditChangesLongKey
     public int EnrollmentTeamSizeDelta { get; set; }
     public int QualifiedSponsoredMembersDelta { get; set; }
 
+    /// <summary>Plan Q (DQ13): cambio de EnrollmentQualifiedTeamMembers.</summary>
+    public int EnrollmentQualifiedTeamMembersDelta { get; set; }
+
     /// <summary>Plan Q: a quien se aplica (ver <see cref="MemberStatisticDeltaScope"/>).</summary>
     public MemberStatisticDeltaScope Scope { get; set; }
 

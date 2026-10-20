@@ -563,7 +563,11 @@ public class AltaPorCriptoTests
         puntos.Should().ContainSingle().Which.Should().Match<MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDelta>(d =>
             d.MemberId == MemberId && d.Scope == MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.SponsorLine
             && d.EnrollmentPointsDelta == 10 && d.SourceMemberId == MemberId);
-        var deltas = await db.MemberStatisticDeltas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).ToListAsync();
+        // Tarea 19b (DQ13): la fila de calificados de inscripcion del activado va aparte (AncestorsOf, +1).
+        (await db.MemberStatisticDeltas.Where(d => d.Scope == MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf).ToListAsync())
+            .Should().ContainSingle(d => d.MemberId == MemberId && d.EnrollmentQualifiedTeamMembersDelta == 1);
+        var deltas = await db.MemberStatisticDeltas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor
+                                                               && d.Scope != MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf).ToListAsync();
         deltas.Should().HaveCount(1, "un delta por ancestro; aquí el upline es solo el patrocinador.");
         deltas[0].MemberId.Should().Be(SponsorId);
         deltas[0].EnrollmentPointsDelta.Should().Be(0);
@@ -632,7 +636,9 @@ public class AltaPorCriptoTests
 
         // Plan Q (DQ16): la fila de puntos (una para toda la linea, el propio incluido; Bloque 4, Q-R34) tampoco se duplica.
         (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1);
-        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1,
+        (await db.MemberStatisticDeltas.CountAsync(d => d.Scope == MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf && d.MemberId == MemberId && d.EnrollmentQualifiedTeamMembersDelta == 1)).Should().Be(1);
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor
+                                                       && d.Scope != MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf)).Should().Be(1,
             "la segunda aprobación no puede volver a encolar el delta del upline.");
 
         sponsor.Verify(s => s.ComputeAsync(
@@ -700,7 +706,9 @@ public class AltaPorCriptoTests
         (await db.MemberProfiles.SingleAsync(m => m.MemberId == MemberId))
             .Status.Should().Be(MemberAccountStatus.Active);
         (await db.Orders.SingleAsync(o => o.Id == OrderId)).Status.Should().Be(OrderStatus.Completed);
-        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1);
+        (await db.MemberStatisticDeltas.CountAsync(d => d.Scope == MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf && d.MemberId == MemberId && d.EnrollmentQualifiedTeamMembersDelta == 1)).Should().Be(1);
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor
+                                                       && d.Scope != MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDeltaScope.AncestorsOf)).Should().Be(1);
         (await db.CryptoPaymentConfirmations.CountAsync()).Should().Be(0);
 
         sponsor.Verify(s => s.ComputeAsync(

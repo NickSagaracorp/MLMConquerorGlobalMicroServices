@@ -8,7 +8,6 @@ using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
-using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 
@@ -107,29 +106,15 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Qualifying team points: cap each branch at 50% of total (weaker leg × 2)
         var qualifyingTeam = Math.Min(leftPoints, rightPoints) * 2;
 
-        // Enrollment tree node (still needed for qualified-member counts)
-        var memberGenealogyNode = await _db.GenealogyTree
-            .AsNoTracking()
-            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
-
-        var enrollmentQualifiedCount = 0;
+        // Plan Q (DQ13): los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas, Tarea 19b): O(1),
+        // diferidos como el resto de contadores (Q-R1). Antes, el rango del Node unido a las activas: O(equipo).
+        var enrollmentQualifiedCount = await _db.MemberStatistics.AsNoTracking()
+            .Where(s => s.MemberId == memberId).OrderBy(s => s.Id)
+            .Select(s => s.EnrollmentQualifiedTeamMembers).FirstOrDefaultAsync(ct);
 
         // ET points via the single source of truth (replaces the former headcount).
         var enrollmentTeamPoints = await _enrollment.GetRawEnrollmentTeamPointsAsync(memberId, ct);
         var personalCustomerPoints = await _personal.GetPersonalCustomerPointsAsync(memberId, ct);
-
-        if (memberGenealogyNode is not null)
-        {
-            // Plan Q: una sola consulta, el rango del Node (CurrentUnder) unido a las suscripciones activas, igual que la
-            // parte binaria. Antes se cargaban en memoria los ids de todo el equipo para un Contains: con 450.000 se agotaba.
-            // Se cuentan suscripciones activas (no miembros), como antes.
-            enrollmentQualifiedCount = await (
-                from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(memberGenealogyNode.Node)
-                where g.MemberId != memberId
-                join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
-                where s.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
-                select s.Id).CountAsync(ct);
-        }
 
         // Plan Q (DQ13): los calificados del binario son contadores de pierna que mantiene la cola (Tarea 8b): O(1), con el
         // mismo atraso que los puntos de pierna (Q-R1). Antes, el rango de la clave unido a las activas: O(equipo).

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
@@ -67,5 +68,29 @@ public class QualifiedTeamDeltasTests
         QualifiedTeamDeltas.Record(db, DateTime.Now);
         await db.SaveChangesAsync();                    // el interceptor lo registra una tercera vez
         (await PropiosAsync(db, "AMB-Q1")).Should().Equal(1);
+        (await DeLineaAsync(db, "AMB-Q1")).Should().Equal(1);
+    }
+
+    // ─── Plan Q (Tarea 19b, DQ13): la fila de la cola de estadisticas para los ascendientes de inscripcion ─────────
+
+    private static Task<List<int>> DeLineaAsync(AppDbContext db, string memberId) =>
+        db.MemberStatisticDeltas.AsNoTracking()
+            .Where(d => d.MemberId == memberId && d.Scope == MemberStatisticDeltaScope.AncestorsOf)
+            .OrderBy(d => d.Id).Select(d => d.EnrollmentQualifiedTeamMembersDelta).ToListAsync();
+
+    [Fact]
+    public async Task Activar_y_cancelar_encolan_una_fila_para_los_ascendientes_de_inscripcion()
+    {
+        var (db, s) = await ConSuscripcionAsync(MembershipStatus.Pending);
+        (await DeLineaAsync(db, "AMB-Q1")).Should().BeEmpty();
+        s.SubscriptionStatus = MembershipStatus.Active;
+        await db.SaveChangesAsync();
+        s.SubscriptionStatus = MembershipStatus.Cancelled;
+        await db.SaveChangesAsync();
+        (await DeLineaAsync(db, "AMB-Q1")).Should().Equal(1, -1);
+        (await db.MemberStatisticDeltas.AsNoTracking().Where(d => d.Scope == MemberStatisticDeltaScope.AncestorsOf)
+            .Select(d => new { d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta, d.SourceMemberId })
+            .ToListAsync()).Should().OnlyContain(d => d.EnrollmentPointsDelta == 0 && d.EnrollmentTeamSizeDelta == 0
+                                                     && d.QualifiedSponsoredMembersDelta == 0 && d.SourceMemberId == "AMB-Q1");
     }
 }

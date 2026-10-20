@@ -44,9 +44,14 @@ public class ActivacionUnDeltaPorAltaTests
         await db.SaveChangesAsync();
 
         // DQ16: los puntos del pedido ya no van en la fila del alta (los encola MembershipPointsDeltas al pasar a Active).
-        var delta = (await db.MemberStatisticDeltas.ToListAsync()).Should().ContainSingle().Subject;
+        var delta = (await db.MemberStatisticDeltas.Where(d => d.Scope == MemberStatisticDeltaScope.SponsorLine).ToListAsync())
+            .Should().ContainSingle().Subject;
         (delta.MemberId, delta.Scope, delta.EnrollmentPointsDelta, delta.EnrollmentTeamSizeDelta,
          delta.QualifiedSponsoredMembersDelta, delta.SourceMemberId, delta.IsApplied)
             .Should().Be((linea[^1], MemberStatisticDeltaScope.SponsorLine, 0, 1, 1, "AMB-NUEVO", false));
+        // Tarea 19b (DQ13): y la de los calificados de inscripcion del activado, una sola para todos sus ascendientes.
+        (await db.MemberStatisticDeltas.Where(d => d.Scope == MemberStatisticDeltaScope.AncestorsOf)
+                .Select(d => new { d.MemberId, d.EnrollmentQualifiedTeamMembersDelta }).ToListAsync())
+            .Should().ContainSingle().Which.Should().Be(new { MemberId = "AMB-NUEVO", EnrollmentQualifiedTeamMembersDelta = 1 });
     }
 }

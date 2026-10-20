@@ -259,4 +259,31 @@ public class ApplyMemberStatisticDeltasJobTests
         (await db.RankEvaluationQueue.Select(q => q.EvaluateMemberId).ToListAsync()).Should().BeEquivalentTo(linea[2..]);
         (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ExecuteAsync_AncestorsOf_SubePorLosAscendientesSinElPropioNiCola()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var linea = Enumerable.Range(0, 12).Select(i => $"AMB-L{i:D2}").ToArray();
+        for (var i = 0; i < linea.Length; i++)
+            db.GenealogyTree.Add(new GenealogyEntity
+            {
+                MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
+                HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                CreatedBy = "test", CreationDate = FixedNow
+            });
+        var delta = BuildDelta(linea[11], enrollmentPoints: 0, teamSize: 0, qsm: 0);
+        delta.Scope = MemberStatisticDeltaScope.AncestorsOf;
+        delta.EnrollmentQualifiedTeamMembersDelta = 1;
+        db.MemberStatisticDeltas.Add(delta);
+        await db.SaveChangesAsync();
+
+        await CreateJob(db).ExecuteAsync(CancellationToken.None);
+
+        var stats = await db.MemberStatistics.ToDictionaryAsync(s => s.MemberId);
+        linea[..11].Should().OnlyContain(id => stats[id].EnrollmentQualifiedTeamMembers == 1);
+        stats.ContainsKey(linea[11]).Should().BeFalse("el propio no esta en su equipo");
+        (await db.RankEvaluationQueue.CountAsync()).Should().Be(0, "la evaluacion de rango no lee los calificados");
+        (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
+    }
 }

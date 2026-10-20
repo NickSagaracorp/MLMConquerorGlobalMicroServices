@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -12,6 +13,9 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// admin y semillas) sin llamarlo a mano. ExecuteUpdate y el SQL crudo no pasan por aqui: lo vigilan
 /// EstadosSinInterceptorTests y EscritoresDeSuscripcionesTests.
 /// Cuenta SUSCRIPCIONES activas (no miembros) y no mira IsDeleted, como el recuento al vuelo al que sustituye (Q-R21).
+/// Por cada cambio neto de un miembro encola un delta propio de la cola de piernas (los calificados del binario, Tarea 8b)
+/// y una fila AncestorsOf de la cola de estadisticas (los de inscripcion, Tarea 19b: ApplyMemberStatisticDeltasJob la
+/// aplica a cada ascendiente de su Node, no a el, y no encola evaluaciones de rango).
 /// </summary>
 public static class QualifiedTeamDeltas
 {
@@ -49,8 +53,9 @@ public static class QualifiedTeamDeltas
     }
 
     /// <summary>
-    /// Anade al contexto, en el mismo guardado, lo que falte para que los deltas propios pendientes de este guardado
-    /// sumen el cambio neto de cada miembro. Idempotente: un guardado que falla y se reintenta no duplica.
+    /// Anade al contexto, en el mismo guardado, lo que falte para que los deltas pendientes de este guardado (el propio de
+    /// la cola de piernas y la fila AncestorsOf de la de estadisticas) sumen el cambio neto de cada miembro. Idempotente: un
+    /// guardado que falla y se reintenta no duplica; cada cola lleva su cuenta.
     /// </summary>
     public static void Record(DbContext context, DateTime now)
     {
@@ -59,16 +64,30 @@ public static class QualifiedTeamDeltas
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Entity.QualifiedCount), StringComparer.Ordinal);
+        var yaEncoladosInscripcion = context.ChangeTracker.Entries<MemberStatisticDelta>()
+            .Where(e => e.State == EntityState.Added && e.Entity.Scope == MemberStatisticDeltaScope.AncestorsOf
+                        && e.Entity.CreatedBy == Actor)
+            .GroupBy(e => e.Entity.MemberId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Entity.EnrollmentQualifiedTeamMembersDelta), StringComparer.Ordinal);
 
-        foreach (var memberId in cambios.Keys.Union(yaEncolados.Keys, StringComparer.Ordinal).ToList())
+        foreach (var memberId in cambios.Keys.Union(yaEncolados.Keys, StringComparer.Ordinal)
+                     .Union(yaEncoladosInscripcion.Keys, StringComparer.Ordinal).ToList())
         {
             var falta = cambios.GetValueOrDefault(memberId) - yaEncolados.GetValueOrDefault(memberId);
-            if (falta == 0) continue;
-            context.Set<DualLegDelta>().Add(new DualLegDelta
-            {
-                StartMemberId = memberId, Side = TreeSide.Left, Points = 0, NodeCount = 0,
-                QualifiedCount = falta, OwnChange = true, CreationDate = now, CreatedBy = Actor
-            });
+            var faltaInscripcion = cambios.GetValueOrDefault(memberId) - yaEncoladosInscripcion.GetValueOrDefault(memberId);
+            if (falta != 0)
+                context.Set<DualLegDelta>().Add(new DualLegDelta
+                {
+                    StartMemberId = memberId, Side = TreeSide.Left, Points = 0, NodeCount = 0,
+                    QualifiedCount = falta, OwnChange = true, CreationDate = now, CreatedBy = Actor
+                });
+            if (faltaInscripcion != 0)
+                context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
+                {
+                    MemberId = memberId, Scope = MemberStatisticDeltaScope.AncestorsOf,
+                    EnrollmentQualifiedTeamMembersDelta = faltaInscripcion,
+                    SourceMemberId = memberId, IsApplied = false, CreatedBy = Actor, CreationDate = now
+                });
         }
     }
 }

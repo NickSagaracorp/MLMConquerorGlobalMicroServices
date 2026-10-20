@@ -8356,6 +8356,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int>("EnrollmentPointsDelta")
                         .HasColumnType("int");
 
+                    b.Property<int>("EnrollmentQualifiedTeamMembersDelta")
+                        .HasColumnType("int");
+
                     b.Property<int>("EnrollmentTeamSizeDelta")
                         .HasColumnType("int");
 
@@ -8426,6 +8429,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("EnrollmentPoints")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnrollmentQualifiedTeamMembers")
                         .HasColumnType("int");
 
                     b.Property<int>("EnrollmentTeamGrowth")

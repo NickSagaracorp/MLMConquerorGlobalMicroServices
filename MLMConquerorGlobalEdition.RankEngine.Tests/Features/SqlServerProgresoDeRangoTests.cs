@@ -1,20 +1,22 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using Xunit.Abstractions;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Tests.Features;
 
 /// <summary>
-/// Plan Q, Bloque 1: los calificados del equipo de inscripcion salen de UNA consulta (el rango del Node unido a las
-/// suscripciones activas), no de una lista de ids en memoria que se agotaba con 450.000 (Plan P, Bloque D).
+/// Plan Q, Bloque 1 y Tarea 19b: los calificados del equipo de inscripcion ya no salen de una lista de ids en memoria (se
+/// agotaba con 450.000, Plan P, Bloque D) ni de contar el equipo: los guarda MemberStatistics (DQ13).
 /// </summary>
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerProgresoDeRangoTests
@@ -23,6 +25,13 @@ public class SqlServerProgresoDeRangoTests
     public SqlServerProgresoDeRangoTests(ITestOutputHelper salida) => _salida = salida;
 
     private sealed class Reloj : IDateTimeProvider
+    {
+        public DateTime Now => DateTime.Now;
+        public DateTime UtcNow => DateTime.UtcNow;
+    }
+
+    /// <summary>El reloj que pide ApplyMemberStatisticDeltasJob (el de SharedKernel).</summary>
+    private sealed class RelojJob : MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider
     {
         public DateTime Now => DateTime.Now;
         public DateTime UtcNow => DateTime.UtcNow;
@@ -55,13 +64,19 @@ public class SqlServerProgresoDeRangoTests
         }
     }
 
+    /// <summary>
+    /// Tarea 19b (DQ13): los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas); el manejador no
+    /// une GenealogyTree con MembershipSubscriptions ni manda la lista de ids.
+    /// </summary>
     [SqlServerFact]
-    public async Task Los_calificados_del_equipo_salen_de_una_consulta_sin_la_lista_de_ids()
+    public async Task Los_calificados_de_inscripcion_salen_del_contador()
     {
         var cap = new Capturador();
         await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlServer(SqlServerReportes.ConnectionString).AddInterceptors(cap).Options);
         await using var tx = await db.Database.BeginTransactionAsync();
+        // Los pendientes de la base local no son de esta prueba: se dan por aplicados dentro de la transaccion.
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
 
         var (r, a, b, c) = (SqlServerReportes.NuevoId("RQ"), SqlServerReportes.NuevoId("RQ"),
                             SqlServerReportes.NuevoId("RQ"), SqlServerReportes.NuevoId("RQ"));
@@ -76,13 +91,16 @@ public class SqlServerProgresoDeRangoTests
         ReportesDb.Nodo(db, b, r, ReportesDb.Ruta(r, b), 2);
         ReportesDb.Nodo(db, a, b, ReportesDb.Ruta(r, b, a), 3);
         ReportesDb.Nodo(db, c, b, ReportesDb.Ruta(r, b, c), 3);
+        foreach (var x in new[] { r, a, b, c }) ReportesDb.Puntos(db, x, 0);
         ReportesDb.Suscripcion(db, r, 2, MembershipStatus.Active, ReportesDb.Base);   // el propio no cuenta
         ReportesDb.Suscripcion(db, a, 2, MembershipStatus.Active, ReportesDb.Base);
         ReportesDb.Suscripcion(db, b, 2, MembershipStatus.Cancelled, ReportesDb.Base);
         ReportesDb.Suscripcion(db, c, 2, MembershipStatus.Active, ReportesDb.Base);
         ReportesDb.Suscripcion(db, c, 3, MembershipStatus.Active, ReportesDb.Base);   // se cuentan suscripciones, como hoy
         await db.SaveChangesAsync();
+        await new ApplyMemberStatisticDeltasJob(db, new RelojJob(), NullLogger<ApplyMemberStatisticDeltasJob>.Instance).ExecuteAsync();
         cap.Valores.Clear();
+        cap.Textos.Clear();
 
         var handler = new GetRankProgressHandler(db, new Reloj(),
             new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
@@ -93,7 +111,9 @@ public class SqlServerProgresoDeRangoTests
         // EF 10 manda la lista como un parametro por id (o como un JSON con EF.Parameter): cualquiera de las dos formas
         // deja el id de A o el de C en algun valor. La consulta nueva solo manda el Node y el id del propio R.
         cap.Valores.Should().NotContain(v => v.Contains(a) || v.Contains(c),
-            "la pertenencia al equipo se resuelve en SQL por el rango del Node, no con la lista de ids");
+            "el manejador no manda la lista de ids del equipo");
+        cap.Textos.Should().NotContain(t => t.Contains("GenealogyTree") && t.Contains("MembershipSubscriptions"),
+            "los calificados de inscripcion salen del contador, no de contar el equipo");
         await tx.RollbackAsync();
     }
 
