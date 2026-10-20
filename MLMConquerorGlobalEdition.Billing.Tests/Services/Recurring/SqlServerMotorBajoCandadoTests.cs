@@ -62,6 +62,9 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
                     DELETE FROM RecurringBillingAttempts WHERE MemberId = {m};
                     DELETE FROM SubscriptionBillingStates WHERE MemberId = {m};
                     DELETE FROM DualLegDeltas WHERE StartMemberId = {m} AND OwnChange = 1;
+                    DELETE FROM MemberStatisticDeltas WHERE SourceMemberId = {m} OR MemberId = {m};
+                    DELETE FROM MemberStatistics WHERE MemberId = {m};
+                    DELETE FROM RankEvaluationQueue WHERE TriggerMemberId = {m};
                     DELETE FROM MembershipSubscriptions WHERE MemberId = {m};
                     DELETE d FROM OrderDetails d JOIN @o o ON o.Id = d.OrderId;
                     DELETE FROM PaymentHistories WHERE MemberId = {m};
