@@ -82,13 +82,124 @@ public class DevolucionDeLaPasarelaCancelaLaMembresiaTests
     }
 
     [Fact]
-    public async Task Un_aviso_sin_importe_cuenta_como_total()
+    public async Task Un_aviso_sin_importe_no_cuenta_como_total()
     {
         await using var db = await SembrarAsync();
 
         (await AvisarAsync(db, "tx-ord-vigente", importe: 0m)).IsSuccess.Should().BeTrue();
 
-        (await EstadoAsync(db)).Should().Be(MembershipStatus.Cancelled);
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+    }
+
+    /// <summary>
+    /// Revision de Q3 (C1): el endpoint es publico y sin firma. Un aviso de pago falso crea un PaymentHistory Captured para
+    /// el pedido de la victima; el aviso de devolucion de esa transaccion no puede cancelar su membresia ni marcar su pedido.
+    /// </summary>
+    [Fact]
+    public async Task Un_pago_creado_por_el_webhook_no_cancela_la_membresia_ni_devuelve_el_pedido()
+    {
+        await using var db = await SembrarAsync();
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.SetupGet(r => r.Now).Returns(Ahora);
+        (await new MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebhook.ProcessPaymentWebhookHandler(db, reloj.Object)
+            .Handle(new MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebhook.ProcessPaymentWebhookCommand("x",
+                new WebhookPaymentPayload { Event = "payment.success", TransactionId = "t1", OrderId = "ord-vigente", MemberId = Miembro, Amount = 100m })))
+            .IsSuccess.Should().BeTrue();
+        db.ChangeTracker.Clear();
+
+        (await AvisarAsync(db, "t1", importe: 100m)).IsSuccess.Should().BeTrue();
+
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == "ord-vigente")).Status.Should().Be(OrderStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Un_pago_sin_pedido_no_se_fia_del_OrderId_del_aviso()
+    {
+        await using var db = await SembrarAsync();
+        db.PaymentHistories.Add(new PaymentHistory
+        {
+            Id = "pago-sin-pedido", OrderId = "", MemberId = Miembro, Amount = 100m, GatewayName = "Spreedly",
+            GatewayTransactionId = "tx-sin-pedido", TransactionStatus = PaymentHistoryTransactionStatus.Captured, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        (await AvisarAsync(db, "tx-sin-pedido", pedido: "ord-vigente")).IsSuccess.Should().BeTrue();
+
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == "ord-vigente")).Status.Should().Be(OrderStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Un_pago_de_otro_miembro_no_cancela_ni_devuelve_el_pedido()
+    {
+        await using var db = await SembrarAsync();
+        var pago = await db.PaymentHistories.SingleAsync(p => p.Id == "pago-ord-vigente");
+        pago.MemberId = "AMB-OTRO";
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        (await AvisarAsync(db, "tx-ord-vigente")).IsSuccess.Should().BeTrue();
+
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == "ord-vigente")).Status.Should().Be(OrderStatus.Completed);
+    }
+
+    [Theory]
+    [InlineData(PaymentHistoryTransactionStatus.Failed)]
+    [InlineData(PaymentHistoryTransactionStatus.Pending)]
+    public async Task Un_pago_que_no_estaba_cobrado_no_cancela_la_membresia(PaymentHistoryTransactionStatus estado)
+    {
+        await using var db = await SembrarAsync();
+        var pago = await db.PaymentHistories.SingleAsync(p => p.Id == "pago-ord-vigente");
+        pago.TransactionStatus = estado;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        (await AvisarAsync(db, "tx-ord-vigente")).IsSuccess.Should().BeTrue();
+
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+    }
+
+    [Fact]
+    public async Task Un_pedido_borrado_no_se_marca_como_devuelto()
+    {
+        await using var db = await SembrarAsync();
+        var pedido = await db.Orders.SingleAsync(o => o.Id == "ord-vigente");
+        pedido.IsDeleted = true;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        (await AvisarAsync(db, "tx-ord-vigente")).IsSuccess.Should().BeTrue();
+
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == "ord-vigente")).Status.Should().Be(OrderStatus.Completed);
+        (await EstadoAsync(db)).Should().Be(MembershipStatus.Active);
+    }
+
+    /// <summary>Revision de Q3 (M8): la pasarela repite el aviso; el segundo no cambia nada.</summary>
+    [Fact]
+    public async Task Un_aviso_repetido_no_cambia_nada()
+    {
+        await using var db = await SembrarAsync();
+        (await AvisarAsync(db, "tx-ord-vigente")).IsSuccess.Should().BeTrue();
+        db.ChangeTracker.Clear();
+        var pago1 = await db.PaymentHistories.AsNoTracking().SingleAsync(p => p.Id == "pago-ord-vigente");
+        var sub1 = await db.MembershipSubscriptions.AsNoTracking().SingleAsync();
+
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.SetupGet(r => r.Now).Returns(Ahora.AddHours(3));
+        (await new ProcessRefundWebhookHandler(db, reloj.Object).Handle(new ProcessRefundWebhookCommand("stripe",
+            new WebhookPaymentPayload { Event = "refund.created", TransactionId = "tx-ord-vigente", Amount = 100m })))
+            .IsSuccess.Should().BeTrue();
+
+        var pago2 = await db.PaymentHistories.AsNoTracking().SingleAsync(p => p.Id == "pago-ord-vigente");
+        pago2.TransactionStatus.Should().Be(PaymentHistoryTransactionStatus.Refunded);
+        pago2.ProcessedAt.Should().Be(pago1.ProcessedAt);
+        var sub2 = await db.MembershipSubscriptions.AsNoTracking().SingleAsync();
+        sub2.SubscriptionStatus.Should().Be(MembershipStatus.Cancelled);
+        sub2.CancellationDate.Should().Be(sub1.CancellationDate);
+        sub2.LastUpdateDate.Should().Be(sub1.LastUpdateDate);
     }
 
     [Fact]

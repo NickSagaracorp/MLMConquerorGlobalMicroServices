@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -18,6 +19,9 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebho
 ///   its Status is advanced to Completed.
 /// - "payment.failed"  → TransactionStatus = Failed.
 /// - If no PaymentHistory exists yet, a new record is created with the correct status.
+/// - Revision de Q3 (C1): what this webhook creates carries the author <see cref="RefundedMembershipOrders.WebhookActor"/>
+///   ("webhook:{provider}"); without a provider signature (pre-production blocker) a refund notice never trusts it to
+///   refund an order or cancel a membership.
 /// </summary>
 public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhookCommand, Result<bool>>
 {
@@ -70,7 +74,7 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
             existing.TransactionStatus = targetStatus.Value;
             existing.ProcessedAt       = _clock.Now;
             existing.LastUpdateDate    = _clock.Now;
-            existing.LastUpdateBy      = $"webhook:{request.Provider}";
+            existing.LastUpdateBy      = RefundedMembershipOrders.WebhookActor(request.Provider);
         }
         else
         {
@@ -85,9 +89,9 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
                 TransactionStatus    = targetStatus.Value,
                 ProcessedAt          = _clock.Now,
                 CreationDate         = _clock.Now,
-                CreatedBy            = $"webhook:{request.Provider}",
+                CreatedBy            = RefundedMembershipOrders.WebhookActor(request.Provider),
                 LastUpdateDate       = _clock.Now,
-                LastUpdateBy         = $"webhook:{request.Provider}"
+                LastUpdateBy         = RefundedMembershipOrders.WebhookActor(request.Provider)
             };
 
             await _db.PaymentHistories.AddAsync(newRecord, ct);
@@ -106,7 +110,7 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
             {
                 order.Status         = OrderStatus.Completed;
                 order.LastUpdateDate = _clock.Now;
-                order.LastUpdateBy   = $"webhook:{request.Provider}";
+                order.LastUpdateBy   = RefundedMembershipOrders.WebhookActor(request.Provider);
             }
         }
 

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Billing;
@@ -17,10 +18,41 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Billing;
 public static class RefundedMembershipOrders
 {
     /// <summary>
-    /// ¿La devolucion es total? Solo una total cancela la membresia; una parcial (un ajuste de importe) solo marca el pago y
-    /// el pedido como hasta ahora. Un aviso sin importe (0) cuenta como total: la pasarela avisa del pago entero.
+    /// Autor (CreatedBy/LastUpdateBy) de lo que escribe el webhook publico de pagos: "webhook:{proveedor}". Revision de Q3
+    /// (C1): un PaymentHistory creado con este prefijo lo creo un aviso sin firma, no nuestro flujo de cobro.
     /// </summary>
-    public static bool IsFullRefund(decimal refunded, decimal paid) => refunded <= 0 || refunded >= paid;
+    public const string WebhookActorPrefix = "webhook:";
+
+    public static string WebhookActor(string provider) => WebhookActorPrefix + provider;
+
+    /// <summary>
+    /// ¿Lo creo el webhook publico de pagos? Nuestros flujos de cobro (Charge, RenewMembership, el motor, la cuota, tokens,
+    /// Entrax) crean el pago Captured con su propio autor; solo ProcessPaymentWebhookHandler lo crea con
+    /// <see cref="WebhookActorPrefix"/>.
+    /// </summary>
+    public static bool CreatedByWebhook(PaymentHistory payment) =>
+        (payment.CreatedBy ?? string.Empty).StartsWith(WebhookActorPrefix, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Revision de Q3 (C1, M2): ¿puede un aviso de la pasarela devolver este pedido? Solo si el pago lo creo nuestro flujo
+    /// de cobro (no el webhook), estaba cobrado (Captured) antes del aviso, senala ese pedido (OrderId no vacio e igual) y
+    /// el pedido es del mismo miembro que el pago. El OrderId del aviso no cuenta: el endpoint es publico y sin firma.
+    /// </summary>
+    public static bool IsOwnCapturedPaymentOf(PaymentHistory payment, PaymentHistoryTransactionStatus statusBeforeNotice,
+        Orders order) =>
+        !CreatedByWebhook(payment)
+        && statusBeforeNotice == PaymentHistoryTransactionStatus.Captured
+        && !string.IsNullOrWhiteSpace(payment.OrderId)
+        && payment.OrderId == order.Id
+        && !string.IsNullOrWhiteSpace(payment.MemberId)
+        && order.MemberId == payment.MemberId;
+
+    /// <summary>
+    /// ¿La devolucion es total? Solo una total cancela la membresia; una parcial (un ajuste de importe) solo marca el pago y
+    /// el pedido como hasta ahora. Revision de Q3 (C1): un aviso sin importe (0) o negativo NO cuenta como total; el importe
+    /// tiene que llegar explicito y cubrir el pago.
+    /// </summary>
+    public static bool IsFullRefund(decimal refunded, decimal paid) => refunded > 0 && refunded >= paid;
 
     /// <summary>
     /// Cancela la suscripcion activa cuyo pedido vigente es <paramref name="orderId"/>: su LastOrderId, o la que el pedido
