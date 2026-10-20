@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Billing;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -43,6 +44,23 @@ public class UpgradeMembershipHandler : IRequestHandler<UpgradeMembershipCommand
         if (!MembershipUpgrades.IsEnabled(_configuration))
             return Result<bool>.Failure(UpgradeDisabledCode, "Membership upgrades are not available right now.");
 
+        // Plan Q (seguimiento de la tercera revision del bloque 2): el candado de puntos del miembro (MemberPointsLocks) se
+        // toma ANTES de leer su suscripcion activa. Leida antes, dos cambios de nivel a la vez caducaban la misma y cada uno
+        // abria una nueva: dos activas. Con el, el segundo espera y lee lo que confirmo el primero (otra activa, o ninguna).
+        // El guardado lo reutiliza (no lo vuelve a pedir) y lo suelta al confirmar; si no se llega a guardar, el finally.
+        await MemberPointsLocks.AcquireAsync(_db, new[] { command.MemberId }, ct);
+        try
+        {
+            return await ChangeAsync(command, ct);
+        }
+        finally
+        {
+            await MemberPointsLocks.ReleaseAsync(_db);
+        }
+    }
+
+    private async Task<Result<bool>> ChangeAsync(UpgradeMembershipCommand command, CancellationToken ct)
+    {
         var now = _dateTime.Now;
 
         var member = await _db.MemberProfiles.FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
