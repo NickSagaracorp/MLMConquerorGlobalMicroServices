@@ -283,10 +283,16 @@ FROM #lote l
 CROSS APPLY (
     SELECT l.MemberId AS MemberId, 0 AS Distancia WHERE l.Scope = 0
     UNION ALL
-    SELECT a.MemberId, an.Distancia
-    FROM dbo.GenealogyAncestors(l.Node) an
-    JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
-    WHERE l.Node IS NOT NULL AND (l.Scope = 1 OR (l.Scope = 2 AND an.Distancia >= 1))
+    SELECT v.MemberId, v.Distancia
+    FROM (
+        -- Revision del bloque 4: la Distancia cuenta solo ascendientes vivos (un nodo borrado en medio no ocupa un puesto
+        -- de la cota de rango); el propio es el 0. Antes era la de la posicion en el arbol.
+        SELECT a.MemberId, CAST(ROW_NUMBER() OVER (ORDER BY an.Distancia) - 1 AS int) AS Distancia
+        FROM dbo.GenealogyAncestors(l.Node) an
+        JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
+        WHERE l.Node IS NOT NULL AND l.Scope IN (1, 2)
+    ) v
+    WHERE l.Scope = 1 OR v.Distancia >= 1
 ) x;
 
 -- Filas de linea cuyo miembro no tiene nodo vigente con Node: no hay a quien aplicarlas. Se marcan aplicadas como las

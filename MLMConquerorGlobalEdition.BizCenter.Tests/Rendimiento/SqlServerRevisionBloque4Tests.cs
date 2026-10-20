@@ -224,4 +224,25 @@ public class SqlServerRevisionBloque4Tests
 
         (await EncoladosAsync(db, ids)).Should().BeEquivalentTo(ids[2..], "la cancelacion: el propio y sus 10 ascendientes");
     }
+
+    [SqlServerFact]
+    public async Task La_distancia_de_la_cota_cuenta_solo_ascendientes_vivos()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        var ids = Linea(db, "RB", 12);
+        await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE GenealogyTree SET IsDeleted = 1 WHERE MemberId = {0}", ids[5]);
+        db.MemberStatisticDeltas.Add(new MemberStatisticDelta
+        {
+            MemberId = ids[11], Scope = MemberStatisticDeltaScope.SponsorLine, EnrollmentTeamSizeDelta = 1,
+            QualifiedSponsoredMembersDelta = 1, SourceMemberId = "NUEVO", CreatedBy = "plan-q-prueba", CreationDate = DateTime.Now
+        });
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+
+        // Vivos por encima del patrocinador (ids[11]): 10, 9, 8, 7, 6, 4, 3, 2, 1, 0. Los 10 mas cercanos, el incluido.
+        (await EncoladosAsync(db, ids)).Should().BeEquivalentTo(ids[1..5].Concat(ids[6..]));
+    }
 }
