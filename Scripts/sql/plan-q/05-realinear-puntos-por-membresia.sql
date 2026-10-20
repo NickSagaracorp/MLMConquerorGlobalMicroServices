@@ -1,17 +1,25 @@
 /*
-Plan Q (DQ16; revision 2 del bloque 2, C1 y C2). Realinea los puntos del producto con la regla de Nick: los puntos de un
+Plan Q (DQ16; revision 2 del bloque 2, C1 y C2; tercera revision, I-c y menores). Realinea los puntos del producto con la regla de Nick: los puntos de un
 miembro cuentan en toda su linea solo mientras su membresia esta activa. Deja la base en el estado que mantienen despues
 MembershipPointsDeltas (desde el interceptor de suscripciones) y las dos colas:
 
-  1. Aportes. Cada suscripcion activa de un miembro guarda lo que aporta (DualTeamContribution = EnrollmentContribution):
-     la de mayor nivel (desempate por Id) lleva la suma de lo que ya aportaban sus activas y las demas 0; si esa suma es 0
-     (una activa sin puntos), la regla de entrar en Active: los puntos de los productos de su ultimo pedido o, sin pedido,
-     los del producto de su nivel (el mayor). Las no activas aportan 0.
+  1. Aportes. Cada suscripcion activa guarda lo que aporta (DualTeamContribution = EnrollmentContribution) por la MISMA
+     regla que MembershipPointsDeltas al entrar en Active, cada una la suya (tercera revision, I-c: antes la de mayor nivel
+     se quedaba con la suma de todas y las demas con 0, y al salir esa de Active los PersonalPoints caian a 0 con otra
+     activa todavia):
+       - sin ultimo pedido: los puntos del producto de su nivel (el mayor);
+       - con ultimo pedido: la suma de los puntos de los productos del pedido (0 si no tiene lineas), salvo que sus
+         productos de membresia sean todos de otro nivel (cambio de nivel despues del pedido): entonces lo del pedido
+         MENOS los puntos de ese nivel viejo MAS los del suyo (como un cambio de nivel sin pedido nuevo), y nunca menos de 0.
+     Los productos borrados logicamente cuentan (como LevelPointsAsync y OrderPointsAsync). Una activa nacida de una subida
+     o bajada sin pedido toma los puntos de su nivel: los productos extra de un pedido anterior no se reconstruyen. Las no
+     activas aportan 0.
   2. PersonalPoints (la primera fila de MemberStatistics del miembro, por Id) = la suma de lo que aportan sus activas;
      0 sin ninguna activa. Un miembro con aporte y sin fila recibe una.
   3. EnrollmentPoints = la suma de lo que aportan las activas del propio y de todo su equipo de inscripcion, sobre el nodo
      VIGENTE de cada miembro (el mas reciente, como GenealogySubtree.CurrentOfAsync), de abajo arriba por profundidad. Un
-     miembro con aporte y sin nodo suma a la linea de su patrocinador (como MembershipPointsDeltas). Es la definicion de
+     miembro con aporte y sin nodo suma a la linea del primer patrocinador de su cadena que tenga nodo (como
+     MembershipPointsDeltas; tercera revision: antes solo el patrocinador directo, y sin nodo se perdia). Es la definicion de
      EnrollmentTeamPointsService.RecomputeEnrollmentPointsAsync. Los EnrollmentPointsDelta pendientes en
      MemberStatisticDeltas ya van dentro del recalculo: se ponen a 0 (las filas y sus otros contadores se conservan).
   4. Las piernas del binario NO se tocan aqui: despues, OBLIGATORIO, 02-recalcular-piernas.sql (Plan P), que las
@@ -71,40 +79,50 @@ BEGIN TRY
         THROW 51135, N'Hay nodos de inscripcion vigentes que no cuelgan de la ruta vigente de su padre: repararlos antes.', 1;
 
     -- ── 1. Aportes ──────────────────────────────────────────────────────────────────────────────────────────────────
-    IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
-    SELECT s.MemberId, SUM(CAST(s.DualTeamContribution AS bigint)) AS Suma,
-           (SELECT TOP 1 t.Id FROM MembershipSubscriptions t WHERE t.MemberId = s.MemberId AND t.SubscriptionStatus = 1
-            ORDER BY t.MembershipLevelId DESC, t.Id) AS Mayor
-    INTO #a
-    FROM MembershipSubscriptions s
-    WHERE s.SubscriptionStatus = 1
-    GROUP BY s.MemberId;
-    CREATE UNIQUE CLUSTERED INDEX cx ON #a (MemberId);
+    -- Los puntos de cada nivel: el mayor de sus productos, borrados incluidos (LevelPointsAsync).
+    IF OBJECT_ID('tempdb..#nivel') IS NOT NULL DROP TABLE #nivel;
+    SELECT p.MembershipLevelId AS Nivel, MAX(CAST(p.QualificationPoins AS bigint)) AS P
+    INTO #nivel
+    FROM Products p WHERE p.MembershipLevelId IS NOT NULL
+    GROUP BY p.MembershipLevelId;
+    CREATE UNIQUE CLUSTERED INDEX cx ON #nivel (Nivel);
 
-    -- La regla de entrar en Active para las activas sin puntos: el ultimo pedido o el producto del nivel.
+    -- Lo que aporta cada activa por la regla de entrar en Active, la suya.
     IF OBJECT_ID('tempdb..#r') IS NOT NULL DROP TABLE #r;
-    SELECT a.MemberId, a.Mayor,
-           CAST(CASE WHEN s.LastOrderId IS NOT NULL AND s.LastOrderId <> N''
-                     THEN ISNULL((SELECT SUM(p.QualificationPoins) FROM OrderDetails d JOIN Products p ON p.Id = d.ProductId
-                                  WHERE d.OrderId = s.LastOrderId), 0)
-                     ELSE ISNULL((SELECT MAX(p.QualificationPoins) FROM Products p WHERE p.MembershipLevelId = s.MembershipLevelId), 0)
-                END AS bigint) AS Regla
+    SELECT s.Id,
+           CAST(CASE
+                    WHEN s.LastOrderId IS NULL OR s.LastOrderId = N'' THEN ISNULL(n.P, 0)
+                    WHEN o.OtroNivel = 1 AND o.SuNivel = 0
+                        THEN CASE WHEN ISNULL(o.Puntos, 0) - ISNULL(o.Viejo, 0) + ISNULL(n.P, 0) > 0
+                                  THEN ISNULL(o.Puntos, 0) - ISNULL(o.Viejo, 0) + ISNULL(n.P, 0) ELSE 0 END
+                    ELSE ISNULL(o.Puntos, 0)
+                END AS int) AS Aporte
     INTO #r
-    FROM #a a JOIN MembershipSubscriptions s ON s.Id = a.Mayor
-    WHERE a.Suma = 0;
+    FROM MembershipSubscriptions s
+    LEFT JOIN #nivel n ON n.Nivel = s.MembershipLevelId
+    OUTER APPLY (SELECT SUM(x.Puntos) AS Puntos, MAX(x.SuNivel) AS SuNivel, MAX(x.OtroNivel) AS OtroNivel, MAX(x.Viejo) AS Viejo
+                 FROM (SELECT CAST(p.QualificationPoins AS bigint) AS Puntos,
+                              CASE WHEN p.MembershipLevelId = s.MembershipLevelId THEN 1 ELSE 0 END AS SuNivel,
+                              CASE WHEN p.MembershipLevelId IS NOT NULL AND p.MembershipLevelId <> s.MembershipLevelId THEN 1 ELSE 0 END AS OtroNivel,
+                              CASE WHEN p.MembershipLevelId <> s.MembershipLevelId THEN nv.P END AS Viejo
+                       FROM OrderDetails d
+                       JOIN Products p ON p.Id = d.ProductId
+                       LEFT JOIN #nivel nv ON nv.Nivel = p.MembershipLevelId
+                       WHERE d.OrderId = s.LastOrderId) x) o
+    WHERE s.SubscriptionStatus = 1;
+    CREATE UNIQUE CLUSTERED INDEX cx ON #r (Id);
 
-    DECLARE @aportesACero int, @aportesFijados int, @porRegla int = (SELECT COUNT(*) FROM #r WHERE Regla <> 0);
+    DECLARE @aportesACero int, @aportesFijados int, @activasConAporte int = (SELECT COUNT(*) FROM #r WHERE Aporte <> 0);
     BEGIN TRAN;
     UPDATE s SET DualTeamContribution = 0, EnrollmentContribution = 0
     FROM MembershipSubscriptions s
     WHERE (s.DualTeamContribution <> 0 OR s.EnrollmentContribution <> 0)
-      AND NOT EXISTS (SELECT 1 FROM #a a WHERE a.Mayor = s.Id);
+      AND NOT EXISTS (SELECT 1 FROM #r r WHERE r.Id = s.Id);
     SET @aportesACero = @@ROWCOUNT;
-    UPDATE s SET DualTeamContribution = v.Aporte, EnrollmentContribution = v.Aporte
+    UPDATE s SET DualTeamContribution = r.Aporte, EnrollmentContribution = r.Aporte
     FROM MembershipSubscriptions s
-    JOIN (SELECT a.Mayor, CAST(CASE WHEN a.Suma <> 0 THEN a.Suma ELSE ISNULL(r.Regla, 0) END AS int) AS Aporte
-          FROM #a a LEFT JOIN #r r ON r.MemberId = a.MemberId) v ON v.Mayor = s.Id
-    WHERE s.DualTeamContribution <> v.Aporte OR s.EnrollmentContribution <> v.Aporte;
+    JOIN #r r ON r.Id = s.Id
+    WHERE s.DualTeamContribution <> r.Aporte OR s.EnrollmentContribution <> r.Aporte;
     SET @aportesFijados = @@ROWCOUNT;
     COMMIT;
 
@@ -155,13 +173,29 @@ BEGIN TRY
 
     -- ── 3. EnrollmentPoints ─────────────────────────────────────────────────────────────────────────────────────────
     UPDATE g SET Base = t.T FROM #g g JOIN #t t ON t.MemberId = g.MemberId;
-    -- Un miembro con aporte y sin nodo suma a la linea de su patrocinador (MembershipPointsDeltas sube por la suya).
+    -- Un miembro con aporte y sin nodo suma a la linea del primer patrocinador de su cadena que tenga nodo
+    -- (MembershipPointsDeltas sube por la misma). Se sube un paso por vuelta; un ciclo o una cadena sin nodo no suma.
+    IF OBJECT_ID('tempdb..#sn') IS NOT NULL DROP TABLE #sn;
+    SELECT t.MemberId, CAST(m.SponsorMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS Actual, t.T
+    INTO #sn
+    FROM #t t JOIN MemberProfiles m ON m.MemberId = t.MemberId
+    WHERE t.T <> 0 AND NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = t.MemberId) AND m.SponsorMemberId IS NOT NULL;
+    DECLARE @paso int = 0;
+    WHILE @paso < 1000 AND EXISTS (SELECT 1 FROM #sn s WHERE NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = s.Actual))
+    BEGIN
+        UPDATE s SET Actual = CAST(m.SponsorMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT
+        FROM #sn s JOIN MemberProfiles m ON m.MemberId = s.Actual
+        WHERE NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = s.Actual);
+        -- Sin patrocinador, o un patrocinador sin perfil: la cadena termina sin nodo.
+        DELETE s FROM #sn s
+        WHERE s.Actual IS NULL
+           OR (NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = s.Actual)
+               AND NOT EXISTS (SELECT 1 FROM MemberProfiles m WHERE m.MemberId = s.Actual));
+        SET @paso += 1;
+    END
     UPDATE g SET Base = g.Base + x.S
     FROM #g g
-    JOIN (SELECT CAST(m.SponsorMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS SponsorMemberId, SUM(t.T) AS S
-          FROM #t t JOIN MemberProfiles m ON m.MemberId = t.MemberId
-          WHERE NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = t.MemberId) AND m.SponsorMemberId IS NOT NULL
-          GROUP BY m.SponsorMemberId) x ON x.SponsorMemberId = g.MemberId;
+    JOIN (SELECT s.Actual, SUM(s.T) AS S FROM #sn s GROUP BY s.Actual) x ON x.Actual = g.MemberId;
     DECLARE @sinNodoConAporte int = (SELECT COUNT(*) FROM #t t WHERE t.T <> 0 AND NOT EXISTS (SELECT 1 FROM #g n WHERE n.MemberId = t.MemberId));
     UPDATE #g SET Total = Base;
     DECLARE @prof int = (SELECT MAX(Profundidad) FROM #g);
@@ -208,7 +242,7 @@ BEGIN TRY
 
     SELECT @aportesACero AS AportesPuestosACero,
            @aportesFijados AS AportesFijados,
-           @porRegla AS ActivasSinPuntosPorRegla,
+           @activasConAporte AS ActivasConAporte,
            @ppCambiados AS PersonalPointsCambiados,
            @ppSinActiva AS PersonalPointsACeroSinActiva,
            @puntosQuitados AS PuntosQuitados,
