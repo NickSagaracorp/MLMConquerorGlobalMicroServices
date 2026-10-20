@@ -66,8 +66,18 @@ public class SqlServerMedicionPlanPTests
         await BinarioDb.PuntosAsync(db, $"{x}H", 25);
         var t1 = await MideAsync($"Colocar una hoja a profundidad {hondo.Depth + 1} (sin la subida)", async () =>
             (await motor.PlaceAsync($"{x}H", hondo.MemberId)).IsSuccess.Should().BeTrue());
-        var t1v = await MideAsync("Vaciar la cola tras colocar la hoja (sube por mas de 8.000 ascendientes)", () =>
-            LegPointMaintenance.DrainAsync(db));
+        // Revision del bloque 3: los servicios que corren contra la misma base (el trabajo de cada minuto, las comisiones,
+        // el rango y la instantanea vacian la cola antes de leer) compiten por los candados del vaciado y del arbol. La
+        // espera se toma y se mide aparte (el candado es de la transaccion de la prueba: el vaciado y la colocacion lo
+        // vuelven a pedir al mismo dueno y no esperan); el objetivo es para el trabajo, no para la espera.
+        await MideAsync("Espera de los candados del vaciado (dual-tree compartido, dual-leg-deltas exclusivo)", () =>
+            DualTeamGate.EnterLegDrainAsync(db));
+        var vaciados = 0;
+        var antesEsperas = await EsperasAsync(db);
+        var t1v = await MideAsync("Vaciar la cola tras colocar la hoja (sube por mas de 8.000 ascendientes)", async () =>
+            vaciados = await LegPointMaintenance.DrainAsync(db));
+        _salida.WriteLine($"Deltas aplicados en ese vaciado: {vaciados}");
+        DiferenciaDeEsperas(antesEsperas, await EsperasAsync(db));
 
         // 2. Una raiz provisional con un equipo de 50 que se coloca bajo la hoja nueva (mueve 51 claves a 8.000 niveles).
         await BinarioDb.SembrarPerfilAsync(db, $"{x}B", $"{x}H");
@@ -76,6 +86,7 @@ public class SqlServerMedicionPlanPTests
             await BinarioDb.SembrarPerfilAsync(db, $"{x}E{i:00}", $"{x}B");
             (await motor.PlaceAsync($"{x}E{i:00}", $"{x}B")).IsSuccess.Should().BeTrue();
         }
+        await MideAsync("Espera del candado del arbol en exclusivo (dual-tree)", () => DualTeamGate.EnterTreeExclusiveAsync(db));
         var t2 = await MideAsync("Colocar una raiz provisional con 50 en su equipo a mas de 8.000 niveles", async () =>
         {
             var r = await motor.PlaceAsync($"{x}B", $"{x}H");
@@ -168,6 +179,25 @@ public class SqlServerMedicionPlanPTests
         despues.Should().BeEquivalentTo(antes, "la linea entera y el propio nodo quedan como estaban");
         t.Should().BeLessThan(TimeSpan.FromSeconds(10));
     }
+
+    /// <summary>CPU de la sesion y sus esperas acumuladas (sys.dm_exec_session_wait_stats), para repartir un tiempo.</summary>
+    private static async Task<Dictionary<string, long>> EsperasAsync(Repository.Context.AppDbContext db)
+    {
+        var filas = await db.Database.SqlQueryRaw<Espera>(
+            "SELECT wait_type AS Tipo, wait_time_ms AS Ms FROM sys.dm_exec_session_wait_stats WHERE session_id = @@SPID " +
+            "UNION ALL SELECT N'(cpu de la sesion)', CAST(cpu_time AS bigint) FROM sys.dm_exec_sessions WHERE session_id = @@SPID " +
+            "UNION ALL SELECT N'(lecturas logicas)', logical_reads FROM sys.dm_exec_sessions WHERE session_id = @@SPID").ToListAsync();
+        return filas.ToDictionary(f => f.Tipo, f => f.Ms);
+    }
+
+    private void DiferenciaDeEsperas(Dictionary<string, long> antes, Dictionary<string, long> despues)
+    {
+        foreach (var (tipo, ms) in despues.Select(kv => (kv.Key, kv.Value - antes.GetValueOrDefault(kv.Key)))
+                     .Where(x => x.Item2 > 0).OrderByDescending(x => x.Item2).Take(8))
+            _salida.WriteLine($"  {tipo}: {ms}");
+    }
+
+    private sealed record Espera(string Tipo, long Ms);
 
     private static async Task<List<string>> LineaAsync(Repository.Context.AppDbContext db, string memberId)
     {
