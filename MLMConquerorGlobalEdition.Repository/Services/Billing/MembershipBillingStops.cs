@@ -100,16 +100,22 @@ public static class MembershipBillingStops
     /// <summary>
     /// Para los estados de cobro de esas suscripciones que sigan vivos. No guarda: va en el mismo
     /// SaveChanges que la cancelación.
+    /// <para>
+    /// Revision de Q3 (I1): uno ya parado por retencion (<see cref="ReasonMembershipOnHold"/>) se vuelve a sellar con el
+    /// nuevo motivo (devuelta, cancelada...): asi <see cref="ResumeHeldAsync"/> ya no lo reanuda.
+    /// </para>
     /// </summary>
     public static async Task StopForSubscriptionsAsync(
         AppDbContext db, IReadOnlyCollection<string> subscriptionIds, string reason, DateTime now, string actor,
         CancellationToken ct = default)
     {
         if (subscriptionIds.Count == 0) return;
+        var restamp = reason != ReasonMembershipOnHold;
         var states = await db.SubscriptionBillingStates
             .Where(s => s.MembershipSubscriptionId != null
                      && subscriptionIds.Contains(s.MembershipSubscriptionId)
-                     && s.Status != RecurringBillingStatus.Stopped)
+                     && (s.Status != RecurringBillingStatus.Stopped
+                         || (restamp && s.LastFailureReason == ReasonMembershipOnHold)))
             .ToListAsync(ct);
         foreach (var s in states) Stop(s, reason, now, actor);
     }

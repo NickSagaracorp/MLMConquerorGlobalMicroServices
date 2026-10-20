@@ -55,9 +55,11 @@ public static class RefundedMembershipOrders
     public static bool IsFullRefund(decimal refunded, decimal paid) => refunded > 0 && refunded >= paid;
 
     /// <summary>
-    /// Cancela la suscripcion activa cuyo pedido vigente es <paramref name="orderId"/>: su LastOrderId, o la que el pedido
-    /// senala por MembershipSubscriptionId si aun no tiene LastOrderId. Una renovacion antigua (no es el pedido vigente)
-    /// o una suscripcion que ya no esta activa no cambian. Devuelve la cancelada, o null. No guarda.
+    /// Cancela la suscripcion viva cuyo pedido vigente es <paramref name="orderId"/>: su LastOrderId, o la que el pedido
+    /// senala por MembershipSubscriptionId si aun no tiene LastOrderId. Viva es Active o retenida (revision de Q3, I1:
+    /// OnHold, la del admin o de otro origen, y HoldByBilling), para que reactivar la cuenta o un cobro forzado no reviva
+    /// una membresia devuelta. Una renovacion antigua (no es el pedido vigente) o una cancelada o caducada no cambian.
+    /// Devuelve la cancelada, o null. No guarda.
     /// </summary>
     public static async Task<MembershipSubscription?> CancelSubscriptionAsync(
         AppDbContext db, string orderId, DateTime now, string actor, CancellationToken ct = default)
@@ -69,7 +71,9 @@ public static class RefundedMembershipOrders
 
         var subscription = await db.MembershipSubscriptions
             .Where(s => !s.IsDeleted
-                     && s.SubscriptionStatus == MembershipStatus.Active
+                     && (s.SubscriptionStatus == MembershipStatus.Active
+                         || s.SubscriptionStatus == MembershipStatus.OnHold
+                         || s.SubscriptionStatus == MembershipStatus.HoldByBilling)
                      && (s.LastOrderId == orderId || (s.LastOrderId == null && s.Id == senalada)))
             .OrderByDescending(s => s.CreationDate)
             .FirstOrDefaultAsync(ct);

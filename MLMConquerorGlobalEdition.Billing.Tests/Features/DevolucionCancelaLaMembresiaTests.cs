@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Billing.Features.Refund;
 using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Billing.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -122,5 +123,38 @@ public class DevolucionCancelaLaMembresiaTests
 
         r.IsSuccess.Should().BeTrue();
         (await db.MembershipSubscriptions.AsNoTracking().SingleAsync()).SubscriptionStatus.Should().Be(MembershipStatus.Cancelled);
+    }
+
+    /// <summary>
+    /// Revision de Q3 (I1): una membresia retenida (por el admin, OnHold con la marca; o por el cobro, HoldByBilling) cuyo
+    /// pedido vigente se devuelve se cancela igual y su cobro queda parado como devuelta: ni la reactivacion de la cuenta
+    /// ni un cobro forzado la reviven.
+    /// </summary>
+    [Theory]
+    [InlineData(MembershipStatus.OnHold, true)]
+    [InlineData(MembershipStatus.HoldByBilling, false)]
+    public async Task Devolver_el_pedido_vigente_de_una_retenida_la_cancela_y_su_cobro_queda_parado_como_devuelta(
+        MembershipStatus retenida, bool porElAdmin)
+    {
+        await using var db = await SembrarAsync("ord-vigente");
+        var sub = await db.MembershipSubscriptions.SingleAsync();
+        sub.SubscriptionStatus  = retenida;
+        sub.HeldByAccountStatus = porElAdmin ? MemberAccountStatus.Suspended : null;
+        var estado = await db.SubscriptionBillingStates.SingleAsync();
+        if (porElAdmin) MembershipBillingStops.Stop(estado, MembershipBillingStops.ReasonMembershipOnHold, Ahora.AddDays(-5), "admin");
+        else estado.Status = RecurringBillingStatus.Retrying;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var r = await DevolverAsync(db, "ord-vigente");
+
+        r.IsSuccess.Should().BeTrue();
+        var guardada = await db.MembershipSubscriptions.AsNoTracking().SingleAsync();
+        guardada.SubscriptionStatus.Should().Be(MembershipStatus.Cancelled);
+        guardada.HeldByAccountStatus.Should().BeNull();
+        guardada.IsAutoRenew.Should().BeFalse();
+        var parado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        parado.Status.Should().Be(RecurringBillingStatus.Stopped);
+        parado.LastFailureReason.Should().Be(MembershipBillingStops.ReasonMembershipRefunded);
     }
 }
