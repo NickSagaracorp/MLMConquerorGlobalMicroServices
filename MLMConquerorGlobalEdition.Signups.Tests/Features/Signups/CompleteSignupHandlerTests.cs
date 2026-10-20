@@ -747,7 +747,15 @@ public class CompleteSignupHandlerTests
             .ToListAsync();
         todas.Where(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).Should().HaveCount(2)
             .And.AllSatisfy(d => (d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta).Should().Be((10, 0, 0)));
-        var deltas = todas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).ToList();
+        // Revision del bloque 4: los hijos no tienen nodo de inscripcion en esta prueba, asi que su fila de calificados va
+        // como SponsorLine sobre el patrocinador (el primero de su cadena con nodo), una por hijo.
+        todas.Where(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.QualifiedTeamDeltas.Actor)
+            .Select(d => (d.Scope, d.EnrollmentQualifiedTeamMembersDelta, d.SourceMemberId)).Should().BeEquivalentTo(new[]
+            {
+                (MemberStatisticDeltaScope.SponsorLine, 1, "AMB-CHILD1"), (MemberStatisticDeltaScope.SponsorLine, 1, "AMB-CHILD2")
+            });
+        var deltas = todas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor
+                                      && d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.QualifiedTeamDeltas.Actor).ToList();
 
         deltas.Should().HaveCount(2,
             "each CompleteSignup enqueues one delta per ancestor — sponsor is the only ancestor here");

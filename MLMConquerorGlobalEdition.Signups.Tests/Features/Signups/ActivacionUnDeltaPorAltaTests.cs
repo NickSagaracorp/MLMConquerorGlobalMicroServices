@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
@@ -44,14 +45,19 @@ public class ActivacionUnDeltaPorAltaTests
         await db.SaveChangesAsync();
 
         // DQ16: los puntos del pedido ya no van en la fila del alta (los encola MembershipPointsDeltas al pasar a Active).
-        var delta = (await db.MemberStatisticDeltas.Where(d => d.Scope == MemberStatisticDeltaScope.SponsorLine).ToListAsync())
+        var delta = (await db.MemberStatisticDeltas.Where(d => d.Scope == MemberStatisticDeltaScope.SponsorLine
+                                                                && d.CreatedBy != QualifiedTeamDeltas.Actor).ToListAsync())
             .Should().ContainSingle().Subject;
         (delta.MemberId, delta.Scope, delta.EnrollmentPointsDelta, delta.EnrollmentTeamSizeDelta,
          delta.QualifiedSponsoredMembersDelta, delta.SourceMemberId, delta.IsApplied)
             .Should().Be((linea[^1], MemberStatisticDeltaScope.SponsorLine, 0, 1, 1, "AMB-NUEVO", false));
-        // Tarea 19b (DQ13): y la de los calificados de inscripcion del activado, una sola para todos sus ascendientes.
-        (await db.MemberStatisticDeltas.Where(d => d.Scope == MemberStatisticDeltaScope.AncestorsOf)
-                .Select(d => new { d.MemberId, d.EnrollmentQualifiedTeamMembersDelta }).ToListAsync())
-            .Should().ContainSingle().Which.Should().Be(new { MemberId = "AMB-NUEVO", EnrollmentQualifiedTeamMembersDelta = 1 });
+        // Tarea 19b (DQ13): y la de los calificados de inscripcion del activado, una sola para todos sus ascendientes. El
+        // activado aun no tiene nodo en esta prueba (revision del bloque 4): va como SponsorLine sobre su patrocinador.
+        (await db.MemberStatisticDeltas.Where(d => d.CreatedBy == QualifiedTeamDeltas.Actor)
+                .Select(d => new { d.MemberId, d.Scope, d.EnrollmentQualifiedTeamMembersDelta }).ToListAsync())
+            .Should().ContainSingle().Which.Should().Be(new
+            {
+                MemberId = linea[^1], Scope = MemberStatisticDeltaScope.SponsorLine, EnrollmentQualifiedTeamMembersDelta = 1
+            });
     }
 }

@@ -85,7 +85,7 @@ public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
         try
         {
             await MembershipPointsDeltas.RecordAsync(context, ahora, ct).ConfigureAwait(false);
-            QualifiedTeamDeltas.Record(context, ahora);
+            await QualifiedTeamDeltas.RecordAsync(context, ahora, ct).ConfigureAwait(false);
         }
         catch
         {

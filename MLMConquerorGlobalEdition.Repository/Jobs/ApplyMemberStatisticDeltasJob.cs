@@ -42,6 +42,9 @@ namespace MLMConquerorGlobalEdition.Repository.Jobs;
 /// Tarea 19b (DQ13): Scope = AncestorsOf (MemberId es quien cambio) aplica EnrollmentQualifiedTeamMembersDelta a cada
 /// ascendiente de su Node (distancia 1 en adelante), no a el, y no encola evaluaciones de rango. Cada tanda toma el candado
 /// de la cola (member-statistic-deltas) con el que 04-calificados-de-inscripcion.sql la excluye mientras recalcula.
+/// Revision del bloque 4: el Node de partida es el del nodo vivo vigente (GenealogySubtree.CurrentNodeAsync, lo mismo que
+/// mira quien encola); una SponsorLine que solo lleva calificados (la de quien no tiene nodo, sobre su patrocinador) no
+/// encola rango.
 /// </summary>
 [Queue("signups")]
 public class ApplyMemberStatisticDeltasJob
@@ -145,6 +148,15 @@ public class ApplyMemberStatisticDeltasJob
     }
 
     /// <summary>
+    /// Si una fila encola evaluaciones de rango (la columna Rango del SQL): las de miembro y las SponsorLine que mueven
+    /// puntos, equipo o patrocinados; no las AncestorsOf ni la SponsorLine de respaldo de los calificados (solo QQ).
+    /// </summary>
+    private static bool EncolaRango(MemberStatisticDelta d) =>
+        d.Scope == MemberStatisticDeltaScope.Member
+        || (d.Scope == MemberStatisticDeltaScope.SponsorLine
+            && (d.EnrollmentPointsDelta != 0 || d.EnrollmentTeamSizeDelta != 0 || d.QualifiedSponsoredMembersDelta != 0));
+
+    /// <summary>
     /// Una tanda en InMemory (pruebas). SponsorLine sube por ParentMemberId del nodo vigente de cada miembro (las pruebas
     /// siembran nodos sin Node, revision I6); el patrocinador sin nodo no recibe nada, como en SQL.
     /// </summary>
@@ -185,9 +197,8 @@ public class ApplyMemberStatisticDeltasJob
                                    ? f.Delta.QualifiedSponsoredMembersDelta : 0),
             QQ        = g.Sum(f => f.Delta.EnrollmentQualifiedTeamMembersDelta),
             CreatedBy = g.OrderBy(f => f.Delta.Id).First().Delta.CreatedBy,
-            // La evaluacion de rango no lee los calificados del equipo: AncestorsOf no encola.
-            Encolar   = g.Any(f => f.Delta.Scope != MemberStatisticDeltaScope.AncestorsOf
-                                   && f.Distancia < GenealogyUpline.EnrollmentLevels)
+            // La evaluacion de rango no lee los calificados del equipo: las filas solo de calificados no encolan.
+            Encolar   = g.Any(f => EncolaRango(f.Delta) && f.Distancia < GenealogyUpline.EnrollmentLevels)
         }).ToList();
 
         foreach (var grp in grupos)
@@ -261,7 +272,10 @@ OUTER APPLY (SELECT TOP 1 g.Node FROM GenealogyTree g
 -- ascendiente de su Node vigente. Scope 2 (AncestorsOf): MemberId es quien cambio y el delta va a sus ascendientes
 -- (Distancia >= 1), no a el.
 SELECT x.MemberId, x.Distancia, l.Scope, l.P, l.T,
-       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.QQ, l.CreatedBy
+       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.QQ, l.CreatedBy,
+       -- Encola rango: las filas de miembro y las SponsorLine que mueven algo que lee el rango (no la de respaldo de los
+       -- calificados, que solo lleva QQ); nunca las AncestorsOf.
+       CASE WHEN l.Scope = 0 OR (l.Scope = 1 AND (l.P <> 0 OR l.T <> 0 OR l.Q <> 0)) THEN 1 ELSE 0 END AS Rango
 INTO #exp
 FROM #lote l
 CROSS APPLY (
@@ -298,12 +312,12 @@ WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, 
         CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
     VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, s.QQ, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
 
--- Evaluacion de rango inmediata solo hasta @niveles del patrocinador (DQ5), y nunca por AncestorsOf: el rango no lee
--- los calificados del equipo.
+-- Evaluacion de rango inmediata solo hasta @niveles del patrocinador (DQ5), y nunca por filas solo de calificados
+-- (Rango = 0): el rango no lee los calificados del equipo.
 INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,
                                  ProcessedBy, ErrorMessage, RetryCount, CreationDate, CreatedBy)
 SELECT e.MemberId, e.MemberId, @enrollment, @now, 0, NULL, NULL, NULL, 0, @now, N'delta-apply'
-FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles AND Scope <> 2) e
+FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles AND Rango = 1) e
 WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
                   WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
 

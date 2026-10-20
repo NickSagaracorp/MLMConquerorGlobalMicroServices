@@ -159,4 +159,47 @@ public class SqlServerRevisionBloque4Tests
             .Should().ContainSingle(t => t.Contains(huerfana.Id.ToString()) && t.Contains(" 1 "));
     }
 
+    [SqlServerFact]
+    public async Task Sin_Node_los_calificados_van_al_primer_patrocinador_con_nodo_y_su_linea()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        var linea = Linea(db, "RB", 2);
+        var m = SqlServerReportes.NuevoId("RB");
+        ReportesDb.Miembro(db, m, linea[1]);
+        NodoSinNode(db, m, linea[1], ReportesDb.Ruta(linea[0], linea[1], m), 2);
+        ReportesDb.Puntos(db, m, 0);
+        await db.SaveChangesAsync();
+
+        var s = ReportesDb.Suscripcion(db, m, 3, MembershipStatus.Active, DateTime.Now);
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+        new[] { Calificados(db, m), Calificados(db, linea[1]), Calificados(db, linea[0]) }.Should().Equal(0, 1, 1);
+
+        db.MembershipSubscriptions.Attach(s);
+        s.SubscriptionStatus = MembershipStatus.Cancelled;
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+        new[] { Calificados(db, m), Calificados(db, linea[1]), Calificados(db, linea[0]) }.Should().Equal(0, 0, 0);
+    }
+
+    [SqlServerFact]
+    public async Task Una_SponsorLine_solo_de_calificados_no_encola_rango()
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE MemberStatisticDeltas SET IsApplied = 1 WHERE IsApplied = 0");
+        var ids = Linea(db, "RB", 3);
+        db.MemberStatisticDeltas.Add(new MemberStatisticDelta
+        {
+            MemberId = ids[2], Scope = MemberStatisticDeltaScope.SponsorLine, EnrollmentQualifiedTeamMembersDelta = 1,
+            SourceMemberId = "NUEVO", CreatedBy = QualifiedTeamDeltas.Actor, CreationDate = DateTime.Now
+        });
+        await db.SaveChangesAsync();
+        await AplicarAsync(db);
+
+        ids.Select(i => Calificados(db, i)).Should().Equal(1, 1, 1);
+        (await EncoladosAsync(db, ids)).Should().BeEmpty("el rango no lee los calificados del equipo");
+    }
 }

@@ -14,6 +14,7 @@ public class QualifiedTeamDeltasTests
     {
         var db = ReportesDb.Nueva();
         ReportesDb.Miembro(db, "AMB-Q1");
+        ReportesDb.Nodo(db, "AMB-Q1", null, "/AMB-Q1/", 0);   // con nodo: su fila es AncestorsOf
         var s = ReportesDb.Suscripcion(db, "AMB-Q1", 2, estado, ReportesDb.Base);
         await db.SaveChangesAsync();
         return (db, s);
@@ -64,8 +65,8 @@ public class QualifiedTeamDeltasTests
     {
         var (db, s) = await ConSuscripcionAsync(MembershipStatus.Pending);
         s.SubscriptionStatus = MembershipStatus.Active;
-        QualifiedTeamDeltas.Record(db, DateTime.Now);   // como un guardado que fallo y se reintenta
-        QualifiedTeamDeltas.Record(db, DateTime.Now);
+        await QualifiedTeamDeltas.RecordAsync(db, DateTime.Now);   // como un guardado que fallo y se reintenta
+        await QualifiedTeamDeltas.RecordAsync(db, DateTime.Now);
         await db.SaveChangesAsync();                    // el interceptor lo registra una tercera vez
         (await PropiosAsync(db, "AMB-Q1")).Should().Equal(1);
         (await DeLineaAsync(db, "AMB-Q1")).Should().Equal(1);
@@ -92,5 +93,30 @@ public class QualifiedTeamDeltasTests
             .Select(d => new { d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta, d.SourceMemberId })
             .ToListAsync()).Should().OnlyContain(d => d.EnrollmentPointsDelta == 0 && d.EnrollmentTeamSizeDelta == 0
                                                      && d.QualifiedSponsoredMembersDelta == 0 && d.SourceMemberId == "AMB-Q1");
+    }
+
+    /// <summary>
+    /// Revision del bloque 4: sin nodo de inscripcion, la fila va como SponsorLine al primer patrocinador de su cadena con
+    /// nodo (el incluido: quedara en su equipo); sin ninguno, no hay fila. Antes era una AncestorsOf que nadie aplicaba.
+    /// </summary>
+    [Fact]
+    public async Task Sin_nodo_la_fila_va_al_primer_patrocinador_con_nodo_y_sin_ninguno_no_hay_fila()
+    {
+        var db = ReportesDb.Nueva();
+        ReportesDb.Miembro(db, "AMB-R");
+        ReportesDb.Nodo(db, "AMB-R", null, "/AMB-R/", 0);
+        ReportesDb.Miembro(db, "AMB-S", "AMB-R");   // sin nodo
+        ReportesDb.Miembro(db, "AMB-M", "AMB-S");   // sin nodo
+        ReportesDb.Miembro(db, "AMB-H");            // sin nodo ni patrocinador
+        ReportesDb.Suscripcion(db, "AMB-M", 2, MembershipStatus.Active, ReportesDb.Base);
+        ReportesDb.Suscripcion(db, "AMB-H", 2, MembershipStatus.Active, ReportesDb.Base);
+        await db.SaveChangesAsync();
+
+        (await db.MemberStatisticDeltas.AsNoTracking().Where(d => d.CreatedBy == QualifiedTeamDeltas.Actor)
+                .Select(d => new { d.MemberId, d.Scope, d.EnrollmentQualifiedTeamMembersDelta, d.SourceMemberId }).ToListAsync())
+            .Should().BeEquivalentTo(new[]
+            {
+                new { MemberId = "AMB-R", Scope = MemberStatisticDeltaScope.SponsorLine, EnrollmentQualifiedTeamMembersDelta = 1, SourceMemberId = "AMB-M" }
+            });
     }
 }

@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
@@ -14,8 +15,9 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// EstadosSinInterceptorTests y EscritoresDeSuscripcionesTests.
 /// Cuenta SUSCRIPCIONES activas (no miembros) y no mira IsDeleted, como el recuento al vuelo al que sustituye (Q-R21).
 /// Por cada cambio neto de un miembro encola un delta propio de la cola de piernas (los calificados del binario, Tarea 8b)
-/// y una fila AncestorsOf de la cola de estadisticas (los de inscripcion, Tarea 19b: ApplyMemberStatisticDeltasJob la
-/// aplica a cada ascendiente de su Node, no a el, y no encola evaluaciones de rango).
+/// y una fila de la cola de estadisticas (los de inscripcion, Tarea 19b): AncestorsOf sobre el si tiene nodo
+/// (ApplyMemberStatisticDeltasJob la aplica a cada ascendiente de su Node, no a el) o, sin nodo (revision del bloque 4),
+/// SponsorLine sobre el primer patrocinador de su cadena con nodo. Ninguna de las dos encola evaluaciones de rango.
 /// </summary>
 public static class QualifiedTeamDeltas
 {
@@ -54,20 +56,24 @@ public static class QualifiedTeamDeltas
 
     /// <summary>
     /// Anade al contexto, en el mismo guardado, lo que falte para que los deltas pendientes de este guardado (el propio de
-    /// la cola de piernas y la fila AncestorsOf de la de estadisticas) sumen el cambio neto de cada miembro. Idempotente: un
+    /// la cola de piernas y la fila de linea de la de estadisticas) sumen el cambio neto de cada miembro. Idempotente: un
     /// guardado que falla y se reintenta no duplica; cada cola lleva su cuenta.
+    /// Revision del bloque 4: con nodo de inscripcion (su nodo vigente tiene Node, GenealogySubtree.CurrentNodeAsync), una
+    /// fila AncestorsOf sobre el; sin el, una SponsorLine sobre el primer patrocinador de su cadena con nodo (el incluido:
+    /// el miembro quedara en su equipo), como los puntos; si nadie lo tiene, ninguna.
     /// </summary>
-    public static void Record(DbContext context, DateTime now)
+    public static async Task RecordAsync(DbContext context, DateTime now, CancellationToken ct = default)
     {
         var cambios = NetChanges(context);
         var yaEncolados = context.ChangeTracker.Entries<DualLegDelta>()
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Entity.QualifiedCount), StringComparer.Ordinal);
+        // Lo ya encolado de un miembro es su fila de linea, sobre el (AncestorsOf) o sobre su patrocinador (SponsorLine).
         var yaEncoladosInscripcion = context.ChangeTracker.Entries<MemberStatisticDelta>()
-            .Where(e => e.State == EntityState.Added && e.Entity.Scope == MemberStatisticDeltaScope.AncestorsOf
-                        && e.Entity.CreatedBy == Actor)
-            .GroupBy(e => e.Entity.MemberId, StringComparer.Ordinal)
+            .Where(e => e.State == EntityState.Added && e.Entity.CreatedBy == Actor
+                        && e.Entity.Scope is MemberStatisticDeltaScope.AncestorsOf or MemberStatisticDeltaScope.SponsorLine)
+            .GroupBy(e => e.Entity.SourceMemberId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Entity.EnrollmentQualifiedTeamMembersDelta), StringComparer.Ordinal);
 
         foreach (var memberId in cambios.Keys.Union(yaEncolados.Keys, StringComparer.Ordinal)
@@ -81,13 +87,16 @@ public static class QualifiedTeamDeltas
                     StartMemberId = memberId, Side = TreeSide.Left, Points = 0, NodeCount = 0,
                     QualifiedCount = falta, OwnChange = true, CreationDate = now, CreatedBy = Actor
                 });
-            if (faltaInscripcion != 0)
-                context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
-                {
-                    MemberId = memberId, Scope = MemberStatisticDeltaScope.AncestorsOf,
-                    EnrollmentQualifiedTeamMembersDelta = faltaInscripcion,
-                    SourceMemberId = memberId, IsApplied = false, CreatedBy = Actor, CreationDate = now
-                });
+            if (faltaInscripcion == 0) continue;
+            var (sobre, alcance) = await context.CurrentNodeAsync(memberId, ct).ConfigureAwait(false) is not null
+                ? (memberId, MemberStatisticDeltaScope.AncestorsOf)
+                : (await context.FirstSponsorWithNodeAsync(memberId, ct).ConfigureAwait(false), MemberStatisticDeltaScope.SponsorLine);
+            if (sobre is null) continue;
+            context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
+            {
+                MemberId = sobre, Scope = alcance, EnrollmentQualifiedTeamMembersDelta = faltaInscripcion,
+                SourceMemberId = memberId, IsApplied = false, CreatedBy = Actor, CreationDate = now
+            });
         }
     }
 }
