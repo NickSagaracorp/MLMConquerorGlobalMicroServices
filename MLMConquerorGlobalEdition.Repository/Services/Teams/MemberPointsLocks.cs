@@ -32,8 +32,12 @@ public static class MemberPointsLocks
 
     public static string Resource(string memberId) => "member-points:" + memberId;
 
-    /// <summary>Toma los candados de los miembros (los que no tenga ya este contexto), en orden ordinal.</summary>
-    public static async Task AcquireAsync(DbContext context, IEnumerable<string?> memberIds, CancellationToken ct = default)
+    /// <summary>
+    /// Toma los candados de los miembros (los que no tenga ya este contexto), en orden ordinal. <paramref name="lockTimeoutMs"/>
+    /// solo lo cambian las pruebas.
+    /// </summary>
+    public static async Task AcquireAsync(DbContext context, IEnumerable<string?> memberIds, CancellationToken ct = default,
+        int lockTimeoutMs = LockTimeoutMs)
     {
         if (!context.Database.IsRelational()) return;
         var enTransaccion = context.Database.CurrentTransaction is not null;
@@ -44,7 +48,8 @@ public static class MemberPointsLocks
             .ToList();
         if (recursos.Count == 0) return;
 
-        if (!enTransaccion && tomados.Recursos.Count == 0)
+        var abierta = !enTransaccion && tomados.Recursos.Count == 0;
+        if (abierta)
             await context.Database.OpenConnectionAsync(ct).ConfigureAwait(false);
         try
         {
@@ -53,7 +58,7 @@ public static class MemberPointsLocks
                 var dueno = enTransaccion ? "Transaction" : "Session";
                 var rc = (await context.Database.SqlQueryRaw<int>(
                         "DECLARE @rc int; EXEC @rc = sp_getapplock @Resource = {0}, @LockMode = 'Exclusive', @LockOwner = {1}, @LockTimeout = {2}; SELECT @rc AS [Value];",
-                        r, dueno, LockTimeoutMs)
+                        r, dueno, lockTimeoutMs)
                     .ToListAsync(ct).ConfigureAwait(false)).Single();
                 if (rc < 0)
                     throw new InvalidOperationException(
@@ -63,7 +68,10 @@ public static class MemberPointsLocks
         }
         catch
         {
-            await ReleaseAsync(context).ConfigureAwait(false);
+            // Sin ningun candado tomado (fallo el primero) ReleaseAsync no hace nada: la conexion que se abrio aqui se
+            // cierra aparte, o la cuenta de aperturas de EF no vuelve a cero y el contexto la deja abierta.
+            if (tomados.Recursos.Count > 0) await ReleaseAsync(context).ConfigureAwait(false);
+            else if (abierta) await context.Database.CloseConnectionAsync().ConfigureAwait(false);
             throw;
         }
     }
