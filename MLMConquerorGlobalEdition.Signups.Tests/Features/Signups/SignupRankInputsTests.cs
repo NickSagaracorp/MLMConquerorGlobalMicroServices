@@ -480,8 +480,11 @@ public class SignupRankInputsTests
         // Own stats seeded
         var stats = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == memberId);
         stats.Should().NotBeNull(because: "CompleteSignupHandler must create a stat row for any new member");
-        stats!.EnrollmentPoints.Should().Be(qualPoints,
-            because: "with no upline, the new member's EnrollmentPoints equals its own QualificationPoins");
+        // Plan Q (tercera revision del bloque 2, I-b): los EnrollmentPoints del propio llegan por la cola.
+        (stats!.EnrollmentPoints + await db.MemberStatisticDeltas.Where(d => d.MemberId == memberId && !d.IsApplied)
+                .SumAsync(d => d.EnrollmentPointsDelta))
+            .Should().Be(qualPoints,
+                because: "with no upline, the new member's EnrollmentPoints equals its own QualificationPoins");
         stats.PersonalPoints.Should().Be(qualPoints,
             because: "PersonalPoints is always seeded from totalQualPoints");
 

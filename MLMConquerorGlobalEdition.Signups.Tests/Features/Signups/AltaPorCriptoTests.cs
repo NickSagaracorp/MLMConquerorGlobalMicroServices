@@ -627,8 +627,8 @@ public class AltaPorCriptoTests
         segunda.IsSuccess.Should().BeFalse();
         segunda.ErrorCode.Should().Be("CRYPTO_PAYMENT_ALREADY_CONFIRMED");
 
-        // Plan Q (DQ16): la fila de puntos (una por ascendiente) tampoco se duplica.
-        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1);
+        // Plan Q (DQ16): la fila de puntos (una por ascendiente y la del propio, tercera revision I-b) tampoco se duplica.
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(2);
         (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1,
             "la segunda aprobación no puede volver a encolar el delta del upline.");
 

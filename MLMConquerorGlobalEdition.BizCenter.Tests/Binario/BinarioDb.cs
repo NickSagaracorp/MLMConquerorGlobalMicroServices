@@ -99,5 +99,7 @@ public static class BinarioDb
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatisticDeltas WHERE MemberId LIKE {patron} OR SourceMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM RankEvaluationQueue WHERE TriggerMemberId LIKE {patron}");
+        // Tercera revision del bloque 2: las pruebas de carrera de los puntos siembran la linea de inscripcion y confirman.
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM GenealogyTree WHERE MemberId LIKE {patron}");
     }
 }

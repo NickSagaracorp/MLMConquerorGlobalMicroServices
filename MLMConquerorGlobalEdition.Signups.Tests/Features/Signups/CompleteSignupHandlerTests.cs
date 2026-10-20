@@ -824,15 +824,14 @@ public class CompleteSignupHandlerTests
         var leafStats = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == memberId);
         leafStats.Should().NotBeNull();
         leafStats!.PersonalPoints.Should().Be(25);
-        leafStats.EnrollmentPoints.Should().Be(25);
-
-        // No delta should be enqueued for the leaf itself — only for ancestors,
-        // and this signup has no sponsor.
+        // Plan Q (tercera revision del bloque 2, I-b): los EnrollmentPoints del propio llegan por la cola, como los de sus
+        // ascendientes (un valor absoluto pisaba el MERGE relativo del trabajo de estadisticas).
+        leafStats.EnrollmentPoints.Should().Be(0);
         var leafDeltas = await db.MemberStatisticDeltas
             .Where(d => d.MemberId == memberId)
             .ToListAsync();
-        leafDeltas.Should().BeEmpty(
-            "delta queue is for ANCESTOR upserts only; leaf row is written inline.");
+        leafDeltas.Should().ContainSingle(d => d.EnrollmentPointsDelta == 25 && d.SourceMemberId == memberId,
+            "sin patrocinador, la unica fila encolada es la del propio.");
     }
 }
 

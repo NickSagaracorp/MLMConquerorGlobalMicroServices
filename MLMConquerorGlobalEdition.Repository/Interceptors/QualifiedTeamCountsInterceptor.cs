@@ -26,28 +26,71 @@ public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        if (eventData.Context is { } context) await RecordAsync(context, cancellationToken);
-        return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        if (eventData.Context is { } context) await RecordAsync(context, cancellationToken).ConfigureAwait(false);
+        return await base.SavingChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
     }
 
+    // Tercera revision del bloque 2 (I-a): los candados de sesion por miembro se sueltan tras la confirmacion de EF, o si
+    // el guardado falla o se cancela (MemberPointsLocks).
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
-        if (eventData.Context is { } context) MembershipPointsDeltas.Saved(context);
+        if (eventData.Context is { } context)
+        {
+            MembershipPointsDeltas.Saved(context);
+            MemberPointsLocks.Release(context);
+        }
         return base.SavedChanges(eventData, result);
     }
 
-    public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result,
+    public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result,
         CancellationToken cancellationToken = default)
     {
-        if (eventData.Context is { } context) MembershipPointsDeltas.Saved(context);
-        return base.SavedChangesAsync(eventData, result, cancellationToken);
+        if (eventData.Context is { } context)
+        {
+            MembershipPointsDeltas.Saved(context);
+            await MemberPointsLocks.ReleaseAsync(context).ConfigureAwait(false);
+        }
+        return await base.SavedChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
+    }
+
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        if (eventData.Context is { } context) MemberPointsLocks.Release(context);
+        base.SaveChangesFailed(eventData);
+    }
+
+    public override async Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) await MemberPointsLocks.ReleaseAsync(context).ConfigureAwait(false);
+        await base.SaveChangesFailedAsync(eventData, cancellationToken).ConfigureAwait(false);
+    }
+
+    public override void SaveChangesCanceled(DbContextEventData eventData)
+    {
+        if (eventData.Context is { } context) MemberPointsLocks.Release(context);
+        base.SaveChangesCanceled(eventData);
+    }
+
+    public override async Task SaveChangesCanceledAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) await MemberPointsLocks.ReleaseAsync(context).ConfigureAwait(false);
+        await base.SaveChangesCanceledAsync(eventData, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Plan Q (DQ16): primero los puntos (cambian PersonalPoints y encolan), despues los calificados (DQ13).</summary>
     private async Task RecordAsync(DbContext context, CancellationToken ct)
     {
         var ahora = _now();
-        await MembershipPointsDeltas.RecordAsync(context, ahora, ct);
-        QualifiedTeamDeltas.Record(context, ahora);
+        try
+        {
+            await MembershipPointsDeltas.RecordAsync(context, ahora, ct).ConfigureAwait(false);
+            QualifiedTeamDeltas.Record(context, ahora);
+        }
+        catch
+        {
+            // El guardado no llega a empezar: ni SavedChanges ni SaveChangesFailed sueltan los candados.
+            await MemberPointsLocks.ReleaseAsync(context).ConfigureAwait(false);
+            throw;
+        }
     }
 }

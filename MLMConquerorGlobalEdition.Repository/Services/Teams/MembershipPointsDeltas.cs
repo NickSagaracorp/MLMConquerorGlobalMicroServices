@@ -37,14 +37,16 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// suscripciones activas tras el guardado, y la diferencia con lo que tenia es el cambio neto. Un miembro de antes de
 /// DQ16 con puntos y sin aporte guardado (retenido, pendiente con los puntos que sembraba el alta antiguo) no cuenta dos
 /// veces al reactivarse: queda corregido en su primer cambio. Una renovacion sin cambio de nivel no toca a nadie.</item>
-/// <item>El cambio neto va a su <see cref="MemberStatisticEntity.PersonalPoints"/> y a su
-/// <see cref="MemberStatisticEntity.EnrollmentPoints"/>, en el mismo guardado. PersonalPoints ya incluye los propios de
+/// <item>Bajo un candado por miembro (<see cref="MemberPointsLocks"/>, tercera revision del bloque 2, I-a) y con lecturas
+/// de la base (no de lo seguido, que puede ser viejo), PersonalPoints pasa a ser el objetivo en el mismo guardado; los
+/// EnrollmentPoints del propio NO se escriben aqui (I-b): le llegan como una fila mas de MemberStatisticDeltas, igual que a
+/// sus ascendientes, porque un valor absoluto pisaba el MERGE relativo de ApplyMemberStatisticDeltasJob. PersonalPoints ya incluye los propios de
 /// puntos pendientes en la cola (se suman aqui al encolarlos), asi que el cambio neto es objetivo - PersonalPoints: las
 /// piernas acaban en PersonalPoints al vaciar (lo aplicado, PersonalPoints - pendientes, mas lo pendiente), igual que la
 /// hoja de <see cref="LegPointMaintenance.EnqueueLeafAsync"/>.</item>
 /// <item>Y sube como delta: un propio con puntos en DualLegDeltas (O(1); llega a las piernas de sus ascendientes del
-/// binario al vaciar, y espera si no esta colocado) y una fila de MemberStatisticDeltas por ascendiente de su linea de
-/// patrocinio (hasta el Bloque 4). Un PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en
+/// binario al vaciar, y espera si no esta colocado) y una fila de MemberStatisticDeltas para el propio y otra por
+/// ascendiente de su linea de patrocinio (hasta el Bloque 4). Un PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en
 /// el primer cambio del miembro: 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
 /// </list>
 /// Idempotente: un guardado que falla y se reintenta no aplica dos veces (lo ya ajustado en este contexto se recuerda
@@ -99,6 +101,16 @@ public static class MembershipPointsDeltas
         var entradas = context.ChangeTracker.Entries<MembershipSubscription>()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
         if (entradas.Count == 0 && !Ajustado.TryGetValue(context, out _)) return;
+
+        // Tercera revision del bloque 2 (I-a): candado por miembro (los de antes y despues de cada suscripcion que cambia y
+        // los ya ajustados en un guardado que fallo) y, ya con el, los valores de la base de esas suscripciones.
+        if (context.Database.IsRelational())
+        {
+            var candidatos = entradas.SelectMany(e => new[] { e.Property(x => x.MemberId).OriginalValue, e.Entity.MemberId });
+            if (Ajustado.TryGetValue(context, out var previos)) candidatos = candidatos.Concat(previos.Keys.Select(f => f.MemberId));
+            await MemberPointsLocks.AcquireAsync(context, candidatos, ct).ConfigureAwait(false);
+            await RefrescarAsync(context, entradas, ct).ConfigureAwait(false);
+        }
 
         var tocados = new HashSet<string>(StringComparer.Ordinal);
         // Las que salen de Active en este guardado: base de una subida o bajada sin pedido (la nueva nace en el mismo guardado).
@@ -164,55 +176,61 @@ public static class MembershipPointsDeltas
             }
         }
 
-        // 2. El objetivo de cada miembro tocado: la suma de lo que aportan sus suscripciones activas tras el guardado (las
-        //    seguidas con sus valores actuales y las demas de la base). Cuenta las activas borradas logicamente, como los
+        // 2. El objetivo de cada miembro tocado: la suma de lo que aportan sus suscripciones activas tras el guardado. Las que
+        //    se anaden, cambian o borran en este guardado con sus valores (refrescados con la base, I-a); las demas, como
+        //    estan en la base (una seguida sin cambios puede ser vieja). Cuenta las activas borradas logicamente, como los
         //    calificados (Q-R21) y 05-realinear-puntos-por-membresia.sql.
         var objetivo = tocados.ToDictionary(m => m, _ => 0, StringComparer.Ordinal);
         if (tocados.Count > 0)
         {
-            var seguidas = context.ChangeTracker.Entries<MembershipSubscription>().ToList();
+            var seguidas = context.ChangeTracker.Entries<MembershipSubscription>()
+                .Where(x => x.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
             var idsSeguidas = seguidas.Select(x => x.Entity.Id).ToHashSet(StringComparer.Ordinal);
             foreach (var x in seguidas)
-                if (x.State is not (EntityState.Deleted or EntityState.Detached)
+                if (x.State != EntityState.Deleted
                     && x.Entity.SubscriptionStatus == MembershipStatus.Active && objetivo.ContainsKey(x.Entity.MemberId))
                     objetivo[x.Entity.MemberId] += x.Entity.DualTeamContribution;
             var lista = tocados.ToList();
-            var enBase = await context.Set<MembershipSubscription>().AsNoTracking()
+            var enBase = await context.Set<MembershipSubscription>().AsNoTracking().IgnoreQueryFilters()
                 .Where(x => lista.Contains(x.MemberId) && x.SubscriptionStatus == MembershipStatus.Active)
-                .Select(x => new { x.Id, x.MemberId, x.DualTeamContribution }).ToListAsync(ct);
+                .Select(x => new { x.Id, x.MemberId, x.DualTeamContribution }).ToListAsync(ct).ConfigureAwait(false);
             foreach (var x in enBase.Where(x => !idsSeguidas.Contains(x.Id)))
                 objetivo[x.MemberId] += x.DualTeamContribution;
         }
 
-        // 3. El cambio neto (objetivo - PersonalPoints de la base), a PersonalPoints y a EnrollmentPoints del propio.
-        //    Idempotente: lo ya ajustado en este contexto (un guardado anterior que fallo) se descuenta.
+        // 3. PersonalPoints pasa a ser el objetivo y el cambio neto es objetivo - PersonalPoints LEIDO DE LA BASE bajo el
+        //    candado (I-a: una fila seguida puede ser vieja). Los EnrollmentPoints del propio ya no se escriben aqui (I-b):
+        //    un valor absoluto desde una lectura vieja pisaba el MERGE relativo de ApplyMemberStatisticDeltasJob; el propio
+        //    recibe su cambio como una fila mas de MemberStatisticDeltas (paso 4). Idempotente: un reintento vuelve a partir
+        //    de la base; lo ajustado en una fila nueva (sin guardar) se recuerda para descontarlo.
         var ajustado = Ajustado.GetOrCreateValue(context);
         var neto = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var (memberId, meta) in objetivo)
         {
-            var fila = await FilaDeAsync(context, memberId, ct);
-            var ya = fila is null ? 0 : ajustado.GetValueOrDefault(fila);
-            var delta = meta - ((fila?.PersonalPoints ?? 0) - ya);
-            if (delta == 0 && ya == 0) continue;
-            fila ??= context.Set<MemberStatisticEntity>().Add(new MemberStatisticEntity
+            var (fila, base_) = await FilaDeAsync(context, memberId, ajustado, ct).ConfigureAwait(false);
+            var delta = meta - base_;
+            if (fila is null)
             {
-                MemberId = memberId, CreatedBy = Actor, CreationDate = now
-            }).Entity;
-            fila.PersonalPoints += delta - ya;
-            fila.EnrollmentPoints += delta - ya;
+                if (delta == 0) continue;
+                fila = context.Set<MemberStatisticEntity>().Add(new MemberStatisticEntity
+                {
+                    MemberId = memberId, CreatedBy = Actor, CreationDate = now
+                }).Entity;
+            }
+            FijarPuntos(context, fila, base_, meta);
             if (delta == 0) ajustado.Remove(fila); else ajustado[fila] = delta;
             if (delta != 0) neto[memberId] = delta;
         }
-        foreach (var (fila, ya) in ajustado.ToList())
-            if (!objetivo.ContainsKey(fila.MemberId) && ya != 0)
+        foreach (var (fila, _) in ajustado.ToList())
+            if (!objetivo.ContainsKey(fila.MemberId))
             {
                 // Un reintento en el que este miembro ya no se toca: se deshace lo ajustado.
-                fila.PersonalPoints -= ya;
-                fila.EnrollmentPoints -= ya;
+                var (_, base_) = await FilaDeAsync(context, fila.MemberId, ajustado, ct).ConfigureAwait(false);
+                FijarPuntos(context, fila, base_, base_);
                 ajustado.Remove(fila);
             }
 
-        // 4. El neto sube como delta: al binario (un propio con puntos) y a los ascendientes de la linea de patrocinio.
+        // 4. El neto sube como delta: al binario (un propio con puntos) y a la linea de patrocinio, el propio incluido.
         var yaBinario = context.ChangeTracker.Entries<DualLegDelta>()
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
@@ -221,8 +239,8 @@ public static class MembershipPointsDeltas
             .Where(e => e.State == EntityState.Added && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.SourceMemberId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key,
-                // Cada vez se encola lo mismo a cada ascendiente: lo ya encolado es la suma de uno cualquiera.
-                g => g.GroupBy(e => e.Entity.MemberId, StringComparer.Ordinal).First().Sum(e => e.Entity.EnrollmentPointsDelta),
+                // Cada vez se encola lo mismo a cada uno (el propio y sus ascendientes): lo ya encolado es lo del propio.
+                g => g.Where(e => string.Equals(e.Entity.MemberId, g.Key, StringComparison.Ordinal)).Sum(e => e.Entity.EnrollmentPointsDelta),
                 StringComparer.Ordinal);
 
         foreach (var memberId in neto.Keys.Union(yaBinario.Keys).Union(yaInscripcion.Keys).ToList())
@@ -239,13 +257,63 @@ public static class MembershipPointsDeltas
 
             var faltaInscripcion = meta - yaInscripcion.GetValueOrDefault(memberId);
             if (faltaInscripcion != 0)
-                foreach (var id in await AscendientesAsync(context, memberId, ct))
+                foreach (var id in (await AscendientesAsync(context, memberId, ct).ConfigureAwait(false)).Prepend(memberId))
                     context.Set<MemberStatisticDelta>().Add(new MemberStatisticDelta
                     {
                         MemberId = id, EnrollmentPointsDelta = faltaInscripcion, SourceMemberId = memberId,
                         IsApplied = false, CreatedBy = Actor, CreationDate = now
                     });
         }
+    }
+
+    /// <summary>
+    /// I-a: PersonalPoints de la fila pasa a <paramref name="valor"/> partiendo de <paramref name="base_"/> (lo de la base):
+    /// el original se iguala a la base para que EF escriba si y solo si cambia respecto de lo confirmado.
+    /// </summary>
+    private static void FijarPuntos(DbContext context, MemberStatisticEntity fila, int base_, int valor)
+    {
+        var entrada = context.Entry(fila);
+        var pp = entrada.Property(x => x.PersonalPoints);
+        if (entrada.State == EntityState.Added) { pp.CurrentValue = valor; return; }
+        pp.OriginalValue = base_;
+        pp.CurrentValue = valor;
+        pp.IsModified = base_ != valor;
+    }
+
+    /// <summary>
+    /// I-a: las suscripciones que cambian o se borran en este guardado toman de la base (leida bajo el candado) los valores
+    /// de los que depende el calculo: lo que el guardado cambia conserva su valor nuevo y su original pasa a ser el de la
+    /// base; lo que no cambia se iguala a la base (una seguida desde hace rato puede ser vieja).
+    /// </summary>
+    private static async Task RefrescarAsync(DbContext context, List<EntityEntry<MembershipSubscription>> entradas, CancellationToken ct)
+    {
+        var cambiadas = entradas.Where(e => e.State is EntityState.Modified or EntityState.Deleted).ToList();
+        if (cambiadas.Count == 0) return;
+        var ids = cambiadas.Select(e => e.Entity.Id).ToList();
+        var enBase = await context.Set<MembershipSubscription>().AsNoTracking().IgnoreQueryFilters()
+            .Where(s => ids.Contains(s.Id))
+            .Select(s => new { s.Id, s.MemberId, s.MembershipLevelId, s.SubscriptionStatus, s.DualTeamContribution, s.EnrollmentContribution, s.LastOrderId })
+            .ToListAsync(ct).ConfigureAwait(false);
+        var porId = enBase.ToDictionary(s => s.Id, StringComparer.Ordinal);
+        foreach (var e in cambiadas)
+        {
+            if (!porId.TryGetValue(e.Entity.Id, out var b)) continue;
+            Igualar(e.Property(x => x.MemberId), b.MemberId);
+            Igualar(e.Property(x => x.MembershipLevelId), b.MembershipLevelId);
+            Igualar(e.Property(x => x.SubscriptionStatus), b.SubscriptionStatus);
+            Igualar(e.Property(x => x.DualTeamContribution), b.DualTeamContribution);
+            Igualar(e.Property(x => x.EnrollmentContribution), b.EnrollmentContribution);
+            Igualar(e.Property(x => x.LastOrderId), b.LastOrderId);
+        }
+    }
+
+    private static void Igualar<T>(PropertyEntry<MembershipSubscription, T> p, T enBase)
+    {
+        if (p.IsModified) { p.OriginalValue = enBase; return; }
+        if (EqualityComparer<T>.Default.Equals(p.OriginalValue, enBase) && EqualityComparer<T>.Default.Equals(p.CurrentValue, enBase)) return;
+        p.OriginalValue = enBase;
+        p.CurrentValue = enBase;
+        p.IsModified = false;
     }
 
     private static void Fijar(MembershipSubscription s, int aporte)
@@ -270,14 +338,26 @@ public static class MembershipPointsDeltas
         return candidata;
     }
 
-    /// <summary>La fila de estadisticas del miembro (la primera por Id), seguida o leida y seguida.</summary>
-    private static async Task<MemberStatisticEntity?> FilaDeAsync(DbContext context, string memberId, CancellationToken ct)
+    /// <summary>
+    /// La fila de estadisticas del miembro (la primera por Id en la base, seguida o leida y seguida) y sus PersonalPoints EN LA
+    /// BASE (I-a). Sin fila en la base, la nueva seguida si la hay (su valor menos lo que este calculo le ajusto) o ninguna.
+    /// </summary>
+    private static async Task<(MemberStatisticEntity? Fila, int Base)> FilaDeAsync(
+        DbContext context, string memberId, Dictionary<MemberStatisticEntity, int> ajustado, CancellationToken ct)
     {
-        var seguida = context.ChangeTracker.Entries<MemberStatisticEntity>()
-            .Where(e => e.State != EntityState.Deleted && e.Entity.MemberId == memberId)
-            .OrderBy(e => e.Entity.Id == 0 ? long.MaxValue : e.Entity.Id)
+        var enBase = await context.Set<MemberStatisticEntity>().AsNoTracking().IgnoreQueryFilters()
+            .Where(s => s.MemberId == memberId).OrderBy(s => s.Id)
+            .Select(s => new { s.Id, s.PersonalPoints }).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (enBase is not null)
+        {
+            var fila = context.ChangeTracker.Entries<MemberStatisticEntity>().Where(e => e.Entity.Id == enBase.Id).Select(e => e.Entity).FirstOrDefault()
+                       ?? await context.Set<MemberStatisticEntity>().IgnoreQueryFilters().FirstAsync(s => s.Id == enBase.Id, ct).ConfigureAwait(false);
+            return (fila, enBase.PersonalPoints);
+        }
+        var nueva = context.ChangeTracker.Entries<MemberStatisticEntity>()
+            .Where(e => e.State == EntityState.Added && e.Entity.MemberId == memberId)
             .Select(e => e.Entity).FirstOrDefault();
-        return seguida ?? await context.Set<MemberStatisticEntity>().Where(s => s.MemberId == memberId).OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+        return nueva is null ? (null, 0) : (nueva, nueva.PersonalPoints - ajustado.GetValueOrDefault(nueva));
     }
 
     /// <summary>
