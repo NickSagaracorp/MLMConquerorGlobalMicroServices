@@ -364,20 +364,25 @@ public static class MembershipPointsDeltas
 
     /// <summary>
     /// Los ascendientes de inscripcion (sin el propio), por la ruta de su nodo vigente (el de mas reciente creacion),
-    /// seguido o en la base; sin nodo propio, la linea de su patrocinador. Sin nada de eso, ninguno.
+    /// seguido o en la base; sin nodo propio, la linea del primer patrocinador de su cadena que tenga nodo (tercera revision
+    /// del bloque 2: antes solo el patrocinador directo; sin nodo, la linea se quedaba sin nada). Sin nada de eso, ninguno.
     /// </summary>
     private static async Task<List<string>> AscendientesAsync(DbContext context, string memberId, CancellationToken ct)
     {
         var ruta = await RutaAsync(context, memberId, ct).ConfigureAwait(false);
-        if (ruta is null)
+        // Sin nodo propio todavia (un alta que se activa antes de tenerlo): la linea de su patrocinador, el incluido, como la
+        // recorria la activacion; si el patrocinador tampoco lo tiene, la del siguiente de la cadena (con guarda de ciclos).
+        var vistos = new HashSet<string>(StringComparer.Ordinal) { memberId };
+        var actual = memberId;
+        while (ruta is null)
         {
-            // Sin nodo propio todavia (un alta que se activa antes de tenerlo): la linea de su patrocinador, el incluido,
-            // como la recorria la activacion.
             var patrocinador = context.ChangeTracker.Entries<MemberProfile>()
-                                   .Where(e => e.Entity.MemberId == memberId).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
-                               ?? await context.Set<MemberProfile>().AsNoTracking().Where(m => m.MemberId == memberId)
+                                   .Where(e => e.Entity.MemberId == actual).Select(e => e.Entity.SponsorMemberId).FirstOrDefault()
+                               ?? await context.Set<MemberProfile>().AsNoTracking().IgnoreQueryFilters().Where(m => m.MemberId == actual)
                                    .Select(m => m.SponsorMemberId).FirstOrDefaultAsync(ct).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(patrocinador)) ruta = await RutaAsync(context, patrocinador, ct).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(patrocinador) || !vistos.Add(patrocinador)) break;
+            ruta = await RutaAsync(context, patrocinador, ct).ConfigureAwait(false);
+            actual = patrocinador;
         }
         return (ruta ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Where(id => !string.Equals(id, memberId, StringComparison.Ordinal))
