@@ -324,50 +324,35 @@ public class DualTeamService : IDualTeamService
 
         var rootNode = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == rootMemberId, ct);
         if (rootNode is null) return new();
-        var rootPath = TreePrefix.Of(rootNode.HierarchyPath);
 
-        // Plan P: el subarbol por el rango de la clave (no por el prefijo de la ruta); los mas cercanos primero.
+        // Plan P: el subarbol por el rango de la clave; los mas cercanos primero. (La busqueda pasa a prefijo en la Tarea 23.)
         var s = term.Trim().ToLower();
         var matches = await (
             from d in DualSubtree.Under(_db, rootNode).AsNoTracking()
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
             where m.MemberId.ToLower().Contains(s) || (m.FirstName + " " + m.LastName).ToLower().Contains(s)
             orderby d.Depth, d.MemberId
-            select new { d.MemberId, d.HierarchyPath, m.FirstName, m.LastName }
+            select new { Node = d, m.FirstName, m.LastName }
         ).Take(take).ToListAsync(ct);
-
         if (matches.Count == 0) return new();
 
-        var rootSegLen   = SegmentCount(rootPath);
-        var legByGateway = (await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.ParentMemberId == rootMemberId)
-                .Select(d => new { d.MemberId, d.Side })
-                .ToListAsync(ct))
-            .ToDictionary(g => g.MemberId, g => g.Side);
-
-        // Resolve names for every id on every match's path-below-root (one batched query).
-        var pathIds = matches
-            .SelectMany(mt => mt.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen))
-            .Distinct().ToList();
-        var names = await _db.MemberProfiles.AsNoTracking()
-            .Where(p => pathIds.Contains(p.MemberId))
-            .Select(p => new { p.MemberId, Name = p.FirstName + " " + p.LastName })
-            .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
+        // Plan Q: los caminos bajo la raiz salen de la clave, todos en una consulta (DualAncestors).
+        var caminos = await DualAncestors.PathsBelowAsync(_db, rootNode, matches.Select(mt => mt.Node).ToList(), ct);
+        var names = await PathNamesAsync(caminos.Values.SelectMany(c => c).Select(p => p.MemberId).Distinct().ToList(), ct);
 
         return matches.Select(mt =>
         {
-            var afterRoot = mt.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen).ToList();
-            var leg = afterRoot.Count > 0 && legByGateway.TryGetValue(afterRoot[0], out var side) ? side.ToString() : string.Empty;
+            var camino = caminos.GetValueOrDefault(mt.Node.MemberId) ?? new List<DualPathStep>();
             return new DualTreeSearchMatchView
             {
-                MemberId = mt.MemberId,
+                MemberId = mt.Node.MemberId,
                 FullName = $"{mt.FirstName} {mt.LastName}".Trim(),
-                Leg      = leg,
-                Depth    = afterRoot.Count,
-                Path     = afterRoot.Select(id => new DualTreePathNodeView
+                Leg      = camino.Count > 0 ? camino[0].Side.ToString() : string.Empty,
+                Depth    = camino.Count,
+                Path     = camino.Select(p => new DualTreePathNodeView
                 {
-                    MemberId = id,
-                    FullName = names.GetValueOrDefault(id, id)
+                    MemberId = p.MemberId,
+                    FullName = names.GetValueOrDefault(p.MemberId, p.MemberId)
                 }).ToList()
             };
         }).ToList();
@@ -380,36 +365,36 @@ public class DualTeamService : IDualTeamService
         var rootNode = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == rootMemberId, ct);
         if (rootNode is null) return null;
 
-        // Plan P: el mas profundo de la pierna, por el rango de la clave y Depth (antes, la ruta mas larga por prefijo).
+        // Plan P: el mas profundo de la pierna, por el rango de la clave y Depth.
         var deepest = await DualSubtree.Leg(_db, rootNode, side).AsNoTracking()
             .OrderByDescending(d => d.Depth).ThenBy(d => d.CreationDate).ThenBy(d => d.Id)
-            .Select(d => new { d.MemberId, d.HierarchyPath })
             .FirstOrDefaultAsync(ct);
         if (deepest is null) return null;
 
-        var rootSegLen = SegmentCount(rootNode.HierarchyPath);
-
-        var afterRoot = deepest.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen).ToList();
-        var names = await _db.MemberProfiles.AsNoTracking()
-            .Where(p => afterRoot.Contains(p.MemberId))
-            .Select(p => new { p.MemberId, Name = p.FirstName + " " + p.LastName })
-            .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
+        // Plan Q: el camino sale de la clave (DualAncestors), no de trocear la ruta.
+        var camino = (await DualAncestors.PathsBelowAsync(_db, rootNode, new[] { deepest }, ct))
+            .GetValueOrDefault(deepest.MemberId) ?? new List<DualPathStep>();
+        var names = await PathNamesAsync(camino.Select(p => p.MemberId).ToList(), ct);
 
         return new DualTreeNavTargetView
         {
             MemberId = deepest.MemberId,
             FullName = names.GetValueOrDefault(deepest.MemberId, deepest.MemberId),
-            Depth    = afterRoot.Count,
-            Path     = afterRoot.Select(id => new DualTreePathNodeView
+            Depth    = camino.Count,
+            Path     = camino.Select(p => new DualTreePathNodeView
             {
-                MemberId = id,
-                FullName = names.GetValueOrDefault(id, id)
+                MemberId = p.MemberId,
+                FullName = names.GetValueOrDefault(p.MemberId, p.MemberId)
             }).ToList()
         };
     }
 
-    private static int SegmentCount(string path) =>
-        path.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+    /// <summary>Plan Q: los nombres de los ids de los caminos, en una consulta con un solo parametro (OPENJSON).</summary>
+    private Task<Dictionary<string, string>> PathNamesAsync(List<string> ids, CancellationToken ct) =>
+        _db.MemberProfiles.AsNoTracking()
+            .Where(p => EF.Parameter(ids).Contains(p.MemberId))
+            .Select(p => new { p.MemberId, Name = p.FirstName + " " + p.LastName })
+            .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
 
     public async Task<List<DualLegRowView>> GetResidualLegsAsync(
         string memberId, CancellationToken ct = default)
