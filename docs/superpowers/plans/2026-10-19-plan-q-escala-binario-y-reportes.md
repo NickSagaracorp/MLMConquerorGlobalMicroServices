@@ -2447,7 +2447,7 @@ Un crítico, tres importantes y cuatro menores. Lo que cambió:
 - Modify: `MLMConquerorGlobalEdition.Repository/Services/Teams/DualTeamService.cs:319-412`
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SqlServerCaminoPorClaveTests.cs`
 
-- [ ] **Paso 1.** Prueba en rojo. En un árbol P → L → LR → LRL, `GetDeepestNodeAsync(P, Left)` devuelve LRL con `Depth = 3` y el camino `[L, LR, LRL]`. `SearchBinarySubtreeAsync(P, "LRL")` devuelve el mismo camino y la pierna `Left`. Antes de consultar se vacía la ruta de esos nodos (`UPDATE DualTeamTree SET HierarchyPath = N'' WHERE MemberId LIKE @prefijo`) dentro de la transacción. Hoy falla: con la ruta vacía, el camino sale vacío. `DualTeamService` se construye como en las pruebas vecinas (`SqlServerDualSubtreeTests.cs:56`).
+- [x] **Paso 1.** Prueba en rojo. En un árbol P → L → LR → LRL, `GetDeepestNodeAsync(P, Left)` devuelve LRL con `Depth = 3` y el camino `[L, LR, LRL]`. `SearchBinarySubtreeAsync(P, "LRL")` devuelve el mismo camino y la pierna `Left`. Antes de consultar se vacía la ruta de esos nodos (`UPDATE DualTeamTree SET HierarchyPath = N'' WHERE MemberId LIKE @prefijo`) dentro de la transacción. Hoy falla: con la ruta vacía, el camino sale vacío. `DualTeamService` se construye como en las pruebas vecinas (`SqlServerDualSubtreeTests.cs:56`).
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -2488,7 +2488,7 @@ public class SqlServerCaminoPorClaveTests
 }
 ```
 
-- [ ] **Paso 2.** `DualAncestors`. Una sola consulta para todas las coincidencias (no una por coincidencia, que con 100 coincidencias en la línea de 8.500 niveles eran 100 idas y vueltas): se calculan las claves de los ascendientes de cada nodo, se buscan **una vez** las claves distintas (comparten casi toda la línea) y se reparte. La pierna de cada coincidencia es el lado del primer paso del camino (el hijo de la raíz por el que se baja): sirve igual en SQL Server y en InMemory, donde los nodos pueden no tener clave. Así no hace falta un `LegOf` propio: `DualSubtree.LegOf` (`DualSubtree.cs:48`) sigue siendo el único que compara claves.
+- [x] **Paso 2.** `DualAncestors`. Una sola consulta para todas las coincidencias (no una por coincidencia, que con 100 coincidencias en la línea de 8.500 niveles eran 100 idas y vueltas): se calculan las claves de los ascendientes de cada nodo, se buscan **una vez** las claves distintas (comparten casi toda la línea) y se reparte. La pierna de cada coincidencia es el lado del primer paso del camino (el hijo de la raíz por el que se baja): sirve igual en SQL Server y en InMemory, donde los nodos pueden no tener clave. Así no hace falta un `LegOf` propio: `DualSubtree.LegOf` (`DualSubtree.cs:48`) sigue siendo el único que compara claves.
 
 ```csharp
 using System.Data;
@@ -2568,7 +2568,7 @@ DROP TABLE #k; DROP TABLE #u;";
 }
 ```
 
-- [ ] **Paso 3.** En `DualTeamService`, los dos métodos y un ayudante de nombres. Los nombres van con un solo parámetro (`EF.Parameter`, `OPENJSON`): un camino de 8.500 niveles con un parámetro por id pasaría del límite de 2.100. Se borran `TreePrefix.Of(rootNode.HierarchyPath)`, `SegmentCount` y la consulta `legByGateway`.
+- [x] **Paso 3.** En `DualTeamService`, los dos métodos y un ayudante de nombres. Los nombres van con un solo parámetro (`EF.Parameter`, `OPENJSON`): un camino de 8.500 niveles con un parámetro por id pasaría del límite de 2.100. Se borran `TreePrefix.Of(rootNode.HierarchyPath)`, `SegmentCount` y la consulta `legByGateway`.
 
 ```csharp
     /// <inheritdoc />
@@ -2653,7 +2653,7 @@ DROP TABLE #k; DROP TABLE #u;";
             .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
 ```
 
-- [ ] **Paso 4.** En verde (y `Binario` entero, que incluye las pruebas InMemory del visualizador). Commit: `Plan Q: la busqueda y el mas profundo del binario sacan el camino de la clave compacta`.
+- [x] **Paso 4.** En verde (y `Binario` entero, que incluye las pruebas InMemory del visualizador). Commit: `Plan Q: la busqueda y el mas profundo del binario sacan el camino de la clave compacta`.
 
 ### Tarea 12: `DualTeamNodes` deja de escribir la ruta
 
@@ -2663,7 +2663,7 @@ DROP TABLE #k; DROP TABLE #u;";
 - Modify: `MLMConquerorGlobalEdition.Domain.Tests` (las pruebas de `Depth(path)` y `ChildPath` se borran con ellos)
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/RutasConBarraFinalTests.cs:20-28` (se quita la entrada `DualTeamNodes.cs = 4`)
 
-- [ ] **Paso 1.** Prueba en rojo, en `SqlServerClaveCompactaTests`. Tras colocar una hoja y mover una raíz provisional, la ruta de esos nodos queda vacía:
+- [x] **Paso 1.** Prueba en rojo, en `SqlServerClaveCompactaTests`. Tras colocar una hoja y mover una raíz provisional, la ruta de esos nodos queda vacía:
 
 ```csharp
     [SqlServerFact]
@@ -2689,12 +2689,12 @@ DROP TABLE #k; DROP TABLE #u;";
     }
 ```
 
-- [ ] **Paso 2.** Cambios en `DualTeamNodes`. Hasta la migración de la Tarea 13 la columna sigue siendo `NOT NULL`, así que se escribe `string.Empty`:
+- [x] **Paso 2.** Cambios en `DualTeamNodes`. Hasta la migración de la Tarea 13 la columna sigue siendo `NOT NULL`, así que se escribe `string.Empty`:
   - `RootAsync` y `ChildAsync` ponen `HierarchyPath = string.Empty`.
   - `MoveSubtreeAsync` ya no calcula `newPath`: la tupla del `switch` pasa a ser `(newParentId, newSide, newKey)`.
   - `RewriteSubtreeSqlAsync` quita la línea `HierarchyPath = @nueva + SUBSTRING(…)` (`:282`) y los parámetros `@nueva` y `@vieja` (`:289-290`).
   - `RewriteSubtreeInMemoryAsync` quita `:331`.
-- [ ] **Paso 3.** En verde (la prueba del Paso 1 y las de `Binario`). Commit: `Plan Q: el binario deja de escribir la ruta de texto`.
+- [x] **Paso 3.** En verde (la prueba del Paso 1 y las de `Binario`). Commit: `Plan Q: el binario deja de escribir la ruta de texto`.
 
 ### Tarea 13: eliminar la columna
 
@@ -2710,9 +2710,9 @@ DROP TABLE #k; DROP TABLE #u;";
 - Delete: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerDualSubtreeTests.cs:85-95` (la prueba que demostraba el error 8152 con `StartsWith` sobre la ruta)
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscalaBinarioTests.cs:69, 80` (el informe deja de medir los MB de ruta)
 
-- [ ] **Paso 1.** Quitar la propiedad y su configuración. Compilar la solución: los errores de compilación son la lista de lo que queda por cambiar. En las pruebas, quitar `HierarchyPath = …` de cada `new DualTeamEntity` y cada aserción sobre la ruta del binario. Donde la aserción comprobaba la posición (`PlaceMemberHandlerTests:129, 165, 232-233`, `AdminPlaceMemberHandlerTests:91, 96, 166, 220`, `AdminRemovePlacementHandlerTests:114, 117`, `SignupAmbassadorHandlerTests:811`, `SqlServerColocacionConcurrenteTests:111-113`, `SqlServerRaizProvisionalTests:84, 161`), pasa a comprobar `ParentMemberId`, `Side` y `Depth`, y en SQL Server `BinaryPath == DualBinaryPath.Child(padre.BinaryPath, lado)`. `ReportesDb.NodoBinario` conserva su firma (el parámetro `ruta` deja de usarse) para no tocar sus llamadas.
+- [x] **Paso 1.** Quitar la propiedad y su configuración. Compilar la solución: los errores de compilación son la lista de lo que queda por cambiar. En las pruebas, quitar `HierarchyPath = …` de cada `new DualTeamEntity` y cada aserción sobre la ruta del binario. Donde la aserción comprobaba la posición (`PlaceMemberHandlerTests:129, 165, 232-233`, `AdminPlaceMemberHandlerTests:91, 96, 166, 220`, `AdminRemovePlacementHandlerTests:114, 117`, `SignupAmbassadorHandlerTests:811`, `SqlServerColocacionConcurrenteTests:111-113`, `SqlServerRaizProvisionalTests:84, 161`), pasa a comprobar `ParentMemberId`, `Side` y `Depth`, y en SQL Server `BinaryPath == DualBinaryPath.Child(padre.BinaryPath, lado)`. `ReportesDb.NodoBinario` conserva su firma (el parámetro `ruta` deja de usarse) para no tocar sus llamadas.
   - Dos pruebas del propio plan dejan de tener sentido sin la columna: en `SqlServerCaminoPorClaveTests` se borra la línea del `UPDATE DualTeamTree SET HierarchyPath = N''` (el resto de la prueba sigue igual: ya no hay ruta que vaciar); y `Ni_colocar_ni_mover_escriben_la_ruta_de_texto` se borra entera (su `SELECT … HierarchyPath <> N''` fallaría por columna inexistente; lo que vigilaba lo vigilan ahora el compilador y la regla de la Tarea 14).
-- [ ] **Paso 2.** `dotnet ef migrations add RetiraRutaDelBinario …`. **Esperado:** `Up` = `DropColumn("HierarchyPath", "DualTeamTree")`. Al principio del `Up`, una guarda que falla cerrada si algún objeto de la base (vista, función, procedimiento o desencadenador) aún lee esa columna. No basta con buscar los dos nombres en el texto: un módulo que use `GenealogyTree.HierarchyPath` y nombre también `DualTeamTree` daría un falso positivo (revisión, menor de la Tarea 13). Los candidatos se filtran por texto y cada uno se confirma con `sys.dm_sql_referenced_entities`, que resuelve la columna referida. Si un módulo candidato no se puede analizar (referencia algo que no existe), la función falla y la migración se detiene: falla cerrada, y se revisa ese módulo a mano.
+- [x] **Paso 2.** `dotnet ef migrations add RetiraRutaDelBinario …`. **Esperado:** `Up` = `DropColumn("HierarchyPath", "DualTeamTree")`. Al principio del `Up`, una guarda que falla cerrada si algún objeto de la base (vista, función, procedimiento o desencadenador) aún lee esa columna. No basta con buscar los dos nombres en el texto: un módulo que use `GenealogyTree.HierarchyPath` y nombre también `DualTeamTree` daría un falso positivo (revisión, menor de la Tarea 13). Los candidatos se filtran por texto y cada uno se confirma con `sys.dm_sql_referenced_entities`, que resuelve la columna referida. Si un módulo candidato no se puede analizar (referencia algo que no existe), la función falla y la migración se detiene: falla cerrada, y se revisa ese módulo a mano.
 
 ```csharp
             migrationBuilder.Sql(@"
@@ -2740,7 +2740,7 @@ DEALLOCATE candidatos;");
 ```
 
   El `Down` vuelve a crear la columna `nvarchar(max) NOT NULL DEFAULT N''`, vacía. Volver atrás de verdad es restaurar la copia del despliegue (Q-R10).
-- [ ] **Paso 3.** `03-recuperar-espacio-de-la-ruta.sql`. `DROP COLUMN` es solo de metadatos, así que el espacio (23,5 a 65,8 GB a escala) se libera por lotes. Es idempotente: una segunda pasada no encuentra nada que liberar.
+- [x] **Paso 3.** `03-recuperar-espacio-de-la-ruta.sql`. `DROP COLUMN` es solo de metadatos, así que el espacio (23,5 a 65,8 GB a escala) se libera por lotes. Es idempotente: una segunda pasada no encuentra nada que liberar.
   - `DBCC CLEANTABLE` recibe la base como nombre literal, id o `0` (la actual); se usa `0`, no una variable.
   - **El registro crece**: cada lote de 20.000 filas es su transacción, pero en recuperación completa el registro no se reutiliza hasta la siguiente copia del registro. En la base de escala (registro de 36,9 GB con 500.000) y en producción hay que vigilar `log_reuse_wait_desc` y hacer copias del registro durante el script si hace falta; en local, con recuperación simple, se reutiliza solo. El script informa del tamaño del registro antes y después.
 
@@ -2789,7 +2789,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
 - Modify: `Scripts/sql/perf-diag.ps1:28`, `Scripts/sql/leg-sponsors.ps1:9-26`, `Scripts/sql/right-sponsors.ps1:15`, `Scripts/backfill-left.ps1:41-45`, `Scripts/backfill-both-fast.ps1:45-49`, `Scripts/backfill-right-fast.ps1:45-49`, `Scripts/SignupLoadTest/Program.cs:546`
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SinRutaEnElBinarioTests.cs:17-87`
 
-- [ ] **Paso 1.** La regla, en rojo hasta terminar el paso 2. Desde ahora **cualquier** uso de la ruta del binario es un fallo, no solo un filtro. Se amplía el recorrido a `.ps1` y `.cs` de `Scripts/` y a `DeploymentScripts/` (`.sql` y `.ps1`), igual que `EscritoresDelBinarioTests`.
+- [x] **Paso 1.** La regla, en rojo hasta terminar el paso 2. Desde ahora **cualquier** uso de la ruta del binario es un fallo, no solo un filtro. Se amplía el recorrido a `.ps1` y `.cs` de `Scripts/` y a `DeploymentScripts/` (`.sql` y `.ps1`), igual que `EscritoresDelBinarioTests`.
   - **Solo la ruta del binario** (revisión I10): una sentencia que nombra los dos árboles, como `Scripts/backfill-placements.ps1:104` y `Scripts/backfill-left.ps1:89` (`g.HierarchyPath` de `GenealogyTree g` con `NOT EXISTS (SELECT 1 FROM dbo.DualTeamTree d …)`), no es un fallo. Cuenta `HierarchyPath` con un alias ligado a `DualTeamTree` o `DualTeamEntity` (`DualTeamTree d`, `DualTeamTree AS d`, `from d in … DualTeamTree`, `DualTeamTree.Where(d => …)`), o sin alias en una sentencia que no nombra `GenealogyTree` ni `GenealogyEntity`.
   - **Excepciones**, cada una con su motivo:
     - `Migrations/`, que es historia;
@@ -2906,7 +2906,7 @@ SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
 ```
 
   Sustituye a `RutaEnFiltro`, `Ninguna_consulta_del_binario_filtra_por_la_ruta`, `Detecta_un_filtro_puesto_despues_de_un_comentario` y `Detecta_cada_forma_de_filtrar_por_la_ruta` (líneas 17-87); el resumen de la clase pasa a decir «ninguna sentencia usa la ruta de texto del binario».
-- [ ] **Paso 2.** Los scripts:
+- [x] **Paso 2.** Los scripts:
   - `01-reparar-huecos-binario.sql`, primera instrucción tras las guardas de base:
 
     ```sql
@@ -2970,12 +2970,44 @@ SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
     ```
 
     La profundidad por barras pasa a `d.Depth`. `backfill-placements.ps1:104` y `backfill-left.ps1:89` no cambian: leen la ruta de inscripción.
-- [ ] **Paso 3.** La regla en verde. Commit: `Plan Q: los scripts dejan la ruta del binario, los recalculos neutralizan la cola de piernas y la regla prohibe cualquier uso de la ruta del binario`.
+- [x] **Paso 3.** La regla en verde. Commit: `Plan Q: los scripts dejan la ruta del binario, los recalculos neutralizan la cola de piernas y la regla prohibe cualquier uso de la ruta del binario`.
 
 ### Tarea 15: medición rápida local del bloque
 
 - [ ] **Paso 1.** Medir con `SqlServerMedicionPlanPTests` (base local, 119.433 nodos y 8.223 niveles) la colocación de una raíz provisional con 50 en su equipo a más de 8.000 niveles. El ensayo del Plan P dio 1,8 s. Se espera menos, porque la ruta de cada uno de los 50 llegaba a 90.000 caracteres. Anotar en «Resultados medidos».
 - [ ] **Paso 2.** Commit: `Plan Q: medicion local del movimiento sin ruta de texto`.
+
+
+### Notas de ejecución del bloque 3 (2026-10-20)
+
+Commits: Tarea 11 `cbac58d`, Tarea 12 `d5c84e3`, Tarea 14 `a5ae35f`. La Tarea 13 está hecha en el árbol de trabajo **sin confirmar** y la migración `RetiraRutaDelBinario` creada **sin aplicar**: los servicios del árbol `-run` mapean `HierarchyPath` y fallarían al quitar la columna, así que la aplicación espera a que Nick coordine el reinicio. La Tarea 15 queda pendiente.
+
+Desviaciones respecto al texto de las tareas:
+- **Orden 11, 12, 14 y 13.** La 14 va antes que la 13. Mientras la columna siga en la base (`NOT NULL`, sin valor por defecto), un modelo sin la propiedad no puede insertar en `DualTeamTree`. Con la Tarea 13 en el árbol de trabajo fallan 51 pruebas de SQL Server en `BizCenter.Tests`, 3 en `Signups.Tests`, 3 en `AdminAPI.Tests`, 1 en `CommissionEngine.Tests` y 2 en `RankEngine.Tests`, todas por `Cannot insert the value NULL into column 'HierarchyPath'`. Todo lo demás pasa.
+- **Tarea 11.** En `DualAncestors`, la unión se escribe `u.AncestorKey = d.BinaryPath`, no `d.BinaryPath = u.AncestorKey`. En el orden del plan, `EscritoresDelBinarioTests` la tomaba por una asignación de la clave (`.BinaryPath =` en un fichero que nombra el binario).
+- **Tarea 12.**
+  - Las aserciones sobre la ruta del binario pasan ya aquí a `ParentMemberId`, `Side` y `Depth` (y a `BinaryPath == DualBinaryPath.Child(...)` en SQL Server). La Tarea 13 lo dejaba para el Paso 1, pero con `string.Empty` en la ruta las suites no habrían quedado en verde.
+  - Cambian `AdminPlaceMemberHandlerTests`, `AdminRemovePlacementHandlerTests`, `PlaceMemberHandlerTests`, `SignupAmbassadorHandlerTests:811`, `SqlServerColocacionConcurrenteTests` y `SqlServerRaizProvisionalTests`.
+  - En `RutasConBarraFinalTests`, la entrada de `DualTeamNodes.cs` pasa de 4 a 2 (las dos asignaciones `string.Empty`) y se quita en la Tarea 13.
+- **Tarea 14.**
+  - Mientras la Tarea 13 no esté confirmada, la regla lleva una excepción temporal para `DualTeamNodes.cs` (`string.Empty`). La Tarea 13 la quita.
+  - `02-recalcular-piernas.sql` gana la guarda `51105`, que falla si queda un nodo vivo sin `Depth`, porque el nivel sale de `Depth`.
+  - En los `.ps1` de relleno (`backfill-*`), el tope de 1.500 caracteres de ruta pasa a 12.000 niveles (`DualBinaryPath.WarnDepth`).
+  - La neutralización de la cola en `02` y `04` ya estaba hecha (revisión I-2 del bloque 2).
+  - Los tres `.sql` tocados se comprobaron con `SET NOEXEC ON`. La pertenencia por `dbo.DualAncestorKeys` se probó en local: MAX(Depth) del subárbol de un nodo a más de 8.000 niveles da 8.222.
+- **Tarea 13.**
+  - `03-recuperar-espacio-de-la-ruta.sql` comprueba la columna con `COL_LENGTH`, así que la regla de la Tarea 14 lo marcaba. Pasa a ser una excepción con su motivo.
+  - Se borra `Handle_WhenSponsorPathMissingTrailingSlash_NewPathHasSlashBetweenIds` (`PlaceMemberHandlerTests`, Bug 10): probaba la normalización de la ruta, que ya no existe.
+  - De `SqlServerDualSubtreeTests` solo se quita la parte del error 8152. El resto pasa a llamarse `En_una_cadena_de_300_niveles_la_clave_acota_el_subarbol`.
+  - La guarda de la migración se ejecutó en local en modo lectura: 0 candidatos.
+  - Tamaños en local antes de aplicar: `DualTeamTree` ocupa 3.013 MB, con 2.290 MB de ruta, y la base está en recuperación simple.
+
+Pendiente, en este orden:
+1. Parar los servicios `-run` y aplicar la migración `RetiraRutaDelBinario` con `--connection` local.
+2. Ejecutar `03-recuperar-espacio-de-la-ruta.sql` (`Confirmo=LOCAL`) y anotar los MB.
+3. Ejecutar todas las suites en verde, en serie (Tarea 13, Paso 5), y confirmar la Tarea 13 con su mensaje.
+4. Actualizar el árbol `-run` al código nuevo antes de arrancarlo.
+5. Tarea 15: medición.
 
 ---
 
