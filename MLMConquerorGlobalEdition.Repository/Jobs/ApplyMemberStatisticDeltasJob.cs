@@ -1,9 +1,11 @@
 using Hangfire;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -32,15 +34,21 @@ namespace MLMConquerorGlobalEdition.Repository.Jobs;
 /// references Repository, so keeping the job here makes the type loadable by all
 /// schedulers. Execution still happens only on the SignupAPI server because the
 /// recurring job is enqueued onto the <c>signups</c> queue, which only it listens on.
+///
+/// Plan Q (Bloque 4): una fila puede ser de un miembro (Scope = Member, las anteriores al Plan Q) o de una linea entera
+/// (Scope = SponsorLine: MemberId es el patrocinador y el delta se aplica a el y a cada ascendiente de su Node, con
+/// QualifiedSponsoredMembersDelta solo a el). En SQL Server cada tanda es un comando por conjuntos en una transaccion;
+/// la cola de rango se llena solo hasta GenealogyUpline.EnrollmentLevels de distancia del patrocinador.
 /// </summary>
 [Queue("signups")]
 public class ApplyMemberStatisticDeltasJob
 {
     /// <summary>Rows claimed per inner batch. Each cycle loops batches until the queue is
-    /// drained (see ExecuteAsync), so this just bounds the per-transaction size. Sized for
-    /// bulk signup load (a rank-climb can enqueue hundreds of thousands of deltas; 1000/min
-    /// could never catch up).</summary>
+    /// drained (see ExecuteAsync), so this just bounds the per-transaction size.</summary>
     public const int BatchSize = 5000;
+
+    /// <summary>Plan Q (revision C2): reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
+    public const int MaxDeadlockRetries = 3;
 
     private readonly AppDbContext      _db;
     private readonly IDateTimeProvider _dateTime;
@@ -63,134 +71,15 @@ public class ApplyMemberStatisticDeltasJob
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
         var startedAt    = _dateTime.Now;
-        var providerName = _db.Database.ProviderName ?? string.Empty;
-        var isInMemory   = providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase);
         var totalApplied = 0;
-
-        // Drain the whole backlog this run, one BatchSize transaction at a time, until no
-        // unapplied rows remain.
         while (true)
         {
-        // 1. Claim a batch of unapplied rows. The [DisableConcurrentExecution] guard
-        //    guarantees a single drainer, so no two workers claim the same rows.
-        var batch = await _db.MemberStatisticDeltas
-            .Where(d => !d.IsApplied)
-            .OrderBy(d => d.Id)
-            .Take(BatchSize)
-            .ToListAsync(ct);
-
-        if (batch.Count == 0) break;
-
-        // 2. Group by upline and sum deltas — 350 signups under the same upline produce
-        //    350 delta rows but only one MERGE this cycle.
-        var groups = batch
-            .GroupBy(d => d.MemberId)
-            .Select(g => new
-            {
-                MemberId                       = g.Key,
-                EnrollmentPointsDelta          = g.Sum(x => x.EnrollmentPointsDelta),
-                EnrollmentTeamSizeDelta        = g.Sum(x => x.EnrollmentTeamSizeDelta),
-                QualifiedSponsoredMembersDelta = g.Sum(x => x.QualifiedSponsoredMembersDelta),
-                EarliestCreatedBy              = g.OrderBy(x => x.Id).First().CreatedBy
-            })
-            .ToList();
-
-        var now = _dateTime.Now;
-
-        // 3. Apply each group. On SQL Server: race-free MERGE per upline (HOLDLOCK). On the
-        //    in-memory provider (unit tests): read-modify-write — no concurrency there.
-        foreach (var grp in groups)
-        {
-            if (isInMemory)
-            {
-                var existing = await _db.MemberStatistics
-                    .FirstOrDefaultAsync(s => s.MemberId == grp.MemberId, ct);
-
-                if (existing is not null)
-                {
-                    existing.EnrollmentPoints          += grp.EnrollmentPointsDelta;
-                    existing.EnrollmentTeamSize        += grp.EnrollmentTeamSizeDelta;
-                    existing.QualifiedSponsoredMembers += grp.QualifiedSponsoredMembersDelta;
-                }
-                else
-                {
-                    await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
-                    {
-                        MemberId                  = grp.MemberId,
-                        EnrollmentPoints          = grp.EnrollmentPointsDelta,
-                        EnrollmentTeamSize        = grp.EnrollmentTeamSizeDelta,
-                        QualifiedSponsoredMembers = grp.QualifiedSponsoredMembersDelta,
-                        CreatedBy                 = grp.EarliestCreatedBy,
-                        CreationDate              = now
-                    }, ct);
-                }
-            }
-            else
-            {
-                FormattableString mergeSql = $@"
-MERGE INTO MemberStatistics WITH (HOLDLOCK) AS target
-USING (SELECT {grp.MemberId} AS MemberId) AS source
-   ON target.MemberId = source.MemberId
-WHEN MATCHED THEN
-    UPDATE SET
-        EnrollmentPoints          = target.EnrollmentPoints          + {grp.EnrollmentPointsDelta},
-        EnrollmentTeamSize        = target.EnrollmentTeamSize        + {grp.EnrollmentTeamSizeDelta},
-        QualifiedSponsoredMembers = target.QualifiedSponsoredMembers + {grp.QualifiedSponsoredMembersDelta}
-WHEN NOT MATCHED THEN
-    INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize,
-            EnrollmentTeamSize, DualTeamPoints, EnrollmentPoints,
-            QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
-            EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth,
-            DualTeamPointsGrowth, CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth,
-            CurrentYearIncomeGrowth, CreationDate, CreatedBy)
-    VALUES (source.MemberId, 0, 0, 0,
-            {grp.EnrollmentTeamSizeDelta}, 0, {grp.EnrollmentPointsDelta},
-            {grp.QualifiedSponsoredMembersDelta}, 0,
-            0, 0, 0,
-            0, 0, 0,
-            0, {now}, {grp.EarliestCreatedBy});";
-
-                await _db.Database.ExecuteSqlInterpolatedAsync(mergeSql, ct);
-            }
-        }
-
-        // 4. Mark all claimed rows applied.
-        foreach (var delta in batch)
-        {
-            delta.IsApplied = true;
-            delta.AppliedAt = now;
-        }
-
-        // 5. For each touched member, queue a rank evaluation entry so the rank processor
-        //    sees fresh stats. Dedup against any unprocessed Enrollment row already in flight.
-        var touchedMemberIds = groups.Select(g => g.MemberId).ToList();
-        var alreadyQueued = await _db.RankEvaluationQueue
-            .Where(q => !q.IsProcessed
-                     && q.TriggerEvent == RankEvaluationTrigger.Enrollment
-                     && touchedMemberIds.Contains(q.EvaluateMemberId))
-            .Select(q => q.EvaluateMemberId)
-            .ToListAsync(ct);
-        var alreadyQueuedSet = new HashSet<string>(alreadyQueued, StringComparer.Ordinal);
-
-        foreach (var grp in groups)
-        {
-            if (alreadyQueuedSet.Contains(grp.MemberId)) continue;
-
-            await _db.RankEvaluationQueue.AddAsync(new RankEvaluationQueue
-            {
-                TriggerMemberId  = grp.MemberId,
-                EvaluateMemberId = grp.MemberId,
-                TriggerEvent     = RankEvaluationTrigger.Enrollment,
-                TriggerDate      = now,
-                CreatedBy        = "delta-apply",
-                CreationDate     = now
-            }, ct);
-        }
-
-        await _db.SaveChangesAsync(ct);
-
-        totalApplied += batch.Count;
-        _db.ChangeTracker.Clear(); // don't accumulate tracked entities across batches
+            var n = _db.Database.IsSqlServer()
+                ? await ApplyBatchSqlServerAsync(ct)
+                : await ApplyBatchInMemoryAsync(ct);
+            if (n == 0) break;
+            totalApplied += n;
+            _db.ChangeTracker.Clear(); // no acumular entidades seguidas entre tandas
         }
 
         var elapsedMs = (int)(_dateTime.Now - startedAt).TotalMilliseconds;
@@ -199,4 +88,172 @@ WHEN NOT MATCHED THEN
                 "ApplyMemberStatisticDeltas: applied {DeltaCount} deltas in {ElapsedMs}ms.",
                 totalApplied, elapsedMs);
     }
+
+    /// <summary>
+    /// Una tanda en SQL Server: un comando, una transaccion (la de quien llama si ya hay una, en pruebas). El MERGE, la
+    /// cola de rango y la marca IsApplied se confirman juntos: o se aplica la tanda entera o los deltas siguen pendientes
+    /// (revision C2: sin transaccion, una caida entre el MERGE y la marca volvia a aplicar el MERGE).
+    /// </summary>
+    private async Task<int> ApplyBatchSqlServerAsync(CancellationToken ct)
+    {
+        for (var intento = 1; ; intento++)
+        {
+            var propia = _db.Database.CurrentTransaction is null;
+            await using var tx = propia ? await _db.Database.BeginTransactionAsync(ct) : null;
+            try
+            {
+                var n = (await _db.Database.SqlQueryRaw<int>(ApplyBatchSql,
+                        new SqlParameter("@lote", BatchSize),
+                        new SqlParameter("@now", _dateTime.Now),
+                        new SqlParameter("@enrollment", (int)RankEvaluationTrigger.Enrollment),
+                        new SqlParameter("@niveles", GenealogyUpline.EnrollmentLevels))
+                    .ToListAsync(ct)).Single();
+                if (tx is not null) await tx.CommitAsync(ct);
+                return n;
+            }
+            catch (SqlException ex) when (ex.Number == 1205 && propia && intento < MaxDeadlockRetries)
+            {
+                _logger.LogWarning(ex, "ApplyMemberStatisticDeltas: tanda victima de un interbloqueo, intento {Intento}.", intento);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Una tanda en InMemory (pruebas). SponsorLine sube por ParentMemberId del nodo vigente de cada miembro (las pruebas
+    /// siembran nodos sin Node, revision I6); el patrocinador sin nodo no recibe nada, como en SQL.
+    /// </summary>
+    private async Task<int> ApplyBatchInMemoryAsync(CancellationToken ct)
+    {
+        var batch = await _db.MemberStatisticDeltas.Where(d => !d.IsApplied).OrderBy(d => d.Id).Take(BatchSize).ToListAsync(ct);
+        if (batch.Count == 0) return 0;
+        var now = _dateTime.Now;
+
+        var filas = new List<(string MemberId, int Distancia, MemberStatisticDelta Delta)>();
+        foreach (var d in batch)
+        {
+            if (d.Scope == MemberStatisticDeltaScope.Member)
+            {
+                filas.Add((d.MemberId, 0, d));
+                continue;
+            }
+            var vistos = new HashSet<string>(StringComparer.Ordinal);
+            var distancia = 0;
+            for (var actual = d.MemberId; actual is not null && vistos.Add(actual); distancia++)
+            {
+                var id = actual;
+                var nodo = await _db.GenealogyTree.AsNoTracking().Where(g => g.MemberId == id)
+                    .OrderByDescending(g => g.CreationDate).ThenByDescending(g => g.Id)
+                    .Select(g => new { g.ParentMemberId }).FirstOrDefaultAsync(ct);
+                if (nodo is null) break;
+                filas.Add((id, distancia, d));
+                actual = nodo.ParentMemberId;
+            }
+        }
+
+        var grupos = filas.GroupBy(f => f.MemberId).Select(g => new
+        {
+            MemberId  = g.Key,
+            P         = g.Sum(f => f.Delta.EnrollmentPointsDelta),
+            T         = g.Sum(f => f.Delta.EnrollmentTeamSizeDelta),
+            Q         = g.Sum(f => f.Delta.Scope == MemberStatisticDeltaScope.Member || f.Distancia == 0
+                                   ? f.Delta.QualifiedSponsoredMembersDelta : 0),
+            CreatedBy = g.OrderBy(f => f.Delta.Id).First().Delta.CreatedBy,
+            Encolar   = g.Any(f => f.Distancia < GenealogyUpline.EnrollmentLevels)
+        }).ToList();
+
+        foreach (var grp in grupos)
+        {
+            var existing = await _db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == grp.MemberId, ct);
+            if (existing is not null)
+            {
+                existing.EnrollmentPoints          += grp.P;
+                existing.EnrollmentTeamSize        += grp.T;
+                existing.QualifiedSponsoredMembers += grp.Q;
+            }
+            else
+            {
+                await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
+                {
+                    MemberId = grp.MemberId, EnrollmentPoints = grp.P, EnrollmentTeamSize = grp.T,
+                    QualifiedSponsoredMembers = grp.Q, CreatedBy = grp.CreatedBy, CreationDate = now
+                }, ct);
+            }
+        }
+
+        foreach (var d in batch)
+        {
+            d.IsApplied = true;
+            d.AppliedAt = now;
+        }
+
+        var tocados = grupos.Where(g => g.Encolar).Select(g => g.MemberId).ToList();
+        var yaEncolados = (await _db.RankEvaluationQueue
+                .Where(q => !q.IsProcessed && q.TriggerEvent == RankEvaluationTrigger.Enrollment && tocados.Contains(q.EvaluateMemberId))
+                .Select(q => q.EvaluateMemberId).ToListAsync(ct))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var id in tocados.Where(i => !yaEncolados.Contains(i)))
+            await _db.RankEvaluationQueue.AddAsync(new RankEvaluationQueue
+            {
+                TriggerMemberId = id, EvaluateMemberId = id, TriggerEvent = RankEvaluationTrigger.Enrollment,
+                TriggerDate = now, CreatedBy = "delta-apply", CreationDate = now
+            }, ct);
+
+        await _db.SaveChangesAsync(ct);
+        return batch.Count;
+    }
+
+    private const string ApplyBatchSql = @"
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #exp; DROP TABLE IF EXISTS #agg;
+CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Scope int NOT NULL,
+                    P int NOT NULL, T int NOT NULL, Q int NOT NULL, CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL);
+INSERT INTO #lote
+SELECT TOP (@lote) Id, MemberId, Scope, EnrollmentPointsDelta, EnrollmentTeamSizeDelta, QualifiedSponsoredMembersDelta, CreatedBy
+FROM MemberStatisticDeltas WHERE IsApplied = 0 ORDER BY Id;
+
+-- Scope 0: la fila es del propio MemberId (filas anteriores al Plan Q). Scope 1: MemberId es el patrocinador y el delta
+-- sube por los ascendientes de su Node vigente (el mismo criterio que CurrentOfAsync).
+SELECT x.MemberId, x.Distancia, l.P, l.T,
+       CASE WHEN l.Scope = 0 OR x.Distancia = 0 THEN l.Q ELSE 0 END AS Q, l.CreatedBy
+INTO #exp
+FROM #lote l
+CROSS APPLY (
+    SELECT l.MemberId AS MemberId, 0 AS Distancia WHERE l.Scope = 0
+    UNION ALL
+    SELECT a.MemberId, an.Distancia
+    FROM (SELECT TOP 1 g.Node FROM GenealogyTree g
+          WHERE g.MemberId = l.MemberId AND g.IsDeleted = 0 AND g.Node IS NOT NULL
+          ORDER BY g.CreationDate DESC, g.Id DESC) s
+    CROSS APPLY dbo.GenealogyAncestors(s.Node) an
+    JOIN GenealogyTree a ON a.Node = an.Node AND a.IsDeleted = 0
+    WHERE l.Scope = 1
+) x;
+
+SELECT MemberId, SUM(P) AS P, SUM(T) AS T, SUM(Q) AS Q, MIN(CreatedBy) AS CreatedBy
+INTO #agg FROM #exp GROUP BY MemberId;
+
+MERGE INTO MemberStatistics WITH (HOLDLOCK) AS t
+USING #agg AS s ON t.MemberId = s.MemberId
+WHEN MATCHED THEN UPDATE SET
+    EnrollmentPoints          = t.EnrollmentPoints          + s.P,
+    EnrollmentTeamSize        = t.EnrollmentTeamSize        + s.T,
+    QualifiedSponsoredMembers = t.QualifiedSponsoredMembers + s.Q
+WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize,
+        EnrollmentTeamSize, DualTeamPoints, EnrollmentPoints, QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
+        EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth, DualTeamPointsGrowth,
+        CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
+    VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
+
+-- Evaluacion de rango inmediata solo hasta @niveles de distancia del patrocinador (DQ5).
+INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,
+                                 ProcessedBy, ErrorMessage, RetryCount, CreationDate, CreatedBy)
+SELECT e.MemberId, e.MemberId, @enrollment, @now, 0, NULL, NULL, NULL, 0, @now, N'delta-apply'
+FROM (SELECT DISTINCT MemberId FROM #exp WHERE Distancia < @niveles) e
+WHERE NOT EXISTS (SELECT 1 FROM RankEvaluationQueue q
+                  WHERE q.IsProcessed = 0 AND q.TriggerEvent = @enrollment AND q.EvaluateMemberId = e.MemberId);
+
+UPDATE d SET IsApplied = 1, AppliedAt = @now FROM MemberStatisticDeltas d JOIN #lote l ON l.Id = d.Id;
+SELECT COUNT(*) AS [Value] FROM #lote;
+DROP TABLE #agg; DROP TABLE #exp; DROP TABLE #lote;";
 }

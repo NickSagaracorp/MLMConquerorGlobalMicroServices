@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.Repository.Jobs;
@@ -229,5 +230,33 @@ public class ApplyMemberStatisticDeltasJobTests
 
         queued.Should().HaveCount(1,
             "dedup against existing unprocessed entries prevents queue pile-up.");
+    }
+
+    // ─── Plan Q (Bloque 4): una fila SponsorLine sube por la linea ──────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteAsync_SponsorLine_SubePorLaLineaYEncolaRangoHasta10Niveles()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var linea = Enumerable.Range(0, 12).Select(i => $"AMB-L{i:D2}").ToArray();
+        for (var i = 0; i < linea.Length; i++)
+            db.GenealogyTree.Add(new GenealogyEntity
+            {
+                MemberId = linea[i], ParentMemberId = i == 0 ? null : linea[i - 1],
+                HierarchyPath = "/" + string.Join("/", linea[..(i + 1)]) + "/", Level = i + 1,
+                CreatedBy = "test", CreationDate = FixedNow
+            });
+        var delta = BuildDelta(linea[11], enrollmentPoints: 6, teamSize: 1, qsm: 1);
+        delta.Scope = MemberStatisticDeltaScope.SponsorLine;
+        db.MemberStatisticDeltas.Add(delta);
+        await db.SaveChangesAsync();
+
+        await CreateJob(db).ExecuteAsync(CancellationToken.None);
+
+        var stats = await db.MemberStatistics.ToDictionaryAsync(s => s.MemberId);
+        linea.Should().OnlyContain(id => stats[id].EnrollmentPoints == 6 && stats[id].EnrollmentTeamSize == 1);
+        linea.Select(id => stats[id].QualifiedSponsoredMembers).Should().Equal(Enumerable.Repeat(0, 11).Append(1));
+        (await db.RankEvaluationQueue.Select(q => q.EvaluateMemberId).ToListAsync()).Should().BeEquivalentTo(linea[2..]);
+        (await db.MemberStatisticDeltas.SingleAsync()).IsApplied.Should().BeTrue();
     }
 }
