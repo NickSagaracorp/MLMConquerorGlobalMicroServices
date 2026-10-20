@@ -209,6 +209,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
         // sin dejar historial. QualifiedTeamCountsInterceptor (Plan Q), por lo mismo: un anfitrión sin
         // él cambiaría estados sin mover los calificados.
+        //
+        // QualifiedTeamCountsInterceptor tiene que ser el ULTIMO interceptor de guardado (los que un anfitrión pasa en sus
+        // opciones van antes que estos; RecompileTaggedQueriesInterceptor es de comandos, no de guardado). En SavingChanges
+        // toma los candados de sesión por miembro (MemberPointsLocks) y calcula puntos y calificados con lo que está
+        // seguido; los suelta en SavedChanges o SaveChangesFailed. Un interceptor de guardado detrás de él (1) añadiría o
+        // cambiaría filas que ese cálculo ya no ve (auditoría, historial o una suscripción tocada después) y (2) haría su
+        // trabajo con los candados ya tomados, alargando la ventana en que esperan los otros guardados del mismo miembro.
         optionsBuilder.AddInterceptors(
             new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor(),
             new QualifiedTeamCountsInterceptor(),
