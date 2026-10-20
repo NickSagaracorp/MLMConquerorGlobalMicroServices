@@ -17,6 +17,8 @@ public class EscritoresDeSuscripcionesTests
         ["Scripts/sql/plan-p/escala/altas/c-pedidos.sql"] =
             "generador de escala (solo MLMConquerorGlobalEditionDb_Escala); despues corren 04-contadores-y-colas.sql y 04-calificados-de-inscripcion.sql",
         ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "solo lectura: el INSERT es a una tabla temporal",
+        ["Scripts/sql/plan-q/05-realinear-puntos-por-membresia.sql"] =
+            "solo escribe los aportes (DualTeamContribution, EnrollmentContribution), nunca el estado: es el recalculo de DQ16 con los servicios parados; despues corre 02-recalcular-piernas.sql",
         ["Scripts/sql/plan-p/04-contadores-y-colas.sql"] =
             "solo lee las suscripciones (UPDATE de la temporal #n e INSERT de propios en DualLegDeltas): es el recalculo de los calificados",
     };
