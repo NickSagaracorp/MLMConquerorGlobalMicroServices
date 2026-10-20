@@ -344,9 +344,10 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
                 .SumAsync(ct);
 
-            // EnrollmentPoints is the sum of personal points across the downline INCLUDING this
-            // member's own — so a brand-new leaf must seed with its own PersonalPoints. Each
-            // ancestor row will be incremented separately below as we walk the upline.
+            // Plan Q (DQ16, reglas de Nick): los puntos del producto cuentan solo mientras la membresia esta
+            // activa. La fila nace a 0 y, al activarse la suscripcion, MembershipPointsDeltas (interceptor) suma los
+            // puntos del producto a PersonalPoints, a EnrollmentPoints del propio y de su linea de patrocinio y a las
+            // piernas del binario. Antes se sembraban aqui los puntos del pedido, tambien en altas aun sin pagar.
             //
             // Sprint-15 Bug A: the new leaf's own stat row never races (member just created)
             // so we can still use AddAsync here. Ancestor rows DO race — see below.
@@ -358,8 +359,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
                 {
                     MemberId         = member.MemberId,
-                    PersonalPoints   = totalQualPoints,
-                    EnrollmentPoints = totalQualPoints,
+                    PersonalPoints   = 0,
+                    EnrollmentPoints = 0,
                     CreatedBy        = member.Email,
                     CreationDate     = now
                 }, ct);

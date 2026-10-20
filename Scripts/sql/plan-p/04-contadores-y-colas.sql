@@ -52,7 +52,7 @@ BEGIN TRY
         THROW 51062, N'Hay escrituras del binario en curso (dual-tree ocupado): parar los servicios.', 1;
 
     -- Plan Q (DQ13): este script recalcula los CALIFICADOS desde cero. Lo pendiente de calificados y de contadores ya va
-    -- dentro del recalculo: se pone a cero en los de pierna y se borran los propios; al final se vuelven a encolar, como propios,
+    -- dentro del recalculo: se pone a cero (en los de pierna y en los propios); al final se vuelven a encolar, como propios,
     -- las activas de los miembros sin nodo vivo (esperan a su colocacion).
     DECLARE @cola int;
     EXEC @cola = sp_getapplock @Resource = N'dual-leg-deltas', @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = 0;
@@ -61,10 +61,11 @@ BEGIN TRY
     IF OBJECT_ID(N'dbo.DualLegDeltas') IS NOT NULL
     BEGIN
         BEGIN TRAN;
-        UPDATE DualLegDeltas SET QualifiedCount = 0 WHERE OwnChange = 0 AND QualifiedCount <> 0;
+        -- Plan Q (DQ16): los propios llevan tambien PUNTOS pendientes (MembershipPointsDeltas) que este script no
+        -- recalcula: se pone a cero su parte de calificados y se borran solo las filas que quedan a cero.
+        UPDATE DualLegDeltas SET QualifiedCount = 0 WHERE QualifiedCount <> 0;
         -- Revision del bloque 2 (I-2): los contadores de pierna tambien se recalculan aqui.
         UPDATE DualLegDeltas SET NodeCount = 0 WHERE NodeCount <> 0;
-        DELETE FROM DualLegDeltas WHERE OwnChange = 1;
         DELETE FROM DualLegDeltas WHERE Points = 0 AND NodeCount = 0 AND QualifiedCount = 0;
         COMMIT;
     END

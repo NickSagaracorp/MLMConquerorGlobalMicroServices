@@ -262,6 +262,11 @@ public class CancelMembershipHandlerTests
         });
 
         await SeedMemberWithActiveSubscription(db, "AMB-000001");
+        // Plan Q (DQ16): lo que aporta la suscripcion activa (lo guarda el interceptor al activarla; aqui, a mano).
+        var sus = db.MembershipSubscriptions.Single(s => s.MemberId == "AMB-000001");
+        sus.DualTeamContribution = 6;
+        sus.EnrollmentContribution = 6;
+        await db.SaveChangesAsync();
 
         var sponsorBonus = new Mock<ISponsorBonusService>();
         sponsorBonus.Setup(s => s.TryReverseAsync(
@@ -271,10 +276,17 @@ public class CancelMembershipHandlerTests
 
         var handler = new CancelMembershipHandler(db, DateTimeProvider().Object, sponsorBonus.Object);
         await handler.Handle(new CancelMembershipCommand("AMB-000001", null, null), CancellationToken.None);
+        // Plan Q (DQ16): la resta de la linea de patrocinio llega por la cola de estadisticas.
+        await new MLMConquerorGlobalEdition.Repository.Jobs.ApplyMemberStatisticDeltasJob(
+            db, DateTimeProvider().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MLMConquerorGlobalEdition.Repository.Jobs.ApplyMemberStatisticDeltasJob>.Instance)
+            .ExecuteAsync();
 
         // Cancelled member's points zeroed
         var memberStat = db.MemberStatistics.First(s => s.MemberId == "AMB-000001");
         memberStat.PersonalPoints.Should().Be(0);
+        // Plan Q (DQ16): y restados de las piernas del binario por la cola de piernas.
+        db.DualLegDeltas.Where(d => d.StartMemberId == "AMB-000001" && d.OwnChange).Sum(d => d.Points).Should().Be(-6m);
 
         // Sponsor stats decremented
         var sponsorStat = db.MemberStatistics.First(s => s.MemberId == "AMB-SPONSOR");

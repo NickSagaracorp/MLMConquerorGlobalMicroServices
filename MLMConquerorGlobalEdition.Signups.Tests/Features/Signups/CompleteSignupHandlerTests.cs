@@ -738,16 +738,21 @@ public class CompleteSignupHandlerTests
 
         // Two delta rows must have been enqueued for the sponsor — one per signup
         // — each carrying +10 EnrollmentPoints, +1 EnrollmentTeamSize, +1 QSM.
-        var deltas = await db.MemberStatisticDeltas
+        // Plan Q (DQ16): los puntos van en su propia fila (MembershipPointsDeltas, al activarse la suscripcion); la de la
+        // activacion lleva el tamano del equipo y los patrocinados.
+        var todas = await db.MemberStatisticDeltas
             .Where(d => d.MemberId == sponsorId)
             .OrderBy(d => d.Id)
             .ToListAsync();
+        todas.Where(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).Should().HaveCount(2)
+            .And.AllSatisfy(d => (d.EnrollmentPointsDelta, d.EnrollmentTeamSizeDelta, d.QualifiedSponsoredMembersDelta).Should().Be((10, 0, 0)));
+        var deltas = todas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).ToList();
 
         deltas.Should().HaveCount(2,
             "each CompleteSignup enqueues one delta per ancestor — sponsor is the only ancestor here");
         deltas.Should().AllSatisfy(d =>
         {
-            d.EnrollmentPointsDelta.Should().Be(10);
+            d.EnrollmentPointsDelta.Should().Be(0);
             d.EnrollmentTeamSizeDelta.Should().Be(1);
             d.QualifiedSponsoredMembersDelta.Should().Be(1);
             d.IsApplied.Should().BeFalse();

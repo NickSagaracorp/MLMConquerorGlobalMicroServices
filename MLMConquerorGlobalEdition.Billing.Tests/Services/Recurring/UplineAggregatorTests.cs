@@ -90,7 +90,7 @@ public class UplineAggregatorTests
     }
 
     [Fact]
-    public async Task AggregateAsync_AppliesDeltaToUplineMembers()
+    public async Task AggregateAsync_RenovacionNoCambiaLosPuntosDeNadie()
     {
         // Arrange — downline member-3 under member-2 under member-1
         // HierarchyPath for member-3: "/member-1/member-2/member-3/"
@@ -115,21 +115,20 @@ public class UplineAggregatorTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.EventsApplied.Should().Be(1);
 
+        // Plan Q (DQ16, reglas de Nick): una renovacion no cambia los puntos; los cambios de estado y de nivel los encola el
+        // interceptor de suscripciones (MembershipPointsDeltas). El agregador ya no escribe estadisticas.
         var stat1 = await db.MemberStatistics.FirstAsync(s => s.MemberId == "member-1");
-        stat1.DualTeamPoints.Should().Be(100);
-        stat1.EnrollmentPoints.Should().Be(50);
+        (stat1.DualTeamPoints, stat1.EnrollmentPoints).Should().Be((0, 0));
 
         var stat2 = await db.MemberStatistics.FirstAsync(s => s.MemberId == "member-2");
-        stat2.DualTeamPoints.Should().Be(100);
-        stat2.EnrollmentPoints.Should().Be(50);
+        (stat2.DualTeamPoints, stat2.EnrollmentPoints).Should().Be((0, 0));
 
         var stat3 = await db.MemberStatistics.FirstAsync(s => s.MemberId == "member-3");
-        stat3.PersonalPoints.Should().Be(25);
-        // member-3's DualTeam/Enrollment should NOT be changed (personalDelta goes to self, dtDelta/enrDelta go to upline)
+        stat3.PersonalPoints.Should().Be(0);
     }
 
     [Fact]
-    public async Task AggregateAsync_ReducesMultipleEventsToOneUpdatePerUpline()
+    public async Task AggregateAsync_VariosEventosNoEscribenEstadisticas()
     {
         // Arrange — two downline members both under member-1
         using var db = TestDbContextFactory.Create();
@@ -150,13 +149,12 @@ public class UplineAggregatorTests
         // Act
         var result = await aggregator.AggregateAsync(batchId);
 
-        // Assert — member-1 gets both deltas summed in one UPDATE
+        // Assert — Plan Q (DQ16): los eventos se marcan, las estadisticas no se tocan.
         result.IsSuccess.Should().BeTrue();
         result.Value!.EventsApplied.Should().Be(2);
 
         var stat1 = await db.MemberStatistics.FirstAsync(s => s.MemberId == "member-1");
-        stat1.DualTeamPoints.Should().Be(300);  // 100 + 200
-        stat1.EnrollmentPoints.Should().Be(150); // 50 + 100
+        (stat1.DualTeamPoints, stat1.EnrollmentPoints).Should().Be((0, 0));
     }
 
     [Fact]

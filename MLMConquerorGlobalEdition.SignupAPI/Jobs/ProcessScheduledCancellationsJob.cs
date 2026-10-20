@@ -78,7 +78,6 @@ public class ProcessScheduledCancellationsJob
 
         var ancestorStatsDict = allAncestorStats.ToDictionary(s => s.MemberId);
         var membersDict = members.ToDictionary(m => m.MemberId);
-        var memberStatsDict = memberStats.ToDictionary(s => s.MemberId);
         var genealogyDict = genealogyNodes.ToDictionary(g => g.MemberId);
 
         var statusHistories = new List<MemberStatusHistory>();
@@ -113,14 +112,8 @@ public class ProcessScheduledCancellationsJob
                 });
             }
 
-            // Reverse stat propagation
-            var pointsToRemove = 0;
-            if (memberStatsDict.TryGetValue(memberId, out var memberStat))
-            {
-                pointsToRemove = memberStat.PersonalPoints;
-                memberStat.PersonalPoints = 0;
-            }
-
+            // Reverse stat propagation. Plan Q (DQ16): los puntos los resta MembershipPointsDeltas (interceptor) si la
+            // suscripcion pasa de Active a Cancelled; aqui solo el tamano del equipo y los patrocinados.
             if (!genealogyDict.TryGetValue(memberId, out var genealogyNode)) continue;
 
             var uplineIds = genealogyNode.HierarchyPath
@@ -132,7 +125,6 @@ public class ProcessScheduledCancellationsJob
             {
                 if (!ancestorStatsDict.TryGetValue(uplineId, out var uplineStat)) continue;
 
-                uplineStat.EnrollmentPoints = Math.Max(0, uplineStat.EnrollmentPoints - pointsToRemove);
                 uplineStat.EnrollmentTeamSize = Math.Max(0, uplineStat.EnrollmentTeamSize - 1);
 
                 if (uplineId == genealogyNode.ParentMemberId)

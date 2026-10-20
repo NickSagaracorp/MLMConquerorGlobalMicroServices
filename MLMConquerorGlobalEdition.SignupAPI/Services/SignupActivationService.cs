@@ -52,6 +52,8 @@ public class SignupActivationService : ISignupActivationService
 
         // El mes de membresía arranca cuando el dinero está cobrado, no cuando se rellenó el
         // formulario. En la vía de cripto eso puede ser días después.
+        // Plan Q (DQ16): los puntos que aporta la suscripcion activa salen de su ultimo pedido, que es el del alta.
+        subscription.LastOrderId      ??= order.Id;
         subscription.SubscriptionStatus = MembershipStatus.Active;
         subscription.StartDate          = now;
         subscription.EndDate            = now.AddMonths(1);
@@ -91,7 +93,9 @@ public class SignupActivationService : ISignupActivationService
                     deltas.Add(new MemberStatisticDelta
                     {
                         MemberId                       = ancestorId,
-                        EnrollmentPointsDelta          = totalQualificationPoints,
+                        // Plan Q (DQ16): los puntos los encola MembershipPointsDeltas al pasar la suscripcion a
+                        // Active (el propio incluido); aqui solo el tamano del equipo y los patrocinados.
+                        EnrollmentPointsDelta          = 0,
                         EnrollmentTeamSizeDelta        = 1,
                         QualifiedSponsoredMembersDelta = qualDelta,
                         SourceMemberId                 = member.MemberId,

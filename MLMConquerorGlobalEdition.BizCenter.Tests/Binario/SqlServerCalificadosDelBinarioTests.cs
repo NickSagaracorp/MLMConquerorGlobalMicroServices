@@ -89,7 +89,7 @@ public class SqlServerCalificadosDelBinarioTests
             await using (var db = SqlServerReportes.Db())
             {
                 await LegPointMaintenance.DrainAsync(db);
-                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}A" && d.OwnChange))
+                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}A" && d.OwnChange && d.CreatedBy == QualifiedTeamDeltas.Actor))
                     .Should().Be(1, "sin nodo, el propio espera en la cola");
                 var motor = new PlacementService(db, new Reloj());
                 (await motor.PlaceAsync($"{x}A", $"{x}L")).IsSuccess.Should().BeTrue();

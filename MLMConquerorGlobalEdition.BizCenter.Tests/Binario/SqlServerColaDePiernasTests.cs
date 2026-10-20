@@ -123,8 +123,8 @@ public class SqlServerColaDePiernasTests
                 await DualTeamGate.EnterTreeExclusiveAsync(db);
                 (await DualTeamNodes.RemoveAsync(db, $"{x}E", DualTeamChildrenOnRemoval.Floating, DateTime.Now, "plan-q-prueba")).Should().BeTrue();
                 await tx.CommitAsync();
-                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}E"))
-                    .Should().Be(0, "la retirada descarta los pendientes con arranque en el nodo retirado");
+                (await db.DualLegDeltas.CountAsync(d => d.StartMemberId == $"{x}E" && !d.OwnChange))
+                    .Should().Be(0, "la retirada descarta los pendientes DE PIERNA con arranque en el nodo retirado (los propios de puntos, DQ16, se quedan)");
             }
             await using (var db = SqlServerReportes.Db())
             {

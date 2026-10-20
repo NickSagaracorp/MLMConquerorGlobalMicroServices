@@ -557,10 +557,13 @@ public class AltaPorCriptoTests
 
         await handler.Handle(ConfirmCommand(), CancellationToken.None);
 
-        var deltas = await db.MemberStatisticDeltas.ToListAsync();
+        // Plan Q (DQ16): los puntos llegan en su propia fila, la del cambio de la suscripcion a Active.
+        var puntos = await db.MemberStatisticDeltas.Where(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).ToListAsync();
+        puntos.Should().ContainSingle(d => d.MemberId == SponsorId && d.EnrollmentPointsDelta == 10 && d.SourceMemberId == MemberId);
+        var deltas = await db.MemberStatisticDeltas.Where(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor).ToListAsync();
         deltas.Should().HaveCount(1, "un delta por ancestro; aquí el upline es solo el patrocinador.");
         deltas[0].MemberId.Should().Be(SponsorId);
-        deltas[0].EnrollmentPointsDelta.Should().Be(10);
+        deltas[0].EnrollmentPointsDelta.Should().Be(0);
         deltas[0].EnrollmentTeamSizeDelta.Should().Be(1);
         deltas[0].QualifiedSponsoredMembersDelta.Should().Be(1);
         deltas[0].SourceMemberId.Should().Be(MemberId);
@@ -624,7 +627,9 @@ public class AltaPorCriptoTests
         segunda.IsSuccess.Should().BeFalse();
         segunda.ErrorCode.Should().Be("CRYPTO_PAYMENT_ALREADY_CONFIRMED");
 
-        (await db.MemberStatisticDeltas.CountAsync()).Should().Be(1,
+        // Plan Q (DQ16): la fila de puntos (una por ascendiente) tampoco se duplica.
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy == MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1);
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1,
             "la segunda aprobación no puede volver a encolar el delta del upline.");
 
         sponsor.Verify(s => s.ComputeAsync(
@@ -692,7 +697,7 @@ public class AltaPorCriptoTests
         (await db.MemberProfiles.SingleAsync(m => m.MemberId == MemberId))
             .Status.Should().Be(MemberAccountStatus.Active);
         (await db.Orders.SingleAsync(o => o.Id == OrderId)).Status.Should().Be(OrderStatus.Completed);
-        (await db.MemberStatisticDeltas.CountAsync()).Should().Be(1);
+        (await db.MemberStatisticDeltas.CountAsync(d => d.CreatedBy != MLMConquerorGlobalEdition.Repository.Services.Teams.MembershipPointsDeltas.Actor)).Should().Be(1);
         (await db.CryptoPaymentConfirmations.CountAsync()).Should().Be(0);
 
         sponsor.Verify(s => s.ComputeAsync(

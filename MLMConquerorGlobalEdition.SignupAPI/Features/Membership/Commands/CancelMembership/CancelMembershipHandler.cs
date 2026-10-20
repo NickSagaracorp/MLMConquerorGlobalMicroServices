@@ -114,9 +114,10 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
     }
 
     /// <summary>
-    /// Subtracts the cancelled member's personal points from all ancestor stat records,
-    /// decrements EnrollmentTeamSize, and zeroes out the member's own PersonalPoints.
-    /// Uses Math.Max(0, …) to guard against going negative due to prior manual adjustments.
+    /// Resta el miembro del tamano del equipo de su linea de patrocinio y, al patrocinador directo, un patrocinado
+    /// calificado. Plan Q (DQ16): los PUNTOS ya no se tocan aqui; al pasar la suscripcion de Active a Cancelled,
+    /// MembershipPointsDeltas (interceptor) resta lo que aportaba de PersonalPoints, de EnrollmentPoints del propio y de
+    /// su linea y de las piernas del binario (antes solo se restaba de la linea de patrocinio, con topes en 0).
     /// </summary>
     private async Task ReverseUplineStatsAsync(
         string memberId, DateTime now, CancellationToken ct)
@@ -127,18 +128,6 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
             .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
         if (memberNode is null) return;
-
-        // Member's own stat record — tells us how many points to subtract
-        var memberStat = await _db.MemberStatistics
-            .FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
-
-        var pointsToRemove = memberStat?.PersonalPoints ?? 0;
-
-        if (memberStat is not null)
-            memberStat.PersonalPoints = 0;
-
-        if (pointsToRemove <= 0 && memberNode.ParentMemberId is null)
-            return; // nothing to propagate
 
         // Extract ancestor IDs from the member's own path:
         // "/A/B/sponsorId/memberId/" → [A, B, sponsorId, memberId] → remove memberId → [A, B, sponsorId]
@@ -155,7 +144,6 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
 
         foreach (var stat in uplineStats)
         {
-            stat.EnrollmentPoints = Math.Max(0, stat.EnrollmentPoints - pointsToRemove);
             stat.EnrollmentTeamSize = Math.Max(0, stat.EnrollmentTeamSize - 1);
 
             // Direct sponsor also loses one qualified sponsored member

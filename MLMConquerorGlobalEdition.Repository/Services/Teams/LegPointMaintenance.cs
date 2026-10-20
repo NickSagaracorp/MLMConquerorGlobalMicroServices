@@ -65,7 +65,7 @@ public static class LegPointMaintenance
     public const int MaxAttempts = 3;
 
     /// <summary>
-    /// Encola la hoja recien guardada: sus PersonalPoints y 1 nodo, en la pierna de su padre. Calificados 0 (revision del
+    /// Encola la hoja recien guardada: sus puntos propios APLICADOS y 1 nodo, en la pierna de su padre. Calificados 0 (revision del
     /// bloque 2, M-7): un nodo nuevo nace con SelfQualified = 0, y sus activas le llegan como propios aparcados al vaciar.
     /// </summary>
     public static async Task EnqueueLeafAsync(AppDbContext db, string memberId, DateTime now, string by, CancellationToken ct = default)
@@ -74,13 +74,17 @@ public static class LegPointMaintenance
         await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
 SELECT d.ParentMemberId, d.Side,
-       ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0),
+       ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0)
+         - ISNULL((SELECT SUM(p.Points) FROM DualLegDeltas p WHERE p.StartMemberId = d.MemberId AND p.OwnChange = 1), 0),
        1, 0, 0, {now}, {by}
 FROM DualTeamTree d
 WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NULL;", ct);
     }
 
     /// <summary>
+    /// Plan Q (DQ16): los puntos propios aplicados de un miembro son sus PersonalPoints MENOS sus propios de puntos pendientes
+    /// en la cola (los encola MembershipPointsDeltas y llegan al vaciar por la linea que tenga entonces, DQ2). La hoja y el
+    /// subarbol llevan solo lo aplicado: asi lo pendiente no cuenta dos veces ni se pierde en un movimiento o una retirada.
     /// Encola el subarbol de <paramref name="subtreeRootId"/> entero (sus propios puntos mas sus dos piernas YA APLICADAS, y
     /// 1 + sus contadores) con el signo dado, en la pierna de su padre ACTUAL. -1 antes de soltarlo y +1 despues de colgarlo.
     /// </summary>
@@ -93,6 +97,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NU
 INSERT INTO DualLegDeltas (StartMemberId, Side, Points, NodeCount, QualifiedCount, OwnChange, CreationDate, CreatedBy)
 SELECT d.ParentMemberId, d.Side,
        {sign} * (ISNULL((SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id), 0)
+                 - ISNULL((SELECT SUM(p.Points) FROM DualLegDeltas p WHERE p.StartMemberId = d.MemberId AND p.OwnChange = 1), 0)
                  + d.LeftLegPoints + d.RightLegPoints),
        {sign} * (1 + d.LeftLegCount + d.RightLegCount),
        {sign} * (d.SelfQualified + d.LeftLegQualified + d.RightLegQualified), 0, {now}, {by}
@@ -502,8 +507,9 @@ DROP TABLE IF EXISTS #ventana;";
     {
         var node = await db.DualTeamTree.FirstOrDefaultAsync(d => d.MemberId == rootId, ct);
         if (node is null) return;
-        var personal = await db.MemberStatistics.Where(s => s.MemberId == rootId).OrderBy(s => s.Id)
-            .Select(s => (decimal?)s.PersonalPoints).FirstOrDefaultAsync(ct) ?? 0m;
+        var personal = (await db.MemberStatistics.Where(s => s.MemberId == rootId).OrderBy(s => s.Id)
+            .Select(s => (decimal?)s.PersonalPoints).FirstOrDefaultAsync(ct) ?? 0m)
+            - await db.DualLegDeltas.Where(q => q.StartMemberId == rootId && q.OwnChange).SumAsync(q => q.Points, ct);
         var pts = sign * (leaf ? personal : personal + node.LeftLegPoints + node.RightLegPoints);
         var cnt = sign * (leaf ? 1 : 1 + node.LeftLegCount + node.RightLegCount);
         var cal = sign * (leaf ? 0 : node.SelfQualified + node.LeftLegQualified + node.RightLegQualified);

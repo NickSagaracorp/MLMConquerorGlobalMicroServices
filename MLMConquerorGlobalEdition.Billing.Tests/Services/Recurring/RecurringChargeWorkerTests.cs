@@ -203,6 +203,12 @@ public class RecurringChargeWorkerTests
         db.SubscriptionBillingStates.Add(state);
         db.MembershipSubscriptions.Add(MakeSubscription(subId, memberId));
         await db.SaveChangesAsync();
+        // Plan Q (DQ16): al crearla activa, el interceptor guarda lo que aporta (aqui 0: sin productos). Se fija a mano
+        // lo que la prueba espera ver en el evento; el agregador ya no lo aplica a ninguna estadistica.
+        var sembrada = await db.MembershipSubscriptions.SingleAsync(s => s.Id == subId);
+        sembrada.DualTeamContribution = 100;
+        sembrada.EnrollmentContribution = 50;
+        await db.SaveChangesAsync();
 
         var processorMock = new Mock<IRecurringBillingProcessor>();
         processorMock
