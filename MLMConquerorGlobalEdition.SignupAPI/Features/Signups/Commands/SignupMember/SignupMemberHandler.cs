@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Queries;
@@ -192,11 +193,12 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
 
-        // Queue rank re-evaluation for every genealogy upline of the sponsor
+        // Queue rank re-evaluation for the sponsor's genealogy upline (Plan Q: hasta 10 niveles)
         if (sponsorNode is not null)
         {
-            var uplineIds = sponsorNode.HierarchyPath
-                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+            // Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
+            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob, fase 2).
+            var uplineIds = GenealogyUpline.Closest(sponsorNode.HierarchyPath, null);
 
             foreach (var uplineId in uplineIds)
             {
@@ -232,12 +234,12 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             return Result<SignupResponse>.Failure(genealogyError.Code, genealogyError.Message);
         }
 
-        // Notify all uplines in the enrollment tree (genealogy)
+        // Notify the sponsor's enrollment upline (Plan Q: hasta 10 niveles)
         if (sponsorNode is not null)
         {
-            var uplineIds = sponsorNode.HierarchyPath
-                .Split('/', StringSplitOptions.RemoveEmptyEntries)
-                .ToList();
+            // Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
+            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob, fase 2).
+            var uplineIds = GenealogyUpline.Closest(sponsorNode.HierarchyPath, null);
 
             foreach (var uplineId in uplineIds)
             {

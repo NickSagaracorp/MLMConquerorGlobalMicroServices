@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -72,7 +73,8 @@ public class DownstreamTriggers : IDownstreamTriggers
 
             foreach (var row in downlinePaths)
             {
-                var uplineIds = ParseUplineIds(row.HierarchyPath, row.MemberId);
+                // Plan Q (DQ5): solo los GenealogyUpline.EnrollmentLevels mas cercanos; el resto, el barrido nocturno.
+                var uplineIds = GenealogyUpline.Closest(row.HierarchyPath, row.MemberId);
                 foreach (var uplineId in uplineIds)
                     rankQueue.Add((row.MemberId, uplineId));
             }
@@ -182,18 +184,5 @@ public class DownstreamTriggers : IDownstreamTriggers
             CommissionTriggersProcessed = commTriggers,
             PushNotificationsEnqueued   = pushNotifs
         });
-    }
-
-    // ── Helpers ─────────────────────────────────────────────────────────────────
-
-    private static IEnumerable<string> ParseUplineIds(string hierarchyPath, string memberId)
-    {
-        var segments = hierarchyPath.Trim('/').Split('/');
-        foreach (var segment in segments)
-        {
-            if (string.IsNullOrWhiteSpace(segment)) continue;
-            if (segment.Equals(memberId, StringComparison.OrdinalIgnoreCase)) continue;
-            yield return segment;
-        }
     }
 }

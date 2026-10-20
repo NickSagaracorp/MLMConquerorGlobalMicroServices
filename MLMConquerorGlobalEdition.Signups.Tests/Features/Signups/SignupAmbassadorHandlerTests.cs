@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupAmbassador;
@@ -866,5 +867,41 @@ public class SignupAmbassadorHandlerTests
         result.IsSuccess.Should().BeTrue();
         (await db.GenealogyTree.SingleAsync(g => g.MemberId != "AMB-000001")).Node
             .Should().Be(HierarchyId.Parse("/1/1/"));
+    }
+
+    // ─── Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels ─────────────────────
+
+    [Fact]
+    public async Task Handle_ConPatrocinadorA15Niveles_EncolaYAvisaSoloALos10MasCercanos()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        var linea = Enumerable.Range(1, 15).Select(i => $"AMB-{i:D6}").ToArray();   // linea[^1] es el patrocinador
+        await db.MemberProfiles.AddAsync(BuildSponsor(linea[^1], "maria-site"));
+        await db.GenealogyTree.AddAsync(new GenealogyEntity
+        {
+            MemberId       = linea[^1],
+            ParentMemberId = linea[^2],
+            HierarchyPath  = "/" + string.Join("/", linea) + "/",
+            Node           = HierarchyId.Parse("/" + string.Join("/", Enumerable.Repeat(1, 15)) + "/"),
+            Level          = 15,
+            CreatedBy      = "seed",
+            CreationDate   = FixedNow,
+            LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+        var push = BuildPush();
+
+        var r = await BuildHandler(db, push: push).Handle(
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "maria-site", slug: "quince")), CancellationToken.None);
+
+        r.IsSuccess.Should().BeTrue(r.Error);
+        var esperados = linea[^10..];   // AMB-000006 .. AMB-000015
+        (await db.RankEvaluationQueue.Where(q => q.TriggerEvent == RankEvaluationTrigger.Enrollment)
+                .Select(q => q.EvaluateMemberId).ToListAsync())
+            .Should().BeEquivalentTo(esperados);
+        foreach (var id in linea)
+            push.Verify(p => p.SendAsync(id, NotificationEvents.DownlineEnrolled, It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<CancellationToken>()), esperados.Contains(id) ? Times.Once() : Times.Never());
     }
 }
