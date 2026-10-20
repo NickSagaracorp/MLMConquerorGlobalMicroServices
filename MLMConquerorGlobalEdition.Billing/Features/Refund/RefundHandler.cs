@@ -17,17 +17,27 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
     private readonly IGatewayResolver _gatewayResolver;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly int _lockTimeoutMs;
 
+    /// <summary>
+    /// Revision de Q3 (I2): la pasarela devolvio el dinero y el pago y el pedido quedaron Refunded, pero la membresia no se
+    /// pudo cancelar (candado de puntos ocupado o fallo al guardar). No se reintenta la devolucion: hay que cancelarla a mano.
+    /// </summary>
+    public const string MembershipNotCancelledCode = "REFUNDED_MEMBERSHIP_NOT_CANCELLED";
+
+    /// <param name="lockTimeoutMs">Espera por el candado de puntos del miembro; solo lo cambian las pruebas.</param>
     public RefundHandler(
         AppDbContext db,
         IGatewayResolver gatewayResolver,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTime)
+        IDateTimeProvider dateTime,
+        int lockTimeoutMs = MemberPointsLocks.LockTimeoutMs)
     {
         _db = db;
         _gatewayResolver = gatewayResolver;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _lockTimeoutMs = lockTimeoutMs;
     }
 
     public async Task<Result<bool>> Handle(RefundCommand command, CancellationToken ct)
@@ -79,7 +89,9 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
         if (!refundResult.IsSuccess)
             return Result<bool>.Failure(refundResult.ErrorCode!, refundResult.Error!);
 
-        // Update payment history status
+        // Revision de Q3 (I2): la pasarela ya devolvio el dinero. Primero se guardan el pago y el pedido como Refunded, en su
+        // propio guardado y sin candado (no tocan puntos): si lo que sigue falla, un reintento ve el pago Refunded y no
+        // vuelve a pedir la devolucion. Ningun candado de base se mantiene durante la llamada a la pasarela.
         var Now = _dateTime.Now;
         payment.TransactionStatus = PaymentHistoryTransactionStatus.Refunded;
         payment.FailureReason = req.Reason;
@@ -101,25 +113,34 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
             }
         }
 
-        // Plan Q (Q3, decidido por Nick): la devolucion TOTAL del pedido vigente de una membresia activa la cancela; el
-        // interceptor resta sus puntos del miembro y de su linea. Una parcial (un ajuste de importe) no la toca. Bajo el
-        // candado de puntos del miembro, tomado antes de leer la suscripcion (como la subida y la bajada); el guardado lo
-        // reutiliza y lo suelta al confirmar, y si no se llega a guardar, el finally.
-        if (order is null || !RefundedMembershipOrders.IsFullRefund(refundAmount, payment.Amount))
-        {
-            await _db.SaveChangesAsync(ct);
-            return Result<bool>.Success(true);
-        }
+        await _db.SaveChangesAsync(ct);
 
-        await MemberPointsLocks.AcquireAsync(_db, new[] { order.MemberId }, ct);
+        // Plan Q (Q3, decidido por Nick): la devolucion TOTAL del pedido vigente de una membresia viva la cancela; el
+        // interceptor resta sus puntos del miembro y de su linea. Una parcial (un ajuste de importe) no la toca. Segundo
+        // guardado: la cancelacion y la parada de su cobro, juntas, bajo el candado de puntos del miembro, tomado antes de
+        // leer la suscripcion (como la subida y la bajada); el guardado lo reutiliza y lo suelta al confirmar, y si no se
+        // llega a guardar, el finally.
+        if (order is null || !RefundedMembershipOrders.IsFullRefund(refundAmount, payment.Amount))
+            return Result<bool>.Success(true);
+
         try
         {
-            await RefundedMembershipOrders.CancelSubscriptionAsync(_db, order.Id, Now, _currentUser.UserId, ct);
-            await _db.SaveChangesAsync(ct);
+            await MemberPointsLocks.AcquireAsync(_db, new[] { order.MemberId }, ct, _lockTimeoutMs);
+            try
+            {
+                await RefundedMembershipOrders.CancelSubscriptionAsync(_db, order.Id, Now, _currentUser.UserId, ct);
+                await _db.SaveChangesAsync(ct);
+            }
+            finally
+            {
+                await MemberPointsLocks.ReleaseAsync(_db);
+            }
         }
-        finally
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or System.Data.Common.DbException)
         {
-            await MemberPointsLocks.ReleaseAsync(_db);
+            return Result<bool>.Failure(MembershipNotCancelledCode,
+                "The refund was made and recorded (payment and order are Refunded), but the membership could not be " +
+                $"cancelled now ({ex.Message}). Do not refund again; cancel the membership manually.");
         }
         return Result<bool>.Success(true);
     }
