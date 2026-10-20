@@ -65,6 +65,13 @@ public static class LegPointMaintenance
     public const int MaxAttempts = 3;
 
     /// <summary>
+    /// Errores del propio SQL de la tanda (objeto repetido o inexistente, columna, sintaxis): no dependen de los datos de
+    /// ningun arranque, asi que no se parte la ventana ni se anotan intentos (apartar deltas sanos por un fallo del codigo
+    /// los perderia). Se propagan tal cual.
+    /// </summary>
+    private static readonly HashSet<int> CodeErrors = new() { 102, 156, 207, 208, 1750, 1913, 2714, 4104, 8156 };
+
+    /// <summary>
     /// Encola la hoja recien guardada: sus puntos propios APLICADOS y 1 nodo, en la pierna de su padre. Calificados 0 (revision del
     /// bloque 2, M-7): un nodo nuevo nace con SelfQualified = 0, y sus activas le llegan como propios aparcados al vaciar.
     /// </summary>
@@ -139,7 +146,8 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 {
                     r = await ApplyBatchAsync(db, hasta, ultimo, ventana, options, lockTimeoutMs, ct);
                 }
-                catch (SqlException ex) when (ex.Number != 1205 && db.Database.CurrentTransaction is null && !ct.IsCancellationRequested)
+                catch (SqlException ex) when (ex.Number != 1205 && !CodeErrors.Contains(ex.Number)
+                                              && db.Database.CurrentTransaction is null && !ct.IsCancellationRequested)
                 {
                     // Revision del bloque 2 (M-3): un fallo que no es un interbloqueo (un dato que desborda, una clave rota, un
                     // tiempo agotado) se repite con la mitad de la ventana hasta aislar un arranque; con uno solo, se le
@@ -224,6 +232,15 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                     $"SELECT TOP 1 StartMemberId AS [Value] FROM DualLegDeltas WHERE Id > {ultimo} AND Id <= {hasta} ORDER BY Id")
                 .ToListAsync(ct)).SingleOrDefault();
             if (arranque is null) return;
+            // Solo se culpa a un arranque que la tanda llego a aplicar (con nodo vivo y clave): uno que espera sin nodo no
+            // entra en la tanda, asi que no puede ser el que la hizo fallar.
+            var candidato = await db.DualTeamTree.AsNoTracking()
+                .AnyAsync(d => d.MemberId == arranque && !d.IsDeleted && d.BinaryPath != null, ct);
+            if (!candidato)
+            {
+                logger?.LogError(error, "Cola de piernas: fallo una tanda de una fila sin arranque aplicable ({StartMemberId}); no se anota intento.", arranque);
+                return;
+            }
             var motivo = $"fallo: {error.Number} {error.Message}";
             if (motivo.Length > 1000) motivo = motivo[..1000];
             await db.Database.ExecuteSqlInterpolatedAsync(
