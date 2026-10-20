@@ -19,6 +19,18 @@ public sealed class SqlServerFactAttribute : FactAttribute
     }
 }
 
+/// <summary>Como <see cref="SqlServerFactAttribute"/>, para pruebas con datos.</summary>
+public sealed class SqlServerTheoryAttribute : TheoryAttribute
+{
+    public SqlServerTheoryAttribute()
+    {
+        if (!SqlServerReportes.Reachable)
+            Skip = "SQL Server no alcanzable (define MLM_TEST_SQLSERVER para usar otra instancia).";
+        else if (!SqlServerReportes.Migrada)
+            Skip = "La base no tiene la migracion ClaveCompactaDelBinario del Plan P: define MLM_TEST_SQLSERVER con una base migrada.";
+    }
+}
+
 /// <summary>
 /// Colección de las pruebas de reportes contra SQL Server: xUnit no las ejecuta en paralelo entre
 /// sí, para que no compitan por las mismas tablas ni ensucien la medición de la raíz (R5/R16).

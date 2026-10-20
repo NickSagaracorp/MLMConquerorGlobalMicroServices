@@ -28,6 +28,42 @@ public class SqlServerMedicionPlanQTests
         public DateTime UtcNow => DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Revision del bloque 2 (I-3): vaciar <paramref name="n"/> deltas con arranques distintos en la linea honda (profundidad
+    /// minima <paramref name="profMin"/>), dentro de una transaccion que se deshace. Antes de la union de caminos, 200 a mas
+    /// de 8.000 niveles tardaban unos 40 s. Objetivo: 1.000 en la misma pierna, menos de 30 s.
+    /// </summary>
+    [SqlServerTheory]
+    [InlineData(200, 8000)]
+    [InlineData(1000, 7000)]
+    public async Task Vaciar_deltas_profundos_en_la_misma_pierna(int n, int profMin)
+    {
+        await using var db = SqlServerReportes.Db();
+        await LegPointMaintenance.DrainAsync(db);
+        db.Database.SetCommandTimeout(900);
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var arranques = await db.DualTeamTree.AsNoTracking().Where(d => d.Depth >= profMin && d.IsDeleted == false)
+            .OrderByDescending(d => d.Depth).ThenBy(d => d.Id).Select(d => d.MemberId).Take(n).ToListAsync();
+        arranques.Should().HaveCount(n);
+        var ahora = DateTime.Now;
+        for (var i = 0; i < arranques.Count; i++)
+            db.DualLegDeltas.Add(new Domain.Entities.Tree.DualLegDelta
+            {
+                StartMemberId = arranques[i], Side = i % 2 == 0 ? Domain.Enums.TreeSide.Left : Domain.Enums.TreeSide.Right,
+                Points = 1, NodeCount = 1, CreationDate = ahora, CreatedBy = "plan-q-medicion"
+            });
+        await db.SaveChangesAsync();
+
+        var reloj = Stopwatch.StartNew();
+        var aplicados = await LegPointMaintenance.DrainAsync(db);
+        reloj.Stop();
+        _salida.WriteLine($"Vaciar {n} deltas a {profMin}+ niveles: {reloj.ElapsedMilliseconds} ms ({aplicados} aplicados)");
+        await tx.RollbackAsync();
+
+        aplicados.Should().BeGreaterThanOrEqualTo(n);
+        if (n >= 1000) reloj.ElapsedMilliseconds.Should().BeLessThan(30_000);
+    }
+
     [SqlServerFact]
     public async Task Vaciar_en_bucle_durante_diez_colocaciones_a_gran_profundidad()
     {

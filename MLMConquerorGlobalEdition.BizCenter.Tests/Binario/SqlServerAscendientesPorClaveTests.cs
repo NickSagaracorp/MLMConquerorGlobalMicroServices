@@ -9,7 +9,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerAscendientesPorClaveTests
 {
-    private sealed record Fila(int Depth, byte[] AncestorKey, int Side);
+    private sealed record Fila(int Depth, byte[] AncestorKey, int Side, bool IsSelf);
 
     [SqlServerFact]
     public async Task DualAncestorKeys_coincide_con_DualBinaryPath()
@@ -23,7 +23,7 @@ public class SqlServerAscendientesPorClaveTests
             var propio = rnd.Next(2);
 
             var filas = await db.Database
-                .SqlQuery<Fila>($"SELECT Depth, AncestorKey, Side FROM dbo.DualAncestorKeys({k}, {propio}) ORDER BY Depth")
+                .SqlQuery<Fila>($"SELECT Depth, AncestorKey, Side, IsSelf FROM dbo.DualAncestorKeys({k}, {propio}) ORDER BY Depth")
                 .ToListAsync();
 
             filas.Should().HaveCount(prof + 1);
@@ -32,7 +32,17 @@ public class SqlServerAscendientesPorClaveTests
                 filas[j].Depth.Should().Be(j);
                 filas[j].AncestorKey.Should().Equal(DualBinaryPath.Ancestor(k, j));
                 filas[j].Side.Should().Be(j == prof ? propio : (int)DualBinaryPath.SideBelow(k, j));
+                filas[j].IsSelf.Should().Be(j == prof, "revision del bloque 2 (M-1): la fila de la propia clave");
             }
+
+            // Revision del bloque 2 (I-3): dbo.DualPathKeys desde una profundidad da las mismas filas, solo desde ahi.
+            var desde = prof / 2 + 1;
+            var tramo = await db.Database
+                .SqlQuery<Fila>($"SELECT Depth, AncestorKey, Side, IsSelf FROM dbo.DualPathKeys({k}, {propio}, {desde}) ORDER BY Depth")
+                .ToListAsync();
+            tramo.Select(f => f.Depth).Should().Equal(Enumerable.Range(desde, Math.Max(0, prof - desde + 1)));
+            foreach (var f in tramo)
+                f.AncestorKey.Should().Equal(filas[f.Depth].AncestorKey);
         }
     }
 }

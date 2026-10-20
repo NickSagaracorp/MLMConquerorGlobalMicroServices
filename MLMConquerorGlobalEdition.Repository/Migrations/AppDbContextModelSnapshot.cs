@@ -16071,6 +16071,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -16106,6 +16109,64 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasDatabaseName("IX_DualLegDeltas_StartMemberId_Id");
 
                     b.ToTable("DualLegDeltas", (string)null);
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.DualLegDeltaDeadLetter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("DeltaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("DiscardedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("NodeCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("OwnChange")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Points")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("QualifiedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Side")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StartMemberId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartMemberId");
+
+                    b.ToTable("DualLegDeltaDeadLetters", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity", b =>
