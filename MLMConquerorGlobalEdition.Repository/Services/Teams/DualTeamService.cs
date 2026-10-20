@@ -347,8 +347,11 @@ public class DualTeamService : IDualTeamService
             {
                 MemberId = mt.Node.MemberId,
                 FullName = $"{mt.FirstName} {mt.LastName}".Trim(),
-                Leg      = camino.Count > 0 ? camino[0].Side.ToString() : string.Empty,
-                Depth    = camino.Count,
+                // Revision del bloque 3: la pierna y la profundidad salen de las claves cuando las hay (el camino solo de respaldo).
+                Leg      = rootNode.BinaryPath is not null && mt.Node.BinaryPath is not null
+                    ? DualSubtree.LegOf(rootNode, mt.Node.BinaryPath).ToString()
+                    : camino.Count > 0 ? camino[0].Side.ToString() : string.Empty,
+                Depth    = DualAncestors.RelativeDepth(rootNode, mt.Node, camino.Count),
                 Path     = camino.Select(p => new DualTreePathNodeView
                 {
                     MemberId = p.MemberId,
@@ -380,7 +383,7 @@ public class DualTeamService : IDualTeamService
         {
             MemberId = deepest.MemberId,
             FullName = names.GetValueOrDefault(deepest.MemberId, deepest.MemberId),
-            Depth    = camino.Count,
+            Depth    = DualAncestors.RelativeDepth(rootNode, deepest, camino.Count),
             Path     = camino.Select(p => new DualTreePathNodeView
             {
                 MemberId = p.MemberId,

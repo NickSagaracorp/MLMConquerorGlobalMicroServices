@@ -68,4 +68,23 @@ public class SqlServerCaminoPorClaveTests
         hondo.Path.Select(p => p.MemberId).Should().Equal($"{x}LR", $"{x}LRL");
         await tx.RollbackAsync();
     }
+
+    /// <summary>Revision del bloque 3: sin Depth en la raiz, la profundidad sale de su clave (no de suponer 0).</summary>
+    [SqlServerFact]
+    public async Task Sin_profundidad_en_la_raiz_el_camino_empieza_debajo_de_ella_por_la_clave()
+    {
+        var x = BinarioDb.Prefijo("PQD");
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left),
+            ($"{x}LR", $"{x}L", TreeSide.Right));
+        var raiz = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == $"{x}L");
+        var nodo = await db.DualTeamTree.AsNoTracking().SingleAsync(d => d.MemberId == $"{x}LR");
+        raiz.Depth = null;
+
+        var caminos = await Repository.Queries.DualAncestors.PathsBelowAsync(db, raiz, new[] { nodo });
+
+        caminos[$"{x}LR"].Select(p => p.MemberId).Should().Equal($"{x}LR");
+        await tx.RollbackAsync();
+    }
 }

@@ -44,7 +44,7 @@ JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (
 
         if (db.Database.IsSqlServer())
         {
-            var desde = (root.Depth ?? 0) + 1;
+            var desde = DepthOf(root) + 1;
             // En el orden de la clave, el ascendiente comun mas hondo con cualquier nodo anterior es el que se comparte
             // con el inmediatamente anterior (un subarbol es un rango contiguo).
             var ordenados = nodes.Where(n => n.BinaryPath is not null)
@@ -76,20 +76,42 @@ JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (
             return caminos;
         }
 
+        // Revision del bloque 3: un ciclo de padres no cuelga la subida (visitados) y un nodo que no esta debajo de la
+        // raiz da un camino vacio, no el camino hasta otra raiz.
         foreach (var node in nodes)
         {
             var camino = new List<DualPathStep>();
+            var vistos = new HashSet<string>(StringComparer.Ordinal);
             var actual = node;
-            while (actual is not null && actual.MemberId != root.MemberId)
+            var debajo = false;
+            while (actual is not null && vistos.Add(actual.MemberId))
             {
+                if (actual.MemberId == root.MemberId) { debajo = true; break; }
                 camino.Add(new DualPathStep(actual.MemberId, actual.Side));
                 var padre = actual.ParentMemberId;
                 actual = padre is null ? null
                     : await db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == padre, ct);
             }
+            if (!debajo) camino.Clear();
             camino.Reverse();
             caminos[node.MemberId] = camino;
         }
         return caminos;
     }
+
+    /// <summary>
+    /// Revision del bloque 3: la profundidad de un nodo bajo su raiz. La clave manda (es lo que ordena el arbol); sin
+    /// clave, la columna Depth; sin ninguna de las dos, 0.
+    /// </summary>
+    public static int DepthOf(DualTeamEntity node) =>
+        node.BinaryPath is { } k ? DualBinaryPath.Depth(k) : node.Depth ?? 0;
+
+    /// <summary>
+    /// Revision del bloque 3: la profundidad de <paramref name="node"/> por debajo de <paramref name="root"/>. Si los dos
+    /// tienen clave (o Depth), la diferencia; si no, la longitud del camino.
+    /// </summary>
+    public static int RelativeDepth(DualTeamEntity root, DualTeamEntity node, int pathCount) =>
+        root.BinaryPath is { } rk && node.BinaryPath is { } nk ? DualBinaryPath.Depth(nk) - DualBinaryPath.Depth(rk)
+        : root.Depth is { } rd && node.Depth is { } nd ? nd - rd
+        : pathCount;
 }
