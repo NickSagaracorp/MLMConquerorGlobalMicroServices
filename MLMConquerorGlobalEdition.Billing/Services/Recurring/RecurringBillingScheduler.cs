@@ -1,5 +1,6 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring;
 
@@ -25,7 +26,7 @@ public class RecurringBillingScheduler : IRecurringBillingScheduler
         // retries, so that even a first failure can trigger the stop if the gap is already huge.
         if (plan.StopAfterUnbilledDays.HasValue)
         {
-            var referenceDate = state.LastSuccessfulBillingDate ?? state.BillingAnchorDate;
+            var referenceDate = MembershipBillingStops.UnbilledSince(state);
             var unbilledDays = (attemptDate.Date - referenceDate.Date).TotalDays;
             if (unbilledDays >= plan.StopAfterUnbilledDays.Value)
             {
@@ -103,7 +104,7 @@ public class RecurringBillingScheduler : IRecurringBillingScheduler
 
         if (plan.StopAfterUnbilledDays.HasValue)
         {
-            var referenceDate = state.LastSuccessfulBillingDate ?? state.BillingAnchorDate;
+            var referenceDate = MembershipBillingStops.UnbilledSince(state);
             var unbilledOnAnniversary = (anniversaryDate.Date - referenceDate.Date).TotalDays;
             if (unbilledOnAnniversary >= plan.StopAfterUnbilledDays.Value)
             {

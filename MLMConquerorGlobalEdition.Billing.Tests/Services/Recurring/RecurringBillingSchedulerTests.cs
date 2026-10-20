@@ -193,6 +193,21 @@ public class RecurringBillingSchedulerTests
     }
 
     [Fact]
+    public void Advance_FirstFailure_AfterAdminHoldReanchored_CountsUnbilledDaysFromTheAnchor()
+    {
+        // Plan Q (Q3): una retencion del admin larga reancla el ciclo al reanudarse (ResumeHeldAsync). El tope de dias sin
+        // cobrar cuenta desde lo mas reciente entre el ultimo cobro y el ancla: el primer fallo tras reanudar reintenta.
+        var scheduler = new RecurringBillingScheduler();
+        var reanudada = new DateTime(2026, 4, 1);
+        var state     = BuildState(anchor: reanudada, lastSuccess: new DateTime(2025, 12, 1));
+        var plan      = BuildMonthlyPlan(stopAfterDays: 90);
+
+        scheduler.Advance(state, plan, succeeded: false, attemptDate: reanudada);
+
+        state.Status.Should().Be(RecurringBillingStatus.Retrying);
+    }
+
+    [Fact]
     public void Advance_AnniversaryDate_WouldExceed90DayCap_StopsInsteadOfAwaiting()
     {
         // Anchor day = 15. Attempt on Feb 20 exhausts cadence. Anniversary = March 15.

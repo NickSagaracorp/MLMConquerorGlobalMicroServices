@@ -163,7 +163,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // 3. Check StopAfterUnbilledDays BEFORE processing (§5 — pre-attempt stop check)
         if (plan.StopAfterUnbilledDays.HasValue && !forceBillNow)
         {
-            var referenceDate  = state.LastSuccessfulBillingDate ?? state.BillingAnchorDate;
+            var referenceDate  = MembershipBillingStops.UnbilledSince(state);
             var unbilledDays   = (now.Date - referenceDate.Date).TotalDays;
             if (unbilledDays >= plan.StopAfterUnbilledDays.Value)
             {

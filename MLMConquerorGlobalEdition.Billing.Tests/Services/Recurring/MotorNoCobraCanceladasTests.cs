@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Recurring;
@@ -79,7 +80,26 @@ public class MotorNoCobraCanceladasTests
         { "cancelacion cumplida hoy", s => { s.IsAutoRenew = false; s.CancellationDate = new DateTime(2026, 10, 20); }, RecurringBillingProcessor.ReasonMembershipCancelled },
         { "cancelacion cumplida ayer", s => { s.IsAutoRenew = false; s.CancellationDate = new DateTime(2026, 10, 19, 23, 0, 0); }, RecurringBillingProcessor.ReasonMembershipCancelled },
         { "gratuita", s => s.IsFree = true, RecurringBillingProcessor.ReasonMembershipFree },
+        // Plan Q (Q3): retenida (p. ej. cuenta suspendida desde el admin). Se para con su motivo, que la reanudacion reconoce.
+        { "retenida", s => s.SubscriptionStatus = MembershipStatus.OnHold, MembershipBillingStops.ReasonMembershipOnHold },
+        { "retenida por el admin", s => { s.SubscriptionStatus = MembershipStatus.OnHold; s.HeldByAccountStatus = MLMConquerorGlobalEdition.Domain.Entities.Member.MemberAccountStatus.Suspended; }, MembershipBillingStops.ReasonMembershipOnHold },
     };
+
+    [Fact]
+    public async Task Reanudada_tras_una_retencion_larga_cobra_en_vez_de_pararse_por_el_tope_de_dias()
+    {
+        // Plan Q (Q3): ResumeHeldAsync reancla a hoy el ciclo vencido durante la retencion; el ultimo cobro es de hace 200
+        // dias. El tope (90) cuenta desde lo mas reciente entre el ultimo cobro y el ancla: se cobra, no se para.
+        await using var db = await SembrarAsync(_ => { });
+        var estado = await db.SubscriptionBillingStates.SingleAsync();
+        estado.LastSuccessfulBillingDate = Ahora.AddDays(-200);
+        estado.BillingAnchorDate = Ahora.Date;
+        await db.SaveChangesAsync();
+
+        var r = await Procesador(db).ProcessAsync("estado-1");
+
+        r.Value!.Outcome.Should().Be("Success");
+    }
 
     [Theory]
     [MemberData(nameof(Casos))]

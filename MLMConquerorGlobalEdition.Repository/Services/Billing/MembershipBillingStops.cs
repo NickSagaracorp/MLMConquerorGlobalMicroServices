@@ -44,8 +44,19 @@ public static class MembershipBillingStops
         if (IsCancelled(subscription.SubscriptionStatus, subscription.IsAutoRenew, subscription.CancellationDate, now))
             return ReasonMembershipCancelled;
         if (subscription.IsFree) return ReasonMembershipFree;
+        // Plan Q (Q3): una retenida no se cobra (antes se cobraba y seguia OnHold). Al restaurarla el admin, ResumeHeldAsync
+        // reanuda el estado parado con este motivo.
+        if (subscription.SubscriptionStatus == MembershipStatus.OnHold) return ReasonMembershipOnHold;
         return null;
     }
+
+    /// <summary>
+    /// Plan Q (Q3): desde cuando cuentan los dias sin cobrar del tope del plan (StopAfterUnbilledDays): lo mas reciente
+    /// entre el ultimo cobro y el ancla del ciclo. Normalmente el ultimo cobro; tras reanudar una retencion larga, el ancla
+    /// que ResumeHeldAsync puso en la reanudacion (si no, el tope pararia la reanudada sin intentar cobrarla).
+    /// </summary>
+    public static DateTime UnbilledSince(SubscriptionBillingState state) =>
+        state.LastSuccessfulBillingDate is { } ultimo && ultimo > state.BillingAnchorDate ? ultimo : state.BillingAnchorDate;
 
     /// <summary>
     /// ¿Está cancelada? Cancelled, o la cancelación programada ya cumplida (IsAutoRenew apagado y
