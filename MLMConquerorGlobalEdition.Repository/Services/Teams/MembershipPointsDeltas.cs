@@ -60,7 +60,7 @@ public static class MembershipPointsDeltas
 
     /// <summary>Los puntos que aporta una suscripcion activa de <paramref name="membershipLevelId"/> sin pedido.</summary>
     public static async Task<int> LevelPointsAsync(DbContext context, int membershipLevelId, CancellationToken ct = default) =>
-        await context.Set<Product>().AsNoTracking()
+        await context.Set<Product>().AsNoTracking().IgnoreQueryFilters()
             .Where(p => p.MembershipLevelId == membershipLevelId)
             .Select(p => (int?)p.QualificationPoins).MaxAsync(ct) ?? 0;
 
@@ -75,7 +75,7 @@ public static class MembershipPointsDeltas
             : await context.Set<OrderDetail>().AsNoTracking().Where(d => d.OrderId == orderId).Select(d => d.ProductId).ToListAsync(ct);
         if (productos.Count == 0) return 0;
         var distintos = productos.Distinct().ToList();
-        var puntos = (await context.Set<Product>().AsNoTracking().Where(p => distintos.Contains(p.Id))
+        var puntos = (await context.Set<Product>().AsNoTracking().IgnoreQueryFilters().Where(p => distintos.Contains(p.Id))
                 .Select(p => new { p.Id, p.QualificationPoins }).ToListAsync(ct))
             .ToDictionary(p => p.Id, p => p.QualificationPoins);
         return productos.Sum(id => puntos.GetValueOrDefault(id));
