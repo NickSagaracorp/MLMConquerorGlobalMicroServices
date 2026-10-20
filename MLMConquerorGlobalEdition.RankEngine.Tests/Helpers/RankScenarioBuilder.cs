@@ -106,9 +106,13 @@ public sealed class RankScenarioBuilder
 
         // ── Subject statistics: PersonalPoints satisfies the per-rank PersonalPoints axis ─
         // Defect-3 fix: use Math.Max(1, requirement.PersonalPoints).
-        _db.MemberStatistics.Add(Stat(subjectId, enrollmentPoints: 0,
-            personalPoints: Math.Max(1, requirement.PersonalPoints)));
+        // Plan Q (DQ16): al guardar las suscripciones, MembershipPointsDeltas deja PersonalPoints en lo que aportan sus
+        // activas; el valor del eje se escribe despues, a mano, como un dato sembrado.
+        var subjectStat = Stat(subjectId, enrollmentPoints: 0);
+        _db.MemberStatistics.Add(subjectStat);
 
+        await _db.SaveChangesAsync();
+        subjectStat.PersonalPoints = Math.Max(1, requirement.PersonalPoints);
         await _db.SaveChangesAsync();
         return subjectId;
     }
