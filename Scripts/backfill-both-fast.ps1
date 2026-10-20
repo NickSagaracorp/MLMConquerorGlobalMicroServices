@@ -40,9 +40,11 @@ $jwt = $lr.data.accessToken; if (-not $jwt) { $jwt = $lr.data.AccessToken }
 W "Got JWT" 'Green'
 
 # Load both subtrees once
+# Revision del bloque 3 del Plan Q: el equipo es el rango de la clave (sql/dual-subtree-bounds.sql), no expandir ascendientes.
+$subtreeBounds = Get-Content -Raw (Join-Path $PSScriptRoot 'sql\dual-subtree-bounds.sql')
 function Load-Subtree($conn, $directChild) {
     $cmd = $conn.CreateCommand()
-    $cmd.CommandText = "SELECT d.MemberId, d.ParentMemberId, d.Side, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.MemberId='$directChild' OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = '$directChild' AND x.IsDeleted = 0)))"
+    $cmd.CommandText = "DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = '$directChild' AND x.IsDeleted = 0); $subtreeBounds SELECT d.MemberId, d.ParentMemberId, d.Side, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.BinaryPath > @lo AND d.BinaryPath < @hi)"
     $r = $cmd.ExecuteReader()
     $nodes = New-Object System.Collections.Generic.List[object]
     while ($r.Read()) {

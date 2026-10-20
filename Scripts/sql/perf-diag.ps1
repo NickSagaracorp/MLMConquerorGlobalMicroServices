@@ -1,6 +1,8 @@
 $cs = "Server=.;Database=MLMConquerorGlobalEditionDb;Integrated Security=true;TrustServerCertificate=True;Encrypt=True;"
 $conn = New-Object System.Data.SqlClient.SqlConnection $cs
 $conn.Open()
+# Revision del bloque 3 del Plan Q: el equipo es el rango de la clave (dual-subtree-bounds.sql), no expandir ascendientes.
+$subtreeBounds = Get-Content -Raw (Join-Path $PSScriptRoot 'dual-subtree-bounds.sql')
 function Scalar($t){ $c=$conn.CreateCommand(); $c.CommandText=$t; $c.CommandTimeout=300; return $c.ExecuteScalar() }
 function Timed($label,$t){
   $c=$conn.CreateCommand(); $c.CommandText=$t; $c.CommandTimeout=300
@@ -25,7 +27,7 @@ $r=$c.ExecuteReader(); while($r.Read()){ "  " + $r[0] }; $r.Close()
 "`n--- timings ---"
 $prefix = $gpath.Replace("'","''")
 Timed "GEN subtree count (StartsWith, nvarchar(max))" "SELECT COUNT_BIG(1) FROM GenealogyTree WHERE HierarchyPath LIKE N'$prefix%'"
-# Plan Q: el binario no tiene ruta de texto; la pertenencia sale de la clave compacta (dbo.DualAncestorKeys).
-Timed "DUAL subtree count (clave)" "SELECT COUNT_BIG(1) FROM DualTeamTree d WHERE d.IsDeleted = 0 AND EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = N'$A' AND x.IsDeleted = 0))"
+# Plan Q: el binario no tiene ruta de texto; el equipo es el rango de la clave.
+Timed "DUAL subtree count (clave)" "DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = N'$A' AND x.IsDeleted = 0); $subtreeBounds SELECT COUNT_BIG(1) FROM DualTeamTree d WHERE d.IsDeleted = 0 AND (d.BinaryPath > @lo AND d.BinaryPath < @hi)"
 Timed "GEN direct children (adjacency ParentMemberId)" "SELECT COUNT_BIG(1) FROM GenealogyTree WHERE ParentMemberId='$A'"
 $conn.Close()

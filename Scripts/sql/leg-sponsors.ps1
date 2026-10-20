@@ -1,11 +1,13 @@
 $cs = "Server=.;Database=MLMConquerorGlobalEditionDb;Integrated Security=true;TrustServerCertificate=True;Encrypt=True;"
 $conn = New-Object System.Data.SqlClient.SqlConnection $cs
 $conn.Open()
+# Revision del bloque 3 del Plan Q: el equipo es el rango de la clave (dual-subtree-bounds.sql), no expandir ascendientes.
+$subtreeBounds = Get-Content -Raw (Join-Path $PSScriptRoot 'dual-subtree-bounds.sql')
 
 function MaxDepthUnder($gw){
   $c = $conn.CreateCommand(); $c.CommandTimeout = 300
-  # Plan Q: el binario no tiene ruta de texto; profundidad = Depth y pertenencia por la clave (dbo.DualAncestorKeys).
-  $c.CommandText = "SELECT MAX(d.Depth) FROM DualTeamTree d WHERE d.IsDeleted=0 AND (d.MemberId=@gw OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = @gw AND x.IsDeleted = 0)))"
+  # Plan Q: el binario no tiene ruta de texto; profundidad = Depth y el equipo es el rango de la clave.
+  $c.CommandText = "DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = @gw AND x.IsDeleted = 0); $subtreeBounds SELECT MAX(d.Depth) FROM DualTeamTree d WHERE d.IsDeleted=0 AND (d.BinaryPath > @lo AND d.BinaryPath < @hi)"
   [void]$c.Parameters.AddWithValue('@gw',$gw)
   return $c.ExecuteScalar()
 }
@@ -14,12 +16,14 @@ function MaxDepthUnder($gw){
 function WriteSponsors($gw, $outFile, $top){
   $c = $conn.CreateCommand(); $c.CommandTimeout = 300
   $c.CommandText = @"
+DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = @gw AND x.IsDeleted = 0);
+$subtreeBounds
 SELECT TOP ($top) d.MemberId, mp.ReplicateSiteSlug AS Slug, d.Depth
 FROM DualTeamTree d
 JOIN MemberProfiles mp ON mp.MemberId=d.MemberId
 WHERE d.IsDeleted=0 AND mp.IsDeleted=0
   AND mp.ReplicateSiteSlug IS NOT NULL AND mp.ReplicateSiteSlug<>''
-  AND (d.MemberId=@gw OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM DualTeamTree x WHERE x.MemberId = @gw AND x.IsDeleted = 0)))
+  AND (d.BinaryPath > @lo AND d.BinaryPath < @hi)
 ORDER BY d.Depth ASC, d.MemberId
 "@
   [void]$c.Parameters.AddWithValue('@gw',$gw)

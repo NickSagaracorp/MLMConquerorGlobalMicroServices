@@ -536,7 +536,11 @@ internal static class Program
         using var cn = new SqlConnection(SqlConnString);
         cn.Open();
         using var cmd = cn.CreateCommand();
+        // Revision del bloque 3 del Plan Q: el equipo es el rango de la clave (Scripts/sql/dual-subtree-bounds.sql).
         cmd.CommandText = @"
+            DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM dbo.DualTeamTree x
+                                          WHERE x.MemberId = N'AMB-700829' AND x.IsDeleted = 0);
+            " + SubtreeBoundsSql() + @"
             SELECT m.ReplicateSiteSlug
             FROM dbo.MemberProfiles m
             INNER JOIN dbo.DualTeamTree d ON d.MemberId = m.MemberId
@@ -544,9 +548,7 @@ internal static class Program
               AND LEN(m.ReplicateSiteSlug) > 0
               AND m.MemberType = 0
               AND (m.SponsorMemberId = 'AMB-700829'
-                   OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a
-                              WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x
-                                                     WHERE x.MemberId = N'AMB-700829' AND x.IsDeleted = 0)))
+                   OR (d.BinaryPath > @lo AND d.BinaryPath < @hi))
             ORDER BY NEWID()";
         using var r = cmd.ExecuteReader();
         while (r.Read())
@@ -555,6 +557,19 @@ internal static class Program
             if (!string.IsNullOrWhiteSpace(slug)) list.Add(slug);
         }
         return list;
+    }
+
+    /// <summary>El fragmento Scripts/sql/dual-subtree-bounds.sql (cotas @lo/@hi de la clave @k), buscado hacia arriba desde el ejecutable.</summary>
+    private static string SubtreeBoundsSql()
+    {
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
+        {
+            var f = Path.Combine(d.FullName, "Scripts", "sql", "dual-subtree-bounds.sql");
+            if (File.Exists(f)) return File.ReadAllText(f);
+            f = Path.Combine(d.FullName, "sql", "dual-subtree-bounds.sql");
+            if (File.Exists(f)) return File.ReadAllText(f);
+        }
+        throw new FileNotFoundException("Scripts/sql/dual-subtree-bounds.sql");
     }
 
     private record struct StatPair(int EnrollmentPoints, int EnrollmentTeamSize);

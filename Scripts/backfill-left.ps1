@@ -37,9 +37,10 @@ function Find-BfsFreeSlot {
     $cn.Open()
     try {
         # BFS — load ALL nodes in this subtree, ordered by depth (shallower first).
-        # Plan Q: el binario no tiene ruta de texto; la pertenencia sale de la clave compacta (dbo.DualAncestorKeys).
+        # Plan Q: el binario no tiene ruta de texto; el equipo es el rango de la clave (sql/dual-subtree-bounds.sql).
+        $subtreeBounds = Get-Content -Raw (Join-Path $PSScriptRoot 'sql\dual-subtree-bounds.sql')
         $cmd = $cn.CreateCommand()
-        $cmd.CommandText = "SELECT d.MemberId, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.MemberId=@r OR EXISTS (SELECT 1 FROM dbo.DualAncestorKeys(d.BinaryPath, 0) a WHERE a.AncestorKey = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = @r AND x.IsDeleted = 0))) ORDER BY d.Depth ASC, d.MemberId"
+        $cmd.CommandText = "DECLARE @k varbinary(1700) = (SELECT x.BinaryPath FROM dbo.DualTeamTree x WHERE x.MemberId = @r AND x.IsDeleted = 0); $subtreeBounds SELECT d.MemberId, d.Depth FROM dbo.DualTeamTree d WHERE d.IsDeleted = 0 AND (d.BinaryPath > @lo AND d.BinaryPath < @hi) ORDER BY d.Depth ASC, d.MemberId"
         [void]$cmd.Parameters.AddWithValue('@r', $SubtreeRootMember)
         $r = $cmd.ExecuteReader()
         $nodes = @()
