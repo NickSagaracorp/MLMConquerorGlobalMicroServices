@@ -2974,8 +2974,8 @@ SELECT * FROM DualTeamTree WHERE HierarchyPath LIKE @p";
 
 ### Tarea 15: medición rápida local del bloque
 
-- [ ] **Paso 1.** Medir con `SqlServerMedicionPlanPTests` (base local, 119.433 nodos y 8.223 niveles) la colocación de una raíz provisional con 50 en su equipo a más de 8.000 niveles. El ensayo del Plan P dio 1,8 s. Se espera menos, porque la ruta de cada uno de los 50 llegaba a 90.000 caracteres. Anotar en «Resultados medidos».
-- [ ] **Paso 2.** Commit: `Plan Q: medicion local del movimiento sin ruta de texto`.
+- [x] **Paso 1.** Medir con `SqlServerMedicionPlanPTests` (base local, 119.433 nodos y 8.223 niveles) la colocación de una raíz provisional con 50 en su equipo a más de 8.000 niveles. El ensayo del Plan P dio 1,8 s. Se espera menos, porque la ruta de cada uno de los 50 llegaba a 90.000 caracteres. Anotar en «Resultados medidos».
+- [x] **Paso 2.** Commit: `Plan Q: medicion local del movimiento sin ruta de texto`.
 
 
 ### Notas de ejecución del bloque 3 (2026-10-20)
@@ -5880,6 +5880,10 @@ Tarea 0 (500.000 antes, código de be932cc): generación 2.899 s y `02-verificar
 Revisión del bloque 2 (base local, `Medicion.runsettings`, 2026-10-19, con los servicios `-run` en marcha; transacción que se deshace): vaciar 200 deltas con arranques distintos a más de 8.000 niveles, 81.368 ms antes y **3.610 ms** con la unión de caminos; 1.000 deltas a más de 7.000 niveles en la misma pierna, 517.055 ms antes y **6.187 ms** ✅ (< 30 s).
 
 Tarea 10 (base local, `Medicion.runsettings`, 2026-10-19; 119.433 nodos, profundidad máxima 8.222; con los servicios del árbol `-run` en marcha): colocar una hoja a 8.223 niveles sin la subida **44 ms** ✅ (< 300 ms; la primera del proceso, en frío, 700 ms) y vaciar su delta 1.141 ms; 10 colocaciones simultáneas a más de 8.000 niveles p50 93 ms, **p95 99 ms** ✅ (< 2 s) y vaciar los 10 deltas **4.124 ms** ✅ (< 5 s; 6.519 ms ❌ antes de comparar la profundidad, ver la Tarea 10); 10 colocaciones con el vaciado en bucle (`SqlServerMedicionPlanQTests`) p50 59 ms, **p95 81 ms** ✅, sin fallos de colocación ni del vaciado, y la raíz común sube exactamente 10 nodos. Del resto del Plan P en la misma pasada: raíz provisional con 50 a más de 8.000 niveles 573 ms, retirar un nodo con equipo 439 ms, retirar y recolocar con equipo a 4.625 niveles (con el vaciado dentro) 1.280 ms, Mi equipo de AMB-700829 p1 67 ms y p1000 523 ms.
+
+Tarea 15 (base local, `Medicion.runsettings`, 2026-10-20; 119.433 nodos, profundidad máxima 8.222, clave máxima 1.032 B; ya sin `HierarchyPath`, con `RetiraRutaDelBinario` aplicada y los servicios del árbol `-run` en marcha; `SqlServerMedicionPlanPTests.Escrituras_a_mas_de_8000_niveles`, tres pasadas, transacción que se deshace): colocar una raíz provisional con 50 en su equipo a más de 8.000 niveles 1.389 / 663 / 518 ms, mediana **663 ms** ✅ (< 2 s), frente a **1,8 s** del ensayo del Plan P (un 63 % menos; 573 ms en la pasada de la Tarea 10, aún con la ruta). En la misma prueba: colocar una hoja a 8.223 niveles 92 / 42 / 55 ms (mediana 55 ms ✅ < 300 ms; en frío 1.617 / 1.339 / 1.605 ms), retirar un nodo con equipo 561 / 469 / 289 ms (mediana 469 ms ✅) y vaciar el delta de la hoja 10.609 / 3.263 / 1.927 ms (mediana 3.263 ms ❌ frente a los 2 s de la prueba; las dos primeras pasadas fallan por esto, la tercera pasa; 1.141 ms en la Tarea 10, la variación coincide con el trabajo `apply-dual-leg-deltas` de los servicios `-run` sobre la misma base).
+
+Espacio tras `RetiraRutaDelBinario` y `03-recuperar-espacio-de-la-ruta.sql` (base local, 2026-10-20, recuperación SIMPLE): `DualTeamTree` baja de **3.013 MB a 153 MB**; el registro se queda en 8.200 MB, sin cambio.
 
 ---
 
