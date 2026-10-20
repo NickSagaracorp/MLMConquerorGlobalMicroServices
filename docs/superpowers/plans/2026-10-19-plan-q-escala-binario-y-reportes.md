@@ -4218,7 +4218,7 @@ Dos importantes, tres de paridad, el script `04` y uno cosmético. Las pruebas n
 
 **Hecho del 2026-10-19 (solo lectura en local):** 119.446 filas y 119.446 miembros distintos, ninguna borrada. El nodo obsoleto (R8 del Plan J) no existe en local. Lo único que escribe nodos es el alta (`SignupAmbassadorHandler.cs:272`, `SignupMemberHandler.cs:193`) y `RootAmbassadorSeeder.cs:108`, siempre para un miembro nuevo.
 
-- [ ] **Paso 1.** El script, con `SoloInforme`. Marca como borrados los nodos que no son el vigente: el más reciente por `(CreationDate, Id)`, el mismo criterio que `CurrentOfAsync`.
+- [x] **Paso 1.** El script, con `SoloInforme`. Marca como borrados los nodos que no son el vigente: el más reciente por `(CreationDate, Id)`, el mismo criterio que `CurrentOfAsync`.
 
 ```sql
 /*
@@ -4261,7 +4261,7 @@ SET @msg = CONCAT(N'Quedan miembros con mas de un nodo vivo: ',
 RAISERROR(@msg, 0, 1) WITH NOWAIT;
 ```
 
-- [ ] **Paso 2.** Pruebas en rojo.
+- [x] **Paso 2.** Pruebas en rojo.
   - De modelo, en `NodoDeGenealogiaModeloTests` (solo construye el modelo, como sus vecinas):
 
 ```csharp
@@ -4301,7 +4301,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
     }
 ```
 
-- [ ] **Paso 3.** Configuración, junto a la línea 24, con el nombre en una constante (la usan la prueba de modelo y `GenealogyNodes`):
+- [x] **Paso 3.** Configuración, junto a la línea 24, con el nombre en una constante (la usan la prueba de modelo y `GenealogyNodes`):
 
 ```csharp
     /// <summary>Plan Q (DQ9): un solo nodo vivo por miembro.</summary>
@@ -4343,7 +4343,7 @@ IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAV
     THROW 51108, N'GenealogyTree tiene miembros con mas de un nodo vivo: ejecutar antes Scripts/sql/plan-q/01-nodos-de-inscripcion-repetidos.sql (Plan Q, Tarea 21).', 1;");
 ```
 
-- [ ] **Paso 4.** `CurrentUnder` (`GenealogySubtree.cs:78-82`) pasa a ser el rango, sin antijoin:
+- [x] **Paso 4.** `CurrentUnder` (`GenealogySubtree.cs:78-82`) pasa a ser el rango, sin antijoin:
 
 ```csharp
     /// <summary>
@@ -4355,7 +4355,7 @@ IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAV
         tree.Under(root);
 ```
 
-- [ ] **Paso 5.** `ReportesDb.NodoObsoletoAsync` sigue creando el nodo con fecha antigua, pero lo deja borrado, que es lo que hace el script. Se marca **antes** del primer guardado: varias pruebas siembran el vigente y el obsoleto del mismo miembro en el mismo `SaveChanges`, y con los dos vivos chocarían con el índice único.
+- [x] **Paso 5.** `ReportesDb.NodoObsoletoAsync` sigue creando el nodo con fecha antigua, pero lo deja borrado, que es lo que hace el script. Se marca **antes** del primer guardado: varias pruebas siembran el vigente y el obsoleto del mismo miembro en el mismo `SaveChanges`, y con los dos vivos chocarían con el índice único.
 
 ```csharp
     public static async Task<GenealogyEntity> NodoObsoletoAsync(
@@ -4374,7 +4374,7 @@ IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAV
 ```
 
   Las pruebas que exigían «el obsoleto no cuenta» (`NodosVigentesEnLosEquiposTests`, `GenealogySubtreeTests`, `ClientesDelEquipoTests`, `EnrollmentActivityServiceTests`, `PrefijoDeSubarbolTests`, `SqlServerActividadTests`, `SqlServerClientesTests`, `TeamEventRegistrationsServiceTests`, `TeamStatusChangesServiceTests`) siguen valiendo con esa siembra y no cambian.
-- [ ] **Paso 6.** En local: script con `SoloInforme=1` (**esperado:** 0) y con `SoloInforme=0`; después la migración. Suites `Reportes` y `Rendimiento` de BizCenter y `Signups.Tests` (por el reintento del alta, incluida `SqlServerAltasConcurrentesTests`) en verde. Commit: `Plan Q: un solo nodo vivo por miembro en la genealogia y CurrentUnder por el rango`.
+- [x] **Paso 6.** En local: script con `SoloInforme=1` (**esperado:** 0) y con `SoloInforme=0`; después la migración. Suites `Reportes` y `Rendimiento` de BizCenter y `Signups.Tests` (por el reintento del alta, incluida `SqlServerAltasConcurrentesTests`) en verde. Commit: `Plan Q: un solo nodo vivo por miembro en la genealogia y CurrentUnder por el rango`.
 
 ### Tarea 22: límites de rejilla y orden por estructura (P7)
 
@@ -4388,7 +4388,7 @@ IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAV
 - Modify: `MLMConquerorGlobalEdition.SharedComponents/Components/Team/DualTeamMyTeam.razor:45-54` y `EnrollmentTeamMyTeam.razor` (aviso)
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/LimitesDeRejillaTests.cs`
 
-- [ ] **Paso 1.** Pruebas en rojo (InMemory). Tres miembros (YO, A y B bajo YO, A antes que B por estructura) y una petición ordenada por `FullName` descendente, que daría B antes que A. Con el equipo por encima del límite el orden pedido se sustituye por el de estructura (A, B) y el resultado lo avisa; por debajo se respeta; sin orden pedido, estructura (DQ7). El tamaño sale de los contadores de pierna en el binario (como en `MiEquipoDualTotalPorContadoresTests`) y de `MemberStatistics.EnrollmentTeamSize` en inscripción.
+- [x] **Paso 1.** Pruebas en rojo (InMemory). Tres miembros (YO, A y B bajo YO, A antes que B por estructura) y una petición ordenada por `FullName` descendente, que daría B antes que A. Con el equipo por encima del límite el orden pedido se sustituye por el de estructura (A, B) y el resultado lo avisa; por debajo se respeta; sin orden pedido, estructura (DQ7). El tamaño sale de los contadores de pierna en el binario (como en `MiEquipoDualTotalPorContadoresTests`) y de `MemberStatistics.EnrollmentTeamSize` en inscripción.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -4501,7 +4501,7 @@ public class LimitesDeRejillaTests
 ```
 
   **Esperado:** no compila (no existen `PagedResult.Limited` ni `TeamGridLimits`).
-- [ ] **Paso 2.** Implementación:
+- [x] **Paso 2.** Implementación:
 
 ```csharp
 namespace MLMConquerorGlobalEdition.Repository.Grid;
@@ -4653,7 +4653,7 @@ public static class TeamGridLimits
 ```
 
     Las pruebas que hoy esperan el total sin filtros de la rejilla de inscripción con un equipo sembrado y sin `MemberStatistics` siembran `EnrollmentTeamSize`. Hoy es `NodosVigentesEnLosEquiposTests.cs:44`: añade `ReportesDb.Puntos(db, Yo, 0).EnrollmentTeamSize = 2;` a su siembra. Es lo mismo que hace `MiEquipoDualTotalPorContadoresTests` con las piernas. Las demás salen al pasar la suite de BizCenter.Tests.
-- [ ] **Paso 3.** La interfaz.
+- [x] **Paso 3.** La interfaz.
   - **Contrato:** `GridPagedResult<T>` gana `public bool Limited { get; set; }`.
   - **Adaptador:** `ServerGridAdaptor` gana un parámetro, y después de leer el `payload` (`:155-157`) añade `if (OnLimited is not null) await OnLimited(payload?.Data?.Limited ?? false).ConfigureAwait(false);`.
 
@@ -4678,7 +4678,7 @@ public static class TeamGridLimits
 ```
 
   - **Textos:** la clave `Team.LargeTeamLimited` va a los recursos de idiomas que ya usan esas rejillas. En español: «Tu equipo es muy grande: se ordena por la estructura del árbol y la búsqueda encuentra nombres o códigos que empiezan por lo que escribes.» En inglés: «Your team is very large: it is sorted by tree structure and search matches names or IDs that start with your text.»
-- [ ] **Paso 4.** En verde. Commit: `Plan Q: Mi equipo ordena por estructura por defecto y limita orden y busqueda en equipos de mas de 20.000`.
+- [x] **Paso 4.** En verde. Commit: `Plan Q: Mi equipo ordena por estructura por defecto y limita orden y busqueda en equipos de mas de 20.000`.
 
 ### Tarea 23: búsqueda por el comienzo del nombre (`MemberNameSearch`)
 
@@ -4693,7 +4693,7 @@ public static class TeamGridLimits
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/MemberNameSearchTests.cs`
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/LimitesDeRejillaTests.cs` (Tarea 22)
 
-- [ ] **Paso 1.** Pruebas en rojo. La búsqueda es por el **comienzo del nombre completo** («nombre apellido» o «apellido nombre») o del id, no por el comienzo de cada palabra (DQ8, revisión I11): «luci» no encuentra a «Ana Lucía Gómez», cuyo nombre completo empieza por «Ana».
+- [x] **Paso 1.** Pruebas en rojo. La búsqueda es por el **comienzo del nombre completo** («nombre apellido» o «apellido nombre») o del id, no por el comienzo de cada palabra (DQ8, revisión I11): «luci» no encuentra a «Ana Lucía Gómez», cuyo nombre completo empieza por «Ana».
   - **SQL Server** (`SqlServerBusquedaPorNombreTests`), en un binario pequeño con «Lucía Díaz», «Luciano Pérez» y «Ana Lucía Gómez», sin tildes ni mayúsculas en lo que se escribe:
     - «lucia diaz» encuentra a «Lucía Díaz»;
     - «diaz» la encuentra por el apellido (nombre invertido);
@@ -4790,7 +4790,7 @@ public class MemberNameSearchTests
     }
 }
 ```
-- [ ] **Paso 2.** Entidad y configuración. Las columnas son calculadas y persistidas, con intercalación sin tildes ni mayúsculas:
+- [x] **Paso 2.** Entidad y configuración. Las columnas son calculadas y persistidas, con intercalación sin tildes ni mayúsculas:
 
 ```csharp
     /// <summary>Plan Q: «nombre apellido», calculada y persistida (CI_AI), para buscar por prefijo con indice.</summary>
@@ -4808,7 +4808,7 @@ public class MemberNameSearchTests
         builder.HasIndex(m => m.SearchNameReversed).HasDatabaseName("IX_MemberProfiles_SearchNameReversed").IncludeProperties(m => m.MemberId);
 ```
 
-- [ ] **Paso 3.** El componente:
+- [x] **Paso 3.** El componente:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -4870,7 +4870,7 @@ WHERE m.IsDeleted = 0 AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t 
 ```
 
   `Key`, `Param` y `RecompileTag` ya existen en `DualSubtree` (`:21`, `:57-58`, `:60-62`), igual que los `using` de `System.Data` y `Microsoft.Data.SqlClient`.
-- [ ] **Paso 4.** Uso.
+- [x] **Paso 4.** Uso.
   - **`DualTeamService.GetMyTeamGridAsync`** (la versión de la Tarea 22). Con `request.Search` y el equipo por encima del límite, la base es `SearchUnder`; el término sale de la petición (la rejilla no lo vuelve a aplicar por subcadena) y el total se cuenta, porque ya no es el equipo entero. Con el equipo dentro del límite, la búsqueda de siempre por subcadena en todos los campos. Las líneas entre `TeamGridLimits.Limit` y `ToGridResultAsync` pasan a:
 
 ```csharp
@@ -4975,7 +4975,7 @@ WHERE m.IsDeleted = 0 AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t 
     }
 ```
 
-- [ ] **Paso 5.** Commit tras la migración de la Tarea 25 (las columnas van en ella): `Plan Q: busqueda de miembros por el comienzo del nombre completo o del id con indice y sin tildes`.
+- [x] **Paso 5.** Commit tras la migración de la Tarea 25 (las columnas van en ella): `Plan Q: busqueda de miembros por el comienzo del nombre completo o del id con indice y sin tildes`.
 
 ### Tarea 24: Clientes y Eventos, por el rango
 
@@ -4987,7 +4987,7 @@ WHERE m.IsDeleted = 0 AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t 
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/SqlServerClientesTests.cs` y `SqlServerEventosTests.cs`
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/TeamEventRegistrationsServiceTests.cs` (límite de «Todo el equipo»)
 
-- [ ] **Paso 1.** Un capturador de lo que EF manda (texto y valores de parámetros), compartido por las pruebas de SQL del bloque:
+- [x] **Paso 1.** Un capturador de lo que EF manda (texto y valores de parámetros), compartido por las pruebas de SQL del bloque:
 
 ```csharp
 using System.Data.Common;
@@ -5035,7 +5035,7 @@ public sealed class CapturadorDeSql : DbCommandInterceptor
 }
 ```
 
-- [ ] **Paso 2.** Pruebas en rojo.
+- [x] **Paso 2.** Pruebas en rojo.
   - **Clientes, de plan** (en `SqlServerClientesTests`). La forma de la consulta de equipo, sobre la raíz mayor local: parte de `IX_MemberProfiles_Clientes` y no recorre `GenealogyTree`. La forma se reproduce en la prueba, como en `SqlServerPlanesDeEjecucionTests`, y además se exige que el SQL que manda el servicio empiece por los perfiles (`FROM [MemberProfiles]` antes que `[GenealogyTree]`), para que la forma probada sea la del servicio.
 
 ```csharp
@@ -5112,7 +5112,7 @@ public sealed class CapturadorDeSql : DbCommandInterceptor
 ```
 
   **Esperado:** las tres primeras fallan (la consulta de clientes empieza por `GenealogyTree`, el índice no existe y el SQL de eventos lleva `IsDescendantOf`); la de límite no compila hasta la Tarea 22 y después falla con 30.000.
-- [ ] **Paso 3.** Clientes. Índice filtrado:
+- [x] **Paso 3.** Clientes. Índice filtrado:
 
 ```csharp
         // Plan Q: los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
@@ -5147,7 +5147,7 @@ public sealed class CapturadorDeSql : DbCommandInterceptor
             };
 ```
 
-- [ ] **Paso 4.** Eventos. «Solo inscritos» (`:77-96`) y `GetTotalsAsync` (`:116-142`) sustituyen el `let node = … TOP 1 … IsDescendantOf(root)` por una unión con el rango; «Todo el equipo» ordena por estructura con el límite:
+- [x] **Paso 4.** Eventos. «Solo inscritos» (`:77-96`) y `GetTotalsAsync` (`:116-142`) sustituyen el `let node = … TOP 1 … IsDescendantOf(root)` por una unión con el rango; «Todo el equipo» ordena por estructura con el límite:
 
 ```csharp
         // (GetGridAsync, tras RootAsync)
@@ -5232,7 +5232,7 @@ public sealed class CapturadorDeSql : DbCommandInterceptor
     }
 ```
 
-- [ ] **Paso 5.** En verde (tras la migración de la Tarea 25, que crea el índice). Commit (con la Tarea 25): `Plan Q: Clientes parte de los clientes y Eventos une con el rango del equipo en lugar del TOP 1 con IsDescendantOf`.
+- [x] **Paso 5.** En verde (tras la migración de la Tarea 25, que crea el índice). Commit (con la Tarea 25): `Plan Q: Clientes parte de los clientes y Eventos une con el rango del equipo en lugar del TOP 1 con IsDescendantOf`.
 
 ### Tarea 25: Actividad agrupada en SQL con el nivel de alta guardado
 
@@ -5250,7 +5250,7 @@ public sealed class CapturadorDeSql : DbCommandInterceptor
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/SignupMembershipLevelTests.cs`
 - Sin cambios: `MLMConquerorGlobalEdition.Repository/Services/Teams/EnrollmentActivityDtos.cs` (`EnrollmentActivityRowView` ya tiene todos los `set` públicos)
 
-- [ ] **Paso 1.** Pruebas en rojo.
+- [x] **Paso 1.** Pruebas en rojo.
   - **Regla N2** (`SignupMembershipLevelTests`, InMemory, nuevo en `BizCenter.Tests/Reportes`):
 
 ```csharp
@@ -5333,7 +5333,7 @@ public class SignupMembershipLevelTests
 ```
 
     En `EnrollmentActivityServiceTests.EquipoAsync` (`:61`), el `await db.SaveChangesAsync();` final pasa a `await ReportesDb.NivelesDeAltaAsync(db);`. Es la única siembra con pedidos de esas dos suites; las demás pruebas de Actividad no siembran pedidos (sus inscritos quedan en «Otro», como hoy).
-- [ ] **Paso 2.** Nivel de alta:
+- [x] **Paso 2.** Nivel de alta:
 
 ```csharp
     /// <summary>
@@ -5385,7 +5385,7 @@ public static class SignupMembershipLevel
         await _db.SaveChangesAsync(ct);
 ```
   - **Activación:** `SignupActivationService.ActivateAsync`, tras marcar el pedido como completado (`:45-47`), hace `await SignupMembershipLevel.RefreshAsync(_db, member, ct);`.
-- [ ] **Paso 3.** Índice de Actividad (sustituye al de la línea 23):
+- [x] **Paso 3.** Índice de Actividad (sustituye al de la línea 23):
 
 ```csharp
         builder.HasIndex(m => m.EnrollDate).HasDatabaseName("IX_MemberProfiles_EnrollDate")
@@ -5393,7 +5393,7 @@ public static class SignupMembershipLevel
 ```
 
   `dotnet ef migrations add BusquedaYNivelDeAlta …`. Contiene las columnas de las Tareas 23 y 25, el índice de clientes de la Tarea 24 y este. Aplicar en local.
-- [ ] **Paso 4.** `02-nivel-de-alta.sql` rellena el pasado por lotes de 20.000 perfiles, en orden de `Id`, cada lote en su transacción. Es idempotente: solo toca las filas con `SignupMembershipLevelId IS NULL`.
+- [x] **Paso 4.** `02-nivel-de-alta.sql` rellena el pasado por lotes de 20.000 perfiles, en orden de `Id`, cada lote en su transacción. Es idempotente: solo toca las filas con `SignupMembershipLevelId IS NULL`.
 
 ```sql
 /*
@@ -5456,7 +5456,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
 ```
 
   (`using MLMConquerorGlobalEdition.Repository.Queries;`.)
-- [ ] **Paso 5.** `EnrollmentActivityService.GetGridAsync`, una sola consulta agrupada y paginada en SQL. Sustituye las líneas 74-165 (la lectura del nodo del que mira, `:58-63`, no cambia):
+- [x] **Paso 5.** `EnrollmentActivityService.GetGridAsync`, una sola consulta agrupada y paginada en SQL. Sustituye las líneas 74-165 (la lectura del nodo del que mira, `:58-63`, no cambia):
 
 ```csharp
         // Plan Q: las altas del rango cuyo patrocinador cuelga del que mira, agrupadas por patrocinador EN SQL. El nodo del
@@ -5513,7 +5513,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
     - la búsqueda, el orden y la página van en SQL;
     - las columnas de la vista se asignan en la proyección: `EnrollmentActivityRowView` (`Repository/Services/Teams/EnrollmentActivityDtos.cs:9-24`) tiene todas sus propiedades con `set` público, así que no cambia.
   - Se borran los dos `ToDictionary` y el pivote en memoria (`:93-160`), y `Empty` deja de usarse salvo en la salida sin nodo.
-- [ ] **Paso 6.** Ejecutar el script en local. Suites `Reportes` en verde. Commit con las Tareas 23 y 24: `Plan Q: nivel de alta guardado, busqueda por prefijo, clientes y actividad agrupada en SQL con su migracion y su relleno`.
+- [x] **Paso 6.** Ejecutar el script en local. Suites `Reportes` en verde. Commit con las Tareas 23 y 24: `Plan Q: nivel de alta guardado, busqueda por prefijo, clientes y actividad agrupada en SQL con su migracion y su relleno`.
 
 ### Tarea 26: Mi equipo de inscripción, total y página
 
@@ -5521,7 +5521,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerPlanesDeEjecucionTests.cs` (prueba nueva)
 - Sin cambios de código: el orden por estructura ya va sobre el nodo, antes del `join`, en el `BuildMyTeamQueryable` de la Tarea 22, y `CurrentUnder` ya es el rango sin antijoin desde la Tarea 21. Esta tarea comprueba que el plan resultante no ordena el rango.
 
-- [ ] **Paso 1.** La prueba, de plan, sobre la raíz mayor local (AMB-700829, unos 119.400 debajo). Dos partes:
+- [x] **Paso 1.** La prueba, de plan, sobre la raíz mayor local (AMB-700829, unos 119.400 debajo). Dos partes:
   - el SQL que manda el servicio para la página 1.000 (sin búsqueda, sin orden pedido) ordena por `Node` y ni la página ni el conteo llevan la antijoin (`NOT EXISTS`) del nodo vigente;
   - la misma forma de consulta, compilada con `PlanDeEjecucion.CompiladoAsync`, hace un *Index Seek* sobre `IX_GenealogyTree_Node`, no recorre `GenealogyTree` y no tiene un operador `Sort`.
 
@@ -5558,7 +5558,7 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
 ```
 
   (`using MLMConquerorGlobalEdition.Repository.Grid;`, `using MLMConquerorGlobalEdition.Repository.Services.Ranks;` y `using MLMConquerorGlobalEdition.Repository.Services.Teams;`.) Se ejecuta **después** de las Tareas 21 y 22, así que se espera en verde a la primera: es la comprobación de su efecto conjunto, no una prueba en rojo.
-- [ ] **Paso 2.** `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter FullyQualifiedName~Mi_equipo_de_inscripcion_pagina_por_Node`. Si falla por un `Sort`, es una desviación de la Tarea 22 (el `OrderBy` no quedó antes del `join`): se corrige allí y se anota en «Desviaciones». En verde, commit: `Plan Q: prueba de que Mi equipo de inscripcion pagina por Node sin ordenar el rango`.
+- [x] **Paso 2.** `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter FullyQualifiedName~Mi_equipo_de_inscripcion_pagina_por_Node`. Si falla por un `Sort`, es una desviación de la Tarea 22 (el `OrderBy` no quedó antes del `join`): se corrige allí y se anota en «Desviaciones». En verde, commit: `Plan Q: prueba de que Mi equipo de inscripcion pagina por Node sin ordenar el rango`.
 
 ### Tarea 27: ficha de lo que cambia para el usuario
 
@@ -5574,7 +5574,57 @@ RAISERROR(@msg, 0, 1) WITH NOWAIT;
 
 ### Tarea 28: medición rápida local del bloque
 
-- [ ] **Paso 1.** `SqlServerMedicionPlanMTests` (Actividad, Clientes, Eventos y Mi equipo sobre la raíz mayor local) y `SqlServerMedicionPlanPTests` (búsqueda en el binario), con su rasgo. Anotar en «Resultados medidos». Commit: `Plan Q: medicion local de los reportes`.
+- [x] **Paso 1.** `SqlServerMedicionPlanMTests` (Actividad, Clientes, Eventos y Mi equipo sobre la raíz mayor local) y `SqlServerMedicionPlanPTests` (búsqueda en el binario), con su rasgo. Anotar en «Resultados medidos». Commit: `Plan Q: medicion local de los reportes`.
+
+### Notas de ejecución del bloque 5 (2026-10-20)
+
+Commits: Tarea 21 `6f76f19`, Tarea 22 `ceba512`, Tareas 23, 24 y 25 juntas `35d01cd` (como dice el Paso 6 de la 25: comparten la migración y `EnrollmentTeamService`), Tarea 26 `226c1a4`, Tarea 28 `865afac` (código) y `b423d88` (mediciones), y estas notas.
+
+Migraciones aplicadas en local con `--connection`:
+- `UnNodoPorMiembro` (`UX_GenealogyTree_MemberId_Vivo`, único filtrado `[IsDeleted] = 0`, con la guarda 51108). Antes, `01-nodos-de-inscripcion-repetidos.sql` con `SoloInforme=1` y `0`: **0** nodos a marcar, 0 miembros con más de un nodo vivo.
+- `BusquedaYNivelDeAlta` (`MemberProfiles.SearchName` y `SearchNameReversed`, calculadas y persistidas `nvarchar(201)` `Latin1_General_100_CI_AI`, con sus índices; `SignupMembershipLevelId int NULL`; `IX_MemberProfiles_Clientes` filtrado; `IX_MemberProfiles_EnrollDate` rehecho con columnas incluidas). Después, `02-nivel-de-alta.sql`: **118.274** perfiles con nivel en 84 s (118.262 Elite, 11 Turbo, 1 VIP); quedan 1.176 sin pedido de membresía (`NULL`, columna «Otro»). Segunda pasada: 0 cambios (20 s, porque vuelve a mirar los 1.176).
+- Las dos son aditivas y compatibles con el árbol `-run`: el índice único no choca con sus altas (siempre de un miembro nuevo) y las columnas son calculadas o admiten nulos. Sus altas no rellenan `SignupMembershipLevelId` hasta que se actualice: volver a ejecutar `02-nivel-de-alta.sql` después (es idempotente).
+
+Desviaciones respecto al texto de las tareas:
+- **Tarea 21 incluida.** El encargo nombraba las Tareas 22 a 28, pero la 21 es del Bloque 5 y las 24 a 26 dependen de ella (`Under` como equipo vigente, sin antijoin). No borra ni renombra nada y es compatible con `-run`, así que se hizo primero.
+- **Números de error.** 51105 a 51107 ya los usaban `02-recalcular-piernas.sql` y los scripts de escala (Bloque 3). `01-nodos-de-inscripcion-repetidos.sql` usa 51120 a 51122. La guarda de la migración (51108) y `02-nivel-de-alta.sql` (51109 a 51111) mantienen los del plan, que estaban libres.
+- **Tarea 21, pruebas que sembraban dos nodos vivos del mismo miembro.**
+  - `NodosVigentesEnLosEquiposTests.El_nodo_vigente_desempata_por_Id` (InMemory): pierde la aserción sobre `CurrentUnder`. Ahora el índice único es quien garantiza que no se repita, e InMemory no aplica índices únicos. `NodeOfAsync` sigue desempatando igual.
+  - `SqlServerRevisionBloque4Tests.Con_un_nodo_vivo_mas_reciente_sin_Node_…`: el nodo viejo se siembra con `NodoObsoletoAsync` (borrado), porque dos vivos ya no se pueden guardar.
+- **Tarea 22.**
+  - Se añade una prueba de DQ14 para las lecturas sin rejilla (`GetMyTeamAsync` de los dos servicios).
+  - La interfaz se prueba con `ErroresDeRejillaTests.OnLimited_recibe_si_el_servidor_limito_la_rejilla` y con la clave `Team.LargeTeamLimited` en `TextosDeReportesTests`. Va en los nueve idiomas; los textos en fr, it, pt, de, ko, zh y ka son traducción propia.
+  - `NodosVigentesEnLosEquiposTests` siembra `EnrollmentTeamSize = 2`, como preveía el plan.
+- **Tarea 23.**
+  - Las columnas calculadas llevan `HasMaxLength(201)`: sin él, el modelo las declaraba `nvarchar(450)`.
+  - `SearchUnder` no usa un `OR` con los tres `LIKE`. Con el `OR`, el optimizador recorría `MemberProfiles` entero: 19.500 lecturas y de 260 a 580 ms para 1.768 coincidencias de «mari». Ahora hay una rama por índice (`UNION`) y una `INNER LOOP JOIN` de los perfiles a su nodo. Sin la pista, con la máquina cargada, a veces recorría el rango del equipo y unía por hash (1,1 a 4,4 s para contar). Este cambio salió de la medición de la Tarea 28.
+  - `MemberNameSearchTests` gana una prueba del escape de comodines de `Pattern`.
+- **Tarea 25.**
+  - `SelectProductsHandler` y la activación se prueban en `Signups.Tests` (`NivelDeAltaGuardadoTests`, en rojo antes). El plan no traía esas pruebas.
+  - En la activación, `RefreshAsync` va justo después de marcar el perfil activo. El orden respecto al pedido completado no cambia nada, porque la regla no filtra por estado.
+- **Tarea 26.** La prueba falló como preveía el plan, con un `Sort`: `OrderBy(Node)` antes del `join` no basta con el `OFFSET` sobre la unión. Con `Page = 1000`, el optimizador unía el rango entero a los perfiles en paralelo y lo ordenaba. Se corrigió en el código de la Tarea 22:
+  - sin búsqueda, filtros ni orden pedido, `EnrollmentTeamService` toma la página del árbol (`OrderBy(Node).Skip.Take`, por `IX_GenealogyTree_Node`, que es cubriente) y solo después une los 20 perfiles;
+  - `GridQueryableExtensions.ResolvePage` expone la misma página y el mismo tope que `ToGridResultAsync`;
+  - la consulta que reproduce la prueba tiene ahora esa forma, y el plan no tiene `Sort` ni recorre `GenealogyTree`.
+- **Tarea 28.** El binario tenía el mismo problema: la página 1.000 por estructura ordenaba el rango unido (de 833 a 1.900 ms). Se corrigió igual:
+  - `DualSubtree.PageUnder` toma la página de `UX_DualTeamTree_BinaryPath`, que cubre `MemberId`, y después lee esos 20 nodos;
+  - prueba en rojo: `Mi_equipo_binario_toma_la_pagina_de_la_clave_antes_de_unir_los_perfiles`.
+- **Tarea 27, a medias.** No se abrieron las rejillas: los portales que hay en marcha son los del árbol `-run`, que no se tocan. Lo que sí se hizo fue contrastar las cifras con SQL de solo lectura sobre AMB-700829, con la forma de `master` (`TOP 1` vigente con `IsDescendantOf` y el nivel por los pedidos) frente a la nueva (rango y nivel guardado):
+  - Actividad entre el 20-may y el 9-jun: tres filas iguales. AMB-322228 tiene 990 embajadores, niveles 0/0/989/0/1; AMB-654436, 938 y 0/0/937/0/1; AMB-106125, 937 y 0/0/934/0/3;
+  - Clientes del equipo: 1 = 1;
+  - Eventos («Atlanta power launch»): 0 = 0 inscritos.
+
+  Quedan pendientes, para Nick, el aviso de equipo grande y la búsqueda «lucia» en pantalla.
+- **Medición de Actividad en local.** La raíz grande se inscribió entre el 22-may y el 8-jun, fuera de los 3 meses que admite N4 contados desde hoy. Por eso `Actividad_de_la_raiz_con_tres_meses` mide un rango sin altas. La medida con altas es la del Bloque 7.
+
+Pendiente o a vigilar:
+- Árbol `-run`: al actualizarlo, ejecutar otra vez `02-nivel-de-alta.sql`. Con las columnas calculadas indexadas, cualquier script que escriba en `MemberProfiles` necesita `QUOTED_IDENTIFIER ON` (`sqlcmd -I`, como ya llevan los del plan).
+- Con 1.000.000, un prefijo muy corto («a») puede casar con decenas de miles de perfiles: la pista `LOOP` hace entonces una búsqueda por cada uno. Se mide en el Bloque 7.
+- El buscador del visualizador tarda de 1,2 a 1,6 s con 25 hallazgos. Su búsqueda es la misma `SearchUnder` que la de la rejilla. El resto es probablemente armar los caminos a miles de niveles (`DualAncestors`, Bloque 3), pero no se midió por separado.
+- Suites en serie con `dotnet build` sin errores (y `BizCenterWeb` y `AdminWeb` compilan), con los servicios `-run` en marcha y la máquina muy cargada (otra solución compilando y probando a la vez; BizCenter tardó 1 h 10 min): Domain 150, BizCenter 1.187 de 1.218, Signups 1.176, AdminAPI 640 de 642 (1 saltada), RankEngine 133 de 134, CommissionEngine 93 de 94 y Billing 752.
+  - Repetidas solas, pasan todas las fallidas de BizCenter (30 de 30 en `SqlServerDeltasPorLinea`, `SqlServerDevolucionYEstadoDeCuenta`, `SqlServerDualSubtree`, `SqlServerRevisionBloque4`, `SqlServerHuecoUnico` y `SqlServerPuntosPorMembresia`; 11 de 11 en `SqlServerNodoDeGenealogia` y `SqlServerPedidos`). También pasan `SqlServerEstadoDeCuentaYMembresiaTests` (AdminAPI), `SqlServerProgresoDeRangoTests` (RankEngine) y `SqlServerVaciarAntesDeLeerTests` (CommissionEngine). Eran esperas de candado y tiempos agotados por la carga.
+  - Siguen fallando solos los dos frágiles conocidos: `SqlServerVenenoEnLaColaTests.Un_tiempo_agotado_no_cuenta_como_intento_ni_aparta_deltas` (el candado lo tiene el trabajo `-run`) y `SqlServerVisualizadorBinarioTests.El_visualizador_del_mayor_equipo_responde_en_tiempo` (2.896 ms frente a 2 s, por tiempo).
+  - Antes de las Tareas 26 y 28, la pasada completa de BizCenter (21 min, con menos carga) dio 1.214 de 1.216, con solo los dos de `SqlServerVenenoEnLaColaTests` en rojo.
 
 ---
 
@@ -5979,6 +6029,29 @@ Revisión del bloque 3 (base local, `Medicion.runsettings`, 2026-10-20; los mism
 Tarea 20 (base local, `Medicion.runsettings`, 2026-10-20; con los servicios `-run` en marcha; transacción que se deshace): 1.000 altas bajo el miembro más profundo de la inscripción local (AMB-629094, nivel 8; raíz AMB-700829) dejan **1.000 filas** `SponsorLine` en `MemberStatisticDeltas` (antes, una por ascendiente: 8.000) y el trabajo las aplica en 4.569 (en frío) / 1.910 / 1.184 / 1.219 ms ✅ (< 10 s); la raíz suma exactamente 1.000 a `EnrollmentTeamSize`. La inscripción local solo tiene 8 niveles: la medida a profundidad real es la del Bloque 7 (nivel máximo de inscripción 429 con 500.000).
 
 Espacio tras `RetiraRutaDelBinario` y `03-recuperar-espacio-de-la-ruta.sql` (base local, 2026-10-20, recuperación SIMPLE): `DualTeamTree` baja de **3.013 MB a 153 MB**; el registro se queda en 8.200 MB, sin cambio.
+
+Tarea 28 (base local, `Medicion.runsettings`, 2026-10-20). Datos: 119.450 perfiles y la raíz AMB-700829, con 119.403 en el binario y unos 119.400 en inscripción. Los servicios `-run` estaban en marcha y la máquina, muy cargada: la CPU iba del 30 al 65 % antes de medir, y en dos pasadas con carga las cifras se multiplicaron por 3 a 10. Abajo, las dos pasadas en calma, después de las correcciones de las Tareas 26 y 28. Las de inscripción y reportes son la mediana de tres; las del binario, una sola lectura.
+
+| Lectura | Pasada 1 | Pasada 2 |
+|---|---|---|
+| Mi equipo de inscripción, página 1 | 718 ms | 273 ms ✅ |
+| Mi equipo de inscripción, página 1.000 por `Node` | 728 ms | 284 ms ✅ |
+| Mi equipo de inscripción, búsqueda «amb-7» por prefijo (con el límite) | 4.821 ms ❌ | 650 ms ✅ |
+| Clientes de todo el equipo | 579 ms | 250 ms ✅ |
+| Eventos, todo el equipo y totales | 2.292 ms ❌ | 1.132 ms ✅ |
+| Actividad, 3 meses (rango sin altas en local, ver las notas) | 720 ms | 539 ms ✅ |
+| Mi equipo binario, primera página | 183 ms | 410 ms ✅ |
+| Mi equipo binario, página 1.000 por la clave | 258 ms | 389 ms ✅ |
+| Mi equipo binario, búsqueda «mari» (1.766 hallazgos) | 920 ms | 1.432 ms ✅ |
+| Visualizador, búsqueda «mari» (25 con camino) | 1.346 ms | 1.567 ms ✅ |
+| Progreso de rango, parte binaria (`SqlServerMedicionPlanPTests`) | 408 ms | 442 ms ✅ |
+
+Antes de las correcciones, en la primera pasada (también en calma), la página 1.000 del binario tardaba 833 ms y la búsqueda «mari», 2.123 ms ❌. La búsqueda tenía entonces el `OR` y ordenaba el rango unido. Con la máquina cargada, las mismas lecturas dieron:
+- Clientes, de 3.351 a 5.720 ms;
+- Eventos, de 4.062 a 9.894 ms;
+- Mi equipo de inscripción, búsqueda por prefijo, de 2.252 a 16.062 ms.
+
+En esas pasadas cargadas, `OrderNo AnyAsync` pasó de 3 a 34 ms. Las cifras que valen para el objetivo son las del Bloque 7, con 500.000 y 1.000.000.
 
 ---
 
