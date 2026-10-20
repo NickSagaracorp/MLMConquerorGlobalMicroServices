@@ -8838,6 +8838,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int>("EnrollmentContribution")
                         .HasColumnType("int");
 
+                    b.Property<int?>("HeldByAccountStatus")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("HoldDate")
                         .HasColumnType("datetime2");
 

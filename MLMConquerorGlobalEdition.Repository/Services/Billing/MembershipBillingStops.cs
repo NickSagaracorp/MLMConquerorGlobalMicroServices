@@ -22,6 +22,15 @@ public static class MembershipBillingStops
     /// </summary>
     public const string ReasonMembershipReplaced  = "MEMBERSHIP_REPLACED";
 
+    /// <summary>Plan Q (Q3): la cancelo una devolucion o un contracargo de su pedido vigente.</summary>
+    public const string ReasonMembershipRefunded  = "MEMBERSHIP_REFUNDED";
+
+    /// <summary>
+    /// Plan Q (Q3): retenida (OnHold), p. ej. por suspender o inactivar la cuenta desde el admin. No se cobra; al restaurarla
+    /// el admin, su estado de cobro parado con este motivo se reanuda (<see cref="ResumeHeldAsync"/>).
+    /// </summary>
+    public const string ReasonMembershipOnHold    = "MEMBERSHIP_ON_HOLD";
+
     /// <summary>La suscripción del estado está borrada o no existe: no hay nada que renovar.</summary>
     public const string ReasonSubscriptionMissing = "SUBSCRIPTION_MISSING";
 
@@ -92,5 +101,37 @@ public static class MembershipBillingStops
                      && s.Status != RecurringBillingStatus.Stopped)
             .ToListAsync(ct);
         foreach (var s in states) Stop(s, reason, now, actor);
+    }
+
+    /// <summary>
+    /// Plan Q (Q3): reanuda los estados de cobro de esas suscripciones que se pararon por retencion
+    /// (<see cref="ReasonMembershipOnHold"/>); uno parado por otro motivo se queda parado. Si el ciclo vencio durante la
+    /// retencion, el ciclo se reancla a hoy (fecha de cobro y ancla): se cobra hoy y el tope de dias sin cobrar cuenta desde
+    /// la reanudacion, no desde antes de la retencion. No guarda.
+    /// </summary>
+    public static async Task ResumeHeldAsync(
+        AppDbContext db, IReadOnlyCollection<string> subscriptionIds, DateTime now, string actor, CancellationToken ct = default)
+    {
+        if (subscriptionIds.Count == 0) return;
+        var states = await db.SubscriptionBillingStates
+            .Where(s => s.MembershipSubscriptionId != null
+                     && subscriptionIds.Contains(s.MembershipSubscriptionId)
+                     && s.Status == RecurringBillingStatus.Stopped
+                     && s.LastFailureReason == ReasonMembershipOnHold)
+            .ToListAsync(ct);
+        foreach (var s in states)
+        {
+            if (s.NextBillingDate.Date < now.Date)
+            {
+                s.NextBillingDate   = now.Date;
+                s.BillingAnchorDate = now.Date;
+            }
+            s.NextAttemptDate     = s.NextBillingDate;
+            s.CurrentAttemptIndex = 0;
+            s.Status              = RecurringBillingStatus.Active;
+            s.LastFailureReason   = null;
+            s.LastUpdateDate      = now;
+            s.LastUpdateBy        = actor;
+        }
     }
 }
