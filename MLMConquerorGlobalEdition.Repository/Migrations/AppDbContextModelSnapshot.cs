@@ -8370,6 +8370,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int>("QualifiedSponsoredMembersDelta")
                         .HasColumnType("int");
 
+                    b.Property<int>("Scope")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("SourceMemberId")
                         .IsRequired()
                         .HasMaxLength(100)

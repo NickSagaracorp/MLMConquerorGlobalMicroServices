@@ -28,6 +28,9 @@ public class MemberStatisticDeltaConfiguration : IEntityTypeConfiguration<Member
 
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
 
+        // Plan Q (Bloque 4): las filas anteriores son de un miembro (0).
+        builder.Property(x => x.Scope).HasDefaultValue(MemberStatisticDeltaScope.Member);
+
         builder.HasIndex(x => new { x.IsApplied, x.CreationDate });
         builder.HasIndex(x => new { x.MemberId, x.IsApplied });
     }

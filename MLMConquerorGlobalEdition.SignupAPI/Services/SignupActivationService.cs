@@ -69,44 +69,23 @@ public class SignupActivationService : ISignupActivationService
 
             if (sponsorNode is not null)
             {
-                var ancestorIds = ParseHierarchyPath(sponsorNode.HierarchyPath);
-
-                // Sprint-16 — tubería de consistencia eventual. Antes este bucle ejecutaba un
-                // MERGE … WITH (HOLDLOCK) por ancestro (arreglo del Bug A del Sprint-15), que era
-                // correcto pero se serializaba en las filas compartidas cerca de la raíz y subía
-                // la latencia media del alta a ~16s con 350 concurrentes.
-                //
-                // Ahora se encola una fila de MemberStatisticDelta por ancestro en un solo
-                // insert por lotes. ApplyMemberStatisticDeltasJob (recurrente, cada minuto, cola
-                // "signups") agrupa por MemberId y consolida el delta sumado en MemberStatistics
-                // con un MERGE por upline distinto y ciclo — así 350 altas concurrentes bajo el
-                // mismo upline producen un MERGE en vez de 350.
-                //
-                // Retraso de frescura: hasta ~1 min. La evaluación de rango corre cada 5 min vía
-                // ProcessRankQueueJob, así que los deltas siempre están al día antes de evaluar;
-                // por si acaso, el job de aplicación reencola una entrada en RankEvaluationQueue
-                // por cada miembro cuyas estadísticas acaba de tocar (espeja SignupAmbassadorHandler L255).
-                var deltas = new List<MemberStatisticDelta>(ancestorIds.Count);
-                foreach (var ancestorId in ancestorIds)
+                // Plan Q (Bloque 4): UNA fila por alta. ApplyMemberStatisticDeltasJob la expande en SQL por los
+                // ascendientes del Node del patrocinador (el mismo delta que antes, en cada uno; los patrocinados solo
+                // en el). Antes, una fila por ascendiente en esta transaccion: 29,4 millones de filas con 1.000.000 de
+                // altas (Plan P, Bloque D). Los puntos (DQ16) los encola MembershipPointsDeltas al pasar la suscripcion a
+                // Active (el propio incluido); aqui solo el tamano del equipo y los patrocinados.
+                await _db.MemberStatisticDeltas.AddAsync(new MemberStatisticDelta
                 {
-                    var qualDelta = ancestorId == member.SponsorMemberId ? 1 : 0;
-                    deltas.Add(new MemberStatisticDelta
-                    {
-                        MemberId                       = ancestorId,
-                        // Plan Q (DQ16): los puntos los encola MembershipPointsDeltas al pasar la suscripcion a
-                        // Active (el propio incluido); aqui solo el tamano del equipo y los patrocinados.
-                        EnrollmentPointsDelta          = 0,
-                        EnrollmentTeamSizeDelta        = 1,
-                        QualifiedSponsoredMembersDelta = qualDelta,
-                        SourceMemberId                 = member.MemberId,
-                        IsApplied                      = false,
-                        CreatedBy                      = actorEmail,
-                        CreationDate                   = now
-                    });
-                }
-
-                if (deltas.Count > 0)
-                    await _db.MemberStatisticDeltas.AddRangeAsync(deltas, ct);
+                    MemberId                       = member.SponsorMemberId,
+                    Scope                          = MemberStatisticDeltaScope.SponsorLine,
+                    EnrollmentPointsDelta          = 0,
+                    EnrollmentTeamSizeDelta        = 1,
+                    QualifiedSponsoredMembersDelta = 1,
+                    SourceMemberId                 = member.MemberId,
+                    IsApplied                      = false,
+                    CreatedBy                      = actorEmail,
+                    CreationDate                   = now
+                }, ct);
             }
         }
 
@@ -153,7 +132,4 @@ public class SignupActivationService : ISignupActivationService
         await ActivateAsync(order, member, subscription, totalQualPoints, now, member.Email, ct);
         return Result<MemberProfile>.Success(member);
     }
-
-    private static List<string> ParseHierarchyPath(string hierarchyPath)
-        => hierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).ToList();
 }
