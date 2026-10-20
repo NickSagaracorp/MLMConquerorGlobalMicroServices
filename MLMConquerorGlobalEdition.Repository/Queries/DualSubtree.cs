@@ -34,32 +34,45 @@ public static class DualSubtree
 
     /// <summary>
     /// Plan Q (DQ8): los nodos bajo <paramref name="node"/> (el no) cuyo miembro casa con <paramref name="term"/> por el
-    /// comienzo del nombre completo o del id (MemberNameSearch). Parte de los perfiles que casan, unos pocos, y comprueba el
-    /// rango de la clave; asi el optimizador, recompilado por la etiqueta, busca primero por el indice de nombre.
+    /// comienzo del nombre completo o del id (MemberNameSearch). Revision del bloque 5 (C1), dos formas segun el tamano del
+    /// equipo (los contadores de pierna):
+    /// <list type="bullet">
+    /// <item>Hasta MemberNameSearch.RangeSearchMaxTeam (5.000), desde el rango del equipo (como antes de DQ8) con el prefijo
+    /// sobre sus perfiles: el coste es el del equipo, que es pequeno, y casa cualquier termino (tambien «amb», con todos los
+    /// ids), sin topes.</item>
+    /// <item>Por encima, desde los perfiles que casan (MemberNameSearch.MatchingIdsSql, con <paramref name="candidatesPerBranch"/>
+    /// por rama) a su nodo, comprobando el rango. Asi un equipo de tres personas ya no paga por los 119.000 perfiles que
+    /// empiezan por «a», y un equipo grande paga como mucho el tope.</item>
+    /// </list>
+    /// Las dos llevan el orden de union fijado (LOOP) y no se recompilan: su plan no depende del tamano del equipo, y la
+    /// recompilacion del OR de tres LIKE sobre columnas calculadas costaba de 100 a 300 ms de CPU en cada busqueda.
     /// </summary>
-    public static IQueryable<DualTeamEntity> SearchUnder(AppDbContext db, DualTeamEntity node, string term)
+    public static IQueryable<DualTeamEntity> SearchUnder(AppDbContext db, DualTeamEntity node, string term, int candidatesPerBranch)
     {
         if (!db.Database.IsSqlServer())
         {
-            var ids = MemberNameSearch.Apply(db, db.MemberProfiles, term).Select(m => m.MemberId);
+            var ids = MemberNameSearch.ApplyInMemory(db.MemberProfiles, term).Select(m => m.MemberId);
             return Under(db, node).Where(d => ids.Contains(d.MemberId));
         }
         var (lo, hi) = DualBinaryPath.SubtreeBounds(Key(node));
+        var self = new SqlParameter("@self", SqlDbType.NVarChar, 450) { Value = node.MemberId };
+        if (node.LeftLegCount + node.RightLegCount <= MemberNameSearch.RangeSearchMaxTeam)
+            return db.DualTeamTree
+                .FromSqlRaw(@"SELECT d.* FROM DualTeamTree d
+INNER LOOP JOIN MemberProfiles m ON m.MemberId = d.MemberId AND m.IsDeleted = 0
+WHERE d.BinaryPath > @lo AND d.BinaryPath < @hi AND d.IsDeleted = 0 AND d.MemberId <> @self
+  AND (m.SearchName LIKE @t OR m.SearchNameReversed LIKE @t OR m.MemberId LIKE @t)",
+                    MemberNameSearch.PatternParameter("@t", term), Param("@lo", lo), Param("@hi", hi), self);
+
+        var (candidatos, parametros) = MemberNameSearch.MatchingIdsSql(term, candidatesPerBranch);
         return db.DualTeamTree
-            // Una rama por indice (UNION): con los tres LIKE en un OR el optimizador recorria MemberProfiles entero
-            // (19.500 lecturas, de 260 a 580 ms en local para 1.768 coincidencias); asi son tres Index Seek. LOOP: de los
-            // perfiles que casan a su nodo por IX_DualTeamTree_MemberId; sin la pista, con la carga de la maquina, a veces
-            // elegia recorrer el rango entero del equipo y unir por hash (mas de 1 s para contar 1.766).
-            .FromSqlRaw(@"SELECT d.* FROM (
-    SELECT MemberId FROM MemberProfiles WHERE SearchName LIKE @t AND IsDeleted = 0
-    UNION SELECT MemberId FROM MemberProfiles WHERE SearchNameReversed LIKE @t AND IsDeleted = 0
-    UNION SELECT MemberId FROM MemberProfiles WHERE MemberId LIKE @t AND IsDeleted = 0) m
+            // LOOP: de los candidatos (como mucho el tope por rama) a su nodo por IX_DualTeamTree_MemberId; sin la pista, con
+            // la maquina cargada, a veces recorria el rango entero del equipo y unia por hash.
+            .FromSqlRaw($@"SELECT d.* FROM (
+    {candidatos}) m
 INNER LOOP JOIN DualTeamTree d ON d.MemberId = m.MemberId AND d.IsDeleted = 0
 WHERE d.BinaryPath > @lo AND d.BinaryPath < @hi AND d.MemberId <> @self",
-                new SqlParameter("@t", SqlDbType.NVarChar, 210) { Value = MemberNameSearch.Pattern(term) },
-                Param("@lo", lo), Param("@hi", hi),
-                new SqlParameter("@self", SqlDbType.NVarChar, 450) { Value = node.MemberId })
-            .TagWith(RecompileTag);
+                parametros.Concat(new object[] { Param("@lo", lo), Param("@hi", hi), self }).ToArray());
     }
 
     /// <summary>

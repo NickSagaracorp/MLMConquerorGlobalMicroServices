@@ -117,7 +117,7 @@ public class DualTeamService : IDualTeamService
         {
             // Plan Q (DQ8): por encima del limite, por el comienzo del nombre o del id, con indice (SearchUnder). El
             // termino sale de la peticion (la rejilla no lo vuelve a aplicar por subcadena) y el total se cuenta.
-            filas = Project(DualSubtree.SearchUnder(_db, myNode, request.Search).AsNoTracking());
+            filas = Project(DualSubtree.SearchUnder(_db, myNode, request.Search, MemberNameSearch.GridCandidatesPerBranch).AsNoTracking());
             request.Search  = null;
             totalSinFiltros = null;
         }
@@ -368,7 +368,7 @@ public class DualTeamService : IDualTeamService
 
         // Plan Q (DQ8): por el comienzo del nombre completo o del id, con indice; los mas cercanos primero.
         var matches = await (
-            from d in DualSubtree.SearchUnder(_db, rootNode, term).AsNoTracking()
+            from d in DualSubtree.SearchUnder(_db, rootNode, term, MemberNameSearch.ViewerCandidatesPerBranch).AsNoTracking()
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
             orderby d.Depth, d.MemberId
             select new { Node = d, m.FirstName, m.LastName }

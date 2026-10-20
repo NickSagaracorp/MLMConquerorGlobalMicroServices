@@ -181,11 +181,13 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         HierarchyId root, int rootLevel, string memberId, bool byStructure = false, string? prefixTerm = null,
         (int Skip, int Take)? structurePage = null)
     {
-        var equipo = _db.GenealogyTree.AsNoTracking().CurrentUnder(root).Where(g => g.MemberId != memberId);
-        // Plan Q (DQ8): con el limite, solo los perfiles cuyo nombre completo o id empieza por el termino (con indice).
-        var perfiles = prefixTerm is null
-            ? _db.MemberProfiles.AsNoTracking()
-            : MemberNameSearch.Apply(_db, _db.MemberProfiles.AsNoTracking(), prefixTerm);
+        // Plan Q (DQ8): con el limite, solo los nodos cuyo miembro empieza por el termino (nombre completo o id), con el
+        // componente de busqueda comun a los dos arboles (revision del bloque 5, I2).
+        var equipo = (prefixTerm is null
+                ? _db.GenealogyTree.CurrentUnder(root)
+                : _db.SearchUnder(root, prefixTerm, MemberNameSearch.GridCandidatesPerBranch))
+            .AsNoTracking().Where(g => g.MemberId != memberId);
+        var perfiles = _db.MemberProfiles.AsNoTracking();
         if (structurePage is { } pagina)
         {
             // Plan Q (Tarea 26): la pagina por estructura sale del arbol (Node, en el orden del indice) antes de unir los

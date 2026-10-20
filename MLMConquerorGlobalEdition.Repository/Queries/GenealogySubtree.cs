@@ -1,3 +1,5 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -115,6 +117,45 @@ public static class GenealogySubtree
 
         var next = parent.GetDescendant(root, null);
         return tree.Where(g => g.Node >= root && g.Node < next);
+    }
+
+    /// <summary>
+    /// Plan Q (DQ8, revision del bloque 5 I2): los nodos vivos bajo <paramref name="root"/> (el incluido) cuyo miembro casa
+    /// con <paramref name="term"/> por el comienzo del nombre completo o del id. Es la forma de los equipos grandes de
+    /// DualSubtree.SearchUnder: de los perfiles que casan (MemberNameSearch.MatchingIdsSql, con tope por rama) a su nodo vivo
+    /// (UX_GenealogyTree_MemberId_Vivo), comprobando el rango de Node. Mi equipo solo la usa por encima de
+    /// TeamGridLimits.FreeMaxRows; por debajo busca por subcadena sobre el equipo. Ninguno si root es null. Sin recompilar:
+    /// el plan lo fijan la pista LOOP y los topes.
+    /// </summary>
+    public static IQueryable<GenealogyEntity> SearchUnder(
+        this DbContext db, HierarchyId? root, string term, int candidatesPerBranch)
+    {
+        var tree = db.Set<GenealogyEntity>();
+        if (root is null) return tree.Where(g => false);
+        if (!db.Database.IsSqlServer())
+        {
+            var ids = MemberNameSearch.ApplyInMemory(db.Set<MemberProfile>(), term).Select(m => m.MemberId);
+            return tree.Under(root).Where(g => ids.Contains(g.MemberId));
+        }
+
+        var (candidatos, parametros) = MemberNameSearch.MatchingIdsSql(term, candidatesPerBranch);
+        var parent = root.GetAncestor(1);
+        // El mismo rango que Under; los Node van como texto y se convierten una vez (sigue siendo un rango del indice).
+        var rango = parent is null
+            ? "g.Node IS NOT NULL"
+            : "g.Node >= CAST(@desde AS hierarchyid) AND g.Node < CAST(@hasta AS hierarchyid)";
+        var todos = parametros.ToList<object>();
+        if (parent is not null)
+        {
+            todos.Add(new SqlParameter("@desde", SqlDbType.NVarChar, 4000) { Value = root.ToString() });
+            todos.Add(new SqlParameter("@hasta", SqlDbType.NVarChar, 4000) { Value = parent.GetDescendant(root, null).ToString() });
+        }
+        return tree
+            // LOOP: de los candidatos (como mucho el tope por rama) a su nodo vivo, por el indice unico de MemberId.
+            .FromSqlRaw($@"SELECT g.* FROM (
+    {candidatos}) m
+INNER LOOP JOIN GenealogyTree g ON g.MemberId = m.MemberId AND g.IsDeleted = 0
+WHERE {rango}", todos.ToArray());
     }
 
     /// <summary>
