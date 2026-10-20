@@ -4162,6 +4162,43 @@ Pendiente o a vigilar:
 - No se midió el progreso de rango de AMB-700829 con el contador (no es una medición del bloque). Va en el Bloque 7.
 - Suites en serie, con los servicios `-run` en marcha y `dotnet build` sin errores: Domain 150, BizCenter 1.175 de 1.177, Signups 1.158, AdminAPI 632 (1 saltada), RankEngine 134, CommissionEngine 94 y Billing 735. Los dos fallos de BizCenter: `EscritoresDeSuscripcionesTests`, por el script nuevo (corregido en `c1efbff`), y el frágil conocido `SqlServerVenenoEnLaColaTests.Un_tiempo_agotado_no_cuenta_como_intento_ni_aparta_deltas` (el candado lo tenía el trabajo `-run`). Repetidas solas, las 12 de esas dos clases pasan.
 
+### Revisión del bloque 4
+
+Dos importantes, tres de paridad, el script `04` y uno cosmético. Las pruebas nuevas de SQL Server están en `SqlServerRevisionBloque4Tests` (BizCenter, en una transacción que se deshace). Todas se vieron en rojo antes de la corrección. Lo que cambió:
+
+- **1 (importante). Puntos perdidos con un nodo vivo sin `Node`.** Al encolar, `MembershipPointsDeltas` decidía «tiene nodo» por la ruta de texto. El trabajo expandía desde el más reciente **con** `Node`. Así, un vigente sin `Node` dejaba una `SponsorLine` que nadie aplicaba (ni siquiera al propio). Y si un nodo vivo más viejo sí tenía `Node`, se acreditaba esa posición vieja.
+  - Ahora hay una sola definición, `GenealogySubtree.CurrentNodeAsync`: el `Node` del nodo vivo vigente, el más reciente por `CreationDate` e `Id` (como `CurrentOfAsync`), contando lo que el contexto va a guardar.
+  - El trabajo guarda en `#lote` el `Node` del vigente (`TOP 1` vivo, y después `Node` no nulo) y expande desde ahí.
+  - Sin `Node`, se usa la regla de respaldo: la fila propia y una `SponsorLine` sobre el primer patrocinador de la cadena con nodo (`FirstSponsorWithNodeAsync`, con guarda de ciclos).
+  - Las filas de línea que siguen sin tener a quién aplicarse se marcan aplicadas, se cuentan y salen en un aviso con su número y sus `Id` (los 100 primeros). Así siguen en `MemberStatisticDeltas` para poder inspeccionarlas.
+  - Por qué no se dejan pendientes: cada tanda las volvería a tomar sin fin, y el bucle del trabajo no terminaría. Por qué no van a una tabla de cartas muertas: necesitaría una migración y un camino para reprocesarlas, y con la misma definición al encolar solo aparecen si el nodo cambia entre encolar y aplicar.
+  - **En local hay 0 nodos vivos con `Node IS NULL`** (de 119.446). Tampoco hay ningún miembro con más de un nodo vivo ni nodos borrados con `Node`. Hay 24 filas de `MemberStatistics` sin nodo vivo, todas a 0. Commit `070d272`.
+- **2 (importante). Calificados de inscripción sin respaldo.** `QualifiedTeamDeltas` escribía una `AncestorsOf` aunque el miembro no tuviera nodo, y esa fila no la aplicaba nadie. Ahora `RecordAsync` (asíncrono, como los puntos) usa la misma definición.
+  - Con nodo, la `AncestorsOf` de siempre.
+  - Sin nodo, una `SponsorLine` sobre el primer patrocinador con nodo, él incluido (el miembro quedará en su equipo), con solo `EnrollmentQualifiedTeamMembersDelta`.
+  - Si nadie tiene nodo, no se escribe ninguna fila.
+  - Una `SponsorLine` que solo lleva calificados no encola rango (columna `Rango` en `#exp`).
+  - Pruebas ajustadas: `ActivacionUnDeltaPorAltaTests` y `CompleteSignupHandlerTests`, cuyo activado no tiene nodo. Prueba nueva InMemory: `QualifiedTeamDeltasTests.Sin_nodo_la_fila_va_al_primer_patrocinador_con_nodo_y_sin_ninguno_no_hay_fila`. Commit `b4e5de9`.
+- **3. Paridad de la cola de rango (Q1, 10 niveles).** Una fila propia de puntos (`SourceMemberId = MemberId`: activación, cancelación, retención o reactivación) encola hasta `Distancia <= @niveles`, es decir, el miembro y sus 10 ascendientes. La del alta, sobre el patrocinador, sigue en `< @niveles`. En los dos casos son los 10 por encima de quien cambió, y la constante no cambia. Queda resuelto el punto «Cota de los cambios de estado» de las notas. `PuntosUnaFilaPorLineaTests` espera ahora el propio y sus 10. Commit `338c9be`.
+- **4. Rama InMemory.** Sube por el `Node` del vigente y salta las posiciones sin nodo vivo con `Node`, como SQL Server; antes subía por `ParentMemberId`. Avisa igual. Las pruebas InMemory que activan, cancelan o aplican la línea siembran `Node`: `PuntosUnaFilaPorLinea`, `PuntosSinNodoDeInscripcion`, `CancelMembershipHandler`, `SignupRankInputs`, `CompleteSignupHandler`, `AltaPorCripto` y `ApplyMemberStatisticDeltasJobTests`. Las de la línea pasaron al commit 1, porque ya lo necesitaba la nueva definición al encolar. Commit `9976cb8`.
+- **5. Distancia sobre nodos borrados.** El problema era real: la distancia era la posición en el árbol, así que un ascendiente borrado en medio ocupaba un puesto de la cota.
+  - Ahora `ROW_NUMBER() OVER (ORDER BY an.Distancia) - 1` sobre los ascendientes vivos de cada fila, dentro del mismo `CROSS APPLY` (sigue siendo por conjuntos). El propio es el 0.
+  - En la práctica no pasaba: ningún código borra nodos de `GenealogyTree`, y en local no hay nodos borrados con `Node`.
+  - Medición de la Tarea 20 tras el cambio: 1.000 altas a 8 niveles en 1.533 ms (antes, de 1.184 a 1.910 en caliente). Commit `559b30f`.
+- **6. `04-calificados-de-inscripcion.sql`.**
+  - La cabecera exige expresamente todos los servicios parados, los `-run` incluidos, y explica por qué no basta con el candado.
+  - Recorre el `Node` como el trabajo: el padre es `Node.GetAncestor(1)` y el nivel `Node.GetLevel()`, no `ParentMemberId` ni `Level`. En local, 33 nodos vivos tienen un `Level` distinto del de su `Node`, aunque ningún hijo queda por encima de su padre, así que el resultado era el mismo.
+  - Quien tiene estadísticas y no tiene nodo vivo con `Node` queda a 0.
+  - También marca aplicadas las `SponsorLine` de respaldo que, al poner a cero los calificados, quedan sin nada.
+  - **No se ejecutó.** Solo se comprobó la sintaxis con `SET PARSEONLY ON` en `tempdb`.
+  - Una comprobación de solo lectura (tablas temporales) con su mismo cálculo da **0 contadores descuadrados** y 0 deltas de calificados pendientes en local. Por ahora no hace falta volver a ejecutarlo; sigue siendo un paso obligatorio del despliegue, con los servicios parados. Commit `d6dfd27`.
+- **7. `MIN(CreatedBy)`.** Se deja como está (cosmético).
+- **Queda abierto.** La fila del alta (`SignupActivationService`) sigue decidiendo por la existencia del nodo vigente del patrocinador, no por su `Node`. Si ese nodo no tuviera `Node`, el trabajo la avisaría como fila sin nodo. En local no ocurre. Mover la fila del alta a otro patrocinador cambiaría a quién cuentan los patrocinados, así que no se tocó.
+- **Árbol `-run`.** Está en `fd0c6b8`, sin estos commits. Su trabajo y el nuevo son compatibles: sin migración, y con 0 nodos sin `Node` los dos calculan lo mismo, salvo la cota 10/9 de las filas propias y la distancia sobre borrados. Al actualizarlo, se reinician sus servicios.
+- **Suites** (en serie, servicios `-run` en marcha, `dotnet build` sin errores): Domain 150, BizCenter 1.184 de 1.185, Signups 1.160, AdminAPI 632 (1 saltada), RankEngine 134, CommissionEngine 94 y Billing 735.
+  - El fallo de BizCenter fue `EntraxQrPaymentTests.Caducado_o_fallido_ofrece_un_QR_nuevo_u_otro_metodo("Expired")`, InMemory y ajeno a este bloque: repetida la clase 3 veces, pasa 22 de 22.
+  - En una pasada anterior falló el frágil conocido `SqlServerVenenoEnLaColaTests.Un_tiempo_agotado_…`, que pasa al repetirlo solo.
+
 ---
 
 ## Bloque 5: reportes con 1.000.000
