@@ -18,6 +18,13 @@ public class MembershipSubscriptionConfiguration : IEntityTypeConfiguration<Memb
             .HasForeignKey(s => s.LastOrderId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Plan Q (revision del bloque 2, M-4): sin cascada desde el nivel. Borrar un nivel borraba sus suscripciones en
+        // SQL, por debajo del interceptor (DQ13, DQ16). El admin desactiva niveles (IsActive), no los borra.
+        builder.HasOne(s => s.MembershipLevel)
+            .WithMany()
+            .HasForeignKey(s => s.MembershipLevelId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // Plan Q: las suscripciones activas por miembro, para unir el equipo (millones de filas) con ellas sin leer la tabla.
         // Solo el estado: las consultas no filtran IsDeleted (la entidad no tiene filtro global), y un filtro con
         // IsDeleted dejaria el indice sin uso.

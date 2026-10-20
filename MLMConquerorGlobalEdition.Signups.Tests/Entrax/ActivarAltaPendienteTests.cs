@@ -68,6 +68,8 @@ public class ActivarAltaPendienteTests
     {
         await using var db = InMemoryDbHelper.Create();
         await EscenarioEntrax.SembrarAltaAsync(db, OrderStatus.Processing);
+        // Revision del bloque 2 (M-4): sin cascada, las suscripciones del miembro se borran antes.
+        db.MembershipSubscriptions.RemoveRange(await db.MembershipSubscriptions.ToListAsync());
         db.MemberProfiles.Remove(await db.MemberProfiles.SingleAsync());
         await db.SaveChangesAsync();
 

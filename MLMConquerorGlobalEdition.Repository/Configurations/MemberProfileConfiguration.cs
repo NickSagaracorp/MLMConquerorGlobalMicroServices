@@ -52,11 +52,14 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
             .HasForeignKey<MemberProfile>("ActiveMembershipId")
             .IsRequired(false);
 
-        // Membership history — one-to-many
+        // Membership history — one-to-many. Plan Q (revision del bloque 2, M-4): sin cascada. Borrar un miembro borraba
+        // sus suscripciones en SQL, por debajo de EF y del interceptor de calificados y puntos (DQ13, DQ16). Nada borra
+        // miembros hoy (las bajas son logicas); quien lo haga borra antes sus suscripciones por EF.
         builder.HasMany(x => x.MembershipHistory)
             .WithOne()
             .HasForeignKey(s => s.MemberId)
-            .HasPrincipalKey(m => m.MemberId);
+            .HasPrincipalKey(m => m.MemberId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         // Tree nodes
         builder.HasOne(x => x.EnrollmentNode)

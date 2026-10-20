@@ -17493,13 +17493,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .WithMany("MembershipHistory")
                         .HasForeignKey("MemberId")
                         .HasPrincipalKey("MemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipLevel", "MembershipLevel")
                         .WithMany()
                         .HasForeignKey("MembershipLevelId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("LastOrder");
