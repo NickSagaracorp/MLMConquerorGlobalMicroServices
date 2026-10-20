@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -34,13 +35,17 @@ public class SystemHealthController : ControllerBase
     {
         // AdminAPI self-check (local DB)
         var adminDbUp = await _db.Database.CanConnectAsync(ct);
+        // Plan Q (revision 2 del bloque 2, I1): deltas de pierna apartados de la cola (Q-R30). Debe ser 0; si no, las
+        // piernas de sus ascendientes van sin ellos hasta reponerlos y el servicio queda degradado.
+        var apartados = adminDbUp ? await LegPointMaintenance.DeadLetterCountAsync(_db, ct) : 0;
         var adminStatus = new ServiceHealthResult
         {
             Service = "MLMConquerorGlobalEdition.AdminAPI",
-            Status  = adminDbUp ? "Healthy" : "Unhealthy",
+            Status  = !adminDbUp ? "Unhealthy" : apartados > 0 ? "Degraded" : "Healthy",
             Checks  = new Dictionary<string, string>
             {
-                ["database"] = adminDbUp ? "Healthy" : "Unhealthy"
+                ["database"] = adminDbUp ? "Healthy" : "Unhealthy",
+                ["dualLegDeadLetters"] = !adminDbUp ? "Unknown" : apartados > 0 ? $"Degraded: {apartados}" : "Healthy"
             }
         };
 

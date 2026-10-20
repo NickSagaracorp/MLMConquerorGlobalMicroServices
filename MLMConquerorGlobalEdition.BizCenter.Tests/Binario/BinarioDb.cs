@@ -95,7 +95,9 @@ public static class BinarioDb
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MembershipStatusHistories WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MembershipSubscriptions WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
+        // Revision 2 del bloque 2: tambien las filas que crea MembershipPointsDeltas (member-points) y sus deltas de inscripcion.
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatisticDeltas WHERE MemberId LIKE {patron} OR SourceMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM RankEvaluationQueue WHERE TriggerMemberId LIKE {patron}");
     }
 }

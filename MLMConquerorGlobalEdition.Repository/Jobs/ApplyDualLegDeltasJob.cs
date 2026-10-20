@@ -13,6 +13,8 @@ namespace MLMConquerorGlobalEdition.Repository.Jobs;
 /// <see cref="RunLockResource"/> con espera 0). Con DisableConcurrentExecution(3600) y un cron por minuto, un vaciado
 /// largo apilaba ejecuciones que ocupaban trabajadores de "bizcenter" hasta una hora (AutoPlacementJob, instantanea).
 /// Sin reintentos automaticos: la siguiente pasada es dentro de un minuto.
+/// Revision 2 del bloque 2 (I1): es el UNICO que aisla un fallo de datos (isolateFailures) y, en cada pasada, registra
+/// como error los deltas apartados en DualLegDeltaDeadLetters (debe estar vacia, Q-R30).
 /// Vive en Repository por la misma razon que ApplyMemberStatisticDeltasJob: todos los planificadores de Hangfire deben
 /// poder cargar su tipo. Corre en la cola "bizcenter", la del servicio que coloca (AutoPlacementJob).
 /// </summary>
@@ -33,7 +35,13 @@ public class ApplyDualLegDeltasJob
     [AutomaticRetry(Attempts = 0)]
     public async Task<int> ExecuteAsync(CancellationToken ct = default)
     {
-        if (!_db.Database.IsSqlServer()) return await LegPointMaintenance.DrainAsync(_db, ct: ct, logger: _logger);
+        var apartados = await LegPointMaintenance.DeadLetterCountAsync(_db, ct);
+        if (apartados > 0)
+            _logger.LogError("ApplyDualLegDeltas: {Count} deltas de pierna apartados en DualLegDeltaDeadLetters; sus piernas quedan sin ellos hasta reponerlos (Q-R30).",
+                apartados);
+
+        if (!_db.Database.IsSqlServer())
+            return await LegPointMaintenance.DrainAsync(_db, ct: ct, logger: _logger, isolateFailures: true);
 
         await _db.Database.OpenConnectionAsync(ct);
         try
@@ -48,7 +56,7 @@ public class ApplyDualLegDeltasJob
             }
             try
             {
-                var n = await LegPointMaintenance.DrainAsync(_db, ct: ct, logger: _logger);
+                var n = await LegPointMaintenance.DrainAsync(_db, ct: ct, logger: _logger, isolateFailures: true);
                 if (n > 0) _logger.LogInformation("ApplyDualLegDeltas: {Count} deltas de pierna aplicados.", n);
                 return n;
             }

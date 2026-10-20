@@ -18,6 +18,30 @@ public class ApplyDualLegDeltasJobTests
         var job = new ApplyDualLegDeltasJob(db, NullLogger<ApplyDualLegDeltasJob>.Instance);
         (await job.ExecuteAsync()).Should().Be(0);
     }
+
+    /// <summary>
+    /// Revision 2 del bloque 2 (I1): DualLegDeltaDeadLetters debe estar vacia (Q-R30). Mientras tenga filas, cada pasada del
+    /// trabajo lo registra como error con la cuenta, para que el aviso no dependa de mirar la tabla.
+    /// </summary>
+    [Fact]
+    public async Task Con_deltas_apartados_cada_pasada_registra_un_error_con_la_cuenta()
+    {
+        await using var db = ReportesDb.Nueva();
+        db.DualLegDeltaDeadLetters.AddRange(
+            new DualLegDeltaDeadLetter { DeltaId = 1, StartMemberId = "A", Points = 5, Reason = "fallo: 8115", CreatedBy = "prueba" },
+            new DualLegDeltaDeadLetter { DeltaId = 2, StartMemberId = "B", Points = 5, Reason = "sin-nodo", CreatedBy = "prueba" });
+        await db.SaveChangesAsync();
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<ApplyDualLegDeltasJob>>();
+
+        await new ApplyDualLegDeltasJob(db, logger.Object).ExecuteAsync();
+
+        logger.Verify(l => l.Log(
+            Microsoft.Extensions.Logging.LogLevel.Error,
+            It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("2") && v.ToString()!.Contains("DualLegDeltaDeadLetters")),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
 }
 
 /// <summary>

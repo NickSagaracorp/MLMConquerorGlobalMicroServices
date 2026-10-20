@@ -19,6 +19,8 @@ public sealed record LegDrainOptions
     public int MaxPathRows { get; init; } = LegPointMaintenance.MaxPathRowsPerBatch;
     /// <summary>Filas por UPDATE.</summary>
     public int UpdateChunk { get; init; } = LegPointMaintenance.UpdateChunk;
+    /// <summary>Segundos de cada comando de una tanda, ademas de la espera del candado.</summary>
+    public int BatchCommandSeconds { get; init; } = LegPointMaintenance.BatchCommandSeconds;
 }
 
 /// <summary>
@@ -65,11 +67,21 @@ public static class LegPointMaintenance
     public const int MaxAttempts = 3;
 
     /// <summary>
-    /// Errores del propio SQL de la tanda (objeto repetido o inexistente, columna, sintaxis): no dependen de los datos de
-    /// ningun arranque, asi que no se parte la ventana ni se anotan intentos (apartar deltas sanos por un fallo del codigo
-    /// los perderia). Se propagan tal cual.
+    /// Revision 2 del bloque 2 (I1): los UNICOS errores que pueden ser culpa de los datos de un arranque (desbordamiento,
+    /// conversion, division por cero, clave repetida, FK, nulo, truncado). Solo estos parten la ventana y anotan intentos.
+    /// Cualquier otro (tiempo agotado -2; conexion o conmutacion -1, 53, 233, 10054, 40613, 4060; registro lleno 9002;
+    /// archivo lleno 1105; memoria 701 y 8645; espera de candado 1222; un fallo del propio SQL de la tanda) no depende de
+    /// ningun arranque: se propaga sin anotar nada, para no apartar deltas sanos (dinero) por un problema del servidor.
     /// </summary>
-    private static readonly HashSet<int> CodeErrors = new() { 102, 156, 207, 208, 1750, 1913, 2714, 4104, 8156 };
+    public static readonly IReadOnlySet<int> DataErrors =
+        new HashSet<int> { 8115, 8114, 220, 232, 517, 8134, 245, 2627, 2601, 547, 515, 8152, 2628 };
+
+    /// <summary>
+    /// Revision 2 del bloque 2 (I1): los deltas apartados en DualLegDeltaDeadLetters (Q-R30). Debe ser 0: el trabajo de cada
+    /// minuto lo registra como error y la salud del sistema (AdminAPI) queda degradada mientras no lo sea.
+    /// </summary>
+    public static Task<int> DeadLetterCountAsync(AppDbContext db, CancellationToken ct = default) =>
+        db.DualLegDeltaDeadLetters.AsNoTracking().CountAsync(ct);
 
     /// <summary>
     /// Encola la hoja recien guardada: sus puntos propios APLICADOS y 1 nodo, en la pierna de su padre. Calificados 0 (revision del
@@ -116,9 +128,13 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
     /// Aplica la cola hasta vaciar lo encolado al empezar (o hasta <paramref name="maxBatches"/> tandas) y devuelve cuantos
     /// deltas aplico. Cada tanda va en su transaccion; si quien llama ya tiene una (pruebas), trabaja dentro de ella sin
     /// confirmar, sin reintentar y sin apartar deltas por fallo.
+    /// <paramref name="isolateFailures"/> (revision 2 del bloque 2, I1): solo el trabajo de cada minuto
+    /// (ApplyDualLegDeltasJob) aisla un fallo de datos partiendo la ventana y anotando intentos. Los demas (comisiones,
+    /// instantanea, rango) propagan el error en el acto: no pueden quedarse decenas de minutos aislando un arranque.
     /// </summary>
     public static async Task<int> DrainAsync(AppDbContext db, int maxBatches = int.MaxValue, CancellationToken ct = default,
-        int lockTimeoutMs = DualTeamGate.DefaultLockTimeoutMs, ILogger? logger = null, LegDrainOptions? options = null)
+        int lockTimeoutMs = DualTeamGate.DefaultLockTimeoutMs, ILogger? logger = null, LegDrainOptions? options = null,
+        bool isolateFailures = false)
     {
         if (!db.Database.IsRelational()) return await DrainInMemoryAsync(db, ct);
         options ??= new LegDrainOptions();
@@ -126,7 +142,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
         // Revision I1: el tiempo de EF por comando es 30 s; una tanda espera el candado (hasta lockTimeoutMs) y despues
         // calcula. Con 30 s, un comando agotado se deshacia y la misma tanda se repetia sin fin.
         var antes = db.Database.GetCommandTimeout();
-        db.Database.SetCommandTimeout(lockTimeoutMs / 1000 + BatchCommandSeconds);
+        db.Database.SetCommandTimeout(lockTimeoutMs / 1000 + options.BatchCommandSeconds);
         try
         {
             // Revision I2: solo lo encolado hasta ahora. Con altas entrando sin parar, «hasta que no quede nada» podia no
@@ -138,7 +154,8 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
             var total = 0;
             var sinNodo = 0;
             long ultimo = 0;
-            var ventana = Math.Max(1, options.WindowRows);
+            var completa = Math.Max(1, options.WindowRows);
+            var ventana = completa;
             for (var i = 0; i < maxBatches; i++)
             {
                 BatchResult r;
@@ -146,12 +163,13 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 {
                     r = await ApplyBatchAsync(db, hasta, ultimo, ventana, options, lockTimeoutMs, ct);
                 }
-                catch (SqlException ex) when (ex.Number != 1205 && !CodeErrors.Contains(ex.Number)
+                catch (SqlException ex) when (isolateFailures && DataErrors.Contains(ex.Number)
                                               && db.Database.CurrentTransaction is null && !ct.IsCancellationRequested)
                 {
-                    // Revision del bloque 2 (M-3): un fallo que no es un interbloqueo (un dato que desborda, una clave rota, un
-                    // tiempo agotado) se repite con la mitad de la ventana hasta aislar un arranque; con uno solo, se le
-                    // anota el intento y, al llegar a MaxAttempts, sus deltas se apartan para que no bloqueen la cola.
+                    // Revision del bloque 2 (M-3) y revision 2 (I1): un fallo de DATOS (un punto que desborda, una clave
+                    // repetida) se repite con la mitad de la ventana hasta aislar un arranque; con uno solo, se le anota el
+                    // intento y, al llegar a MaxAttempts, sus deltas se apartan para que no bloqueen la cola. Cualquier otro
+                    // error (tiempo, conexion, registro, memoria) se propaga sin anotar nada.
                     if (ventana > 1)
                     {
                         logger?.LogWarning(ex, "Cola de piernas: fallo una tanda de {Ventana} filas desde el Id {Ultimo}; se repite con la mitad.", ventana, ultimo);
@@ -164,6 +182,8 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 }
                 total += r.Claimed;
                 sinNodo += r.WithoutNode;
+                // Revision 2 del bloque 2 (I1): tras una tanda partida que sale bien, la siguiente vuelve a la ventana entera.
+                ventana = completa;
                 if (r.WindowRows == 0) break;
                 ultimo = r.LastId;
             }
@@ -194,7 +214,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 await using var cmd = new SqlCommand(ApplyBatchSql, conn,
                     (SqlTransaction)db.Database.CurrentTransaction!.GetDbTransaction())
                 {
-                    CommandTimeout = db.Database.GetCommandTimeout() ?? (lockTimeoutMs / 1000 + BatchCommandSeconds)
+                    CommandTimeout = db.Database.GetCommandTimeout() ?? (lockTimeoutMs / 1000 + options.BatchCommandSeconds)
                 };
                 cmd.Parameters.Add("@lote", SqlDbType.Int).Value = ventana;
                 cmd.Parameters.Add("@maxFilas", SqlDbType.BigInt).Value = (long)options.MaxPathRows;
