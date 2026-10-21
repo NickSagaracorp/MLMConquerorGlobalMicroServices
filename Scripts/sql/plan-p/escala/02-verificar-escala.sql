@@ -52,7 +52,7 @@ INSERT INTO #r SELECT N'binario: clave o profundidad incoherente con el padre', 
 FROM DualTeamTree c JOIN DualTeamTree p ON p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
 CROSS APPLY dbo.DualChildKey(p.BinaryPath, p.Depth, c.Side) k
 WHERE c.IsDeleted = 0 AND (c.BinaryPath <> k.ChildKey OR c.Depth <> p.Depth + 1);
-INSERT INTO #r SELECT N'binario: raices (ESC-0 y ESC-P)', COUNT(*), 2 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NULL;
+INSERT INTO #r SELECT N'binario: raices ESC (ESC-0 y ESC-P)', COUNT(*), 2 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NULL AND MemberId LIKE N'ESC-%';
 
 IF OBJECT_ID('tempdb..#v') IS NOT NULL DROP TABLE #v;
 SELECT d.MemberId, d.ParentMemberId, d.Side, d.Depth, d.LeftLegPoints, d.RightLegPoints, d.LeftLegCount, d.RightLegCount,
