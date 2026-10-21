@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -23,11 +24,13 @@ public class AdminMemberRanksController : ControllerBase
 {
     private readonly AppDbContext            _db;
     private readonly IRankComputationService _ranks;
+    private readonly IDateTimeProvider       _clock;
 
-    public AdminMemberRanksController(AppDbContext db, IRankComputationService ranks)
+    public AdminMemberRanksController(AppDbContext db, IRankComputationService ranks, IDateTimeProvider clock)
     {
         _db    = db;
         _ranks = ranks;
+        _clock = clock;
     }
 
     [HttpGet("dashboard")]
@@ -73,7 +76,7 @@ public class AdminMemberRanksController : ControllerBase
 
         var previous = (await _db.GetCurrentRankAsync(memberId, ct))?.RankDefinitionId;
 
-        var now = DateTime.UtcNow;
+        var now = _clock.Now;
         await _db.MemberRankHistories.AddAsync(new MemberRankHistory
         {
             MemberId          = memberId,
