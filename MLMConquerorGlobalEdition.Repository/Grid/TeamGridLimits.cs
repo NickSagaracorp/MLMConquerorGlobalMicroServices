@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Repository.Context;
+
 namespace MLMConquerorGlobalEdition.Repository.Grid;
 
 /// <summary>
@@ -16,4 +19,13 @@ public static class TeamGridLimits
         request.Sorts = new List<GridSort>();
         return true;
     }
+
+    /// <summary>
+    /// Plan Q (DQ7): el tamano guardado del equipo de inscripcion de <paramref name="memberId"/>
+    /// (MemberStatistics.EnrollmentTeamSize: activados no cancelados, diferido por la cola de deltas). Basta para decidir el
+    /// limite; no es el total de filas de una rejilla (revision del bloque 5, I1: GenealogySubtree.CountUnderAsync).
+    /// </summary>
+    public static Task<int> EnrollmentTeamSizeAsync(AppDbContext db, string memberId, CancellationToken ct = default) =>
+        db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == memberId)
+            .OrderBy(s => s.Id).Select(s => s.EnrollmentTeamSize).FirstOrDefaultAsync(ct);
 }

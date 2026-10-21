@@ -93,10 +93,12 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (from.HasValue) query = query.Where(v => v.EnrollDate >= from.Value);
         if (to.HasValue)   query = query.Where(v => v.EnrollDate <= to.Value);
 
-        // Plan Q (DQ14): sin busqueda ni fechas el total es el tamano guardado; con filtros se cuenta el resultado.
+        // Plan Q (DQ14): sin busqueda ni fechas, el total son los nodos vivos del equipo sin el que mira (revision del
+        // bloque 5, I1: lo que se lista; EnrollmentTeamSize solo cuenta activados), por el indice estrecho; con filtros se
+        // cuenta el resultado.
         var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
         var total = sinFiltros
-            ? await TeamSizeAsync(memberId, ct)
+            ? await TeamRowsAsync(myNode.Node, ct)
             : await query.CountAsync(ct);
         var items = await query
             .OrderByDescending(v => v.EnrollDate)
@@ -125,10 +127,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         SanitizeGridRequest(request);
-        // Plan Q (DQ7): el tamano del equipo de inscripcion lo guarda MemberStatistics (diferido por la cola de deltas;
-        // basta para decidir un limite).
-        var tamano   = await TeamSizeAsync(memberId, ct);
-        var limitado = TeamGridLimits.Limit(request, tamano);
+        // Plan Q (DQ7): el limite lo decide el tamano guardado (MemberStatistics, diferido por la cola de deltas; basta para
+        // un limite). No es el total de la rejilla (revision del bloque 5, I1).
+        var limitado = TeamGridLimits.Limit(request, await TeamGridLimits.EnrollmentTeamSizeAsync(_db, memberId, ct));
 
         string? prefijo = null;
         if (limitado && !string.IsNullOrWhiteSpace(request.Search))
@@ -137,38 +138,39 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             request.Search = null;
         }
         var byStructure = request.Sorts.Count == 0;
+        var sinFiltros  = prefijo is null && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0;
         PagedResult<EnrollmentMyTeamMemberView> result;
-        if (byStructure && prefijo is null && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0)
+        if (byStructure && sinFiltros)
         {
-            // Plan Q (Tarea 26): sin busqueda, filtros ni orden pedido, la pagina se toma del arbol (el recorrido de
-            // IX_GenealogyTree_Node, cubriente) y solo despues se unen sus 20 perfiles. Con el OFFSET sobre la union, el
-            // optimizador unia el rango entero con los perfiles y lo ordenaba (un Sort de 119.000 filas en local). El
-            // total es el tamano guardado (DQ14).
+            // Plan Q (Tarea 26): sin busqueda, filtros ni orden pedido, la pagina se toma del arbol (GenealogySubtree.PageUnder)
+            // y solo despues se unen sus 20 perfiles. El total son los nodos vivos del equipo (I1).
             var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
             var items = await BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
                                                    structurePage: ((page - 1) * pageSize, pageSize)).ToListAsync(ct);
             result = new PagedResult<EnrollmentMyTeamMemberView>
             {
-                Items = items, TotalCount = tamano, Page = page, PageSize = pageSize
+                Items = items, TotalCount = await TeamRowsAsync(myNode.Node, ct), Page = page, PageSize = pageSize
             };
         }
         else
         {
             var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure, prefixTerm: prefijo);
-            // Plan Q (DQ14): sin busqueda ni filtros, el total es el tamano guardado; nada cuenta el equipo al vuelo.
-            // Con el prefijo el resultado ya no es el equipo entero y se cuenta.
+            // Plan Q (DQ14): sin busqueda ni filtros, el total son los nodos vivos (I1), sin contar la union; con busqueda o
+            // filtros se cuenta el resultado.
             result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
-                                                   unfilteredTotal: prefijo is null ? tamano : null);
+                                                   unfilteredTotal: sinFiltros ? await TeamRowsAsync(myNode.Node, ct) : null);
         }
         await EnrichPageAsync(result.Items, ct);
         result.Limited = limitado;
         return result;
     }
 
-    /// <summary>Plan Q (DQ7, DQ14): el tamano guardado del equipo de inscripcion (MemberStatistics.EnrollmentTeamSize).</summary>
-    private Task<int> TeamSizeAsync(string memberId, CancellationToken ct) =>
-        _db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == memberId)
-            .OrderBy(s => s.Id).Select(s => s.EnrollmentTeamSize).FirstOrDefaultAsync(ct);
+    /// <summary>
+    /// Revision del bloque 5 (I1): las filas de Mi equipo sin filtros, los nodos vivos del equipo menos el del que mira (su
+    /// nodo es la raiz del rango). Es exactamente lo que lista la rejilla: la union con los perfiles es externa.
+    /// </summary>
+    private async Task<int> TeamRowsAsync(HierarchyId root, CancellationToken ct) =>
+        Math.Max(0, await _db.CountUnderAsync(root, ct) - 1);
 
     /// <summary>
     /// LIGHT DB projection of the viewer's enrollment downline — only directly-translatable
@@ -181,53 +183,46 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         HierarchyId root, int rootLevel, string memberId, bool byStructure = false, string? prefixTerm = null,
         (int Skip, int Take)? structurePage = null)
     {
-        // Plan Q (DQ8): con el limite, solo los nodos cuyo miembro empieza por el termino (nombre completo o id), con el
-        // componente de busqueda comun a los dos arboles (revision del bloque 5, I2).
-        var equipo = (prefixTerm is null
-                ? _db.GenealogyTree.CurrentUnder(root)
-                : _db.SearchUnder(root, prefixTerm, MemberNameSearch.GridCandidatesPerBranch))
-            .AsNoTracking().Where(g => g.MemberId != memberId);
-        var perfiles = _db.MemberProfiles.AsNoTracking();
+        IQueryable<GenealogyEntity> equipo;
         if (structurePage is { } pagina)
         {
-            // Plan Q (Tarea 26): la pagina por estructura sale del arbol (Node, en el orden del indice) antes de unir los
-            // perfiles; el orden de fuera es el de esas pocas filas.
-            var nodos = equipo.OrderBy(g => g.Node).Skip(pagina.Skip).Take(pagina.Take);
-            return
-                from g in nodos
-                join m in perfiles on g.MemberId equals m.MemberId
-                orderby g.Node
-                select new EnrollmentMyTeamMemberView
-                {
-                    MemberId        = m.MemberId,
-                    FullName        = m.FirstName + " " + m.LastName,
-                    Email           = m.Email,
-                    Phone           = m.Phone,
-                    Country         = m.Country,
-                    Level           = g.Level - rootLevel,
-                    EnrollDate      = m.EnrollDate,
-                    SponsorMemberId = m.SponsorMemberId,
-                    AccountStatus   = m.Status.ToString()
-                };
+            // Plan Q (Tarea 26): la pagina por estructura sale del arbol antes de unir los perfiles (componente comun con los
+            // eventos del equipo); el orden de fuera es el de esas pocas filas.
+            equipo = _db.GenealogyTree.AsNoTracking().PageUnder(root, pagina.Skip, pagina.Take, excludeMemberId: memberId);
         }
-        // Plan Q (DQ7): con busqueda o filtros, el orden por estructura va sobre el nodo, antes del join y de la proyeccion
-        // (la vista no lleva Node).
-        if (byStructure) equipo = equipo.OrderBy(g => g.Node);
-        return
+        else
+        {
+            // Plan Q (DQ8): con el limite, solo los nodos cuyo miembro empieza por el termino (nombre completo o id), con el
+            // componente de busqueda comun a los dos arboles (revision del bloque 5, I2).
+            equipo = (prefixTerm is null
+                    ? _db.GenealogyTree.CurrentUnder(root)
+                    : _db.SearchUnder(root, prefixTerm, MemberNameSearch.GridCandidatesPerBranch))
+                .AsNoTracking().Where(g => g.MemberId != memberId);
+            // Plan Q (DQ7): con busqueda o filtros, el orden por estructura va sobre el nodo, antes del join y de la
+            // proyeccion (la vista no lleva Node).
+            if (byStructure) equipo = equipo.OrderBy(g => g.Node);
+        }
+
+        // Revision del bloque 5 (I1, minor a): union externa. Un nodo vivo cuyo perfil falta o esta borrado sale con su id
+        // (como hacia Actividad), asi la rejilla lista los nodos vivos, que es el total, y ninguna pagina sale corta.
+        var filas =
             from g in equipo
-            join m in perfiles on g.MemberId equals m.MemberId
-            select new EnrollmentMyTeamMemberView
-            {
-                MemberId        = m.MemberId,
-                FullName        = m.FirstName + " " + m.LastName,
-                Email           = m.Email,
-                Phone           = m.Phone,
-                Country         = m.Country,
-                Level           = g.Level - rootLevel,
-                EnrollDate      = m.EnrollDate,
-                SponsorMemberId = m.SponsorMemberId,
-                AccountStatus   = m.Status.ToString()
-            };
+            join p in _db.MemberProfiles.AsNoTracking() on g.MemberId equals p.MemberId into perfiles
+            from m in perfiles.DefaultIfEmpty()
+            select new { g, m };
+        if (structurePage is not null) filas = filas.OrderBy(x => x.g.Node);
+        return filas.Select(x => new EnrollmentMyTeamMemberView
+        {
+            MemberId        = x.g.MemberId,
+            FullName        = x.m != null ? x.m.FirstName + " " + x.m.LastName : x.g.MemberId,
+            Email           = x.m != null ? x.m.Email : null,
+            Phone           = x.m != null ? x.m.Phone : null,
+            Country         = x.m != null ? x.m.Country : string.Empty,
+            Level           = x.g.Level - rootLevel,
+            EnrollDate      = x.m != null ? x.m.EnrollDate : x.g.CreationDate,
+            SponsorMemberId = x.m != null ? x.m.SponsorMemberId : x.g.ParentMemberId,
+            AccountStatus   = x.m != null ? x.m.Status.ToString() : string.Empty
+        });
     }
 
     /// <summary>

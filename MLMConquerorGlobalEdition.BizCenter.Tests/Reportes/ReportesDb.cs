@@ -148,8 +148,10 @@ public static class ReportesDb
     }
 
     /// <summary>
-    /// Un nodo de inscripción OBSOLETO (R8): un miembro puede tener dos nodos y manda el más
-    /// reciente. Se guarda y después se le pone una fecha de creación antigua con una segunda
+    /// Un nodo de inscripción OBSOLETO (R8). Plan Q (DQ9): un miembro tiene un solo nodo vivo
+    /// (UX_GenealogyTree_MemberId_Vivo) y los demás quedan borrados, como los deja
+    /// 01-nodos-de-inscripcion-repetidos.sql; este es uno de esos. Las pruebas que lo usan comprueban que un nodo antiguo
+    /// bajo otro equipo no cuenta en él. Se guarda y después se le pone una fecha de creación antigua con una segunda
     /// escritura, porque AuditInterceptor sella CreationDate al añadir.
     /// </summary>
     public static async Task<GenealogyEntity> NodoObsoletoAsync(

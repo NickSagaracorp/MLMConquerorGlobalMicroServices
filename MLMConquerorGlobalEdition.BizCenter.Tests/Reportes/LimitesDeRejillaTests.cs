@@ -105,27 +105,34 @@ public class LimitesDeRejillaTests
         r.Items.Select(i => i.MemberId).Should().Equal(A, B);
     }
 
-    /// <summary>Plan Q (DQ14): sin filtros el total es el contador guardado; con busqueda se cuenta el resultado.</summary>
+    /// <summary>
+    /// Revision del bloque 5 (I1): sin filtros, el total es el de los nodos vivos del equipo, que es lo que la rejilla lista
+    /// (tambien los pendientes); EnrollmentTeamSize solo cuenta activados no cancelados y deja las ultimas paginas fuera
+    /// (118.228 guardados frente a unas 119.400 filas en AMB-700829). El contador sigue decidiendo el limite.
+    /// </summary>
     [Fact]
-    public async Task Inscripcion_el_total_sin_filtros_sale_de_EnrollmentTeamSize()
+    public async Task Inscripcion_el_total_sin_filtros_es_el_de_las_filas_listadas()
     {
         await using var db = await InscripcionAsync(42);
-        (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20 })).TotalCount.Should().Be(42);
+        var r = await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20 });
+        r.Items.Should().HaveCount(2);
+        r.TotalCount.Should().Be(r.Items.Count());
         (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "AMB-000003" }))
             .TotalCount.Should().Be(1, "con busqueda se cuenta el resultado");
     }
 
-    /// <summary>Plan Q (DQ14): las lecturas sin rejilla tampoco cuentan el equipo sin filtros.</summary>
+    /// <summary>Plan Q (DQ14), revision del bloque 5 (I1): las lecturas sin rejilla tampoco toman el total del contador.</summary>
     [Fact]
-    public async Task Las_lecturas_sin_rejilla_toman_el_total_sin_filtros_de_los_contadores()
+    public async Task Las_lecturas_sin_rejilla_dan_el_total_de_las_filas_listadas()
     {
         await using (var db = await InscripcionAsync(42))
         {
-            (await Inscripcion(db).GetMyTeamAsync(Yo, 1, 20, null, null, null)).TotalCount.Should().Be(42);
+            (await Inscripcion(db).GetMyTeamAsync(Yo, 1, 20, null, null, null)).TotalCount.Should().Be(2);
             (await Inscripcion(db).GetMyTeamAsync(Yo, 1, 20, "AMB-000003", null, null)).TotalCount.Should().Be(1);
         }
         await using (var db = await DualAsync(42))
         {
+            // El binario cuenta nodos con los contadores de pierna (DQ14), que son lo que lista.
             (await Dual(db).GetMyTeamAsync(Yo, 1, 20, null, null, null)).TotalCount.Should().Be(42);
             (await Dual(db).GetMyTeamAsync(Yo, 1, 20, "AMB-000003", null, null)).TotalCount.Should().Be(1);
         }
@@ -148,5 +155,30 @@ public class LimitesDeRejillaTests
         (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "000003" })).Items.Should().BeEmpty();
         (await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20, Search = "amb-000003" }))
             .Items.Select(i => i.MemberId).Should().Equal(B);
+    }
+
+    /// <summary>
+    /// Revision del bloque 5 (minor a): un nodo vivo cuyo perfil esta borrado sale con su id en vez de desaparecer; si no,
+    /// la pagina que se toma del arbol (Tarea 26 y 28) saldria corta y el total (los nodos) no seria el de las filas.
+    /// </summary>
+    [Fact]
+    public async Task Un_nodo_sin_perfil_sale_con_su_id_en_los_dos_arboles()
+    {
+        await using (var db = await InscripcionAsync(2))
+        {
+            (await db.MemberProfiles.SingleAsync(m => m.MemberId == B)).IsDeleted = true;
+            await db.SaveChangesAsync();
+            var r = await Inscripcion(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20 });
+            r.Items.Select(i => (i.MemberId, i.FullName)).Should().Equal((A, $"Nombre {A}"), (B, B));
+            r.TotalCount.Should().Be(2);
+        }
+        await using (var db = await DualAsync(2))
+        {
+            (await db.MemberProfiles.SingleAsync(m => m.MemberId == B)).IsDeleted = true;
+            await db.SaveChangesAsync();
+            var r = await Dual(db).GetMyTeamGridAsync(Yo, new GridDataRequest { PageSize = 20 });
+            r.Items.Select(i => (i.MemberId, i.FullName)).Should().Equal((A, $"Nombre {A}"), (B, B));
+            r.TotalCount.Should().Be(2);
+        }
     }
 }

@@ -18,6 +18,9 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
     /// <summary>Plan Q (DQ9): un solo nodo vivo por miembro.</summary>
     public const string LiveMemberIndexName = "UX_GenealogyTree_MemberId_Vivo";
 
+    /// <summary>Plan Q (revision del bloque 5, I1): estrecho, para contar los nodos vivos de un equipo.</summary>
+    public const string LiveNodeIndexName = "IX_GenealogyTree_Node_Vivo";
+
     public void Configure(EntityTypeBuilder<GenealogyEntity> builder)
     {
         builder.HasKey(x => x.Id);
@@ -50,6 +53,10 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
             // Cubre CurrentUnder entero: el nodo vigente (CreationDate) y el filtro global (IsDeleted). Sin
             // ellas, unido a los perfiles, el optimizador recorre la tabla en vez de hacer el seek.
             .IncludeProperties(x => new { x.MemberId, x.Level, x.CreationDate, x.IsDeleted });
+
+        // Plan Q, revision del bloque 5 (I1): el total de Mi equipo y de los eventos cuenta los nodos vivos del rango. Este
+        // indice solo lleva Node (y el Id de la fila): 1.370 paginas frente a 1.910 del anterior con 119.000 en local.
+        builder.HasIndex(new[] { nameof(GenealogyEntity.Node) }, LiveNodeIndexName).HasFilter("[IsDeleted] = 0");
 
         // Plan M (M12): en anchura, solo para reservar el ordinal de una raíz nueva.
         builder.Property<short?>("NodeLevel").HasComputedColumnSql("[Node].GetLevel()", stored: true);

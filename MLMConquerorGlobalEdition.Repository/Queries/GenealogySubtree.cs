@@ -120,6 +120,45 @@ public static class GenealogySubtree
     }
 
     /// <summary>
+    /// Plan Q, revision del bloque 5 (I1): cuantos nodos vivos cuelgan de <paramref name="root"/>, el incluido. Es lo que
+    /// listan Mi equipo (menos el que mira) y los eventos del equipo (un nodo vivo por miembro, DQ9), tambien los
+    /// pendientes; MemberStatistics.EnrollmentTeamSize solo cuenta activados y no sirve de total. Cuenta el rango por el
+    /// indice estrecho IX_GenealogyTree_Node_Vivo, con la pista: por si solo el optimizador elegia IX_GenealogyTree_Node
+    /// (1.910 paginas frente a 1.640 con 119.000 en local). 0 si root es null.
+    /// </summary>
+    public static Task<int> CountUnderAsync(this DbContext db, HierarchyId? root, CancellationToken ct = default)
+    {
+        if (root is null) return Task.FromResult(0);
+        if (!db.Database.IsSqlServer()) return db.Set<GenealogyEntity>().Under(root).CountAsync(ct);
+        var parent = root.GetAncestor(1);
+        if (parent is null)                      // la raiz de hierarchyid: el arbol entero
+            return db.Database.SqlQueryRaw<int>(
+                    "SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (INDEX(IX_GenealogyTree_Node_Vivo)) " +
+                    "WHERE IsDeleted = 0 AND Node IS NOT NULL")
+                .SingleAsync(ct);
+        return db.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (INDEX(IX_GenealogyTree_Node_Vivo)) " +
+                "WHERE IsDeleted = 0 AND Node >= CAST(@desde AS hierarchyid) AND Node < CAST(@hasta AS hierarchyid)",
+                new SqlParameter("@desde", SqlDbType.NVarChar, 4000) { Value = root.ToString() },
+                new SqlParameter("@hasta", SqlDbType.NVarChar, 4000) { Value = parent.GetDescendant(root, null).ToString() })
+            .SingleAsync(ct);
+    }
+
+    /// <summary>
+    /// Plan Q (Tarea 26), revision del bloque 5 (I4): una pagina del equipo de <paramref name="root"/> en el orden del arbol
+    /// (Node), tomada del recorrido de IX_GenealogyTree_Node (cubriente) ANTES de unir con nada; quien llama une esas pocas
+    /// filas con sus perfiles y vuelve a ordenarlas por Node. Con el OFFSET sobre la union, el optimizador unia el rango
+    /// entero con los perfiles y lo ordenaba. <paramref name="excludeMemberId"/>: el que mira, si no cuenta como fila.
+    /// </summary>
+    public static IQueryable<GenealogyEntity> PageUnder(
+        this IQueryable<GenealogyEntity> tree, HierarchyId? root, int skip, int take, string? excludeMemberId = null)
+    {
+        var equipo = tree.Under(root);
+        if (excludeMemberId is not null) equipo = equipo.Where(g => g.MemberId != excludeMemberId);
+        return equipo.OrderBy(g => g.Node).Skip(skip).Take(take);
+    }
+
+    /// <summary>
     /// Plan Q (DQ8, revision del bloque 5 I2): los nodos vivos bajo <paramref name="root"/> (el incluido) cuyo miembro casa
     /// con <paramref name="term"/> por el comienzo del nombre completo o del id. Es la forma de los equipos grandes de
     /// DualSubtree.SearchUnder: de los perfiles que casan (MemberNameSearch.MatchingIdsSql, con tope por rama) a su nodo vivo

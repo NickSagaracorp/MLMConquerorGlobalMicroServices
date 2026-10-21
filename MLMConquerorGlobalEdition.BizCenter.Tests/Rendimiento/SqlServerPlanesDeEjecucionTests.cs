@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Repository.Configurations;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -124,5 +125,39 @@ public class SqlServerPlanesDeEjecucionTests
         var pagina = cap.Textos.Single(t => t.Contains("FETCH NEXT") && t.Contains("[MemberProfiles]"));
         pagina.IndexOf("FETCH NEXT", StringComparison.Ordinal)
             .Should().BeLessThan(pagina.IndexOf("[MemberProfiles]", StringComparison.Ordinal), "la pagina sale de la clave");
+    }
+
+    /// <summary>
+    /// Revision del bloque 5 (I1): el total de Mi equipo de inscripcion sin filtros es el numero de filas que la rejilla
+    /// lista (los nodos vivos del equipo, tambien los pendientes), asi que la ultima pagina se alcanza y trae el resto.
+    /// Con EnrollmentTeamSize (118.228 en AMB-700829, solo activados) quedaban fuera unas 1.170 filas. Se cuenta por el
+    /// indice estrecho IX_GenealogyTree_Node_Vivo.
+    /// </summary>
+    [SqlServerFact]
+    public async Task Mi_equipo_de_inscripcion_da_el_total_de_las_filas_y_alcanza_la_ultima_pagina()
+    {
+        const string raizMayor = "AMB-700829";
+        var cap = new CapturadorDeSql();
+        await using var db = cap.Db();
+        var raiz = await db.GenealogyTree.AsNoTracking().NodeOfAsync(raizMayor);
+        var filas = await (from g in db.GenealogyTree.AsNoTracking().CurrentUnder(raiz)
+                           where g.MemberId != raizMayor
+                           select g.MemberId).CountAsync();
+        var servicio = new EnrollmentTeamService(db, CalificadoEnLosEquiposTests.Rangos(db),
+            new EnrollmentTeamPointsService(db), CalificadoEnLosEquiposTests.Calificacion(db));
+        cap.Limpiar();
+
+        var primera = await servicio.GetMyTeamGridAsync(raizMayor, new GridDataRequest { PageSize = 20 });
+        var paginas = (primera.TotalCount + 19) / 20;
+        var ultima = await servicio.GetMyTeamGridAsync(raizMayor, new GridDataRequest { Page = paginas, PageSize = 20 });
+        var despues = await servicio.GetMyTeamGridAsync(raizMayor, new GridDataRequest { Page = paginas + 1, PageSize = 20 });
+
+        primera.TotalCount.Should().Be(filas);
+        ultima.Items.Should().HaveCount(filas - (paginas - 1) * 20);
+        despues.Items.Should().BeEmpty();
+
+        var conteos = cap.Textos.Where(t => t.Contains("COUNT(")).ToList();
+        conteos.Should().NotBeEmpty().And.OnlyContain(t => t.Contains($"INDEX({GenealogyConfiguration.LiveNodeIndexName})"),
+            "el total cuenta el rango por el indice estrecho, no la union con los perfiles");
     }
 }

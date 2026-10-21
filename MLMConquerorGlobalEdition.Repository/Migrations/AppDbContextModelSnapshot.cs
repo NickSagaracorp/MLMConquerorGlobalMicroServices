@@ -16439,6 +16439,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("NodeLevel", "Node");
 
+                    b.HasIndex(new[] { "Node" }, "IX_GenealogyTree_Node_Vivo")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.HasIndex(new[] { "MemberId" }, "UX_GenealogyTree_MemberId_Vivo")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");

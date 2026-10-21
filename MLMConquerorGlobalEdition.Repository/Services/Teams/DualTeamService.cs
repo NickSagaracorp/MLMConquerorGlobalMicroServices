@@ -187,19 +187,25 @@ public class DualTeamService : IDualTeamService
     private IQueryable<DualMyTeamRow> MyTeamRows(DualTeamEntity myNode) =>
         Project(DualSubtree.Under(_db, myNode).AsNoTracking());
 
+    /// <summary>
+    /// Las filas de Mi equipo para <paramref name="nodes"/>. Revision del bloque 5 (minor a): union externa con los perfiles;
+    /// un nodo vivo cuyo perfil falta o esta borrado sale con su id. Asi la pagina tomada de la clave (PageUnder) no sale
+    /// corta y las filas son los nodos, que es lo que cuentan los contadores de pierna (el total).
+    /// </summary>
     private IQueryable<DualMyTeamRow> Project(IQueryable<DualTeamEntity> nodes) =>
         from d in nodes
-        join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
+        join p in _db.MemberProfiles.AsNoTracking() on d.MemberId equals p.MemberId into perfiles
+        from m in perfiles.DefaultIfEmpty()
         select new DualMyTeamRow
         {
-            MemberId        = m.MemberId,
-            FullName        = m.FirstName + " " + m.LastName,
-            Email           = m.Email,
-            Phone           = m.Phone,
-            Country         = m.Country,
-            EnrollDate      = m.EnrollDate,
-            SponsorMemberId = m.SponsorMemberId,
-            AccountStatus   = m.Status.ToString(),
+            MemberId        = d.MemberId,
+            FullName        = m != null ? m.FirstName + " " + m.LastName : d.MemberId,
+            Email           = m != null ? m.Email : null,
+            Phone           = m != null ? m.Phone : null,
+            Country         = m != null ? m.Country : string.Empty,
+            EnrollDate      = m != null ? m.EnrollDate : d.CreationDate,
+            SponsorMemberId = m != null ? m.SponsorMemberId : null,
+            AccountStatus   = m != null ? m.Status.ToString() : string.Empty,
             BinaryPath      = d.BinaryPath,
             Depth           = d.Depth,
             ParentMemberId  = d.ParentMemberId,
