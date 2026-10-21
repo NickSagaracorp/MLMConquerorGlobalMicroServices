@@ -368,10 +368,13 @@ public class EscalaBinarioTests
                 {
                     // Tiempo de espera largo para conocer la duracion real; la asercion la compara con los 30 s de produccion.
                     await using var db = EscalaDb.Db();
+                    await db.Database.OpenConnectionAsync();
+                    var antes = await EscalaDb.SesionAsync(db);
                     var c = Stopwatch.StartNew();
                     var r = await new PlacementService(db, new Reloj()).PlaceAsync(Provisional, Cabeza);
                     c.Stop();
-                    return (r, c.Elapsed);
+                    var despues = await EscalaDb.SesionAsync(db);
+                    return (r, c.Elapsed, despues.Lecturas - antes.Lecturas, despues.Cpu - antes.Cpu);
                 });
                 await Task.Delay(300);
                 var colocar = patrocinadores.Select((sp, i) => Task.Run(async () =>
@@ -382,11 +385,11 @@ public class EscalaBinarioTests
                     c.Stop();
                     return (r, c.Elapsed);
                 })).ToList();
-                var (rm, tm) = await mover;
+                var (rm, tm, lecturasMov, cpuMov) = await mover;
                 var otras = await Task.WhenAll(colocar);
                 movs.Add(tm.TotalMilliseconds);
                 esperas.Add(otras.Max(o => o.Elapsed.TotalMilliseconds));
-                _salida.WriteLine($"[ESCALA] Mover ESC-P (50.000), repeticion {rep + 1}: {tm.TotalMilliseconds:0} ms, profundidad {rm.Value?.Depth}; " +
+                _salida.WriteLine($"[ESCALA] Mover ESC-P (50.000), repeticion {rep + 1}: {tm.TotalMilliseconds:0} ms ({lecturasMov} lecturas, {cpuMov} ms de CPU), profundidad {rm.Value?.Depth}; " +
                                   $"5 colocaciones durante el movimiento: {string.Join(" / ", otras.Select(o => $"{o.Elapsed.TotalMilliseconds:0} ms{(o.r.IsSuccess ? "" : " " + o.r.Error)}"))}");
                 // Las aserciones van al final, para tener las tres repeticiones aunque alguna falle.
                 if (!rm.IsSuccess) fallos.Add($"repeticion {rep + 1}: el movimiento fallo ({rm.Error})");
