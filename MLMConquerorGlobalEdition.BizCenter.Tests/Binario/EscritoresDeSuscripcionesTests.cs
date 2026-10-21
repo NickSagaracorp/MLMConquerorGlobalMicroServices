@@ -14,6 +14,8 @@ public class EscritoresDeSuscripcionesTests
 {
     private static readonly Dictionary<string, string> Revisados = new()
     {
+        ["DeploymentScripts/migrate-rds.sql"] =
+            "es el historial de migraciones regenerado como script (Tarea 31): lo mismo que Migrations/, que esta regla no mira",
         ["Scripts/sql/plan-p/escala/altas/c-pedidos.sql"] =
             "generador de escala (solo MLMConquerorGlobalEditionDb_Escala); despues corren 04-contadores-y-colas.sql y 04-calificados-de-inscripcion.sql",
         ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "solo lectura: el INSERT es a una tabla temporal",

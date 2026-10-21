@@ -2,9 +2,12 @@
 Plan P, Tarea 18 (Bloque D). Crea la base de escala MLMConquerorGlobalEditionDb_Escala para medir el binario con
 400.000 y 1.000.000 de altas sinteticas completas. No escribe en ninguna otra base.
 
-Por que no con `dotnet ef database update` sobre una base vacia: la cadena de migraciones no se puede aplicar
-desde cero (20260405130705_HelpdeskModule vuelve a crear AspNetRoles, AspNetUsers y otras tablas que ya creo
-20260320004824_AddIdentityAndAuth: error 2714). La base local llego a su estado por otro camino. Asi que:
+Por que no con `dotnet ef database update` sobre una base vacia: en el Plan P la cadena de migraciones no se podia
+aplicar desde cero (20260405130705_HelpdeskModule volvia a crear AspNetRoles, AspNetUsers y otras tablas que ya creo
+20260320004824_AddIdentityAndAuth: error 2714). Desde el Plan Q (Bloque 6, DQ11) si se puede: HelpdeskModule solo crea
+las tablas que no existian y MigracionesDesdeCeroTests lo comprueba. Se sigue clonando porque clonar el esquema es
+instantaneo, deja la base de escala exactamente igual que la local (incluidas sus diferencias con el modelo, anotadas en
+esa prueba) y copia los catalogos. Asi que:
 
   1. DBCC CLONEDATABASE de la base local (solo lee: el esquema, sin datos ni estadisticas ni Query Store) a
      MLMConquerorGlobalEditionDb_Escala. Copia exacta de tablas, indices (incluido UX_DualTeamTree_BinaryPath),

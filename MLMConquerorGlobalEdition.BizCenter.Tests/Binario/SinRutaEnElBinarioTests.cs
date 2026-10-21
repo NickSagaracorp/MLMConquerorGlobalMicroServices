@@ -32,7 +32,7 @@ public class SinRutaEnElBinarioTests
     /// <summary>Excepciones con nombre y motivo.</summary>
     private static readonly Dictionary<string, string> Excepciones = new()
     {
-        ["DeploymentScripts/migrate-rds.sql"] = "desactualizado y marcado asi desde el Plan P; lo regenera la Tarea 31",
+        ["DeploymentScripts/migrate-rds.sql"] = "es el historial de migraciones regenerado como script (Tarea 31): crea la columna y la quita en RetiraRutaDelBinario, como Migrations/",
         ["Scripts/sql/plan-p/01-reparar-huecos-binario.sql"] = "retirado por su guarda (51104): no se ejecuta sin la columna",
         ["Scripts/sql/plan-p/escala/altas/g-binario.sql"] = "lo cambia la Tarea 32 (generador de escala)",
         ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "lo cambia la Tarea 32 (verificacion de escala)",
