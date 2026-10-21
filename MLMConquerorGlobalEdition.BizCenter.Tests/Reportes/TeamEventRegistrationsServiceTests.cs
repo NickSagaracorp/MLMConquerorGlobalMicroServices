@@ -198,5 +198,6 @@ public class TeamEventRegistrationsServiceTests
 
         r.Limited.Should().Be(limitado);
         r.Items.Should().HaveCount(3);
+        r.TotalCount.Should().Be(3, "el total es el de las filas listadas, no el contador guardado (revision del bloque 5, I1)");
     }
 }

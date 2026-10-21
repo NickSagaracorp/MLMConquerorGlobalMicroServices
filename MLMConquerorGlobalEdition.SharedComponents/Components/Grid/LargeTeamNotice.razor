@@ -1,0 +1,25 @@
+@inject IStringLocalizer<SharedResources> L
+
+@*
+    Plan Q (DQ7), revision del bloque 5 (I4): el aviso de equipo grande, comun a las rejillas de equipo. El anfitrion lo
+    pone encima de la rejilla y pasa SetAsync a OnLimited de ServerGridAdaptor; el aviso se repinta solo.
+*@
+@if (_limitado)
+{
+    <p class="text-muted small large-team-notice">@L["Team.LargeTeamLimited"]</p>
+}
+
+@code {
+    private bool _limitado;
+
+    /// <summary>True si el servidor limito orden y busqueda por el tamano del equipo (TeamGridLimits).</summary>
+    public bool Limited => _limitado;
+
+    /// <summary>Para OnLimited de ServerGridAdaptor: se llama tras cada lectura.</summary>
+    public Task SetAsync(bool limitado)
+    {
+        if (_limitado == limitado) return Task.CompletedTask;
+        _limitado = limitado;
+        return InvokeAsync(StateHasChanged);
+    }
+}

@@ -57,6 +57,7 @@
                 <p class="small text-muted px-3 mb-2 team-events-import-pending">@L["Events.ImportPending"]</p>
             }
 
+            <LargeTeamNotice @ref="_aviso" />
             <SfGrid @key="_eventId" TValue="RegistrationDto" @ref="_grid"
                     AllowPaging="true" AllowSorting="true" AllowResizing="true"
                     AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -65,7 +66,8 @@
                                        Http="Http"
                                        Endpoint="@($"{ApiBaseUrl}/events/{Uri.EscapeDataString(_eventId)}/team-registrations/grid")"
                                        QueryStringProvider="FilterQuery"
-                                       AccessTokenProvider="GetTokenAsync" />
+                                       AccessTokenProvider="GetTokenAsync"
+                                       OnLimited="@(l => _aviso?.SetAsync(l) ?? Task.CompletedTask)" />
                 </SfDataManager>
                 <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
@@ -105,6 +107,8 @@
     private string           _eventId = string.Empty;
     private bool             _registeredOnly = true;
     private TotalsDto?       _totals;
+    // Plan Q (DQ7): «Todo el equipo» de mas de TeamGridLimits.FreeMaxRows va por estructura; el aviso comun lo explica.
+    private LargeTeamNotice? _aviso;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {

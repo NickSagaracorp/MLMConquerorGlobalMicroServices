@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Events;
 using Xunit.Abstractions;
 
@@ -118,6 +119,43 @@ public class SqlServerEventosTests
         inscritos.Select(f => f.MemberId).Should().BeEquivalentTo(new[] { id.A, id.Yo });
         (totales.Registered, totales.Tickets).Should().Be((2, 6));
         cap.Textos.Should().NotContain(t => t.Contains("IsDescendantOf"));
+        await tx.RollbackAsync();
+    });
+
+    /// <summary>
+    /// Revision del bloque 5 (I4): «Todo el equipo» de la raiz grande (limitado) toma la pagina del arbol antes de unir los
+    /// perfiles, como Mi equipo, y el total son los nodos vivos del equipo (el incluido), contados sin unir. Antes contaba la
+    /// union entera en cada peticion (454 ms, unos 4 s con 1.000.000) y la pagina 1.000 ordenaba el rango unido (679 ms).
+    /// </summary>
+    [SqlServerFact]
+    public Task Todo_el_equipo_grande_pagina_del_arbol_y_cuenta_los_nodos_sin_unir() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        const string raizMayor = "AMB-700829";
+        var cap = new CapturadorDeSql();
+        await using var db = cap.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        var evento = "TJ-EV-" + Guid.NewGuid().ToString("N")[..12];
+        db.CorporateEvents.Add(new CorporateEvent { Id = evento, Title = "Medición", EventDate = new DateTime(2026, 12, 1), IsActive = true, CreatedBy = "prueba" });
+        await db.SaveChangesAsync();
+        var nodos = await db.GenealogyTree.AsNoTracking().CurrentUnder(await db.GenealogyTree.AsNoTracking().NodeOfAsync(raizMayor))
+            .Select(g => g.MemberId).CountAsync();
+        var servicio = TeamEventRegistrationsServiceTests.Servicio(db);
+        await servicio.GetGridAsync(raizMayor, evento, false, new GridDataRequest { Page = 1, PageSize = 20 });   // calienta
+        cap.Limpiar();
+
+        var cronometro = Stopwatch.StartNew();
+        var r = (await servicio.GetGridAsync(raizMayor, evento, false, new GridDataRequest { Page = 1000, PageSize = 20 })).Value!;
+        cronometro.Stop();
+        _salida.WriteLine($"Todo el equipo de {raizMayor}, pagina 1.000: {cronometro.ElapsedMilliseconds} ms, total {r.TotalCount}");
+
+        r.Limited.Should().BeTrue();
+        r.Items.Should().HaveCount(20);
+        r.TotalCount.Should().Be(nodos);
+        var pagina = cap.Textos.Single(t => t.Contains("FETCH NEXT") && t.Contains("[MemberProfiles]"));
+        pagina.IndexOf("FETCH NEXT", StringComparison.Ordinal)
+            .Should().BeLessThan(pagina.IndexOf("[MemberProfiles]", StringComparison.Ordinal), "la pagina sale del arbol");
+        cap.Textos.Where(t => t.Contains("COUNT(")).Should().OnlyContain(t => !t.Contains("[MemberProfiles]"),
+            "el total cuenta los nodos, no la union con los perfiles");
         await tx.RollbackAsync();
     });
 }

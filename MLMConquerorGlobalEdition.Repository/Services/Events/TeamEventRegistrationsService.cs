@@ -66,45 +66,72 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
                 Page = Math.Max(1, request.Page), PageSize = request.PageSize <= 0 ? 20 : request.PageSize
             });
 
-        // Plan Q (DQ7): «Todo el equipo» con mas de TeamGridLimits.FreeMaxRows ordena por estructura (Node) y lo avisa. El
-        // tamano lo guarda MemberStatistics.EnrollmentTeamSize del que mira.
-        var limitado = !registeredOnly && TeamGridLimits.Limit(request, await TeamSizeAsync(memberId, ct));
+        // Plan Q (DQ7): «Todo el equipo» con mas de TeamGridLimits.FreeMaxRows ordena por estructura (Node), busca por el
+        // comienzo del nombre o del id y lo avisa. El limite lo decide el tamano guardado (EnrollmentTeamSize del que mira).
+        var limitado = !registeredOnly
+                       && TeamGridLimits.Limit(request, await TeamGridLimits.EnrollmentTeamSizeAsync(_db, memberId, ct));
         Sanitize(request, defaultSort: !limitado);
 
         var regs = _db.CorporateEventRegistrations.AsNoTracking().Where(r => r.EventId == eventId);
 
-        // «Solo inscritos» parte de las inscripciones del EVENTO (pocas, por el índice (EventId, MemberId)), agrupadas
-        // por miembro, y solo sobre esas comprueba la pertenencia al equipo, ahora uniendo con el rango (un nodo vivo por
-        // miembro, Tarea 21 del Plan Q), sin el TOP 1 correlacionado con IsDescendantOf. «Todo el equipo» sí tiene que
-        // recorrer el equipo (R16: medido en SqlServerEventosTests).
-        var query = registeredOnly
-            ? from g in regs.GroupBy(r => r.MemberId)
-                  .Select(g => new { MemberId = g.Key, First = g.Min(r => r.RegisteredAt), Tickets = g.Sum(r => r.Tickets) })
-              join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
-              join n in _db.GenealogyTree.AsNoTracking().Under(root) on m.MemberId equals n.MemberId
-              select new TeamEventRegistrationView
-              {
-                  MemberId     = m.MemberId,
-                  FirstName    = m.FirstName,
-                  LastName     = m.LastName,
-                  EnrollDate   = m.EnrollDate,
-                  Registered   = true,
-                  RegisteredAt = g.First,
-                  Tickets      = g.Tickets
-              }
-            : from m in Team(root, byStructure: limitado)
-              select new TeamEventRegistrationView
-              {
-                  MemberId     = m.MemberId,
-                  FirstName    = m.FirstName,
-                  LastName     = m.LastName,
-                  EnrollDate   = m.EnrollDate,
-                  Registered   = regs.Any(r => r.MemberId == m.MemberId),
-                  RegisteredAt = regs.Where(r => r.MemberId == m.MemberId).Min(r => (DateTime?)r.RegisteredAt),
-                  Tickets      = regs.Where(r => r.MemberId == m.MemberId).Sum(r => (int?)r.Tickets) ?? 0
-              };
+        PagedResult<TeamEventRegistrationView> page;
+        if (registeredOnly)
+        {
+            // «Solo inscritos» parte de las inscripciones del EVENTO (pocas, por el índice (EventId, MemberId)), agrupadas
+            // por miembro, y solo sobre esas comprueba la pertenencia al equipo, uniendo con el rango (un nodo vivo por
+            // miembro, Tarea 21 del Plan Q).
+            var inscritos =
+                from g in regs.GroupBy(r => r.MemberId)
+                    .Select(g => new { MemberId = g.Key, First = g.Min(r => r.RegisteredAt), Tickets = g.Sum(r => r.Tickets) })
+                join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+                join n in _db.GenealogyTree.AsNoTracking().Under(root) on m.MemberId equals n.MemberId
+                select new TeamEventRegistrationView
+                {
+                    MemberId     = m.MemberId,
+                    FirstName    = m.FirstName,
+                    LastName     = m.LastName,
+                    EnrollDate   = m.EnrollDate,
+                    Registered   = true,
+                    RegisteredAt = g.First,
+                    Tickets      = g.Tickets
+                };
+            page = await inscritos.ToGridResultAsync(request, SearchableFields, ct: ct);
+        }
+        else
+        {
+            // «Todo el equipo» recorre el equipo (R16). Revision del bloque 5 (I4), con los componentes de Mi equipo:
+            // - sin busqueda, filtros ni orden (equipo grande), la pagina sale del arbol antes de unir (GenealogySubtree.PageUnder);
+            // - con el limite y busqueda, por prefijo con indice (GenealogySubtree.SearchUnder);
+            // - sin busqueda ni filtros, el total son los nodos vivos del equipo (CountUnderAsync), sin contar la union.
+            string? prefijo = null;
+            if (limitado && !string.IsNullOrWhiteSpace(request.Search))
+            {
+                prefijo = request.Search;
+                request.Search = null;
+            }
+            var sinFiltros = prefijo is null && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0;
+            if (sinFiltros && request.Sorts.Count == 0)
+            {
+                var (numero, tamano) = GridQueryableExtensions.ResolvePage(request);
+                var filas = await Team(_db.GenealogyTree.AsNoTracking().PageUnder(root, (numero - 1) * tamano, tamano), regs, byStructure: true)
+                    .ToListAsync(ct);
+                page = new PagedResult<TeamEventRegistrationView>
+                {
+                    Items = filas, Page = numero, PageSize = tamano,
+                    TotalCount = await _db.CountUnderAsync(root, ct)
+                };
+            }
+            else
+            {
+                var equipo = prefijo is null
+                    ? _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
+                    : _db.SearchUnder(root, prefijo, MemberNameSearch.GridCandidatesPerBranch).AsNoTracking();
+                if (request.Sorts.Count == 0) equipo = equipo.OrderBy(g => g.Node);
+                page = await Team(equipo, regs).ToGridResultAsync(request, SearchableFields, ct: ct,
+                    unfilteredTotal: sinFiltros ? await _db.CountUnderAsync(root, ct) : null);
+            }
+        }
 
-        var page = await query.ToGridResultAsync(request, SearchableFields, ct: ct);
         var rows = page.Items as List<TeamEventRegistrationView> ?? page.Items.ToList();
         await EnrichAsync(rows, ct);
         page.Items   = rows;
@@ -142,22 +169,33 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
     /// <summary>
-    /// Los perfiles del equipo, él incluido (un nodo vivo por miembro: el rango es el equipo vigente). Con
-    /// <paramref name="byStructure"/>, en el orden del árbol (Node), antes del join, como Mi equipo (Plan Q, DQ7).
+    /// Las filas de «Todo el equipo» para los nodos <paramref name="equipo"/> (el equipo, él incluido, o una página suya):
+    /// unión externa con los perfiles (revisión del bloque 5, I1: un nodo vivo sin perfil sale con su id, así las filas son
+    /// los nodos vivos, que es el total) y las entradas del evento por subconsultas correlacionadas sobre (EventId,
+    /// MemberId). Con <paramref name="byStructure"/>, en el orden del árbol (una página tomada de PageUnder).
     /// </summary>
-    private IQueryable<Domain.Entities.Member.MemberProfile> Team(HierarchyId root, bool byStructure = false)
+    private IQueryable<TeamEventRegistrationView> Team(
+        IQueryable<Domain.Entities.Tree.GenealogyEntity> equipo,
+        IQueryable<Domain.Entities.Events.CorporateEventRegistration> regs,
+        bool byStructure = false)
     {
-        var equipo = _db.GenealogyTree.AsNoTracking().CurrentUnder(root);
-        if (byStructure) equipo = equipo.OrderBy(g => g.Node);
-        return from g in equipo
-               join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
-               select m;
+        var filas =
+            from g in equipo
+            join p in _db.MemberProfiles.AsNoTracking() on g.MemberId equals p.MemberId into perfiles
+            from m in perfiles.DefaultIfEmpty()
+            select new { g, m };
+        if (byStructure) filas = filas.OrderBy(x => x.g.Node);
+        return filas.Select(x => new TeamEventRegistrationView
+        {
+            MemberId     = x.g.MemberId,
+            FirstName    = x.m != null ? x.m.FirstName : x.g.MemberId,
+            LastName     = x.m != null ? x.m.LastName : string.Empty,
+            EnrollDate   = x.m != null ? x.m.EnrollDate : x.g.CreationDate,
+            Registered   = regs.Any(r => r.MemberId == x.g.MemberId),
+            RegisteredAt = regs.Where(r => r.MemberId == x.g.MemberId).Min(r => (DateTime?)r.RegisteredAt),
+            Tickets      = regs.Where(r => r.MemberId == x.g.MemberId).Sum(r => (int?)r.Tickets) ?? 0
+        });
     }
-
-    /// <summary>Plan Q (DQ7): el tamaño del equipo de inscripción del que mira (diferido; basta para un límite).</summary>
-    private Task<int> TeamSizeAsync(string memberId, CancellationToken ct) =>
-        _db.MemberStatistics.AsNoTracking().Where(s => s.MemberId == memberId)
-            .OrderBy(s => s.Id).Select(s => s.EnrollmentTeamSize).FirstOrDefaultAsync(ct);
 
     private async Task EnrichAsync(List<TeamEventRegistrationView> rows, CancellationToken ct)
     {
