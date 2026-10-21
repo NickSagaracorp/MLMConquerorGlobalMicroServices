@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -196,5 +197,56 @@ public class EnrollmentActivityServiceTests
         columnas.Select(c => (c.LevelId, c.Name)).Should().Equal(
             (1, "Lifestyle Ambassador"), (2, "Travel Advantage - VIP"),
             (3, "Travel Advantage - Elite"), (4, "Travel Advantage - Turbo"));
+    }
+
+    /// <summary>YO inscribe antes del rango a S2 y a S1 (en ese orden); en marzo, cada uno inscribe a un embajador.</summary>
+    private static async Task<AppDbContext> EmpateAsync()
+    {
+        var db = ReportesDb.Nueva();
+        ReportesDb.Niveles(db);
+        var antes = new DateTime(2025, 1, 10);
+        ReportesDb.Miembro(db, Yo, alta: antes);
+        ReportesDb.Nodo(db, Yo, null, ReportesDb.Ruta(Yo), 1);
+        foreach (var s in new[] { "AMB-000S2", "AMB-000S1" })
+        {
+            ReportesDb.Miembro(db, s, Yo, alta: antes);
+            ReportesDb.Nodo(db, s, Yo, ReportesDb.Ruta(Yo, s), 2);
+        }
+        ReportesDb.Miembro(db, "AMB-900S2", "AMB-000S2", alta: new DateTime(2026, 3, 5));
+        ReportesDb.Miembro(db, "AMB-900S1", "AMB-000S1", alta: new DateTime(2026, 3, 6));
+        await db.SaveChangesAsync();
+        return db;
+    }
+
+    /// <summary>
+    /// Revision del bloque 5 (I8): con el orden pedido empatado, MemberId desempata; si no, el OFFSET de cada pagina puede
+    /// repetir o saltarse filas.
+    /// </summary>
+    [Fact]
+    public async Task Los_empates_del_orden_pedido_se_desempatan_por_id_para_paginar()
+    {
+        await using var db = await EmpateAsync();
+
+        var p1 = await Servicio(db).GetGridAsync(Yo, Desde, Hasta, new GridDataRequest { Page = 1, PageSize = 1 });
+        var p2 = await Servicio(db).GetGridAsync(Yo, Desde, Hasta, new GridDataRequest { Page = 2, PageSize = 1 });
+
+        p1.Value!.Items.Concat(p2.Value!.Items).Select(r => r.MemberId).Should().Equal("AMB-000S1", "AMB-000S2");
+    }
+
+    /// <summary>
+    /// Revision del bloque 5 (minor a): un patrocinador cuyo perfil esta borrado sigue contando, con su id como nombre (como
+    /// antes del Plan Q, que lo resolvia en memoria con el id de respaldo).
+    /// </summary>
+    [Fact]
+    public async Task Un_patrocinador_sin_perfil_sale_con_su_id()
+    {
+        await using var db = await EmpateAsync();
+        (await db.MemberProfiles.SingleAsync(m => m.MemberId == "AMB-000S2")).IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        var r = await Servicio(db).GetGridAsync(Yo, Desde, Hasta, Pagina());
+
+        r.Value!.Items.Select(f => (f.MemberId, f.FullName, f.Ambassadors))
+            .Should().BeEquivalentTo(new[] { ("AMB-000S1", "Nombre AMB-000S1", 1), ("AMB-000S2", "AMB-000S2", 1) });
     }
 }

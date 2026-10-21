@@ -88,13 +88,16 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
                                               && x.SignupMembershipLevelId != 3 && x.SignupMembershipLevelId != 4))
             };
 
+        // Revision del bloque 5 (minor a): union externa; un patrocinador cuyo perfil falta o esta borrado sale con su id
+        // como nombre, como antes del Plan Q (names.GetValueOrDefault(id, id)).
         var query =
             from a in porPatrocinador
-            join p in _db.MemberProfiles.AsNoTracking() on a.MemberId equals p.MemberId
+            join p0 in _db.MemberProfiles.AsNoTracking() on a.MemberId equals p0.MemberId into perfiles
+            from p in perfiles.DefaultIfEmpty()
             select new EnrollmentActivityRowView
             {
                 MemberId             = a.MemberId,
-                FullName             = p.FirstName + " " + p.LastName,
+                FullName             = p != null ? p.FirstName + " " + p.LastName : a.MemberId,
                 Level                = a.Level - me.Level,
                 Customers            = a.Customers,
                 Ambassadors          = a.Ambassadors,
@@ -109,6 +112,9 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
 
         if (request.Sorts.Count == 0)
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentActivityRowView.Ambassadors), Direction = "desc" });
+        // Revision del bloque 5 (I8): MemberId desempata al final, para que el OFFSET de cada pagina sea estable.
+        if (!request.Sorts.Any(o => string.Equals(o.Field, nameof(EnrollmentActivityRowView.MemberId), StringComparison.OrdinalIgnoreCase)))
+            request.Sorts.Add(new GridSort { Field = nameof(EnrollmentActivityRowView.MemberId), Direction = "asc" });
 
         return Result<PagedResult<EnrollmentActivityRowView>>.Success(
             await query.ToGridResultAsync(request, SearchableFields, ct: ct));
