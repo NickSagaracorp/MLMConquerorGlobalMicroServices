@@ -155,7 +155,11 @@ public static class GenealogySubtree
     {
         var equipo = tree.Under(root);
         if (excludeMemberId is not null) equipo = equipo.Where(g => g.MemberId != excludeMemberId);
-        return equipo.OrderBy(g => g.Node).Skip(skip).Take(take);
+        // Plan Q (Bloque 7): la pagina se toma del indice solo con el Id (IX_GenealogyTree_Node cubre Node, MemberId,
+        // IsDeleted y el Id) y despues se leen esas filas. Pidiendo las columnas que el indice no cubre (ParentMemberId,
+        // CreationDate de Mi equipo), con 550.000 el optimizador recorria la tabla entera y ordenaba el rango (12 s de CPU).
+        var pagina = equipo.OrderBy(g => g.Node).Skip(skip).Take(take).Select(g => g.Id);
+        return tree.Where(g => pagina.Contains(g.Id));
     }
 
     /// <summary>

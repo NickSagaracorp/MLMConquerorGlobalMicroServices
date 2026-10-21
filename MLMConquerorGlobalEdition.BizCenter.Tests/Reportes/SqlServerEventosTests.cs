@@ -152,8 +152,11 @@ public class SqlServerEventosTests
         r.Items.Should().HaveCount(20);
         r.TotalCount.Should().Be(nodos);
         var pagina = cap.Textos.Single(t => t.Contains("FETCH NEXT") && t.Contains("[MemberProfiles]"));
-        pagina.IndexOf("FETCH NEXT", StringComparison.Ordinal)
-            .Should().BeLessThan(pagina.IndexOf("[MemberProfiles]", StringComparison.Ordinal), "la pagina sale del arbol");
+        // Plan Q (Bloque 7): la pagina es una subconsulta sobre el arbol (solo el Id, por el indice) y despues se unen los perfiles.
+        var fetch = pagina.IndexOf("FETCH NEXT", StringComparison.Ordinal);
+        var sub = pagina.LastIndexOf(" IN (", fetch, StringComparison.Ordinal);
+        sub.Should().BePositive("la pagina sale del arbol");
+        pagina[sub..fetch].Should().NotContain("[MemberProfiles]", "la pagina sale del arbol");
         cap.Textos.Where(t => t.Contains("COUNT(")).Should().OnlyContain(t => !t.Contains("[MemberProfiles]"),
             "el total cuenta los nodos, no la union con los perfiles");
         await tx.RollbackAsync();

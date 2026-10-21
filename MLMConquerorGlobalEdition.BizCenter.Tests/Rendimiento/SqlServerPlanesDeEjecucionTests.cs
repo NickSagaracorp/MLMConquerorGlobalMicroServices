@@ -108,6 +108,33 @@ public class SqlServerPlanesDeEjecucionTests
     }
 
     /// <summary>
+    /// Plan Q (Bloque 7): la pagina de GenealogySubtree.PageUnder con las columnas que proyecta Mi equipo de inscripcion
+    /// (ParentMemberId y CreationDate, que IX_GenealogyTree_Node no cubre). Con 550.000 en la base de escala, la pagina 1.000
+    /// recorria PK_GenealogyTree entero y ordenaba el rango (102.000 lecturas y 12 s de CPU); en local tambien recorre la
+    /// tabla. La pagina se toma del indice (solo Id) y despues se leen sus 20 filas.
+    /// </summary>
+    [SqlServerFact]
+    public async Task La_pagina_por_estructura_con_las_columnas_de_Mi_equipo_no_recorre_el_arbol()
+    {
+        const string raizMayor = "AMB-700829";
+        await using var db = SqlServerReportes.Db();
+        var raiz = await db.GenealogyTree.AsNoTracking().NodeOfAsync(raizMayor);
+        var pagina =
+            from g in db.GenealogyTree.AsNoTracking().PageUnder(raiz, 19_980, 20, excludeMemberId: raizMayor)
+            join p in db.MemberProfiles.AsNoTracking() on g.MemberId equals p.MemberId into perfiles
+            from m in perfiles.DefaultIfEmpty()
+            orderby g.Node
+            select new { g.MemberId, g.ParentMemberId, g.CreationDate, g.Level, Nombre = m != null ? m.FirstName : null };
+
+        var plan = await PlanDeEjecucion.CompiladoAsync(db, pagina);
+        var filas = await pagina.ToListAsync();
+
+        filas.Should().HaveCount(20);
+        PlanDeEjecucion.Recorridos(plan, "GenealogyTree").Should().BeEmpty("la pagina sale del recorrido ordenado del indice");
+        plan.Should().Contain("IX_GenealogyTree_Node").And.Contain(PlanDeEjecucion.Seek, "la pagina se toma del indice; solo se ordenan sus 20 filas");
+    }
+
+    /// <summary>
     /// Plan Q (Tarea 28): Mi equipo binario sin orden pedido toma la pagina de la clave (UX_DualTeamTree_BinaryPath,
     /// cubriente para MemberId) antes de unir los perfiles; con el OFFSET sobre la union se ordenaba el rango entero.
     /// </summary>
