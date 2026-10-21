@@ -6068,7 +6068,7 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
 ### Tarea 34: generar, medir y borrar (500.000 y 1.000.000)
 
 - [x] **Paso 1.** Aplicar en local todas las migraciones y scripts del plan (si no se hizo ya bloque a bloque). El clon de escala parte del esquema de la local.
-- [ ] **Paso 2.** Para `N` en 500.000 y 1.000.000, uno detrás de otro:
+- [ ] **Paso 2.** 500.000 hecho; **1.000.000: pendiente para la próxima semana (decisión de Nick, 2026-10-21)**, ver las notas del bloque 7. Para `N` en 500.000 y 1.000.000, uno detrás de otro:
 
 ```powershell
 powershell -File Scripts/sql/plan-p/escala/01-generar-altas.ps1 -Nodos N -Salida C:\temp\escala-N-plan-q.txt -Recrear
@@ -6079,7 +6079,7 @@ dotnet test MLMConquerorGlobalEdition.RankEngine.Tests --settings MLMConquerorGl
 sqlcmd -S . -d master -E -C -b -Q "ALTER DATABASE MLMConquerorGlobalEditionDb_Escala SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE MLMConquerorGlobalEditionDb_Escala;"
 ```
 
-- [ ] **Paso 3.** Rellenar la tabla de «Resultados medidos» (abajo) con las medianas y, por cada rojo, su propuesta en «Lo que no cumple».
+- [ ] **Paso 3.** Columna de 500.000 rellena; la de 1.000.000, pendiente para la próxima semana (decisión de Nick, 2026-10-21). Rellenar la tabla de «Resultados medidos» (abajo) con las medianas y, por cada rojo, su propuesta en «Lo que no cumple».
 - [ ] **Paso 4.** Commit: `Plan Q: mediciones del binario y los reportes con 500.000 y 1.000.000 altas tras el Plan Q`.
 
 ### Resultados medidos
@@ -6196,11 +6196,25 @@ Lo que no cumple con 500.000 y por qué:
 `$env:ConnectionStrings__DefaultConnection = "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;Integrated Security=true;TrustServerCertificate=True;MultipleActiveResultSets=true;Encrypt=True"`
 Todos los usuarios sintéticos (`esc-<n>@example.com`) tienen la contraseña `Escala2026!`. Las pruebas de escala usan `MLM_ESCALA_SQLSERVER` con la misma cadena.
 
+**Hacia 1.000.000: la base crece en el sitio (desviación pedida por Nick).** No se borra ni se regenera: `Scripts/sql/plan-p/escala/03-anadir-altas.ps1` añade lotes de altas completas con `altas/anadir-lote.sql` (misma forma que el generador: la anchura de inscripción de ESC-M sin ESC-P y los subárboles de la columna del binario; cada lote se calcula primero y se escribe por fases cortas anotadas en el esquema `escalalote`, sin candados de aplicación porque lo que suma a los ascendientes es aditivo como las colas; un lote cortado se reanuda solo). Al final ejecuta `h-rangos.sql` (ahora incremental: solo los rangos por encima del mayor de cada miembro), `sp_updatestats` y `02-verificar-escala.sql`. Un lote de prueba de 2.000 dio la verificación a 0 en las altas ESC (los dos rojos eran del sembrador de los servicios: ROOT001; desde `3c3ffec` esas dos comprobaciones miran solo las altas ESC). Los lotes de 50.000 tardaron de 30 a 116 min con la máquina cargada.
+
+**Estado al parar (2026-10-21, 17:43, decisión de Nick: el millón queda para la próxima semana).** Parado en el límite de un lote (sin esquema `escalalote`, ningún lote a medias): ESC-M con **752.000** en su equipo binario, **802.002** perfiles ESC (más ROOT001 de los servicios), base de 27.016 MB y registro de 9.544 MB; colas `DualLegDeltas` 0, `MemberStatisticDeltas` pendientes 0 y cola de rango de las ESC sin pendientes. Después se ejecutó `h-rangos.sql` para los equipos nuevos (54.063 filas nuevas, 119.835 miembros con rango; 102 s) y `02-verificar-escala.sql`: **las 46 comprobaciones a 0** (175 s; ESC-M 752.000 en el binario con 752.000 calificados al vuelo, 802.001 altas, 8.821.249 filas de cola de rango). Los servicios de pantalla del árbol `-run` siguen apuntando a ella para las pruebas de Nick. Para seguir:
+`powershell -File Scripts/sql/plan-p/escala/03-anadir-altas.ps1 -Hasta 1000000 -Lote 50000 -Salida C:\temp\escala-anadir-1m.txt`
+(5 lotes más; si un lote quedara a medias, el mismo comando lo reanuda). Después, las tres suites de escala de la Tarea 34 y la columna de 1.000.000.
+
+**Abierto para la próxima semana:**
+- Tarea 34 con 1.000.000 (terminar de crecer y medir) y Tarea 35 (guion de despliegue y verificación final).
+- Mover un subárbol de 50.000 (ESC-P): 93 s de mediana frente a 30 s, 35 a 59 s de CPU, y las 15 colocaciones durante el movimiento fallan a los 15 s (riesgo residual DQ12).
+- Actividad de 3 meses: 3,0 s con 500.000 (160.000 lecturas, 4 s de CPU): necesita precálculo o acotar el rango (decisión de producto).
+- Repetir con la máquina libre lo que salió rojo por la carga (10 colocaciones a la vez, búsquedas «Lucia Diaz», «mari», «esc-1», Mi equipo de inscripción) para tener tiempos además de lecturas y CPU.
+
 ---
 
 ## Cierre
 
 ### Tarea 35: guion de despliegue y verificación final
+
+**Pendiente para la próxima semana (decisión de Nick, 2026-10-21).**
 
 **Files:**
 - Create: `Scripts/sql/plan-q/00-despliegue-plan-q.md`
