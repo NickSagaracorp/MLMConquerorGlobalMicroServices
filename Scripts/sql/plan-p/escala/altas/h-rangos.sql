@@ -16,7 +16,7 @@ La regla es la de EvaluateRankHandler con RankQualificationService, por conjunto
     (al par en el medio);
   - PersonalPoints, ExternalMembers (patrocinados de tipo ExternalMember) y SalesVolume (pedidos completados) cuando el
     requisito es > 0.
-El miembro no tenia rango (la base nace sin historial): la evaluacion escribe una fila por cada rango candidato que cumple,
+Como la evaluacion: una fila por cada rango candidato que cumple por encima del mayor que ya tiene (al generar, ninguno),
 en orden de SortOrder, con PreviousRankId encadenado y AchievedAt separado un segundo (como el manejador). AchievedAt es la
 hora de esta pasada (la del barrido que la evaluo), CreatedBy vacio como el de los trabajos de Hangfire en la base local.
 No se generan los avisos de rango alcanzado (trabajos de RankNotificationJobs) ni bonos de rango.
@@ -33,8 +33,6 @@ IF N'$(Confirmo)' <> N'ESCALA'
     THROW 51063, N'Ejecutar con -v Confirmo=ESCALA.', 1;
 IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
     THROW 51064, N'Solo en la maquina local.', 1;
-IF EXISTS (SELECT 1 FROM MemberRankHistories)
-    THROW 51140, N'MemberRankHistories ya tiene filas: el generador parte de una base sin historial.', 1;
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -135,22 +133,35 @@ WHERE ((m.Patrocinados >= @minPatrocinados AND m.PuntosClientes >= @minConPatroc
   AND (r.PersonalPoints <= 0 OR m.Personales >= r.PersonalPoints)
   AND (r.SalesVolume <= 0 OR m.Ventas >= r.SalesVolume);
 
+-- Como EvaluateRankHandler: solo los rangos por encima del mayor que ya tiene el miembro, encadenados desde el (la primera
+-- generacion parte de una tabla sin historial; 03-anadir-altas.ps1 lo vuelve a ejecutar tras anadir altas).
+DROP TABLE IF EXISTS #actual;
+SELECT x.MemberId, x.Rango, x.SortOrder
+INTO #actual
+FROM (SELECT CAST(h.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId, h.RankDefinitionId AS Rango, r.SortOrder,
+             ROW_NUMBER() OVER (PARTITION BY h.MemberId ORDER BY r.SortOrder DESC) AS rn
+      FROM MemberRankHistories h JOIN RankDefinitions r ON r.Id = h.RankDefinitionId
+      WHERE h.IsDeleted = 0) x
+WHERE x.rn = 1;
+CREATE UNIQUE CLUSTERED INDEX cx ON #actual (MemberId);
+DELETE c FROM #cumple c JOIN #actual a ON a.MemberId = c.MemberId WHERE c.SortOrder <= a.SortOrder;
+
 DECLARE @filas bigint;
 BEGIN TRAN;
-INSERT INTO MemberRankHistories WITH (TABLOCK) (Id, MemberId, RankDefinitionId, PreviousRankId, AchievedAt, GeneratedCertificateUrl,
-                                                CreationDate, CreatedBy, LastUpdateDate, LastUpdateBy, IsDeleted)
+INSERT INTO MemberRankHistories (Id, MemberId, RankDefinitionId, PreviousRankId, AchievedAt, GeneratedCertificateUrl,
+                                 CreationDate, CreatedBy, LastUpdateDate, LastUpdateBy, IsDeleted)
 SELECT LOWER(CONVERT(nvarchar(36), NEWID())), c.MemberId, c.Rango,
-       LAG(c.Rango) OVER (PARTITION BY c.MemberId ORDER BY c.SortOrder),
+       ISNULL(LAG(c.Rango) OVER (PARTITION BY c.MemberId ORDER BY c.SortOrder), a.Rango),
        DATEADD(second, ROW_NUMBER() OVER (PARTITION BY c.MemberId ORDER BY c.SortOrder) - 1, @hito), NULL,
        DATEADD(second, ROW_NUMBER() OVER (PARTITION BY c.MemberId ORDER BY c.SortOrder) - 1, @hito), N'',
        DATEADD(second, ROW_NUMBER() OVER (PARTITION BY c.MemberId ORDER BY c.SortOrder) - 1, @hito), NULL, 0
-FROM #cumple c;
+FROM #cumple c LEFT JOIN #actual a ON a.MemberId = c.MemberId;
 SET @filas = @@ROWCOUNT;
 COMMIT;
-
 SELECT r.Name AS Rango, COUNT(*) AS Filas
 FROM MemberRankHistories h JOIN RankDefinitions r ON r.Id = h.RankDefinitionId
 GROUP BY r.Name, r.SortOrder ORDER BY r.SortOrder;
-SELECT @filas AS FilasDeHistorial, (SELECT COUNT(DISTINCT MemberId) FROM #cumple) AS MiembrosConRango,
-       (SELECT TOP 1 r.Name FROM #cumple c JOIN RankDefinitions r ON r.Id = c.Rango WHERE c.MemberId = N'ESC-M' ORDER BY c.SortOrder DESC) AS RangoDeEscM,
+SELECT @filas AS FilasNuevas, (SELECT COUNT(DISTINCT MemberId) FROM #cumple) AS MiembrosQueSuben,
+       (SELECT COUNT(DISTINCT MemberId) FROM MemberRankHistories) AS MiembrosConRango,
+       (SELECT TOP 1 r.Name FROM MemberRankHistories h JOIN RankDefinitions r ON r.Id = h.RankDefinitionId WHERE h.MemberId = N'ESC-M' ORDER BY r.SortOrder DESC) AS RangoDeEscM,
        DATEDIFF(second, @inicio, SYSDATETIME()) AS Segundos;
