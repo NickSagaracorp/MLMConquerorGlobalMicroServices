@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -23,6 +24,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Entities.Marketing;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Interceptors;
+using MLMConquerorGlobalEdition.Repository.Migrations.Infraestructura;
 
 namespace MLMConquerorGlobalEdition.Repository.Context;
 
@@ -228,7 +230,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         // NodoDeGenealogiaModeloTests.
 #pragma warning disable EF1001
         if (optionsBuilder.Options.FindExtension<SqlServerOptionsExtension>() is not null)
+        {
             new SqlServerDbContextOptionsBuilder(optionsBuilder).UseHierarchyId();
+            // Plan Q (DQ11): guardas para HelpdeskModule en una base vacia; con cualquier otra migracion es el de siempre.
+            optionsBuilder.ReplaceService<IMigrationsSqlGenerator, MigracionesSqlServerConGuardas>();
+        }
 #pragma warning restore EF1001
     }
 }

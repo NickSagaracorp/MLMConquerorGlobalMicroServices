@@ -26,6 +26,42 @@ public class MigracionesDesdeCeroTests
     private const string Modelo = "MLMConquerorGlobalEditionDb_Modelo";
     private static readonly string[] Permitidas = { DesdeCero, Modelo };
 
+    private const string IgualQueLaLocal =
+        "deriva anterior al Plan Q, igual en la base local (comparada en solo lectura en el Bloque 6): ";
+
+    /// <summary>
+    /// Diferencias conocidas entre lo que crean las migraciones y el modelo, cada una con su motivo. Todas estan igual en la
+    /// base local: corregirlas cambia las bases reales (estrechar columnas con datos, rowversion) y queda fuera del Plan Q.
+    /// La clave es la linea de <see cref="EsquemaAsync"/> del lado de las migraciones o del modelo.
+    /// </summary>
+    private static readonly Dictionary<string, string> Excepciones = new()
+    {
+        ["MemberProfiles.DefaultLanguage:nvarchar:8:NO"] = IgualQueLaLocal + "AddProfilePreferencesAndHistories la crea nvarchar(8); el modelo no le da longitud",
+        ["MemberProfiles.DefaultLanguage:nvarchar:-1:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["TicketCategories.Name:nvarchar:-1:NO"] = IgualQueLaLocal + "la crea InitialCreate; HelpdeskModule (200) no la toca porque la tabla ya existia",
+        ["TicketCategories.Name:nvarchar:200:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["TicketComments.AuthorType:nvarchar:-1:NO"] = IgualQueLaLocal + "AddTicketCommentAuthorTypeColumn la crea nvarchar(max); el modelo dice 20",
+        ["TicketComments.AuthorType:nvarchar:20:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["TicketComments ix IX_TicketComments_TicketId:0:"] = IgualQueLaLocal + "indice de InitialCreate; HelpdeskModule lo sustituye en el modelo por los dos siguientes",
+        ["TicketComments ix IX_TicketComments_IsInternal:0:"] = IgualQueLaLocal + "de HelpdeskModule sobre una tabla que ya existia",
+        ["TicketComments ix IX_TicketComments_TicketId_CreationDate:0:"] = IgualQueLaLocal + "de HelpdeskModule sobre una tabla que ya existia",
+        ["Tickets ix IX_Tickets_CategoryId_Status:0:"] = IgualQueLaLocal + "indice de InitialCreate que el modelo ya no tiene",
+        ["Tickets ix IX_Tickets_Status_CreationDate:0:"] = IgualQueLaLocal + "indice de InitialCreate que el modelo ya no tiene",
+        ["Tickets ix IX_Tickets_AssignedToUserId_Status:0:"] = IgualQueLaLocal + "de HelpdeskModule sobre una tabla que ya existia",
+        ["Tickets ix IX_Tickets_MemberId_CreationDate:0:"] = IgualQueLaLocal + "de HelpdeskModule sobre una tabla que ya existia",
+        ["Tickets ix IX_Tickets_Status_LastUpdateDate:0:"] = IgualQueLaLocal + "de HelpdeskModule sobre una tabla que ya existia",
+        ["Tickets.AssignedToUserId:nvarchar:-1:YES"] = IgualQueLaLocal + "Tickets la crea InitialCreate y la completa RepairTicketsTableSchema; el modelo dice 450",
+        ["Tickets.AssignedToUserId:nvarchar:450:YES"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["Tickets.MemberId:nvarchar:-1:NO"] = IgualQueLaLocal + "como AssignedToUserId; el modelo dice 450",
+        ["Tickets.MemberId:nvarchar:450:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["Tickets.MergedIntoTicketId:nvarchar:-1:YES"] = IgualQueLaLocal + "como AssignedToUserId; el modelo dice 36",
+        ["Tickets.MergedIntoTicketId:nvarchar:36:YES"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["Tickets.RowVersion:varbinary:-1:YES"] = IgualQueLaLocal + "RepairTicketsTableSchema la crea varbinary(max); el modelo dice rowversion",
+        ["Tickets.RowVersion:timestamp::YES"] = IgualQueLaLocal + "la otra cara de la anterior",
+        ["Tickets.Subject:nvarchar:-1:NO"] = IgualQueLaLocal + "como AssignedToUserId; el modelo dice 300",
+        ["Tickets.Subject:nvarchar:300:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
+    };
+
     private static string Cadena(string bd) =>
         $"Server=.;Database={bd};Integrated Security=true;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=true;";
 
@@ -44,8 +80,14 @@ public class MigracionesDesdeCeroTests
 
             var migrada = await EsquemaAsync(DesdeCero);
             var modelo = await EsquemaAsync(Modelo);
-            migrada.Except(modelo).Order().Should().BeEmpty("lo que las migraciones crean de mas o distinto del modelo");
-            modelo.Except(migrada).Order().Should().BeEmpty("lo que el modelo tiene y las migraciones no crean");
+            var deMas = migrada.Except(modelo).ToList();
+            var deMenos = modelo.Except(migrada).ToList();
+            deMas.Where(d => !Excepciones.ContainsKey(d)).Order().Should()
+                .BeEmpty("lo que las migraciones crean de mas o distinto del modelo");
+            deMenos.Where(d => !Excepciones.ContainsKey(d)).Order().Should()
+                .BeEmpty("lo que el modelo tiene y las migraciones no crean");
+            Excepciones.Keys.Where(k => !deMas.Contains(k) && !deMenos.Contains(k)).Order().Should()
+                .BeEmpty("una excepcion que ya no hace falta se quita de la lista");
             (await ObjetosAsync(DesdeCero)).Should().Contain(new[]
                 { "DualChildKey", "Numeros", "DualAncestorKeys", "GenealogyAncestors", "DualTeamRootOrdinal" });
         }
