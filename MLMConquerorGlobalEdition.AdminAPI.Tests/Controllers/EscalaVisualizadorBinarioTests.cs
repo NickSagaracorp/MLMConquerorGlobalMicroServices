@@ -21,7 +21,7 @@ public class EscalaVisualizadorBinarioTests
         await using var db = EscalaDb.Db(30);
         var controlador = new NetworkController(db);
         var t = await EscalaDb.MedianaAsync(_salida, "Visualizador del admin, ESC-M, 6 niveles", async _ =>
-            (await controlador.GetBinaryTree("ESC-M", 6)).Should().BeOfType<OkObjectResult>());
+            (await controlador.GetBinaryTree("ESC-M", 6)).Should().BeOfType<OkObjectResult>(), db);
         t.Should().BeLessThan(TimeSpan.FromSeconds(2));
     }
 }

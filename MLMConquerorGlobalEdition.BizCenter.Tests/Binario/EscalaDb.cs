@@ -19,6 +19,15 @@ public sealed class EscalaFactAttribute : FactAttribute
     }
 }
 
+/// <summary>Plan Q (Tarea 33): el [Theory] de <see cref="EscalaFactAttribute"/>, con los mismos cerrojos.</summary>
+public sealed class EscalaTheoryAttribute : TheoryAttribute
+{
+    public EscalaTheoryAttribute()
+    {
+        if (EscalaDb.Motivo is { } motivo) Skip = motivo;
+    }
+}
+
 public static class EscalaDb
 {
     public const string Base = "MLMConquerorGlobalEditionDb_Escala";
@@ -68,18 +77,75 @@ public static class EscalaDb
     /// Ejecuta <paramref name="paso"/> tres veces (la primera calienta la cache) e imprime los tres tiempos y la
     /// mediana, que es lo que se compara con el objetivo.
     /// </summary>
-    public static async Task<TimeSpan> MedianaAsync(ITestOutputHelper salida, string que, Func<int, Task> paso)
+    /// <remarks>
+    /// Plan Q (Tarea 33): con <paramref name="db"/>, tambien las lecturas logicas y la CPU de la sesion de cada ejecucion
+    /// (sys.dm_exec_sessions, con la conexion abierta durante las tres) y la carga de la maquina antes de medir: con la maquina
+    /// cargada el tiempo varia mucho y las lecturas y la CPU no.
+    /// </remarks>
+    public static async Task<TimeSpan> MedianaAsync(ITestOutputHelper salida, string que, Func<int, Task> paso, AppDbContext? db = null)
     {
         var tiempos = new List<TimeSpan>();
-        for (var i = 0; i < 3; i++)
+        var costes = new List<(long Lecturas, long Cpu)>();
+        var abrir = db is not null && db.Database.GetDbConnection().State != System.Data.ConnectionState.Open;
+        if (abrir) await db!.Database.OpenConnectionAsync();
+        try
         {
-            var c = Stopwatch.StartNew();
-            await paso(i);
-            c.Stop();
-            tiempos.Add(c.Elapsed);
+            var carga = db is null ? null : await CargaAsync(db);
+            for (var i = 0; i < 3; i++)
+            {
+                var antes = db is null ? default : await SesionAsync(db);
+                var c = Stopwatch.StartNew();
+                await paso(i);
+                c.Stop();
+                tiempos.Add(c.Elapsed);
+                if (db is not null)
+                {
+                    var despues = await SesionAsync(db);
+                    costes.Add((despues.Lecturas - antes.Lecturas, despues.Cpu - antes.Cpu));
+                }
+            }
+            var mediana = tiempos.OrderBy(t => t).ElementAt(1);
+            var coste = costes.Count == 0 ? "" :
+                $"; lecturas {string.Join(" / ", costes.Select(k => k.Lecturas))}, CPU {string.Join(" / ", costes.Select(k => $"{k.Cpu} ms"))}; {carga}";
+            salida.WriteLine($"[ESCALA] {que}: {string.Join(" / ", tiempos.Select(t => $"{t.TotalMilliseconds:0} ms"))} -> mediana {mediana.TotalMilliseconds:0} ms{coste}");
+            return mediana;
         }
-        var mediana = tiempos.OrderBy(t => t).ElementAt(1);
-        salida.WriteLine($"[ESCALA] {que}: {string.Join(" / ", tiempos.Select(t => $"{t.TotalMilliseconds:0} ms"))} -> mediana {mediana.TotalMilliseconds:0} ms");
-        return mediana;
+        finally
+        {
+            if (abrir) await db!.Database.CloseConnectionAsync();
+        }
+    }
+
+    public sealed record Sesion(long Lecturas, long Cpu);
+
+    /// <summary>Lecturas logicas y CPU (ms) acumuladas de la sesion de <paramref name="db"/> (la conexion tiene que estar abierta).</summary>
+    public static async Task<Sesion> SesionAsync(AppDbContext db) =>
+        (await db.Database.SqlQueryRaw<Sesion>(
+                "SELECT CAST(logical_reads AS bigint) AS Lecturas, CAST(cpu_time AS bigint) AS Cpu FROM sys.dm_exec_sessions WHERE session_id = @@SPID")
+            .ToListAsync())[0];
+
+    private sealed record Monitor(int Sistema, int Sql);
+
+    /// <summary>
+    /// La carga de la maquina en el ultimo minuto segun SQL Server (RING_BUFFER_SCHEDULER_MONITOR: CPU total ocupada y la de
+    /// SQL Server). Texto para la salida; si no se puede leer, lo dice.
+    /// </summary>
+    public static async Task<string> CargaAsync(AppDbContext db)
+    {
+        try
+        {
+            var m = (await db.Database.SqlQueryRaw<Monitor>("""
+                SELECT TOP 1 100 - r.value('(./Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS Sistema,
+                       r.value('(./Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]', 'int') AS Sql
+                FROM (SELECT CAST(record AS xml) AS r, [timestamp] FROM sys.dm_os_ring_buffers
+                      WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' AND record LIKE N'%<SystemHealth>%') x
+                ORDER BY x.[timestamp] DESC
+                """).ToListAsync()).FirstOrDefault();
+            return m is null ? "carga desconocida" : $"CPU de la maquina antes de medir {m.Sistema} % (SQL Server {m.Sql} %)";
+        }
+        catch (SqlException)
+        {
+            return "carga desconocida";
+        }
     }
 }

@@ -32,7 +32,7 @@ public class EscalaProgresoDeRangoTests
         {
             var r = await handler.Handle(new GetRankProgressQuery("ESC-M"), CancellationToken.None);
             r.IsSuccess.Should().BeTrue(r.Error);
-        });
+        }, db);
         t.Should().BeLessThan(TimeSpan.FromSeconds(1));
     }
 }
