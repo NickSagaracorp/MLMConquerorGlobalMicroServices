@@ -10,7 +10,7 @@ public sealed class DesdeCeroFactAttribute : FactAttribute
     public DesdeCeroFactAttribute()
     {
         if (Environment.GetEnvironmentVariable("MLM_MIGRACIONES_DESDE_CERO") != "1")
-            Skip = "Define MLM_MIGRACIONES_DESDE_CERO=1: crea y borra MLMConquerorGlobalEditionDb_DesdeCero y _Modelo en la instancia local.";
+            Skip = "Define MLM_MIGRACIONES_DESDE_CERO=1: crea y borra MLMConquerorGlobalEditionDb_DesdeCero, _Modelo, _PruebaMigraciones_Script y _PruebaMigraciones_Modelo en la instancia local.";
         else if (!SqlServerReportes.Reachable)
             Skip = "SQL Server no alcanzable.";
     }
@@ -24,7 +24,8 @@ public class MigracionesDesdeCeroTests
 {
     private const string DesdeCero = "MLMConquerorGlobalEditionDb_DesdeCero";
     private const string Modelo = "MLMConquerorGlobalEditionDb_Modelo";
-    private static readonly string[] Permitidas = { DesdeCero, Modelo };
+    private static readonly string[] Permitidas =
+        { DesdeCero, Modelo, "MLMConquerorGlobalEditionDb_PruebaMigraciones_Script", "MLMConquerorGlobalEditionDb_PruebaMigraciones_Modelo" };
 
     private const string IgualQueLaLocal =
         "deriva anterior al Plan Q, igual en la base local (comparada en solo lectura en el Bloque 6): ";
@@ -34,7 +35,7 @@ public class MigracionesDesdeCeroTests
     /// base local: corregirlas cambia las bases reales (estrechar columnas con datos, rowversion) y queda fuera del Plan Q.
     /// La clave es la linea de <see cref="EsquemaAsync"/> del lado de las migraciones o del modelo.
     /// </summary>
-    private static readonly Dictionary<string, string> Excepciones = new()
+    internal static readonly Dictionary<string, string> Excepciones = new()
     {
         ["MemberProfiles.DefaultLanguage:nvarchar:8:NO"] = IgualQueLaLocal + "AddProfilePreferencesAndHistories la crea nvarchar(8); el modelo no le da longitud",
         ["MemberProfiles.DefaultLanguage:nvarchar:-1:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
@@ -62,10 +63,10 @@ public class MigracionesDesdeCeroTests
         ["Tickets.Subject:nvarchar:300:NO"] = IgualQueLaLocal + "la otra cara de la anterior",
     };
 
-    private static string Cadena(string bd) =>
+    internal static string Cadena(string bd) =>
         $"Server=.;Database={bd};Integrated Security=true;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=true;";
 
-    private static AppDbContext Contexto(string bd) =>
+    internal static AppDbContext Contexto(string bd) =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(Cadena(bd), o => o.CommandTimeout(600)).Options);
 
     [DesdeCeroFact]
@@ -98,8 +99,11 @@ public class MigracionesDesdeCeroTests
         }
     }
 
-    /// <summary>Columnas (tipo, longitud, nulos) e indices (unico, filtro) de las tablas de usuario, sin el historial.</summary>
-    private static async Task<HashSet<string>> EsquemaAsync(string bd)
+    /// <summary>
+    /// Columnas (tipo, longitud, nulos), indices (unico, filtro), claves foraneas (columnas, tabla referida y accion al
+    /// borrar) y restricciones CHECK (definicion) de las tablas de usuario, sin el historial.
+    /// </summary>
+    internal static async Task<HashSet<string>> EsquemaAsync(string bd)
     {
         const string sql = @"
 SELECT CONCAT(c.TABLE_NAME, '.', c.COLUMN_NAME, ':', c.DATA_TYPE, ':', c.CHARACTER_MAXIMUM_LENGTH, ':', c.IS_NULLABLE)
@@ -107,7 +111,17 @@ FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_NAME <> '__EFMigrationsHistory'
 UNION ALL
 SELECT CONCAT(t.name, ' ix ', i.name, ':', i.is_unique, ':', i.filter_definition)
 FROM sys.indexes i JOIN sys.tables t ON t.object_id = i.object_id
-WHERE i.name IS NOT NULL AND t.name <> '__EFMigrationsHistory';";
+WHERE i.name IS NOT NULL AND t.name <> '__EFMigrationsHistory'
+UNION ALL
+SELECT CONCAT(OBJECT_NAME(fk.parent_object_id), ' fk ', fk.name, ':',
+    (SELECT STRING_AGG(CONCAT(COL_NAME(fc.parent_object_id, fc.parent_column_id), '>', COL_NAME(fc.referenced_object_id, fc.referenced_column_id)), ',')
+            WITHIN GROUP (ORDER BY fc.constraint_column_id)
+     FROM sys.foreign_key_columns fc WHERE fc.constraint_object_id = fk.object_id),
+    ':', OBJECT_NAME(fk.referenced_object_id), ':', fk.delete_referential_action_desc COLLATE DATABASE_DEFAULT)
+FROM sys.foreign_keys fk
+UNION ALL
+SELECT CONCAT(OBJECT_NAME(ck.parent_object_id), ' ck ', ck.name, ':', ck.definition COLLATE DATABASE_DEFAULT)
+FROM sys.check_constraints ck;";
         await using var c = new SqlConnection(Cadena(bd));
         await c.OpenAsync();
         await using var cmd = new SqlCommand(sql, c);
@@ -128,7 +142,7 @@ WHERE i.name IS NOT NULL AND t.name <> '__EFMigrationsHistory';";
         return l;
     }
 
-    private static async Task BorrarAsync(string bd)
+    internal static async Task BorrarAsync(string bd)
     {
         if (!Permitidas.Contains(bd)) throw new InvalidOperationException($"{bd} no es una base de esta prueba.");
         SqlConnection.ClearAllPools();
