@@ -9968,7 +9968,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int?>("PreviousRankId")
                         .HasColumnType("int");
@@ -9982,6 +9983,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("RankDefinitionId");
+
+                    b.HasIndex("MemberId", "AchievedAt")
+                        .IsDescending(false, true);
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("MemberId", "AchievedAt"), new[] { "RankDefinitionId" });
 
                     b.ToTable("MemberRankHistories");
                 });
