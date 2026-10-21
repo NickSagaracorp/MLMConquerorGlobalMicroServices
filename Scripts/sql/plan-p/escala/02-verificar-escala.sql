@@ -154,12 +154,12 @@ INSERT INTO #r SELECT N'AspNetUserRoles Ambassador', COUNT(*), @altas FROM AspNe
 INSERT INTO #r SELECT N'Orders completados', COUNT(*), @altas FROM Orders WHERE MemberId LIKE N'ESC-%' AND Status = 4;
 INSERT INTO #r SELECT N'OrderDetails', COUNT(*), 2 * @altas FROM OrderDetails od JOIN Orders o ON o.Id = od.OrderId WHERE o.MemberId LIKE N'ESC-%';
 INSERT INTO #r SELECT N'MembershipSubscriptions activas', COUNT(*), @altas FROM MembershipSubscriptions WHERE MemberId LIKE N'ESC-%' AND SubscriptionStatus = 1;
-INSERT INTO #r SELECT N'suscripciones: aporte distinto de los puntos de su pedido (activas) o de 0 (las demas)', COUNT(*), 0
+INSERT INTO #r SELECT N'suscripciones ESC: aporte distinto de los puntos de su pedido (activas) o de 0 (las demas)', COUNT(*), 0
 FROM MembershipSubscriptions s
 OUTER APPLY (SELECT SUM(p.QualificationPoins) AS Puntos FROM OrderDetails od JOIN Products p ON p.Id = od.ProductId WHERE od.OrderId = s.LastOrderId) o
-WHERE s.DualTeamContribution <> s.EnrollmentContribution
+WHERE s.MemberId LIKE N'ESC-%' AND (s.DualTeamContribution <> s.EnrollmentContribution
    OR (s.SubscriptionStatus = 1 AND s.EnrollmentContribution <> ISNULL(o.Puntos, 0))
-   OR (s.SubscriptionStatus <> 1 AND s.EnrollmentContribution <> 0);
+   OR (s.SubscriptionStatus <> 1 AND s.EnrollmentContribution <> 0));
 INSERT INTO #r SELECT N'MemberStatistics: PersonalPoints distinto de los aportes de sus activas', COUNT(*), 0
 FROM MemberStatistics ms LEFT JOIN #act a ON a.MemberId = ms.MemberId
 WHERE ms.PersonalPoints <> ISNULL(a.Aporte, 0);
@@ -171,7 +171,7 @@ INSERT INTO #r SELECT N'CommissionCountDowns', COUNT(*), @altas FROM CommissionC
 INSERT INTO #r SELECT N'MemberStatistics (todas las ESC)', COUNT(*), (SELECT COUNT(*) FROM MemberProfiles WHERE MemberId LIKE N'ESC-%') FROM MemberStatistics WHERE MemberId LIKE N'ESC-%';
 INSERT INTO #r SELECT N'altas sin comision al patrocinador', COUNT(*), 0 FROM Orders o WHERE o.MemberId LIKE N'ESC-%' AND NOT EXISTS (SELECT 1 FROM CommissionEarnings c WHERE c.SourceOrderId = o.Id);
 INSERT INTO #r SELECT N'RankEvaluationQueue (hasta 10 ascendientes y el propio por alta)', COUNT_BIG(*), @asc + @altas FROM RankEvaluationQueue WHERE TriggerMemberId LIKE N'ESC-%' AND TriggerEvent = 1;
-INSERT INTO #r SELECT N'RankEvaluationQueue pendientes', COUNT_BIG(*), 0 FROM RankEvaluationQueue WHERE IsProcessed = 0;
+INSERT INTO #r SELECT N'RankEvaluationQueue pendientes de altas ESC', COUNT_BIG(*), 0 FROM RankEvaluationQueue WHERE IsProcessed = 0 AND TriggerMemberId LIKE N'ESC-%';
 INSERT INTO #r SELECT N'MemberStatisticDeltas (3 por alta)', COUNT_BIG(*), 3 * @altas FROM MemberStatisticDeltas WHERE SourceMemberId LIKE N'ESC-%';
 INSERT INTO #r SELECT N'MemberStatisticDeltas pendientes', COUNT_BIG(*), 0 FROM MemberStatisticDeltas WHERE IsApplied = 0;
 INSERT INTO #r SELECT N'MemberNotifications (hasta 10 ascendientes por alta)', COUNT_BIG(*), @asc FROM MemberNotifications WHERE EventType = N'DOWNLINE_ENROLLED';
