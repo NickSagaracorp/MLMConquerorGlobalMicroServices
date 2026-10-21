@@ -20,7 +20,12 @@ Fases (Scripts/sql/plan-p/escala/altas), con tablas de trabajo en el esquema esc
                                         [e-inscripcion -> f-ascendientes Cola | Deltas | Avisos (a la vez)]
                                         [g-binario]
                       ->  z-cerrar -> ..\03-relleno-clave-binario.sql -> ..\04-contadores-y-colas.sql
-                      ->  sp_updatestats -> 02-verificar-escala.sql
+                      ->  ..\..\plan-q\01-nodos-de-inscripcion-repetidos.sql -> 02-nivel-de-alta.sql -> 04-calificados-de-inscripcion.sql
+                      ->  h-rangos (historial de rangos) -> sp_updatestats -> 02-verificar-escala.sql
+Plan Q (Tarea 32): cada alta deja lo que deja un alta del Plan Q (cola de rango y avisos a 10 niveles, tres deltas de
+estadisticas por alta, aportes de la suscripcion activa, nivel de alta guardado, sin ruta de texto en el binario) y la base
+sale con el historial de rangos que daria la evaluacion; las colas (DualLegDeltas, MemberStatisticDeltas, RankEvaluationQueue)
+quedan vacias o aplicadas.
 Solo toca MLMConquerorGlobalEditionDb_Escala: cada fichero SQL lo comprueba (DB_NAME) y exige -v Confirmo=ESCALA.
 
   powershell -File Scripts/sql/plan-p/escala/01-generar-altas.ps1 -Nodos 400000 -Salida C:\temp\escala-400k.txt [-Recrear]
@@ -82,6 +87,16 @@ Log 'fases paralelas hechas'
 Sql (Join-Path $fases 'z-cerrar.sql');                                   Log 'z-cerrar hecho'
 Sql (Join-Path $PSScriptRoot '..\03-relleno-clave-binario.sql');         Log '03 hecho'
 Sql (Join-Path $PSScriptRoot '..\04-contadores-y-colas.sql');            Log '04 hecho'
+# Plan Q (Tarea 32): lo que el Plan Q deja en una base real despues de los contadores del binario. Mismo manejo de errores que
+# las lineas vecinas: si sqlcmd falla, el orquestador se detiene.
+$planq = Join-Path $PSScriptRoot '..\..\plan-q'
+Sql (Join-Path $planq '01-nodos-de-inscripcion-repetidos.sql') @('-v', 'SoloInforme=0'); Log 'plan-q 01 hecho (un nodo vivo por miembro)'
+Sql (Join-Path $planq '02-nivel-de-alta.sql');                             Log 'plan-q 02 hecho (nivel de alta guardado)'
+Sql (Join-Path $planq '04-calificados-de-inscripcion.sql');                Log 'plan-q 04 hecho (calificados de inscripcion)'
+Sql (Join-Path $fases 'h-rangos.sql');                                     Log 'h-rangos hecho (historial de rangos)'
+# Plan Q (Tarea 32): DBCC CLONEDATABASE copia tambien los recuentos de filas y paginas de la base local en los metadatos
+# (sys.dm_db_partition_stats); sin corregirlos, los tamanos por tabla del informe suman los de la local.
+& sqlcmd -S . -d $base -E -C -b -Q "DBCC UPDATEUSAGE (0) WITH NO_INFOMSGS, COUNT_ROWS" | Out-Null; Log 'recuentos de filas y paginas corregidos'
 & sqlcmd -S . -d $base -E -C -b -Q "EXEC sp_updatestats" | Out-Null;     Log 'estadisticas actualizadas'
 Log "GENERACION TERMINADA en $([int]((Get-Date) - $t0).TotalSeconds) s"
 try { Sql (Join-Path $PSScriptRoot '02-verificar-escala.sql'); Log 'VERIFICACION OK' } catch { Log "VERIFICACION FALLA: $_" }

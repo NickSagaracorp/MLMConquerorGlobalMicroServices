@@ -50,11 +50,13 @@ BEGIN
                         (N'00000005-prod-0000-0000-000000000005', m.Total - m.Precio)) x(ProductId, Precio)
     WHERE m.n BETWEEN @lo AND @lo + @lote - 1;
 
+    -- Plan Q (DQ16): la activa aporta los puntos de su pedido (el producto de membresia; Lifestyle Ambassador da 0), lo que
+    -- deja MembershipPointsDeltas al activar; PersonalContribution sigue a 0, como en las altas reales.
     INSERT INTO MembershipSubscriptions (Id, MemberId, MembershipLevelId, ChangeReason, SubscriptionStatus, StartDate, EndDate, RenewalDate,
                                          IsFree, IsAutoRenew, LastOrderId, CreationDate, CreatedBy, LastUpdateDate, LastUpdateBy, IsDeleted,
                                          DualTeamContribution, EnrollmentContribution, PersonalContribution)
     SELECT m.SubId, m.MemberId, m.Nivel, 0, 1, m.Activa, DATEADD(month, 1, m.Activa), DATEADD(month, 1, m.Activa),
-           ml.IsFree, ml.IsAutoRenew, m.OrderId, DATEADD(millisecond, 170, m.Alta), m.Email, m.Activa, m.Email, 0, 0, 0, 0
+           ml.IsFree, ml.IsAutoRenew, m.OrderId, DATEADD(millisecond, 170, m.Alta), m.Email, m.Activa, m.Email, 0, m.Puntos, m.Puntos, 0
     FROM escala.Altas m JOIN MembershipLevels ml ON ml.Id = m.Nivel
     WHERE m.n BETWEEN @lo AND @lo + @lote - 1;
 
