@@ -5678,7 +5678,7 @@ Suites en serie, con los servicios `-run` en marcha y la CPU al 100 % por otra s
 **Files:**
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Migraciones/MigracionesDesdeCeroTests.cs`
 
-- [ ] **Paso 1.** La prueba. Es opcional, porque tarda minutos: solo corre con `MLM_MIGRACIONES_DESDE_CERO=1`. Solo crea y borra dos bases con nombres exactos en la instancia local.
+- [x] **Paso 1.** La prueba. Es opcional, porque tarda minutos: solo corre con `MLM_MIGRACIONES_DESDE_CERO=1`. Solo crea y borra dos bases con nombres exactos en la instancia local.
 
 ```csharp
 using Microsoft.Data.SqlClient;
@@ -5781,8 +5781,8 @@ WHERE i.name IS NOT NULL AND t.name <> '__EFMigrationsHistory';";
 }
 ```
 
-- [ ] **Paso 2.** `$env:MLM_MIGRACIONES_DESDE_CERO = "1"; dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter FullyQualifiedName~MigracionesDesdeCero`. **Esperado:** falla en `MigrateAsync` con `There is already an object named 'AspNetRoles' in the database` (2714).
-- [ ] **Paso 3.** Commit: `Plan Q: prueba que construye una base vacia con las migraciones y la compara con el modelo (en rojo)`.
+- [x] **Paso 2.** `$env:MLM_MIGRACIONES_DESDE_CERO = "1"; dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter FullyQualifiedName~MigracionesDesdeCero`. **Esperado:** falla en `MigrateAsync` con `There is already an object named 'AspNetRoles' in the database` (2714).
+- [x] **Paso 3.** Commit: `Plan Q: prueba que construye una base vacia con las migraciones y la compara con el modelo (en rojo)`.
 
 ### Tarea 30: `HelpdeskModule` solo crea lo que no existía
 
@@ -5792,7 +5792,7 @@ WHERE i.name IS NOT NULL AND t.name <> '__EFMigrationsHistory';";
 - Modify: `MLMConquerorGlobalEdition.Repository/Context/AppDbContext.cs:219-221` (se registra el generador)
 - Modify: `MLMConquerorGlobalEdition.Repository/Migrations/20260405130705_HelpdeskModule.cs:14-15` (al principio de `Up`) y el final de `Up` (justo antes de `:2728`)
 
-- [ ] **Paso 1.** La marca:
+- [x] **Paso 1.** La marca:
 
 ```csharp
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -5835,7 +5835,7 @@ SELECT name COLLATE DATABASE_DEFAULT AS Nombre INTO dbo.{TablaDePrevias} FROM sy
 }
 ```
 
-- [ ] **Paso 2.** El generador. Solo cambia algo cuando la lista trae operaciones marcadas, es decir, solo en `HelpdeskModule`:
+- [x] **Paso 2.** El generador. Solo cambia algo cuando la lista trae operaciones marcadas, es decir, solo en `HelpdeskModule`:
 
 ```csharp
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -5897,15 +5897,15 @@ public sealed class MigracionesSqlServerConGuardas : SqlServerMigrationsSqlGener
         }
 ```
 
-- [ ] **Paso 3.** En `HelpdeskModule.Up`: la primera línea es `SoloSiLaTablaEsNueva.Empezar(migrationBuilder);`, y al final, antes de cerrar `Up`, `SoloSiLaTablaEsNueva.Marcar(migrationBuilder); SoloSiLaTablaEsNueva.Terminar(migrationBuilder);`. Se añade un comentario de cabecera con el motivo y el enlace a este plan. No se toca nada más del fichero, ni del `Designer`, ni del `Down`.
-- [ ] **Paso 4.** Volver a ejecutar la prueba de la Tarea 29.
+- [x] **Paso 3.** En `HelpdeskModule.Up`: la primera línea es `SoloSiLaTablaEsNueva.Empezar(migrationBuilder);`, y al final, antes de cerrar `Up`, `SoloSiLaTablaEsNueva.Marcar(migrationBuilder); SoloSiLaTablaEsNueva.Terminar(migrationBuilder);`. Se añade un comentario de cabecera con el motivo y el enlace a este plan. No se toca nada más del fichero, ni del `Designer`, ni del `Down`.
+- [x] **Paso 4.** Volver a ejecutar la prueba de la Tarea 29.
   - **Si `MigrateAsync` falla después**, en otra migración, se aplica la misma regla: se marca solo si el fallo es «el objeto ya existe porque lo creó `HelpdeskModule` o una anterior». Cualquier otro fallo se anota en «Desviaciones» con su arreglo concreto antes de seguir.
   - **Si la comparación con el modelo da diferencias**, cada una se corrige con una migración nueva o pasa a una lista de excepciones con nombre y motivo, dentro de la prueba.
-- [ ] **Paso 5.** Comprobar que la base local no cambia:
+- [x] **Paso 5.** Comprobar que la base local no cambia:
   - `dotnet ef migrations list … --connection "Server=.;Database=MLMConquerorGlobalEditionDb;…"` lista todas como aplicadas;
   - `SELECT COUNT(*) FROM __EFMigrationsHistory` da lo mismo antes y después;
   - `dotnet ef migrations script --idempotent … -o C:\temp\idempotente.sql` contiene las guardas solo en el bloque de `HelpdeskModule`.
-- [ ] **Paso 6.** En verde. Commit: `Plan Q: HelpdeskModule solo crea las tablas que no existian y una base vacia se construye con las migraciones`.
+- [x] **Paso 6.** En verde. Commit: `Plan Q: HelpdeskModule solo crea las tablas que no existian y una base vacia se construye con las migraciones`.
 
 ### Tarea 31: `migrate-rds.sql` y la base de escala
 
@@ -5913,21 +5913,50 @@ public sealed class MigracionesSqlServerConGuardas : SqlServerMigrationsSqlGener
 - Modify: `DeploymentScripts/migrate-rds.sql` (se regenera)
 - Modify: `Scripts/sql/plan-p/escala/00-crear-bd-escala.sql` (comentario de la desviación del Plan P)
 
-- [ ] **Paso 1.** Regenerar el script idempotente, sin conexión (solo genera texto). Sustituye la nota de «desactualizado» del Plan P:
+- [x] **Paso 1.** Regenerar el script idempotente, sin conexión (solo genera texto). Sustituye la nota de «desactualizado» del Plan P:
 
 ```bash
 dotnet ef migrations script --idempotent --project MLMConquerorGlobalEdition.Repository --startup-project MLMConquerorGlobalEdition.AdminAPI -o DeploymentScripts/migrate-rds.sql
 ```
 
-- [ ] **Paso 2.** En `00-crear-bd-escala.sql`, el comentario que explica el clonado por el error 2714 se actualiza: ya no es obligatorio, pero se mantiene porque clonar el esquema es instantáneo y copia los catálogos.
-- [ ] **Paso 3.** El motivo de la excepción de `migrate-rds.sql` en `SinRutaEnElBinarioTests` (Tarea 14) deja de ser «desactualizado»: regenerado, el script es el historial de migraciones entero (crea la columna en el `CREATE TABLE` de `DualTeamTree` y la quita en `RetiraRutaDelBinario`), igual que `Migrations/`.
+- [x] **Paso 2.** En `00-crear-bd-escala.sql`, el comentario que explica el clonado por el error 2714 se actualiza: ya no es obligatorio, pero se mantiene porque clonar el esquema es instantáneo y copia los catálogos.
+- [x] **Paso 3.** El motivo de la excepción de `migrate-rds.sql` en `SinRutaEnElBinarioTests` (Tarea 14) deja de ser «desactualizado»: regenerado, el script es el historial de migraciones entero (crea la columna en el `CREATE TABLE` de `DualTeamTree` y la quita en `RetiraRutaDelBinario`), igual que `Migrations/`.
 
 ```csharp
         ["DeploymentScripts/migrate-rds.sql"] = "es el historial de migraciones regenerado como script (Tarea 31): crea la columna y la quita en RetiraRutaDelBinario, como Migrations/",
 ```
 
   La regla sigue en verde.
-- [ ] **Paso 4.** Commit: `Plan Q: script idempotente de migraciones regenerado y nota de la base de escala al dia`.
+- [x] **Paso 4.** Commit: `Plan Q: script idempotente de migraciones regenerado y nota de la base de escala al dia`.
+
+### Notas de ejecución del bloque 6 (2026-10-21)
+
+Commits: Tarea 29 `1639122` (en rojo), Tarea 30 `94a8fbd`, Tarea 31 `71c4e4b` y estas notas. No hay migraciones nuevas: la base local no se tocó (119 en el historial antes y después, `migrations list` sin pendientes).
+
+- **Tarea 29.** La prueba es la del plan, con `SqlConnection.ClearAllPools()` antes de borrar cada base. En rojo como se esperaba: 2714 en `AspNetRoles`.
+- **Tarea 30, lo que encontró la base vacía** (para iterar sin repetir la cadena entera se usó `dotnet ef database update --connection` sobre `MLMConquerorGlobalEditionDb_DesdeCero`, que continúa donde se quedó; al final, la prueba completa desde cero):
+  1. Con la marca y el generador, `HelpdeskModule` pasa. **Desviación:** la siguiente migración que inserta categorías (`SeedItInfrastructureKbArticle`) falla con 207 (`Description`, `DefaultPriority`, `SortOrder`). `InitialCreate` crea `TicketCategories` con 7 columnas y `HelpdeskModule` la vuelve a crear con 13; como ya existía, la guarda salta su `CREATE TABLE`. En las bases reales la completó `fix_helpdesk_tables.sql` (sección 7) con `ALTER TABLE`. Arreglo: `Migrations/Infraestructura/CompletarCategoriasDeTickets.cs`, llamado desde `HelpdeskModule.Up` entre `Marcar` y `Terminar`, hace lo mismo que la sección 7 (las 6 columnas que faltan, sus 3 FK y sus 3 índices, con los mismos tipos), solo si la tabla era previa y solo lo que falte. Antes de aplicarlo se comprobó, contra lo que `HelpdeskModule` quería crear, que es la única tabla previa con columnas que no llegan por otra migración (las otras diferencias, `CommissionTypes.FixedAmount` y `CreditCards.ExpiryMonth`/`ExpiryYear`, las renombran o cifran migraciones posteriores).
+  2. `RetiraRutaDelBinario` agotó una vez los 30 s por defecto de `dotnet ef` con la máquina cargada; la prueba usa `CommandTimeout(600)`. No es un fallo de la migración.
+  3. Después, las 119 migraciones se aplican. **Comparación con el modelo:** 11 diferencias por lado, todas en `MemberProfiles.DefaultLanguage` (8 frente a max), `TicketCategories.Name` (max frente a 200), `TicketComments.AuthorType` (max frente a 20), `Tickets` (`AssignedToUserId`, `MemberId`, `MergedIntoTicketId`, `Subject` sin longitud, `RowVersion` `varbinary(max)` frente a `rowversion`) e índices de `Tickets`/`TicketComments` (los de `InitialCreate` frente a los de `HelpdeskModule`). **Comparada además con la base local en solo lectura (Q-R11): la base migrada desde cero es idéntica a la local** en columnas e índices (la local solo tiene de más las tablas de Hangfire y tres copias de seguridad a mano). Son derivas anteriores al Plan Q que ya están en las bases reales. **Decisión:** van a la lista de excepciones de la prueba, cada una con su motivo, y la prueba falla también si una excepción deja de hacer falta. No se corrigen con una migración: estrechar columnas con datos y cambiar `RowVersion` a `rowversion` cambia las bases reales y queda fuera del plan (ver pendientes).
+  4. Las funciones (`DualChildKey`, `Numeros`, `NumerosEntre`, `DualKeyDepth`, `DualPathKeys`, `DualAncestorKeys`, `GenealogyAncestors`) y la secuencia `DualTeamRootOrdinal` están en la base migrada.
+- **Tarea 31, `migrate-rds.sql`.** Regenerado con `--idempotent` (16.900 líneas, todas las migraciones). Probado sobre tres bases desechables:
+  - **Desviación:** el script generado tal cual no se podía ejecutar. Sobre la base migrada, 30 errores 156/319: cada `CREATE OR ALTER FUNCTION` iba dentro de `IF NOT EXISTS (historial) BEGIN … END`, y tiene que ser la primera sentencia de su lote. Sobre una base vacía (`MLMConquerorGlobalEditionDb_PruebaMigraciones_Script`), errores 207/208/4902 y solo 82 migraciones: el script compila cada migración en un lote, y un `migrationBuilder.Sql` que usa una columna que la misma migración acaba de añadir (por ejemplo `UPDATE Countries SET HasStates`) no compila y tira el lote. Arreglo, en el mismo generador (`MigracionesSqlServerConGuardas.Generate(SqlOperation…)`): **solo en el script idempotente**, cada `migrationBuilder.Sql` va en `EXEC(N'…')`, como EF ya hace con sus `UpdateData`/`InsertData`. Con `MigrateAsync` no cambia nada (cada operación es su propio comando). Lo vigila `ScriptIdempotenteTests` (sin conexión, en rojo antes): funciones en `EXEC`, el `UPDATE` de `HasStates` en `EXEC`, sin idempotencia tal cual, y las guardas de tabla previa solo en el bloque de `HelpdeskModule`.
+  - Con el arreglo: sobre una base vacía, 119 migraciones sin errores y el esquema (columnas, índices, 66 FK, 7 funciones y la secuencia) **igual que el de `MigrateAsync`**; una segunda pasada sobre esa base y una pasada sobre la base migrada, sin errores ni cambios. Las guardas `__PlanQ_TablasPrevias` solo aparecen en el bloque de `HelpdeskModule`.
+  - El script se genera sin conexión; lo ejecuta Nick (pasos 3 y 4 del despliegue). No se ejecutó contra ninguna otra base.
+  - `EscritoresDeSuscripcionesTests` también mira `DeploymentScripts/` y encontró el `UPDATE MembershipSubscriptions` de `PuntosPorMembresiaActiva` en el script: se añade a sus revisados con el mismo motivo que en `SinRutaEnElBinarioTests` (es el historial de migraciones, que la regla no mira en `Migrations/`).
+- **Base de escala.** No existe ahora en la instancia local (la crea el Bloque 7 con `00-crear-bd-escala.sql`); no se creó, generó ni borró nada en ella. El comentario de `00-crear-bd-escala.sql` dice ya que desde cero se puede, y por qué se sigue clonando (instantáneo, igual que la local, con los catálogos).
+- **Bases desechables:** `MLMConquerorGlobalEditionDb_DesdeCero`, `MLMConquerorGlobalEditionDb_Modelo` (también creada a mano con `dbcontext script` para comparar sin repetir la cadena) y `MLMConquerorGlobalEditionDb_PruebaMigraciones_Script`. Todas borradas; en la instancia queda solo `MLMConquerorGlobalEditionDb`.
+- **Tiempos:** con la máquina cargada, la prueba desde cero tardó de 5 a 7 min (la cadena entera) y `ScriptIdempotenteTests` unos 3 min (generar el script).
+
+Pendiente o a vigilar:
+- Las 11 derivas de `Tickets`, `TicketComments`, `TicketCategories` y `MemberProfiles.DefaultLanguage` respecto al modelo existen en las bases reales. Si se quieren cerrar, es una migración escrita a mano (estrechar `Subject`, `MemberId`, `AssignedToUserId`, `MergedIntoTicketId`, `AuthorType` y `Name` comprobando antes las longitudes, y rehacer `RowVersion`), fuera de este plan.
+- `fix_helpdesk_tables.sql` también insertaba una categoría «General» si la tabla estaba vacía; en la base vacía no se reproduce (las categorías las siembran migraciones posteriores).
+- Cualquier migración nueva con `migrationBuilder.Sql` que contenga `GO` no se envuelve en `EXEC` en el script idempotente (el generador la deja como EF); hoy ninguna lo tiene.
+
+Suites en serie (`dotnet build` sin errores), con los servicios `-run` en marcha y la máquina cargada: Domain 150, BizCenter 1.257 de 1.263 (1 saltada: la prueba desde cero, que necesita `MLM_MIGRACIONES_DESDE_CERO=1`; aparte, con la variable, en verde con `ScriptIdempotenteTests` y las reglas), Signups 1.176, AdminAPI 640 de 643 (1 saltada), RankEngine 134, CommissionEngine 94, Billing 752 y TicketManagementSystem 62.
+- En la primera pasada de BizCenter, 124 pruebas de SQL Server salieron saltadas (la sonda de conexión, de 3 s, no llegó a tiempo con la carga); se repitió la suite entera y es la cifra de arriba.
+- Repetidas solas, pasan: `SqlServerDeltasPorLineaTests`, `SqlServerDevolucionYEstadoDeCuentaTests` (3), `EntraxQrPaymentTests.Pregunta_como_mucho_cada_5_segundos…`, la de Signups (`…vuelta_a_Pending_no_pisa_un_pedido…`), `Suspender_resta_los_puntos…` (AdminAPI), las dos de RankEngine (`SqlServerColaDeRangoVaciaPiernasTests`, `SqlServerProgresoDeRangoTests`) y `SqlServerVaciarAntesDeLeerTests` (CommissionEngine): tiempos agotados por candados de los trabajos `-run` y la carga.
+- Siguen fallando solas `SqlServerVisualizadorBinarioTests.El_visualizador_del_mayor_equipo_responde_en_tiempo` (16 s frente a 2 s, la frágil conocida) y `SqlServerVenenoEnLaColaTests.Un_arranque_que_siempre_falla_se_aparta_al_tercer_intento…` (espera un 8115 y no llega: el trabajo de cada minuto del árbol `-run` vacía la misma cola y se lleva los deltas de la prueba antes que ella; la misma carrera que la frágil conocida de esa clase). Ninguna toca lo que cambia este bloque, que solo afecta a la generación de SQL de migraciones.
 
 ---
 
