@@ -6000,7 +6000,7 @@ Generar la base de escala cuesta unos 45 min con 500.000 y 2 h 40 con 1.000.000.
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscritoresDelBinarioTests.cs:22-50` (revisar que los ficheros revisados siguen existiendo)
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/SinRutaEnElBinarioTests.cs` (se quitan las excepciones temporales de `g-binario.sql` y `02-verificar-escala.sql` que puso la Tarea 14; la regla sigue en verde tras los Pasos 3 y 5)
 
-- [ ] **Paso 1.** `escala.Pares` gana `Distancia`: 1 para el patrocinador y 10 para el décimo ascendiente. `STRING_SPLIT(…, N'/', 1)` da el ordinal (SQL Server 2022):
+- [x] **Paso 1.** `escala.Pares` gana `Distancia`: 1 para el patrocinador y 10 para el décimo ascendiente. `STRING_SPLIT(…, N'/', 1)` da el ordinal (SQL Server 2022):
 
 ```sql
 SELECT g.MemberId AS T, CAST(s.value AS nvarchar(20)) COLLATE DATABASE_DEFAULT AS E,
@@ -6016,7 +6016,7 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
 ```
 
   En «/A/B/C/» (C, el alta) hay 4 barras y los ordinales son A = 2, B = 3, C = 4, así que B da 1 y A da 2.
-- [ ] **Paso 2.** `f-ascendientes.sql` deja lo que deja un alta del Plan Q:
+- [x] **Paso 2.** `f-ascendientes.sql` deja lo que deja un alta del Plan Q:
   - **Cola y Avisos:** `WHERE Distancia <= 10`. El 10 es `GenealogyUpline.EnrollmentLevels`: SQL no puede leer la constante, así que si la respuesta a Q1 la cambia, se cambia también aquí y en `02-verificar-escala.sql` (Paso 5).
   - **Deltas:** una fila por alta, la del patrocinador.
 
@@ -6028,8 +6028,8 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
 ```
 
   `MemberStatistics` (`d-cobros.sql:97-104`) ya escribe `EnrollmentTeamSize` desde `escala.Equipo`: no cambia.
-- [ ] **Paso 3.** `g-binario.sql`: se quita la columna `HierarchyPath` de los tres `INSERT` y su `CONCAT`. `DualLegDeltas` queda vacía: el generador escribe las piernas finales con `04-contadores-y-colas.sql`, como hoy.
-- [ ] **Paso 4.** `01-generar-altas.ps1`, después de `04-contadores-y-colas.sql` y antes de `sp_updatestats`:
+- [x] **Paso 3.** `g-binario.sql`: se quita la columna `HierarchyPath` de los tres `INSERT` y su `CONCAT`. `DualLegDeltas` queda vacía: el generador escribe las piernas finales con `04-contadores-y-colas.sql`, como hoy.
+- [x] **Paso 4.** `01-generar-altas.ps1`, después de `04-contadores-y-colas.sql` y antes de `sp_updatestats`:
 
 ```powershell
 & sqlcmd -S . -d MLMConquerorGlobalEditionDb_Escala -E -C -b -I -v Confirmo=ESCALA -v SoloInforme=0 -i (Join-Path $PSScriptRoot '..\..\plan-q\01-nodos-de-inscripcion-repetidos.sql')
@@ -6038,20 +6038,20 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
 ```
 
   Con el mismo manejo de errores que las líneas vecinas: si `sqlcmd` falla, el orquestador se detiene.
-- [ ] **Paso 5.** `02-verificar-escala.sql`:
+- [x] **Paso 5.** `02-verificar-escala.sql`:
   - fuera la comprobación de rutas del binario (`:35-44`); se conserva la de clave y profundidad con `dbo.DualChildKey`;
   - las filas por alta esperadas pasan a: `RankEvaluationQueue` y `MemberNotifications` = Σ min(ascendientes, 10), y `MemberStatisticDeltas` = 1 por alta con patrocinador;
   - nuevas comprobaciones: 0 miembros con dos nodos vivos, 0 perfiles con alta pero sin `SignupMembershipLevelId`;
   - `DualLegDeltas` sin filas de pierna (`OwnChange = 0`). Las propias son solo de miembros sin nodo binario vivo: tantas como miembros activos sin colocar (DQ13);
   - en ESC-M, `LeftLegQualified + RightLegQualified` y `EnrollmentQualifiedTeamMembers` iguales al recuento al vuelo de las activas de su rango (DQ13).
-- [ ] **Paso 6.** Commit: `Plan Q: el generador de escala deja lo que deja un alta del Plan Q y la verificacion lo comprueba`.
+- [x] **Paso 6.** Commit: `Plan Q: el generador de escala deja lo que deja un alta del Plan Q y la verificacion lo comprueba`.
 
 ### Tarea 33: mediciones nuevas y objetivos
 
 **Files:**
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Binario/EscalaBinarioTests.cs`
 
-- [ ] **Paso 1.** Cambios en las pruebas de escala:
+- [x] **Paso 1.** Cambios en las pruebas de escala:
   - **`Colocar_una_hoja_a_unos_8500_niveles` (`:158-176`):** objetivo < 300 ms. La subida ya no va en la colocación.
   - **`Diez_colocaciones_simultaneas_en_la_misma_linea_profunda` (`:197-239`):** el objetivo sigue siendo p95 < 2 s, que es el pedido.
   - **Nueva `Vaciar_los_deltas_de_1000_colocaciones_en_la_linea_profunda`:**
@@ -6063,11 +6063,11 @@ WHERE s.value <> N'' AND s.value <> g.MemberId;
   - **`Mi_equipo_binario_primera_pagina_y_pagina_1000` (`:106-127`):** con el orden por defecto, que ahora es la clave. Objetivo < 2 s.
   - **`Informe_de_la_base_de_escala` (`:58-84`):** informa del tamaño de `DualTeamTree` sin ruta.
   - **`EscalaProgresoDeRangoTests` (RankEngine.Tests):** el objetivo sigue en < 1 s con 1.000.000. Tras las Tareas 8b y 19b, el manejador no cuenta ningún equipo (DQ13), así que se espera muy por debajo.
-- [ ] **Paso 2.** Commit: `Plan Q: objetivos de escala del Plan Q y medicion del vaciado de la cola`.
+- [x] **Paso 2.** Commit: `Plan Q: objetivos de escala del Plan Q y medicion del vaciado de la cola`.
 
 ### Tarea 34: generar, medir y borrar (500.000 y 1.000.000)
 
-- [ ] **Paso 1.** Aplicar en local todas las migraciones y scripts del plan (si no se hizo ya bloque a bloque). El clon de escala parte del esquema de la local.
+- [x] **Paso 1.** Aplicar en local todas las migraciones y scripts del plan (si no se hizo ya bloque a bloque). El clon de escala parte del esquema de la local.
 - [ ] **Paso 2.** Para `N` en 500.000 y 1.000.000, uno detrás de otro:
 
 ```powershell
@@ -6088,26 +6088,30 @@ Las columnas «antes» de 400.000 y 1.000.000 vienen del Bloque D del Plan P. La
 
 | Medición | Objetivo | 400.000 antes | 1.000.000 antes | 500.000 antes | 500.000 después | 1.000.000 después |
 |---|---|---|---|---|---|---|
-| Progreso de rango de ESC-M | < 1 s | > 30 s ❌ | > 30 s ❌ | 17.718 ❌ ² | | |
-| Colocar una hoja a 8.507 niveles | < 300 ms | 1.549 | 3.457 ❌ | 1.639 ❌ | | |
-| 10 colocaciones a la vez en la línea profunda (p95) | < 2 s | 14.249 ❌ | 29.682 ❌ | 13.695 ❌ | | |
-| Vaciar 1.000 deltas en la línea profunda | < 60 s (local: < 30 s) | — | — | — | | |
-| Mover ESC-P (50.000) | < 30 s | 126.621 ❌ | 227.134 ❌ | 254.031 ❌ | | |
-| Colocaciones durante el movimiento (fallan) | 0 de 15 | 13 ❌ | 13 ❌ | 15 ❌ | | |
-| Mi equipo binario, primera página | < 2 s | 2.089 ❌ | 1.692 ✅ ¹ | 2.061 ❌ | | |
-| Mi equipo binario, página 1.000 | < 2 s | 2.792 ❌ | 2.323 ❌ ¹ | 2.410 ❌ | | |
-| Mi equipo binario, búsqueda por nombre | < 2 s | 4.313 ❌ | 18.510 ❌ | 6.522 ❌ | | |
-| Mi equipo de inscripción: conteo / p1 / p1000 | < 2 s | 468 / 1.049 / 1.868 ✅ | 2.776 / 4.545 / 7.082 ❌ | 797 / 1.519 / 2.882 ❌ | | |
-| Actividad, 3 meses | < 2 s | 5.344 ❌ | > 30 s ❌ | 7.591 ❌ | | |
-| Clientes de todo el equipo | < 2 s | 4.883 ❌ | 24.231 ❌ | 6.735 ❌ | | |
-| Eventos (todo el equipo, 200 inscritos) | < 2 s | 1.457 ✅ | 7.163 ❌ | 3.265 ❌ | | |
-| Cola sin caché (residual, sin cambio) | — | 8.631 | 12.479 | 4.753 | | |
-| Tamaño de DualTeamTree | — | 29,7 GB | 77,9 GB | 39,6 GB | | |
-| Filas por tabla de ascendientes (cola, deltas, avisos) | — | 11,7 M | 29,4 M | 14,6 M | | |
+| Progreso de rango de ESC-M | < 1 s | > 30 s ❌ | > 30 s ❌ | 17.718 ❌ ² | 216 ✅ | |
+| Colocar una hoja a 8.507 niveles | < 300 ms | 1.549 | 3.457 ❌ | 1.639 ❌ | 41 ✅ | |
+| 10 colocaciones a la vez en la línea profunda (p95) | < 2 s | 14.249 ❌ | 29.682 ❌ | 13.695 ❌ | 2.594 ❌ ³ | |
+| Vaciar 1.000 deltas en la línea profunda | < 60 s (local: < 30 s) | — | — | — | 7.329 ✅ | |
+| Mover ESC-P (50.000) | < 30 s | 126.621 ❌ | 227.134 ❌ | 254.031 ❌ | 93.107 ❌ | |
+| Colocaciones durante el movimiento (fallan) | 0 de 15 | 13 ❌ | 13 ❌ | 15 ❌ | 15 ❌ | |
+| Mi equipo binario, primera página | < 2 s | 2.089 ❌ | 1.692 ✅ ¹ | 2.061 ❌ | 210 ✅ | |
+| Mi equipo binario, página 1.000 | < 2 s | 2.792 ❌ | 2.323 ❌ ¹ | 2.410 ❌ | 170 ✅ | |
+| Mi equipo binario, búsqueda por nombre | < 2 s | 4.313 ❌ | 18.510 ❌ | 6.522 ❌ | 4.589 ❌ ³ | |
+| Mi equipo de inscripción: conteo / p1 / p1000 | < 2 s | 468 / 1.049 / 1.868 ✅ | 2.776 / 4.545 / 7.082 ❌ | 797 / 1.519 / 2.882 ❌ | 8.098 / 10.714 / 11.147 ❌ ³ ⁴ | |
+| Actividad, 3 meses | < 2 s | 5.344 ❌ | > 30 s ❌ | 7.591 ❌ | 3.005 ❌ | |
+| Clientes de todo el equipo | < 2 s | 4.883 ❌ | 24.231 ❌ | 6.735 ❌ | 1.189 ✅ | |
+| Eventos (todo el equipo, 200 inscritos) | < 2 s | 1.457 ✅ | 7.163 ❌ | 3.265 ❌ | 518 ✅ | |
+| Cola sin caché (residual, sin cambio) | — | 8.631 | 12.479 | 4.753 | 22.425 | |
+| Tamaño de DualTeamTree | — | 29,7 GB | 77,9 GB | 39,6 GB | 1,7 GB | |
+| Filas por tabla de ascendientes (cola, deltas, avisos) | — | 11,7 M | 29,4 M | 14,6 M | 6,0 M / 1,65 M / 5,5 M | |
 
 ¹ Tras el Plan B del conteo (Plan P, Bloque D).
 
 ² Con 500.000 no se agota: 37.200 / 16.351 / 17.718 ms (la primera, en frío, pasa de 30 s).
+
+³ Tiempo dominado por la carga de la máquina (otra solución compilando y probando: la CPU de la máquina estaba entre el 81 y el 100 % antes de cada medida, SQL Server solo del 0 al 12 %). Las lecturas y la CPU de la sesión son las de una consulta que cumple: búsqueda «Lucia Diaz» 32.000 lecturas y 1,1 s de CPU; las 10 colocaciones, p50 61 a 608 ms. Ver las notas del bloque 7.
+
+⁴ Después de la corrección de la página por estructura (`72f8d6e`): 17.300 / 16.300 / 16.500 lecturas y 1,3 / 1,1 / 1,4 s de CPU. Antes de ella, la página 1.000 eran 102.000 lecturas y 12 s de CPU (1.176 / 3.980 / 12.866 ms con algo menos de carga).
 
 Tarea 0 (500.000 antes, código de be932cc): generación 2.899 s y `02-verificar-escala.sql` a 0 en todo (ESC-M con 500.000 en el binario y 550.000 en inscripción; profundidad máxima 8.506, clave máxima 1.068 B, nivel máximo de inscripción 429; base de 63.112 MB y registro de 36.936 MB). El índice agrupado de `DualTeamTree` ocupa 40.536 MB (669.435 filas) y `HierarchyPath`, 32.875 MB. Las 15 colocaciones durante el movimiento fallan tras unos 15,1 s con «Another dual-tree write holds dual-tree.»; el movimiento tardó 149.282 / 397.268 / 254.031 ms. Las 10 simultáneas: p50 7.874 / 9.364 / 4.284 ms y p95 13.695 / 26.202 / 11.581 ms, ninguna falla. Fuera de la tabla: `PlaceBulkAsync` con 1.000 pendientes, mediana 903,7 s (831 ms por colocación, 0 fallidas); conteo de Mi equipo binario 215 ms; página 1.000 por clave 91 ms; puntos y contadores de pierna 2 ms; visualizador del admin con 6 niveles 44 ms. Suites: BizCenter 5 de 14 en verde (4.390 s), AdminAPI 1 de 1 (17 s), RankEngine 0 de 1 (78 s).
 
@@ -6145,6 +6149,52 @@ Antes de las correcciones, en la primera pasada (también en calma), la página 
 - Mi equipo de inscripción, búsqueda por prefijo, de 2.252 a 16.062 ms.
 
 En esas pasadas cargadas, `OrderNo AnyAsync` pasó de 3 a 34 ms. Las cifras que valen para el objetivo son las del Bloque 7, con 500.000 y 1.000.000.
+
+### Notas de ejecución del bloque 7 (2026-10-21)
+
+Commits: Tarea 32 `b43b2ec`, Tarea 33 `1408f15` y `febbc82` (lecturas y CPU del movimiento), corrección de la página de inscripción `72f8d6e`, crecimiento en el sitio `b7ed56a`, `574c97a`, `65d0d9d`, `3c3ffec`, y estas notas.
+
+**Carga de la máquina.** Durante todo el bloque otra solución estuvo compilando y probando: la CPU de la máquina (anillo `RING_BUFFER_SCHEDULER_MONITOR`, que cada medida imprime ahora) estuvo del 81 al 100 % antes de cada medida, con SQL Server del 0 al 12 %. Los tiempos se multiplican; por eso cada medida (`EscalaDb.MedianaAsync` con el contexto) anota también las lecturas lógicas y la CPU de la sesión, y los rojos se juzgan por ellas. Desde las 11:30, además, los servicios de pantalla del árbol `-run` (AdminAPI, AdminWeb, BizCenter, BizCenterWeb, Signups, SignupAPI, SharedAPICenter, TicketManagementSystem) apuntan a la base de escala para las pruebas de Nick, con sus trabajos de Hangfire (vaciado de piernas y de estadísticas); Billing, CommissionEngine y RankEngine siguen en la local.
+
+Desviaciones respecto al texto de las tareas:
+- **Tarea 32.**
+  - `escala.Pares` no trocea la ruta con `STRING_SPLIT`: sube por `escala.Altas.GenPadre` diez veces (las distancias 1 a 10), y solo guarda hasta 10.
+  - Lo que deja un alta del Plan Q (leído del código, no del plan): la cola de rango tiene los 10 ascendientes del alta (`SignupAmbassadorHandler`, `GenealogyUpline.Closest` sobre la ruta del patrocinador) **más** la evaluación del propio que encola el trabajo de deltas con la fila de puntos (las de sus 10 ascendientes ya están pendientes y no se repiten); `MemberStatisticDeltas` tiene **tres** filas por alta, no una: la del alta (`SponsorLine` sobre el patrocinador, equipo y patrocinados), la de puntos (`SponsorLine` sobre el propio, `member-points`) y la de calificados (`AncestorsOf` sobre el propio, `qualified-count`); los avisos, los 10 ascendientes.
+  - La suscripción activa aporta los puntos de su pedido (`DualTeamContribution` = `EnrollmentContribution`; `PersonalContribution` sigue a 0, como en las altas reales de la local).
+  - `g-binario.sql` inserta también la columna por lotes (sin la ruta no hace falta ir eslabón a eslabón); la clave y `Depth` siguen saliendo de `03-relleno-clave-binario.sql`.
+  - Nuevo `altas/h-rangos.sql`: el historial de rangos que dejaría `EvaluateRankHandler` con `RankQualificationService` sobre los datos generados (puerta, piernas topadas, ramas de inscripción topadas, redondeo al par), una fila por rango que cumple, encadenadas. La cola de rango sale procesada, así que sin historial Mi equipo, el visualizador y el progreso medían sobre una tabla vacía. `EscalaEvaluacionDeRangoTests.El_historial_de_rangos_generado_es_el_de_la_evaluacion` lo compara con el servicio en una muestra de 320 miembros: 0 distintos. No se generan los avisos de rango alcanzado ni bonos de rango.
+  - El orquestador ejecuta además `DBCC UPDATEUSAGE`: `DBCC CLONEDATABASE` copia los recuentos de filas y páginas de la local en los metadatos y el informe de tamaños sumaba los de la local (por eso las cifras de tamaño de la Tarea 0 pueden llevar unos MB de más).
+  - `02-verificar-escala.sql`, además de lo del paso 5: calificados del binario de todos los nodos recalculados de abajo arriba, `DualTeamSize`, aportes de las suscripciones, `PersonalPoints` = aportes de sus activas, `EnrollmentPoints` de ESC-M, colas pendientes a 0, apartados a 0 e historial de rangos encadenado. Desde que los servicios apuntan a la base, las raíces, los aportes y la cola de rango se miran solo en las altas ESC: el sembrador de los servicios crea ROOT001 (con un aporte de 6 sin pedido y una evaluación pendiente que nadie procesa, porque RankEngine sigue en la local).
+- **Tarea 33.** Además de lo del plan: `Busquedas_por_prefijo_en_Mi_equipo_y_el_visualizador` («a», «amb», «amb-1», «esc», «esc-1», «mari»; los ids de escala son ESC-…, así que «amb» y «amb-1» no casan con nada y «esc», «esc-1» son sus equivalentes), el total de Mi equipo de inscripción (`CountUnderAsync`), `Mil_altas_bajo_el_miembro_mas_profundo_de_la_inscripcion` (la Tarea 20 a 429 niveles), y en RankEngine `EscalaEvaluacionDeRangoTests` (evaluar el rango de ESC-M y del miembro con más equipo sin el rango más alto, y el historial). La colocación de una hoja se mide solo `PlaceAsync`. La limpieza de las pruebas que confirman vacía la cola de piernas.
+- **Tarea 34.** No se borra la base (instrucción de Nick) y el millón **no** se genera desde cero: se llega a 1.000.000 haciendo crecer en el sitio la base de 500.000, con los servicios apuntándola (ver abajo).
+
+**500.000** (`01-generar-altas.ps1 -Nodos 500000`, 6.889 s con la máquina cargada; antes 2.899 s): `02-verificar-escala.sql` a 0 en todo. ESC-M con 500.000 en el binario y 550.000 en inscripción, profundidad máxima 8.506, clave máxima 1.068 B, nivel máximo de inscripción 429. Base de 18.504 MB y registro de 9.544 MB (antes 63.112 y 36.936). `DualTeamTree` 1.719 MB (antes 40.536 MB solo el índice agrupado). Cola de rango 6.049.574 filas, deltas 1.650.003, avisos 5.499.573 (antes 14,6 M cada una). Historial de rangos 118.647 filas de 82.921 miembros (ESC-M, Platinum: su pierna derecha está vacía).
+
+Medidas con 500.000 fuera de la tabla (mediana; lecturas y CPU de la sesión):
+| Medida | Tiempo | Lecturas | CPU |
+|---|---|---|---|
+| Búsqueda «a»: binario / inscripción / visualizador | 2.018 / 3.497 / 5.966 ms | 62.800 / 62.600 / 19.300 | 0,6–1,1 / 1,0 / 0,3–0,5 s |
+| Búsqueda «mari» | 11.643 / 10.904 / 4.782 ms | 32.000 / 32.200 / 13.200 | 0,65 / 0,56 / 0,27 s |
+| Búsqueda «esc-1» | 18.164 / 15.813 / 5.531 ms | 49.000 / 49.000 / 38.100 | 0,8 / 0,7 / 0,25 s |
+| Búsqueda «amb», «amb-1», «esc» | 274–677 ms | 17–43 | ~0 |
+| Mi equipo de inscripción, total (`CountUnderAsync`) | 849 ms (4.905 con más carga) | 14.100 | 0,9–1,1 s |
+| Mi equipo binario, conteo por el rango | 989 ms | 89.800 | 1,1 s |
+| Visualizador del admin, 6 niveles | 1.556 ms | 1.319 | 16–63 ms |
+| 1.000 altas a 429 niveles (el trabajo) | 7.401 ms ✅ (< 10 s) | 132.000 | 6,4–7,5 s |
+| `PlaceBulkAsync`, por colocación | 183 ms ✅ | — | — |
+| Evaluar el rango de ESC-M / de ESC-4 | 182 / 174 ms ✅ | 279 / 185 | ~0 |
+| Puntos de pierna (lectura) | 1 ms ✅ | 7 | 0 |
+
+Lo que no cumple con 500.000 y por qué:
+- **Mi equipo de inscripción, página 1.000: arreglado** (`72f8d6e`, prueba `La_pagina_por_estructura_con_las_columnas_de_Mi_equipo_no_recorre_el_arbol`, en rojo antes). `GenealogySubtree.PageUnder` pedía `ParentMemberId` y `CreationDate`, que `IX_GenealogyTree_Node` no cubre: con 550.000 el optimizador recorría `PK_GenealogyTree` entero y ordenaba el rango (102.000 lecturas, 12 s de CPU; en local también recorría la tabla, 1 s de CPU). Ahora la página se toma del índice solo con el `Id` y se leen sus 20 filas: 16.500 lecturas y 1,4 s de CPU, de los que ~1,1 s son el total (`CountUnderAsync`, 14.000 lecturas). La prueba de la Tarea 26 no lo veía porque reproducía una forma que solo proyectaba `Level`. `SqlServerEventosTests` cambia su aserción de forma (la página es ahora una subconsulta `IN` sobre el árbol).
+- **Actividad, 3 meses: 160.000 lecturas y 4 s de CPU** (real, no carga). Son las ~69.000 altas de los 3 meses unidas a su patrocinador y agrupadas; con 1.000.000 crecerá en proporción. No se arregla aquí: bajarlo pide precalcular por patrocinador y mes (una tabla mantenida por la cola de estadísticas) o acotar el rango; es una decisión de producto (pendiente, Q nueva).
+- **Mover ESC-P (50.000): 55 a 167 s, 1,26 millones de lecturas y 35 a 59 s de CPU** (real). Reescribir 50.000 claves de unos 1.000 bytes en `UX_DualTeamTree_BinaryPath` con el árbol en exclusivo; las 5 colocaciones de cada repetición fallan a los 15 s con «Another dual-tree write holds dual-tree». Es el riesgo residual de DQ12 (punto 9 del Plan P). Bajarlo es un cambio grande (mover por tandas sin el árbol en exclusivo, o claves relativas): no se toca en este plan.
+- **Cola sin caché, 22 s**: residual de DQ12 (la caché es obligatoria y `04` la reconstruye).
+- **10 colocaciones a la vez (p95 2,6 s), búsqueda «Lucia Diaz» (4,6 s) y las búsquedas «mari» y «esc-1»**: carga. Las lecturas (32.000 a 49.000) y la CPU (menos de 1,1 s) son las de consultas que cumplen; lo acota el tope por rama, no el número de miembros.
+
+**Base de escala que se queda (instrucción de Nick).** `MLMConquerorGlobalEditionDb_Escala` no se borra: Nick la usa para sus pruebas. Para apuntar un servicio a ella, sin tocar ningún `appsettings` confirmado, la cadena va en la variable de entorno del proceso (o en los secretos de usuario), por ejemplo en PowerShell antes de `dotnet run`:
+`$env:ConnectionStrings__DefaultConnection = "Server=.;Database=MLMConquerorGlobalEditionDb_Escala;Integrated Security=true;TrustServerCertificate=True;MultipleActiveResultSets=true;Encrypt=True"`
+Todos los usuarios sintéticos (`esc-<n>@example.com`) tienen la contraseña `Escala2026!`. Las pruebas de escala usan `MLM_ESCALA_SQLSERVER` con la misma cadena.
 
 ---
 
