@@ -17,10 +17,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations.Infraestructura;
 /// migracion entera en un lote: sin EXEC, un CREATE FUNCTION no es la primera sentencia del lote (156 y 319) y un UPDATE
 /// sobre una columna que la misma migracion acaba de anadir no compila (207) y tira el lote. Con MigrateAsync no cambia
 /// nada: cada operacion es su propio comando.
+///
+/// Un Sql con lineas GO se parte en lotes y cada lote va en su propio EXEC. Separa solo una linea que es GO y nada mas
+/// (sin distinguir mayusculas, con espacios o tabuladores alrededor): "Go to Settings", "GO-live" o "GOTO" dentro de un
+/// literal no separan. Como sqlcmd, una linea GO dentro de un literal de varias lineas si separa. GO con contador
+/// ("GO 2") no se admite y la generacion falla. La barra invertida al final de una linea la une con la siguiente, como
+/// en el generador de EF.
 /// </summary>
 public sealed class MigracionesSqlServerConGuardas : SqlServerMigrationsSqlGenerator
 {
-    private static readonly Regex SeparadorGo = new(@"^\s*GO\b", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex LineaGo = new(@"^[ \t]*GO[ \t]*\r?(?:\n|\z)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex LineaGoConContador = new(@"^[ \t]*GO[ \t]+\d+[ \t]*\r?$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     public MigracionesSqlServerConGuardas(MigrationsSqlGeneratorDependencies dependencies, ICommandBatchPreparer commandBatchPreparer)
         : base(dependencies, commandBatchPreparer)
@@ -29,17 +36,32 @@ public sealed class MigracionesSqlServerConGuardas : SqlServerMigrationsSqlGener
 
     protected override void Generate(SqlOperation operation, IModel? model, MigrationCommandListBuilder builder)
     {
-        if (Options.HasFlag(MigrationsSqlGenerationOptions.Idempotent) && !SeparadorGo.IsMatch(operation.Sql))
+        if (!Options.HasFlag(MigrationsSqlGenerationOptions.Idempotent))
         {
+            base.Generate(operation, model, builder);
+            return;
+        }
+        foreach (var lote in Lotes(operation.Sql))
             builder
                 .Append("EXEC(N'")
-                .Append(operation.Sql.Replace("'", "''"))
+                .Append(lote.Replace("'", "''"))
                 .Append("')")
                 .AppendLine(Dependencies.SqlGenerationHelper.StatementTerminator)
                 .EndCommand(operation.SuppressTransaction);
-            return;
-        }
-        base.Generate(operation, model, builder);
+    }
+
+    /// <summary>Los lotes de un Sql: separados por lineas GO, sin los vacios. Sin GO, el texto tal cual.</summary>
+    private static IEnumerable<string> Lotes(string sql)
+    {
+        var texto = sql.Replace("\\\n", "").Replace("\\\r\n", "");
+        if (LineaGoConContador.Match(texto) is { Success: true } conContador)
+            throw new NotSupportedException(
+                $"'{conContador.Value.Trim()}' en un migrationBuilder.Sql: el script idempotente solo admite lineas GO sin contador.");
+        if (!LineaGo.IsMatch(texto))
+            return new[] { texto };
+        return LineaGo.Split(texto)
+            .Select(l => l.EndsWith("\r\n") ? l[..^2] : l.EndsWith('\n') ? l[..^1] : l)
+            .Where(l => !string.IsNullOrWhiteSpace(l));
     }
 
     public override IReadOnlyList<MigrationCommand> Generate(IReadOnlyList<MigrationOperation> operations, IModel? model = null,
