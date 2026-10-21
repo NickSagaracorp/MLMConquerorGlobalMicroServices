@@ -204,17 +204,13 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
 
         var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
-        var ranks = (await _db.MemberRankHistories.AsNoTracking()
-                .Include(r => r.RankDefinition)
-                .Where(r => ids.Contains(r.MemberId))
-                .ToListAsync(ct))
-            .GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.AchievedAt).First().RankDefinition?.Name);
+        // Plan Q: el rango vigente de MemberRankQueries.
+        var ranks = await _db.GetCurrentRanksAsync(ids, ct);
 
         foreach (var row in rows)
         {
             row.IsQualified = qualified.GetValueOrDefault(row.MemberId);
-            row.RankName    = ranks.GetValueOrDefault(row.MemberId);
+            row.RankName    = ranks.GetValueOrDefault(row.MemberId)?.RankName;
         }
     }
 

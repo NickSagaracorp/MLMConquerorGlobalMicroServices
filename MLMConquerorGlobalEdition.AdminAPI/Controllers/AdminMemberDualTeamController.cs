@@ -150,15 +150,8 @@ public class AdminMemberDualTeamController : ControllerBase
             .Where(l => levelIds.Contains(l.Id))
             .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
-        // 7. Ranks (latest per member) — load all then group in memory
-        var allRankHistories = await _db.MemberRankHistories.AsNoTracking()
-            .Where(r => pageIds.Contains(r.MemberId))
-            .Include(r => r.RankDefinition)
-            .OrderByDescending(r => r.AchievedAt)
-            .ToListAsync(ct);
-        var rankMap = allRankHistories
-            .GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.First());
+        // 7. Ranks (latest per member) — Plan Q: MemberRankQueries
+        var rankMap = await _db.GetCurrentRanksAsync(pageIds, ct);
 
         // 8. All rank definitions (for next rank calc)
         var allRanks = await _db.RankDefinitions.AsNoTracking()
@@ -202,8 +195,7 @@ public class AdminMemberDualTeamController : ControllerBase
             rankMap.TryGetValue(p.MemberId, out var rank);
             nodeMap.TryGetValue(p.MemberId, out var node);
 
-            var currentRank      = rank?.RankDefinition;
-            var currentSortOrder = currentRank?.SortOrder ?? 0;
+            var currentSortOrder = rank?.SortOrder ?? 0;
             var nextRank  = allRanks.FirstOrDefault(r => r.SortOrder > currentSortOrder);
             var nextReq   = nextRank?.Requirements.FirstOrDefault();
             var dualPts   = stat?.DualTeamPoints ?? 0;
@@ -256,9 +248,9 @@ public class AdminMemberDualTeamController : ControllerBase
                 MembershipStatus          = memStatus,
                 QualifiedStatus           = qualified,
                 MembershipName            = sub != null && levels.TryGetValue(sub.MembershipLevelId, out var lvName) ? lvName : "—",
-                RankName                  = currentRank?.Name ?? "—",
+                RankName                  = rank?.RankName ?? "—",
                 RankDate                  = rank?.AchievedAt,
-                LifetimeRankName          = currentRank?.Name ?? "—",
+                LifetimeRankName          = rank?.RankName ?? "—",
                 NextRankPercent           = nextPct,
                 QualificationPoints       = personalPts,
                 CurrentRankEligiblePoints = eligibleCurrentPts,

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.RankRequirements;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.RankRequirements.GetRankDashboard;
@@ -24,10 +25,7 @@ public class GetRankDashboardHandler : IRequestHandler<GetRankDashboardQuery, Re
             .ToListAsync(cancellationToken);
 
         // For each member, find their current (latest) rank
-        var memberCurrentRanks = await _db.MemberRankHistories
-            .AsNoTracking()
-            .GroupBy(h => h.MemberId)
-            .Select(g => g.OrderByDescending(h => h.AchievedAt).First())
+        var memberCurrentRanks = await _db.CurrentRankRows()
             .GroupBy(h => h.RankDefinitionId)
             .Select(g => new { RankId = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);

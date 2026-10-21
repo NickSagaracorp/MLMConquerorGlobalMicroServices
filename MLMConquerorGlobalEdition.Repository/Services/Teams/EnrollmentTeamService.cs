@@ -247,14 +247,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
-        var rankHistories = await _db.MemberRankHistories.AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => ids.Contains(r.MemberId))
-            .ToListAsync(ct);
-        var currentRankMap  = rankHistories.GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.AchievedAt).First());
-        var lifetimeRankMap = rankHistories.GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.RankDefinition?.SortOrder ?? 0).First());
+        // Plan Q: el rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
+        var currentRankMap  = await _db.GetCurrentRanksAsync(ids, ct);
+        var lifetimeRankMap = await _db.GetLifetimeRanksAsync(ids, ct);
 
         var dualNodes = await _db.DualTeamTree.AsNoTracking()
             .Where(d => ids.Contains(d.MemberId)).ToListAsync(ct);
@@ -292,7 +287,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             nameMap.TryGetValue(row.SponsorMemberId ?? "", out var sponsorName);
             nameMap.TryGetValue(dual?.ParentMemberId ?? "", out var uplineName);
 
-            var currentSortOrder = cr?.RankDefinition?.SortOrder ?? 0;
+            var currentSortOrder = cr?.SortOrder ?? 0;
             var nextRank = allRanks.FirstOrDefault(r => r.SortOrder > currentSortOrder);
             int pct = 0;
             if (nextRank is not null)
@@ -309,9 +304,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             row.MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None";
             row.IsQualified          = qualified.GetValueOrDefault(row.MemberId);
             row.MembershipLevelName  = sub?.MembershipLevel?.Name;
-            row.CurrentRankName      = cr?.RankDefinition?.Name;
+            row.CurrentRankName      = cr?.RankName;
             row.RankDate             = cr?.AchievedAt;
-            row.LifetimeRankName     = lr?.RankDefinition?.Name;
+            row.LifetimeRankName     = lr?.RankName;
             row.NextRankPercent      = pct;
             row.QualificationPoints  = stat?.PersonalPoints   ?? 0;
             row.EnrollmentTeamPoints = stat?.EnrollmentPoints ?? 0;

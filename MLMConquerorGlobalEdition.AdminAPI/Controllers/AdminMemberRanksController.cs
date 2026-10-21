@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -70,12 +71,7 @@ public class AdminMemberRanksController : ControllerBase
         if (!memberExists)
             return NotFound(ApiResponse<object>.Fail("MEMBER_NOT_FOUND", "Member not found."));
 
-        var previous = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Where(r => r.MemberId == memberId)
-            .OrderByDescending(r => r.AchievedAt)
-            .Select(r => (int?)r.RankDefinitionId)
-            .FirstOrDefaultAsync(ct);
+        var previous = (await _db.GetCurrentRankAsync(memberId, ct))?.RankDefinitionId;
 
         var now = DateTime.UtcNow;
         await _db.MemberRankHistories.AddAsync(new MemberRankHistory

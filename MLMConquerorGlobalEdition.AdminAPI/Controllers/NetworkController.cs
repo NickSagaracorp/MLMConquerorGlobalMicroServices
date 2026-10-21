@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -59,13 +60,8 @@ public class NetworkController : ControllerBase
             .Select(p => new { p.MemberId, FullName = p.FirstName + " " + p.LastName })
             .ToDictionaryAsync(p => p.MemberId, p => p.FullName, ct);
 
-        // Load latest ranks
-        var latestRanks = await _db.MemberRankHistories.AsNoTracking()
-            .Where(r => memberIds.Contains(r.MemberId))
-            .Include(r => r.RankDefinition)
-            .GroupBy(r => r.MemberId)
-            .Select(g => g.OrderByDescending(r => r.AchievedAt).First())
-            .ToDictionaryAsync(r => r.MemberId, r => r.RankDefinition!.Name, ct);
+        // Rango vigente (Plan Q: MemberRankQueries, una busqueda por miembro y la lista en un solo parametro)
+        var latestRanks = await _db.GetCurrentRanksAsync(memberIds, ct);
 
         // Build tree recursively up to depth
         var nodeMap = allNodes.ToDictionary(n => n.MemberId);
@@ -74,7 +70,7 @@ public class NetworkController : ControllerBase
         {
             var node = nodeMap.GetValueOrDefault(mid);
             var fullName = profiles.GetValueOrDefault(mid, mid);
-            var rankName = latestRanks.GetValueOrDefault(mid);
+            var rankName = latestRanks.GetValueOrDefault(mid)?.RankName;
 
             decimal leftPts = node?.LeftLegPoints ?? 0;
             decimal rightPts = node?.RightLegPoints ?? 0;

@@ -238,14 +238,9 @@ public class DualTeamService : IDualTeamService
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
-        var rankHistories = await _db.MemberRankHistories.AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => ids.Contains(r.MemberId))
-            .ToListAsync(ct);
-        var currentRankMap = rankHistories.GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.AchievedAt).First());
-        var lifetimeRankMap = rankHistories.GroupBy(r => r.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.RankDefinition?.SortOrder ?? 0).First());
+        // Plan Q: el rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
+        var currentRankMap  = await _db.GetCurrentRanksAsync(ids, ct);
+        var lifetimeRankMap = await _db.GetLifetimeRanksAsync(ids, ct);
 
         var statsMap = await _db.MemberStatistics.AsNoTracking()
             .Where(s => ids.Contains(s.MemberId))
@@ -273,7 +268,7 @@ public class DualTeamService : IDualTeamService
 
             var leg = legs.TryGetValue(r.MemberId, out var side) ? side.ToString() : string.Empty;
 
-            var currentSortOrder = cr?.RankDefinition?.SortOrder ?? 0;
+            var currentSortOrder = cr?.SortOrder ?? 0;
             var nextRank = allRanks.FirstOrDefault(rk => rk.SortOrder > currentSortOrder);
             int pct = 0;
             if (nextRank is not null)
@@ -302,9 +297,9 @@ public class DualTeamService : IDualTeamService
                 MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None",
                 IsQualified          = qualified.GetValueOrDefault(r.MemberId),
                 MembershipLevelName  = sub?.MembershipLevel?.Name,
-                CurrentRankName      = cr?.RankDefinition?.Name,
+                CurrentRankName      = cr?.RankName,
                 RankDate             = cr?.AchievedAt,
-                LifetimeRankName     = lr?.RankDefinition?.Name,
+                LifetimeRankName     = lr?.RankName,
                 NextRankPercent      = pct,
                 QualificationPoints  = stat?.PersonalPoints   ?? 0,
                 EnrollmentTeamPoints = stat?.EnrollmentPoints ?? 0,

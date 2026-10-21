@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.AdminAPI.DTOs.Ranks;
 using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
@@ -90,10 +91,9 @@ public class RankDefinitionsController : ControllerBase
             .OrderBy(r => r.SortOrder)
             .ToListAsync(ct);
 
-        // Get latest rank per member (most recent MemberRankHistory entry)
-        var latestRanks = await _db.MemberRankHistories.AsNoTracking()
-            .GroupBy(r => r.MemberId)
-            .Select(g => g.OrderByDescending(r => r.AchievedAt).First())
+        // Rango vigente de cada miembro (Plan Q: MemberRankQueries), solo las dos columnas que se usan
+        var latestRanks = await _db.CurrentRankRows()
+            .Select(r => new { r.MemberId, r.RankDefinitionId })
             .ToListAsync(ct);
 
         var totalMembers = latestRanks.Count;

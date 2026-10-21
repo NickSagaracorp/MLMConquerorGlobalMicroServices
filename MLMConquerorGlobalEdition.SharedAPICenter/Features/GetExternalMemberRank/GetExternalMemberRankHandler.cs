@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedAPICenter.DTOs;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -35,19 +36,14 @@ public class GetExternalMemberRankHandler
                 "MEMBER_NOT_FOUND",
                 $"Member '{request.MemberId}' was not found.");
 
-        // Fetch the latest rank history entry with its RankDefinition
-        var latest = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => r.MemberId == request.MemberId)
-            .OrderByDescending(r => r.AchievedAt)
-            .FirstOrDefaultAsync(ct);
+        // Rango vigente (Plan Q: MemberRankQueries)
+        var latest = await _db.GetCurrentRankAsync(request.MemberId, ct);
 
         var dto = new ExternalMemberRankDto
         {
             MemberId             = request.MemberId,
-            CurrentRankName      = latest?.RankDefinition?.Name,
-            CurrentRankSortOrder = latest?.RankDefinition?.SortOrder,
+            CurrentRankName      = latest?.RankName,
+            CurrentRankSortOrder = latest?.SortOrder,
             AchievedAt           = latest?.AchievedAt
         };
 
