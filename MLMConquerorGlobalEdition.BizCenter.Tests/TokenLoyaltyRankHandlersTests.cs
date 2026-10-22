@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetGuestPasses;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetTokenBalances;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Loyalty;
+using MLMConquerorGlobalEdition.Repository.Services.Loyalty;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -177,7 +178,7 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         );
         await _db.SaveChangesAsync();
 
-        var handler = new GetLoyaltyPointsHandler(_db, _currentUser.Object);
+        var handler = new GetLoyaltyPointsHandler(new LoyaltyPointsService(_db), _currentUser.Object);
         var result  = await handler.Handle(new GetLoyaltyPointsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -188,7 +189,7 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
     [Fact]
     public async Task GetLoyaltyPoints_WhenNoPoints_ReturnsEmptyPage()
     {
-        var handler = new GetLoyaltyPointsHandler(_db, _currentUser.Object);
+        var handler = new GetLoyaltyPointsHandler(new LoyaltyPointsService(_db), _currentUser.Object);
         var result  = await handler.Handle(new GetLoyaltyPointsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -204,7 +205,7 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         );
         await _db.SaveChangesAsync();
 
-        var handler = new GetLoyaltyPointsHandler(_db, _currentUser.Object);
+        var handler = new GetLoyaltyPointsHandler(new LoyaltyPointsService(_db), _currentUser.Object);
         var result  = await handler.Handle(new GetLoyaltyPointsQuery(1, 20), default);
 
         result.Value!.TotalCount.Should().Be(0);
@@ -230,7 +231,7 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         }
         await _db.SaveChangesAsync();
 
-        var handler = new GetLoyaltyPointsHandler(_db, _currentUser.Object);
+        var handler = new GetLoyaltyPointsHandler(new LoyaltyPointsService(_db), _currentUser.Object);
         var result  = await handler.Handle(new GetLoyaltyPointsQuery(1, 3), default);
 
         result.Value!.TotalCount.Should().Be(5);

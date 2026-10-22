@@ -4,7 +4,10 @@
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb)
+{
+    <BreadcrumbNav Items="@_breadcrumb" />
+}
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-4">
@@ -35,7 +38,7 @@
                             <th>@L["Loyalty.ColLocked"]</th>
                             <th>@L["Loyalty.ColMissedPayment"]</th>
                             <th>@L["Common.Status"]</th>
-                            @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
+                            @if (CanUnlock)
                             {
                                 <th class="text-center">@L["Loyalty.Admin"]</th>
                             }
@@ -44,17 +47,17 @@
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="6" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
+                            <tr><td colspan="@(CanUnlock ? 6 : 5)" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var lp in _items)
                         {
                             <tr>
-                                <td>@lp.MonthLabel</td>
-                                <td>@lp.Points</td>
+                                <td>@MonthLabel(lp)</td>
+                                <td>@lp.PointsEarned.ToString("N0")</td>
                                 <td>@(lp.IsLocked ? L["Common.Yes"].Value : L["Common.No"].Value)</td>
                                 <td>@(lp.MissedPayment ? L["Loyalty.MissedYes"].Value : L["Common.No"].Value)</td>
                                 <td><StatusBadge Status="@(lp.IsLocked ? L["Loyalty.StatusLocked"].Value : L["Loyalty.StatusUnlocked"].Value)" /></td>
-                                @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
+                                @if (CanUnlock)
                                 {
                                     <td class="text-center">
                                         @if (lp.IsLocked)
@@ -102,6 +105,20 @@
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
+    /// <summary>Raíz del API; el componente llama a <c>{ApiBaseUrl}/loyalty</c>.</summary>
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
+
+    /// <summary>false cuando el componente va dentro de otra pantalla (perfil del Admin).</summary>
+    [Parameter] public bool ShowBreadcrumb { get; set; } = true;
+
+    /// <summary>
+    /// Ruta que desbloquea a mano (POST con <c>loyaltyPointsId</c>). Vacía = sin desbloqueo manual: el BizCenter
+    /// no tiene esa acción; el Admin pasa <c>api/v1/admin/loyalty/{miembro}/unlock</c>.
+    /// </summary>
+    [Parameter] public string? UnlockUrl { get; set; }
+
+    private bool CanUnlock => !string.IsNullOrEmpty(UnlockUrl) && ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock);
+
     private bool    _isLoading     = true;
     private int     _page = 1, _pageSize = 20, _total;
     private decimal _totalPoints, _unlockedPoints, _lockedPoints;
@@ -127,7 +144,7 @@
         try
         {
             var response = await Http.GetFromJsonAsync<ApiResponse<LoyaltyPageData>>(
-                $"api/v1/bizcenter/loyalty?page={page}&pageSize={_pageSize}");
+                $"{ApiBaseUrl}/loyalty?page={page}&pageSize={_pageSize}");
             if (response?.Success == true && response.Data is not null)
             {
                 _items          = response.Data.Items;
@@ -143,7 +160,7 @@
 
     private async Task ManualUnlock(string id)
     {
-        try { await Http.PostAsJsonAsync($"api/v1/admin/loyalty/{id}/unlock", new { }); }
+        try { await Http.PostAsJsonAsync(UnlockUrl, new { loyaltyPointsId = id }); }
         catch { /* silently degrade */ }
         await LoadPageAsync(_page);
     }
@@ -159,5 +176,19 @@
         public int                 TotalCount     { get; set; }
     }
 
-    public record LoyaltyPointDto(string Id, string MonthLabel, int Points, bool IsLocked, bool MissedPayment);
+    /// <summary>Un registro tal como lo devuelve el API (mes y año por separado, puntos ganados).</summary>
+    public class LoyaltyPointDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public decimal PointsEarned { get; set; }
+        public int MonthNo { get; set; }
+        public int YearNo { get; set; }
+        public bool IsLocked { get; set; }
+        public bool MissedPayment { get; set; }
+    }
+
+    private static string MonthLabel(LoyaltyPointDto lp) =>
+        lp.MonthNo is >= 1 and <= 12 && lp.YearNo is >= 1 and <= 9999
+            ? new DateTime(lp.YearNo, lp.MonthNo, 1).ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)
+            : $"{lp.MonthNo}/{lp.YearNo}";
 }
