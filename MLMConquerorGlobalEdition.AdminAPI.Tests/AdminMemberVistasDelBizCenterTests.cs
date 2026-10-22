@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using MLMConquerorGlobalEdition.AdminAPI.Controllers;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Events;
+using MLMConquerorGlobalEdition.Repository.Services.Loyalty;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
@@ -132,12 +133,29 @@ public class AdminMemberVistasDelBizCenterTests
         r.Should().BeOfType<NotFoundObjectResult>();
     }
 
+    // -- Puntos de lealtad -----------------------------------------------------
+
+    [Fact]
+    public async Task Lealtad_es_la_del_miembro_de_la_ruta_con_el_mismo_servicio_del_BizCenter()
+    {
+        var lealtad = new Mock<ILoyaltyPointsService>();
+        lealtad.Setup(l => l.GetPageAsync("AMB-7", 2, 10, It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new LoyaltyPointsPageView { TotalPoints = 80 });
+
+        var r = await new AdminMemberLoyaltyController(lealtad.Object).Get("AMB-7", 2, 10);
+
+        r.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeOfType<ApiResponse<LoyaltyPointsPageView>>()
+         .Which.Data!.TotalPoints.Should().Be(80);
+        lealtad.Verify(l => l.GetPageAsync("AMB-7", 2, 10, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // -- Autorizacion y solo lectura --------------------------------------------
 
     public static IEnumerable<object[]> Controladores() => new[]
     {
         new object[] { typeof(AdminMemberTeamReportsController) },
         new object[] { typeof(AdminMemberEventsController) },
+        new object[] { typeof(AdminMemberLoyaltyController) },
     };
 
     [Theory, MemberData(nameof(Controladores))]

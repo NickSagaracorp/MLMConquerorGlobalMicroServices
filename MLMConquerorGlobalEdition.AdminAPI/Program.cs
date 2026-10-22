@@ -100,6 +100,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.ITeamStatusChangesService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.TeamStatusChangesService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Loyalty.ILoyaltyPointsService,
+                            MLMConquerorGlobalEdition.Repository.Services.Loyalty.LoyaltyPointsService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Events.ITeamEventRegistrationsService,
                             MLMConquerorGlobalEdition.Repository.Services.Events.TeamEventRegistrationsService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
