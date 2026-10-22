@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using MLMConquerorGlobalEdition.AdminAPI.Controllers;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Events;
-using MLMConquerorGlobalEdition.Repository.Services.Links;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
@@ -14,7 +13,7 @@ using IDateTimeProvider = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDat
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests;
 
 /// <summary>
-/// Vistas del BizCenter en el perfil de miembro del Admin (reportes del equipo, eventos, "Mis enlaces"):
+/// Vistas del BizCenter en el perfil de miembro del Admin (reportes del equipo, eventos):
 /// mismos servicios que el BizCenter, con el miembro de la RUTA, mismos roles que el resto del perfil
 /// y solo lectura (el unico POST permitido es el de las rejillas, que leen).
 /// </summary>
@@ -133,27 +132,12 @@ public class AdminMemberVistasDelBizCenterTests
         r.Should().BeOfType<NotFoundObjectResult>();
     }
 
-    // -- Mis enlaces -----------------------------------------------------------
-
-    [Fact]
-    public async Task Enlaces_son_los_del_miembro_de_la_ruta()
-    {
-        var enlaces = new Mock<IMyLinksService>();
-        enlaces.Setup(l => l.GetAsync("AMB-7", It.IsAny<CancellationToken>())).ReturnsAsync(new MyLinksView());
-
-        var r = await new AdminMemberLinksController(enlaces.Object).Get("AMB-7");
-
-        r.Should().BeOfType<OkObjectResult>();
-        enlaces.Verify(l => l.GetAsync("AMB-7", It.IsAny<CancellationToken>()), Times.Once);
-    }
-
     // -- Autorizacion y solo lectura --------------------------------------------
 
     public static IEnumerable<object[]> Controladores() => new[]
     {
         new object[] { typeof(AdminMemberTeamReportsController) },
         new object[] { typeof(AdminMemberEventsController) },
-        new object[] { typeof(AdminMemberLinksController) },
     };
 
     [Theory, MemberData(nameof(Controladores))]

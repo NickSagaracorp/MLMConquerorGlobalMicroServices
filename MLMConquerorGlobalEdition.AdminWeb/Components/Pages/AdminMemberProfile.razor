@@ -733,11 +733,6 @@ else
         <TeamEventRegistrations ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
                                 ShowBreadcrumb="false" />
     }
-    else if (_activeTab == "links")
-    {
-        <MyLinksCard ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
-                     ProfileUrl="@($"/admin/members/{MemberId}?tab=profile")" />
-    }
     else if (_activeTab == "orders")
     {
         <div class="card border-0 shadow-sm">
@@ -800,7 +795,6 @@ else
         new("ranks",      "Ranks",           "ri-award-line"),
         new("membership", "Membership",      "ri-vip-crown-line"),
         new("events",     "Events",          "ri-calendar-event-line"),
-        new("links",      "My Links",        "ri-links-line"),
         new("orders",     "Orders",          "ri-shopping-bag-line"),
         new("tokens",     "Tokens",          "ri-token-swap-line"),
         new("tickets",    "Tickets",         "ri-customer-service-2-line"),
