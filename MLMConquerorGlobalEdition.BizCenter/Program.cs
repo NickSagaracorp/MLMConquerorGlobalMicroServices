@@ -113,6 +113,11 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commiss
 
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.IDailyResidualReportService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
+// Portada y puntos de lealtad: el mismo servicio que usa el perfil de miembro del Admin.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Dashboard.IMemberDashboardService,
+                            MLMConquerorGlobalEdition.Repository.Services.Dashboard.MemberDashboardService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Loyalty.IMemberLoyaltyService,
+                            MLMConquerorGlobalEdition.Repository.Services.Loyalty.MemberLoyaltyService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentActivityService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.ITeamStatusChangesService,

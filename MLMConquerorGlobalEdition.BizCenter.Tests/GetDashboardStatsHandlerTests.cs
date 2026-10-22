@@ -30,6 +30,7 @@ public class GetDashboardStatsHandlerTests : IDisposable
 
         _dateTime = new Mock<IDateTimeProvider>();
         _dateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
+        _dateTime.Setup(x => x.Now).Returns(DateTime.Now);
     }
 
     public void Dispose() => _db.Dispose();
@@ -41,7 +42,7 @@ public class GetDashboardStatsHandlerTests : IDisposable
             new PersonalCustomerPointsService(db)));
 
     private GetDashboardStatsHandler CreateHandler() =>
-        new(_db, _currentUser.Object, _dateTime.Object, BuildRankComputationService(_db));
+        new(_currentUser.Object, new MLMConquerorGlobalEdition.Repository.Services.Dashboard.MemberDashboardService(_db, _dateTime.Object, BuildRankComputationService(_db)));
 
 
     [Fact]
