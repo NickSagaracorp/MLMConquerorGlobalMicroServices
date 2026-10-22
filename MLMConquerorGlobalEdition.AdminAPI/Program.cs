@@ -96,10 +96,6 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 // Perfil de miembro del Admin: los mismos servicios que sirven al BizCenter (reportes del equipo,
 // eventos del equipo y "Mis enlaces"), llamados con el miembro de la ruta.
-builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Dashboard.IMemberDashboardService,
-                            MLMConquerorGlobalEdition.Repository.Services.Dashboard.MemberDashboardService>();
-builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Loyalty.IMemberLoyaltyService,
-                            MLMConquerorGlobalEdition.Repository.Services.Loyalty.MemberLoyaltyService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentActivityService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.ITeamStatusChangesService,

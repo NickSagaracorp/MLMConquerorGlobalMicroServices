@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MLMConquerorGlobalEdition.Repository.Services.Loyalty;
+using MLMConquerorGlobalEdition.BizCenter.DTOs.Loyalty;
 using MLMConquerorGlobalEdition.BizCenter.Features.Loyalty.GetLoyaltyPoints;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -22,7 +22,7 @@ public class LoyaltyController : ControllerBase
     {
         var result = await _mediator.Send(new GetLoyaltyPointsQuery(page, pageSize), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<LoyaltyPointsPageView>.Fail(result.ErrorCode!, result.Error!));
-        return Ok(ApiResponse<LoyaltyPointsPageView>.Ok(result.Value!));
+            return BadRequest(ApiResponse<PagedResult<LoyaltyPointsDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<LoyaltyPointsDto>>.Ok(result.Value!));
     }
 }

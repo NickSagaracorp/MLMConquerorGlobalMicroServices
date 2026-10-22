@@ -1,23 +1,61 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.BizCenter.DTOs.Loyalty;
 using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.Repository.Services.Loyalty;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Loyalty.GetLoyaltyPoints;
 
-/// <summary>El miembro sale del token; la consulta es la del servicio compartido con el perfil de miembro del Admin.</summary>
-public class GetLoyaltyPointsHandler : IRequestHandler<GetLoyaltyPointsQuery, Result<LoyaltyPointsPageView>>
+public class GetLoyaltyPointsHandler : IRequestHandler<GetLoyaltyPointsQuery, Result<PagedResult<LoyaltyPointsDto>>>
 {
-    private readonly ICurrentUserService   _currentUser;
-    private readonly IMemberLoyaltyService _loyalty;
+    private readonly AppDbContext _db;
+    private readonly ICurrentUserService _currentUser;
 
-    public GetLoyaltyPointsHandler(ICurrentUserService currentUser, IMemberLoyaltyService loyalty)
+    public GetLoyaltyPointsHandler(AppDbContext db, ICurrentUserService currentUser)
     {
+        _db = db;
         _currentUser = currentUser;
-        _loyalty     = loyalty;
     }
 
-    public async Task<Result<LoyaltyPointsPageView>> Handle(GetLoyaltyPointsQuery request, CancellationToken ct) =>
-        Result<LoyaltyPointsPageView>.Success(
-            await _loyalty.GetPageAsync(_currentUser.MemberId, request.Page, request.PageSize, ct));
+    public async Task<Result<PagedResult<LoyaltyPointsDto>>> Handle(GetLoyaltyPointsQuery request, CancellationToken ct)
+    {
+        var memberId = _currentUser.MemberId;
+
+        var query = _db.LoyaltyPoints
+            .AsNoTracking()
+            .Where(lp => lp.MemberId == memberId)
+            .OrderByDescending(lp => lp.YearNo)
+            .ThenByDescending(lp => lp.MonthNo);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(lp => new LoyaltyPointsDto
+            {
+                Id = lp.Id,
+                ProductId = lp.ProductId,
+                OrderId = lp.OrderId,
+                PointsEarned = lp.PointsEarned,
+                IsLocked = lp.IsLocked,
+                MissedPayment = lp.MissedPayment,
+                NumberOfSuccessPayments = lp.NumberOfSuccessPayments,
+                MonthNo = lp.MonthNo,
+                YearNo = lp.YearNo,
+                UnlockedAt = lp.UnlockedAt
+            })
+            .ToListAsync(ct);
+
+        var result = new PagedResult<LoyaltyPointsDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+
+        return Result<PagedResult<LoyaltyPointsDto>>.Success(result);
+    }
 }
