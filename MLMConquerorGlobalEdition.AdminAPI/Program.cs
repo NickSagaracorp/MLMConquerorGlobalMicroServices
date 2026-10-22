@@ -94,6 +94,21 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commiss
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
+// Perfil de miembro del Admin: los mismos servicios que sirven al BizCenter (reportes del equipo,
+// eventos del equipo y "Mis enlaces"), llamados con el miembro de la ruta.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentActivityService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.ITeamStatusChangesService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.TeamStatusChangesService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Events.ITeamEventRegistrationsService,
+                            MLMConquerorGlobalEdition.Repository.Services.Events.TeamEventRegistrationsService>();
+// Las plantillas son las mismas que las del BizCenter (misma sección MyLinks): al cambiar una, cambiar las dos.
+MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksServiceCollectionExtensions.AddMyLinks(
+    builder.Services,
+    builder.Configuration
+        .GetSection(MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions.SectionName)
+        .Get<MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions>()
+    ?? new MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions());
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 
