@@ -216,6 +216,24 @@ else
                     <i class="ri-organization-chart me-1"></i>Visualizer
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "customerchanges" ? "active" : "")"
+                        @onclick='() => _enrollSub = "customerchanges"' type="button">
+                    <i class="ri-user-settings-line me-1"></i>Customer Changes
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "activity" ? "active" : "")"
+                        @onclick='() => _enrollSub = "activity"' type="button">
+                    <i class="ri-pulse-line me-1"></i>Activity
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "changes" ? "active" : "")"
+                        @onclick='() => _enrollSub = "changes"' type="button">
+                    <i class="ri-exchange-line me-1"></i>Status Changes
+                </button>
+            </li>
         </ul>
 
         @if (_enrollSub == "myteam")
@@ -241,6 +259,23 @@ else
             <EnrollmentVisualizer    MemberProfileId="@MemberId"
                                      ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team/enrollment/visualizer")"
                                      ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "customerchanges")
+        {
+            <TeamStatusChangesGrid @key="@("changes-customers")" Scope="customers"
+                                   ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                   ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "activity")
+        {
+            <EnrollmentTeamActivity ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                    ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "changes")
+        {
+            <TeamStatusChangesGrid @key="@("changes-enrollment")" Scope="enrollment"
+                                   ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                   ShowBreadcrumb="false" />
         }
     }
 
@@ -658,6 +693,12 @@ else
                     <i class="ri-money-dollar-circle-line me-1"></i>Residuals
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link @(_dualSub == "changes" ? "active" : "")"
+                        @onclick='() => _dualSub = "changes"' type="button">
+                    <i class="ri-exchange-line me-1"></i>Status Changes
+                </button>
+            </li>
         </ul>
 
         @if (_dualSub == "myteam")
@@ -680,6 +721,22 @@ else
                                ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
                                ShowBreadcrumb="false" />
         }
+        else if (_dualSub == "changes")
+        {
+            <TeamStatusChangesGrid @key="@("changes-dual")" Scope="dual"
+                                   ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                   ShowBreadcrumb="false" />
+        }
+    }
+    else if (_activeTab == "events")
+    {
+        <TeamEventRegistrations ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
+                                ShowBreadcrumb="false" />
+    }
+    else if (_activeTab == "links")
+    {
+        <MyLinksCard ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
+                     ProfileUrl="@($"/admin/members/{MemberId}?tab=profile")" />
     }
     else if (_activeTab == "orders")
     {
@@ -742,6 +799,8 @@ else
         new("commissions","Commissions",     "ri-money-dollar-circle-line"),
         new("ranks",      "Ranks",           "ri-award-line"),
         new("membership", "Membership",      "ri-vip-crown-line"),
+        new("events",     "Events",          "ri-calendar-event-line"),
+        new("links",      "My Links",        "ri-links-line"),
         new("orders",     "Orders",          "ri-shopping-bag-line"),
         new("tokens",     "Tokens",          "ri-token-swap-line"),
         new("tickets",    "Tickets",         "ri-customer-service-2-line"),
