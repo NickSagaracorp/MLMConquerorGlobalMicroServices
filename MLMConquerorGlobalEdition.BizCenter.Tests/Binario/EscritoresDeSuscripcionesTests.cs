@@ -18,6 +18,8 @@ public class EscritoresDeSuscripcionesTests
             "es el historial de migraciones regenerado como script (Tarea 31): lo mismo que Migrations/, que esta regla no mira",
         ["Scripts/sql/plan-p/escala/altas/c-pedidos.sql"] =
             "generador de escala (solo MLMConquerorGlobalEditionDb_Escala); despues corren 04-contadores-y-colas.sql y 04-calificados-de-inscripcion.sql",
+        ["Scripts/sql/plan-p/escala/altas/anadir-lote.sql"] =
+            "crecimiento en el sitio de la base de escala (solo MLMConquerorGlobalEditionDb_Escala); los aportes y contadores los escribe el propio lote",
         ["Scripts/sql/plan-p/escala/02-verificar-escala.sql"] = "solo lectura: el INSERT es a una tabla temporal",
         ["Scripts/sql/plan-q/05-realinear-puntos-por-membresia.sql"] =
             "solo escribe los aportes (DualTeamContribution, EnrollmentContribution), nunca el estado: es el recalculo de DQ16 con los servicios parados; despues corre 02-recalcular-piernas.sql",
