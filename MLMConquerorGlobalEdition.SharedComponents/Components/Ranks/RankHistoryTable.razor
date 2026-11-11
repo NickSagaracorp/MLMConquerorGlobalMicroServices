@@ -1,17 +1,16 @@
 @inject HttpClient Http
-@inject IViewContextService ViewContext
-@inject NavigationManager Nav
+@inject IJSRuntime JS
 @inject IStringLocalizer<SharedResources> L
-
-@using MLMConquerorGlobalEdition.SharedComponents.Constants
-
-<BreadcrumbNav Items="@_breadcrumb" />
 
 <div class="card">
     <div class="card-header py-3">
         <h6 class="card-title mb-0 fw-semibold">@L["Ranks.HistoryTitle"]</h6>
     </div>
     <div class="card-body p-0">
+        @if (_downloadError)
+        {
+            <div class="alert alert-danger m-3 mb-0">@L["Ranks.CertificateDownloadFailed"]</div>
+        }
         <LoadingSpinner IsLoading="@_isLoading" />
         @if (!_isLoading)
         {
@@ -21,56 +20,35 @@
                         <tr>
                             <th>@L["Ranks.ColAchievedDate"]</th>
                             <th>@L["Ranks.ColRank"]</th>
-                            <th>@L["Ranks.ColQualificationPeriod"]</th>
-                            <th>@L["Ranks.ColTriggeredBy"]</th>
+                            <th>@L["Ranks.ColPreviousRank"]</th>
                             <th>@L["Ranks.ColCertificate"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="5" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var r in _items)
                         {
                             <tr>
-                                <td>@r.AchievedDate.ToString("MMM dd, yyyy")</td>
+                                <td>@r.AchievedAt.ToString("MMM dd, yyyy")</td>
                                 <td><span class="badge bg-warning text-dark">@r.RankName</span></td>
-                                <td>@r.QualificationPeriod</td>
+                                <td>@(string.IsNullOrEmpty(r.PreviousRankName) ? "—" : r.PreviousRankName)</td>
                                 <td>
-                                    @if (ViewContext.IsAdminContext)
-                                    {
-                                        <AdminOnlyWrapper Permission="@Permissions.Rank.View">
-                                            @if (r.IsManualOverride)
-                                            {
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="ri-user-settings-line me-1"></i>@L["Ranks.TriggerManual"]
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-success">
-                                                    <i class="ri-settings-3-line me-1"></i>@L["Ranks.TriggerAutomatic"]
-                                                </span>
-                                            }
-                                        </AdminOnlyWrapper>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">—</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(r.CertificateUrl))
-                                    {
-                                        <a href="@r.CertificateUrl" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="ri-file-pdf-line me-1"></i>@L["Common.Download"]
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">@L["Ranks.CertificateNotGenerated"]</span>
-                                    }
+                                    @* El API genera el certificado al pedirlo si todavía no existe. *@
+                                    <button class="btn btn-sm btn-outline-primary" disabled="@(_downloading == r.Id)"
+                                            @onclick="() => DownloadAsync(r.Id)">
+                                        @if (_downloading == r.Id)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="ri-file-pdf-line me-1"></i>
+                                        }
+                                        @L["Common.Download"]
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -106,17 +84,13 @@
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
 
-    private bool _isLoading = true;
-    private int  _page = 1, _pageSize = 10, _total;
-    private List<RankHistoryItem> _items = new();
-
-    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
-    {
-        new(L["Ranks.BreadcrumbHome"].Value,  "/dashboard"),
-        new(L["Nav.Ranks"].Value, "/ranks"),
-        new(L["Ranks.BreadcrumbHistory"].Value)
-    };
+    private bool    _isLoading = true;
+    private bool    _downloadError;
+    private string? _downloading;
+    private int     _page = 1, _pageSize = 10, _total;
+    private List<RankHistoryDto> _items = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -130,28 +104,49 @@
     {
         _page = page;
         _isLoading = true;
-        StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<RankHistoryItem>>>(
-                $"api/v1/bizcenter/ranks/history?page={page}&pageSize={_pageSize}");
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<RankHistoryDto>>>(
+                $"{ApiBaseUrl}/ranks/history?page={page}&pageSize={_pageSize}");
             if (response?.Success == true && response.Data is not null)
             {
                 _items = response.Data.Items;
                 _total = response.Data.TotalCount;
             }
         }
-        catch { /* silently degrade */ }
+        catch { /* sin datos: la tabla dice que no hay */ }
         finally { _isLoading = false; }
     }
 
+    /// <summary>
+    /// El certificado se pide por el HttpClient (lleva el token; un enlace directo no lo llevaría) y se
+    /// entrega al navegador con <c>mlmDownloadFile</c>.
+    /// </summary>
+    private async Task DownloadAsync(string rankHistoryId)
+    {
+        _downloading = rankHistoryId;
+        _downloadError = false;
+        try
+        {
+            var response = await Http.GetAsync($"{ApiBaseUrl}/ranks/{rankHistoryId}/certificate");
+            if (!response.IsSuccessStatusCode) { _downloadError = true; return; }
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            await JS.InvokeVoidAsync("mlmDownloadFile", $"certificate-{rankHistoryId}.pdf", "application/pdf",
+                Convert.ToBase64String(bytes));
+        }
+        catch { _downloadError = true; }
+        finally { _downloading = null; }
+    }
+
+    // ── Contrato con el API (BizCenter RankHistoryDto en PagedResult) ──
     private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
     private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
-    private record RankHistoryItem(
-        DateTime AchievedDate,
-        string   RankName,
-        string   QualificationPeriod,
-        string?  CertificateUrl,
-        bool     IsManualOverride);
+    private class RankHistoryDto
+    {
+        public string   Id               { get; set; } = string.Empty;
+        public string   RankName         { get; set; } = string.Empty;
+        public string?  PreviousRankName { get; set; }
+        public DateTime AchievedAt       { get; set; }
+    }
 }

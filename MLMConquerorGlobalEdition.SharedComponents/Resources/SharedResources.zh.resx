@@ -890,27 +890,12 @@
   <!-- Ranks (F4) -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>仅限大使使用等级。</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>当前等级</value></data>
-  <data name="Ranks.PointsToNext" xml:space="preserve"><value>距下一等级所需积分</value></data>
-  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>合格月份总数</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>下一等级进度</value></data>
-  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>管理员覆盖</value></data>
-  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>在正常资格规则之外手动设置此成员的等级。</value></data>
-  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>手动覆盖</value></data>
-  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>手动等级覆盖</value></data>
-  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>您即将手动覆盖此成员的等级。此操作将被记录。继续？</value></data>
-  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>覆盖等级</value></data>
   <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>主页</value></data>
-  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>进度</value></data>
   <data name="Ranks.HistoryTitle" xml:space="preserve"><value>等级达成历史</value></data>
   <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>达成日期</value></data>
   <data name="Ranks.ColRank" xml:space="preserve"><value>等级</value></data>
-  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>资格期间</value></data>
-  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>触发者</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>证书</value></data>
-  <data name="Ranks.TriggerManual" xml:space="preserve"><value>手动</value></data>
-  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>自动</value></data>
-  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>未生成</value></data>
-  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>历史</value></data>
 
   <!-- Marketing (F4) -->
   <data name="Marketing.Title" xml:space="preserve"><value>营销</value></data>
@@ -936,6 +921,14 @@
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>访客通行证分页</value></data>
   <data name="Loyalty.PaginationAria" xml:space="preserve"><value>忠诚度积分分页</value></data>
   <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>等级历史分页</value></data>
+  <data name="Ranks.NextRank" xml:space="preserve"><value>下一等级</value></data>
+  <data name="Ranks.LifetimeRank" xml:space="preserve"><value>终身等级</value></data>
+  <data name="Ranks.DualTeamPoints" xml:space="preserve"><value>双轨团队积分</value></data>
+  <data name="Ranks.EnrollmentPoints" xml:space="preserve"><value>注册积分</value></data>
+  <data name="Ranks.TopRankReached" xml:space="preserve"><value>您已达到最高等级。</value></data>
+  <data name="Ranks.LoadFailed" xml:space="preserve"><value>无法加载等级信息。</value></data>
+  <data name="Ranks.ColPreviousRank" xml:space="preserve"><value>之前等级</value></data>
+  <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>无法下载证书，请重试。</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>营销文档类型</value></data>
 
   <!-- F4 — Nav fallbacks (zh) -->

@@ -966,27 +966,12 @@
   <!-- Ranks (F4) -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>랭크는 앰배서더만 사용할 수 있습니다.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>현재 랭크</value></data>
-  <data name="Ranks.PointsToNext" xml:space="preserve"><value>다음 랭크까지 포인트</value></data>
-  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>총 자격 충족 월</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>다음 랭크까지 진행률</value></data>
-  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>관리자 오버라이드</value></data>
-  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>일반 자격 규칙 외에 이 멤버의 랭크를 수동으로 설정합니다.</value></data>
-  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>수동 오버라이드</value></data>
-  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>수동 랭크 오버라이드</value></data>
-  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>이 멤버의 랭크를 수동으로 오버라이드하려고 합니다. 이 작업은 기록됩니다. 계속하시겠습니까?</value></data>
-  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>랭크 오버라이드</value></data>
   <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>홈</value></data>
-  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>진행률</value></data>
   <data name="Ranks.HistoryTitle" xml:space="preserve"><value>랭크 달성 내역</value></data>
   <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>달성 날짜</value></data>
   <data name="Ranks.ColRank" xml:space="preserve"><value>랭크</value></data>
-  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>자격 기간</value></data>
-  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>트리거</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>인증서</value></data>
-  <data name="Ranks.TriggerManual" xml:space="preserve"><value>수동</value></data>
-  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>자동</value></data>
-  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>생성되지 않음</value></data>
-  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>내역</value></data>
 
   <!-- Marketing (F4) -->
   <data name="Marketing.Title" xml:space="preserve"><value>마케팅</value></data>
@@ -1012,6 +997,14 @@
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>게스트 패스 페이지 매김</value></data>
   <data name="Loyalty.PaginationAria" xml:space="preserve"><value>적립 포인트 페이지 매김</value></data>
   <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>직급 이력 페이지 매김</value></data>
+  <data name="Ranks.NextRank" xml:space="preserve"><value>다음 랭크</value></data>
+  <data name="Ranks.LifetimeRank" xml:space="preserve"><value>평생 랭크</value></data>
+  <data name="Ranks.DualTeamPoints" xml:space="preserve"><value>듀얼 팀 포인트</value></data>
+  <data name="Ranks.EnrollmentPoints" xml:space="preserve"><value>등록 포인트</value></data>
+  <data name="Ranks.TopRankReached" xml:space="preserve"><value>최고 랭크에 도달했습니다.</value></data>
+  <data name="Ranks.LoadFailed" xml:space="preserve"><value>랭크 정보를 불러올 수 없습니다.</value></data>
+  <data name="Ranks.ColPreviousRank" xml:space="preserve"><value>이전 랭크</value></data>
+  <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>인증서를 다운로드할 수 없습니다. 다시 시도해 주세요.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>마케팅 문서 유형</value></data>
 
   <!-- Tickets — F5 -->

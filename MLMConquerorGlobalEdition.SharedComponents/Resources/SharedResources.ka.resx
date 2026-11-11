@@ -890,27 +890,12 @@
   <!-- Ranks (F4) -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>რანგები ხელმისაწვდომია მხოლოდ ელჩებისთვის.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>მიმდინარე რანგი</value></data>
-  <data name="Ranks.PointsToNext" xml:space="preserve"><value>ქულები შემდეგ რანგამდე</value></data>
-  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>კვალიფიცირებული თვეების ჯამი</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>პროგრესი შემდეგ რანგამდე</value></data>
-  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>ადმინისტრატორის გადაფარვა</value></data>
-  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>დაუყენეთ ხელით ამ წევრის რანგი ჩვეულებრივი კვალიფიკაციის წესების მიღმა.</value></data>
-  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>ხელით გადაფარვა</value></data>
-  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>რანგის ხელით გადაფარვა</value></data>
-  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>აპირებთ ხელით გადაფაროთ ამ წევრის რანგი. მოქმედება დაფიქსირდება ჟურნალში. გავაგრძელოთ?</value></data>
-  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>რანგის გადაფარვა</value></data>
   <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
-  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>პროგრესი</value></data>
   <data name="Ranks.HistoryTitle" xml:space="preserve"><value>რანგის მიღწევის ისტორია</value></data>
   <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>მიღწევის თარიღი</value></data>
   <data name="Ranks.ColRank" xml:space="preserve"><value>რანგი</value></data>
-  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>კვალიფიკაციის პერიოდი</value></data>
-  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>გამოწვეული</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>სერტიფიკატი</value></data>
-  <data name="Ranks.TriggerManual" xml:space="preserve"><value>ხელით</value></data>
-  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>ავტომატური</value></data>
-  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>არ არის გენერირებული</value></data>
-  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>ისტორია</value></data>
 
   <!-- Marketing (F4) -->
   <data name="Marketing.Title" xml:space="preserve"><value>მარკეტინგი</value></data>
@@ -936,6 +921,14 @@
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>სტუმრის ბილეთების გვერდის ნავიგაცია</value></data>
   <data name="Loyalty.PaginationAria" xml:space="preserve"><value>ერთგულების ქულების გვერდის ნავიგაცია</value></data>
   <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>რანგის ისტორიის გვერდის ნავიგაცია</value></data>
+  <data name="Ranks.NextRank" xml:space="preserve"><value>შემდეგი რანგი</value></data>
+  <data name="Ranks.LifetimeRank" xml:space="preserve"><value>სიცოცხლის რანგი</value></data>
+  <data name="Ranks.DualTeamPoints" xml:space="preserve"><value>Dual Team ქულები</value></data>
+  <data name="Ranks.EnrollmentPoints" xml:space="preserve"><value>რეგისტრაციის ქულები</value></data>
+  <data name="Ranks.TopRankReached" xml:space="preserve"><value>თქვენ მიაღწიეთ უმაღლეს რანგს.</value></data>
+  <data name="Ranks.LoadFailed" xml:space="preserve"><value>რანგის ინფორმაციის ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Ranks.ColPreviousRank" xml:space="preserve"><value>წინა რანგი</value></data>
+  <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>სერტიფიკატის ჩამოტვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>მარკეტინგული დოკუმენტების ტიპები</value></data>
 
   <!-- F4 — Nav fallbacks (ka) -->

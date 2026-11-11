@@ -67,7 +67,9 @@
             <TokensPage MemberProfileId="@MemberId" />
             break;
         case "ranks":
-            <RankDashboard MemberProfileId="@MemberId" />
+            @* El historial y los certificados solo existen bajo la raíz del BizCenter (miembro del token). *@
+            <RankDashboard MemberProfileId="@MemberId" ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
+                           ShowBreadcrumb="false" ShowHistory="false" />
             break;
         case "tickets":
             <TicketListPage MemberProfileId="@MemberId" />

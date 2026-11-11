@@ -984,27 +984,12 @@
   <!-- Ranks (F4) -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>Os ranques estão disponíveis apenas para Embaixadores.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>Ranque Atual</value></data>
-  <data name="Ranks.PointsToNext" xml:space="preserve"><value>Pontos para o Próximo Ranque</value></data>
-  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>Meses Qualificados Totais</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>Progresso ao Próximo Ranque</value></data>
-  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>Substituição de Admin</value></data>
-  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>Defina manualmente o ranque deste membro fora das regras normais de qualificação.</value></data>
-  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>Substituição Manual</value></data>
-  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>Substituição Manual de Ranque</value></data>
-  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>Você está prestes a substituir manualmente o ranque deste membro. Esta ação será registrada. Continuar?</value></data>
-  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>Substituir Ranque</value></data>
   <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>Início</value></data>
-  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>Progresso</value></data>
   <data name="Ranks.HistoryTitle" xml:space="preserve"><value>Histórico de Ranques Alcançados</value></data>
   <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>Data Alcançada</value></data>
   <data name="Ranks.ColRank" xml:space="preserve"><value>Ranque</value></data>
-  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>Período de Qualificação</value></data>
-  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>Acionado por</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>Certificado</value></data>
-  <data name="Ranks.TriggerManual" xml:space="preserve"><value>Manual</value></data>
-  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>Automático</value></data>
-  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>Não gerado</value></data>
-  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>Histórico</value></data>
 
   <!-- Marketing (F4) -->
   <data name="Marketing.Title" xml:space="preserve"><value>Marketing</value></data>
@@ -1030,6 +1015,14 @@
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>Paginação de passes de convidado</value></data>
   <data name="Loyalty.PaginationAria" xml:space="preserve"><value>Paginação de pontos de fidelidade</value></data>
   <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>Paginação do histórico de graduações</value></data>
+  <data name="Ranks.NextRank" xml:space="preserve"><value>Próximo Ranque</value></data>
+  <data name="Ranks.LifetimeRank" xml:space="preserve"><value>Ranque Vitalício</value></data>
+  <data name="Ranks.DualTeamPoints" xml:space="preserve"><value>Pontos de Dual Team</value></data>
+  <data name="Ranks.EnrollmentPoints" xml:space="preserve"><value>Pontos de Inscrição</value></data>
+  <data name="Ranks.TopRankReached" xml:space="preserve"><value>Você alcançou o ranque mais alto.</value></data>
+  <data name="Ranks.LoadFailed" xml:space="preserve"><value>Não foi possível carregar as informações de ranque.</value></data>
+  <data name="Ranks.ColPreviousRank" xml:space="preserve"><value>Ranque Anterior</value></data>
+  <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>Não foi possível baixar o certificado. Tente novamente.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>Tipos de documento de marketing</value></data>
 
   <!-- Tickets — F5 -->

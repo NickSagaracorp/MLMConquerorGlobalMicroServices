@@ -1059,27 +1059,12 @@
   <!-- Ranks (F4) -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>Ranks are only available for Ambassadors.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>Current Rank</value></data>
-  <data name="Ranks.PointsToNext" xml:space="preserve"><value>Points to Next Rank</value></data>
-  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>Total Qualified Months</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>Progress to Next Rank</value></data>
-  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>Admin Override</value></data>
-  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>Manually set this member's rank outside normal qualification rules.</value></data>
-  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>Manual Override</value></data>
-  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>Manual Rank Override</value></data>
-  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>You are about to manually override this member's rank. This action will be logged. Proceed?</value></data>
-  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>Override Rank</value></data>
   <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
-  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>Progress</value></data>
   <data name="Ranks.HistoryTitle" xml:space="preserve"><value>Rank Achievement History</value></data>
   <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>Achieved Date</value></data>
   <data name="Ranks.ColRank" xml:space="preserve"><value>Rank</value></data>
-  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>Qualification Period</value></data>
-  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>Triggered By</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>Certificate</value></data>
-  <data name="Ranks.TriggerManual" xml:space="preserve"><value>Manual</value></data>
-  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>Automatic</value></data>
-  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>Not generated</value></data>
-  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>History</value></data>
 
   <!-- Marketing (F4) -->
   <data name="Marketing.Title" xml:space="preserve"><value>Marketing</value></data>
@@ -1105,6 +1090,14 @@
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>Guest passes pagination</value></data>
   <data name="Loyalty.PaginationAria" xml:space="preserve"><value>Loyalty points pagination</value></data>
   <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>Rank history pagination</value></data>
+  <data name="Ranks.NextRank" xml:space="preserve"><value>Next Rank</value></data>
+  <data name="Ranks.LifetimeRank" xml:space="preserve"><value>Lifetime Rank</value></data>
+  <data name="Ranks.DualTeamPoints" xml:space="preserve"><value>Dual Team Points</value></data>
+  <data name="Ranks.EnrollmentPoints" xml:space="preserve"><value>Enrollment Points</value></data>
+  <data name="Ranks.TopRankReached" xml:space="preserve"><value>You have reached the highest rank.</value></data>
+  <data name="Ranks.LoadFailed" xml:space="preserve"><value>Rank information could not be loaded.</value></data>
+  <data name="Ranks.ColPreviousRank" xml:space="preserve"><value>Previous Rank</value></data>
+  <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>The certificate could not be downloaded. Please try again.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>Marketing document types</value></data>
 
   <!-- Tickets — F5 -->

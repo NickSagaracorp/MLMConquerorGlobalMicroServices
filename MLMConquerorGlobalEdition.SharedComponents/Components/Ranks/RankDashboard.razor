@@ -1,6 +1,5 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
-@inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
@@ -11,47 +10,51 @@
     return;
 }
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb)
+{
+    <BreadcrumbNav Items="@_breadcrumb" />
+}
 
 <LoadingSpinner IsLoading="@_isLoading" />
 
-@if (!_isLoading && _progress is not null)
+@if (!_isLoading && _rank is null)
 {
-    <!-- Stat Cards -->
+    <div class="alert alert-danger">@L["Ranks.LoadFailed"]</div>
+}
+
+@if (!_isLoading && _rank is not null)
+{
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-4">
-            <StatCard Title="@L["Ranks.CurrentRank"]"
-                      Value="@_progress.CurrentRank"
-                      Icon="ri-medal-line"
-                      Color="warning" />
+            <StatCard Title="@L["Ranks.CurrentRank"]" Value="@Nombre(_rank.CurrentRankName)"
+                      Icon="ri-medal-line" Color="warning" />
         </div>
         <div class="col-12 col-sm-4">
-            <StatCard Title="@L["Ranks.PointsToNext"]"
-                      Value="@_progress.PointsToNext.ToString("N0")"
-                      Icon="ri-bar-chart-2-line"
-                      Color="primary" />
+            <StatCard Title="@L["Ranks.NextRank"]" Value="@Nombre(_rank.NextRankName)"
+                      Icon="ri-arrow-up-circle-line" Color="primary" />
         </div>
         <div class="col-12 col-sm-4">
-            <StatCard Title="@L["Ranks.QualifiedMonths"]"
-                      Value="@_progress.QualifiedMonths.ToString()"
-                      Icon="ri-calendar-check-line"
-                      Color="success" />
+            <StatCard Title="@L["Ranks.LifetimeRank"]" Value="@Nombre(_rank.LifetimeRankName)"
+                      Icon="ri-trophy-line" Color="success" />
         </div>
     </div>
 
-    <!-- Progress toward next rank -->
     <div class="card mb-4">
         <div class="card-header py-3">
             <h6 class="card-title mb-0 fw-semibold">@L["Ranks.ProgressTitle"]</h6>
         </div>
         <div class="card-body">
+            @if (_requirements.Count == 0)
+            {
+                <p class="text-muted mb-0">@L["Ranks.TopRankReached"]</p>
+            }
             @foreach (var req in _requirements)
             {
-                var pct = req.Required > 0 ? (int)Math.Min(100m, req.Current * 100m / req.Required) : 0;
+                var pct = (int)Math.Min(100m, req.Current * 100m / req.Required);
                 <div class="mb-3">
                     <div class="d-flex justify-content-between small mb-1">
                         <span class="fw-medium">@req.Label</span>
-                        <span class="text-muted">@req.Current / @req.Required</span>
+                        <span class="text-muted">@req.Current.ToString("N0") / @req.Required.ToString("N0")</span>
                     </div>
                     <div class="progress" style="height: 8px;">
                         <div class="progress-bar bg-primary" role="progressbar"
@@ -64,105 +67,84 @@
         </div>
     </div>
 
-    <!-- Admin-only: Manual Override -->
-    <AdminOnlyWrapper Permission="@Permissions.Rank.Override">
-        <div class="card border-warning mb-4">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <h6 class="fw-semibold mb-1 text-warning">@L["Ranks.AdminOverrideTitle"]</h6>
-                    <p class="text-muted small mb-0">@L["Ranks.AdminOverrideMessage"]</p>
-                </div>
-                <button class="btn btn-warning btn-sm" @onclick="@(() => _showOverrideModal = true)">
-                    <i class="ri-edit-line me-1"></i>@L["Ranks.ManualOverrideButton"]
-                </button>
-            </div>
-        </div>
-    </AdminOnlyWrapper>
-
-    <!-- Rank History Table -->
-    <RankHistoryTable MemberProfileId="@MemberProfileId" />
-}
-
-@if (_showOverrideModal)
-{
-    <ConfirmModal IsVisible="true"
-                  Title="@L["Ranks.OverrideModalTitle"]"
-                  Message="@L["Ranks.OverrideModalMessage"]"
-                  ConfirmLabel="@L["Ranks.OverrideModalConfirm"]"
-                  ConfirmColor="warning"
-                  OnConfirm="@HandleOverrideConfirmedAsync"
-                  OnCancel="@(() => _showOverrideModal = false)" />
+    @if (ShowHistory)
+    {
+        <RankHistoryTable MemberProfileId="@MemberProfileId" ApiBaseUrl="@ApiBaseUrl" />
+    }
 }
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
+    /// <summary>Raíz del API: el BizCenter usa el miembro del token; el admin, la ruta del miembro
+    /// (<c>api/v1/admin/members/{id}</c>).</summary>
+    [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+
+    /// <summary>El historial y la descarga de certificados solo existen bajo la raíz del BizCenter.</summary>
+    [Parameter] public bool   ShowHistory    { get; set; } = true;
+
     private bool _isLoading = true;
-    private bool _showOverrideModal;
-    private RankProgress? _progress;
-    private List<RankRequirementRow> _requirements = new();
+    private RankDashboardDto? _rank;
+    private List<RequirementRow> _requirements = new();
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new(L["Ranks.BreadcrumbHome"].Value,  "/dashboard"),
-        new(L["Nav.Ranks"].Value, "/ranks"),
-        new(L["Ranks.BreadcrumbProgress"].Value)
+        new(L["Ranks.BreadcrumbHome"].Value, "/dashboard"),
+        new(L["Nav.Ranks"].Value)
     };
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         _isLoading = true;
-        StateHasChanged();
+        _rank = null;
 
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<RankProgressDto>>(
-                $"api/v1/bizcenter/ranks/dashboard");
+            var response = await Http.GetFromJsonAsync<ApiResponse<RankDashboardDto>>($"{ApiBaseUrl}/ranks/dashboard");
             if (response?.Success == true && response.Data is not null)
             {
-                var d = response.Data;
-                _progress = new RankProgress(d.CurrentRank, d.CurrentPoints, d.PointsToNext, d.Percentage, d.QualifiedMonths);
-                _requirements = d.Requirements.Select(r => new RankRequirementRow(r.Label, r.Current, r.Required)).ToList();
+                _rank = response.Data;
+                _requirements = Requisitos(_rank);
             }
         }
-        catch { /* silently degrade */ }
+        catch { /* se muestra Ranks.LoadFailed */ }
         finally { _isLoading = false; }
     }
 
-    private async Task HandleOverrideConfirmedAsync()
+    /// <summary>
+    /// Las barras van contra el próximo rango: puntos elegibles (el servidor ya los topa en el umbral)
+    /// sobre el umbral. Una dimensión con umbral 0 no aplica a ese rango; sin próximo rango no hay barras.
+    /// </summary>
+    private List<RequirementRow> Requisitos(RankDashboardDto d)
     {
-        _showOverrideModal = false;
-        try { await Http.PostAsJsonAsync($"api/v1/admin/members/{MemberProfileId}/rank/override", new { }); }
-        catch { /* silently degrade */ }
+        if (!TieneNombre(d.NextRankName)) return new();
+        var filas = new List<RequirementRow>();
+        if (d.NextRankDualTeamPoints > 0)
+            filas.Add(new(L["Ranks.DualTeamPoints"].Value, d.NextRankEligibleDualTeamPoints, d.NextRankDualTeamPoints));
+        if (d.NextRankEnrollmentPoints > 0)
+            filas.Add(new(L["Ranks.EnrollmentPoints"].Value, d.NextRankEligibleEnrollmentPoints, d.NextRankEnrollmentPoints));
+        return filas;
     }
 
-    // ── Local data models ────────────────────────────────────────────────────
+    // El admin devuelve "—" cuando no hay rango; el BizCenter, null.
+    private static bool TieneNombre(string? nombre) => !string.IsNullOrWhiteSpace(nombre) && nombre != "—";
+    private static string Nombre(string? nombre) => TieneNombre(nombre) ? nombre! : "—";
+
+    // ── Contrato con el API (BizCenter RankDashboardDto / AdminMemberRanksController.RankDashboardDto) ──
     private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
 
-    private class RankProgressDto
+    private class RankDashboardDto
     {
-        public string CurrentRank    { get; set; } = string.Empty;
-        public int    CurrentPoints  { get; set; }
-        public int    PointsToNext   { get; set; }
-        public double Percentage     { get; set; }
-        public int    QualifiedMonths { get; set; }
-        public List<RequirementDto> Requirements { get; set; } = new();
+        public string? CurrentRankName                  { get; set; }
+        public string? NextRankName                     { get; set; }
+        public string? LifetimeRankName                 { get; set; }
+        public int     NextRankDualTeamPoints           { get; set; }
+        public int     NextRankEnrollmentPoints         { get; set; }
+        public int     NextRankEligibleDualTeamPoints   { get; set; }
+        public int     NextRankEligibleEnrollmentPoints { get; set; }
     }
 
-    private class RequirementDto
-    {
-        public string  Label    { get; set; } = string.Empty;
-        public decimal Current  { get; set; }
-        public decimal Required { get; set; }
-    }
-
-    private record RankProgress(
-        string CurrentRank,
-        int    CurrentPoints,
-        int    PointsToNext,
-        double Percentage,
-        int    QualifiedMonths);
-
-    private record RankRequirementRow(string Label, decimal Current, decimal Required);
+    private record RequirementRow(string Label, int Current, int Required);
 }
