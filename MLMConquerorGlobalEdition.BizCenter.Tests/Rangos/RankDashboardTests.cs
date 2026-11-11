@@ -138,13 +138,17 @@ public class RankDashboardTests : BunitContext
     [Fact]
     public void Descargar_pide_el_certificado_al_API_y_lo_entrega_al_navegador()
     {
+        var modulo = JSInterop.SetupModule(RankHistoryTable.DownloadModule);
+        modulo.SetupVoid("downloadFile", _ => true);
         var p = Montar(Panel());
         p.WaitForAssertion(() => p.FindAll("tbody button").Should().HaveCount(2));
 
         p.FindAll("tbody button")[0].Click();
 
         p.WaitForAssertion(() => _llamadas.Should().Contain("/api/v1/bizcenter/ranks/RH-2/certificate"));
-        var js = JSInterop.VerifyInvoke("mlmDownloadFile");
+        p.WaitForAssertion(() => modulo.Invocations["downloadFile"].Should().ContainSingle());
+        p.FindAll(".alert-danger").Should().BeEmpty();
+        var js = modulo.VerifyInvoke("downloadFile");
         js.Arguments[1].Should().Be("application/pdf");
         js.Arguments[2].Should().Be(Convert.ToBase64String(Pdf));
     }

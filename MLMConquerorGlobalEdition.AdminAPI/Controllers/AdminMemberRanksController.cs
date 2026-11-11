@@ -41,6 +41,7 @@ public class AdminMemberRanksController : ControllerBase
         {
             CurrentRankName                     = s.CurrentRankName ?? "—",
             NextRankName                        = s.NextRankName    ?? "—",
+            LifetimeRankName                    = s.LifetimeRankName ?? "—",
             CurrentRankDualTeamPoints           = s.CurrentRankDualTeamPoints,
             CurrentRankEnrollmentPoints         = s.CurrentRankEnrollmentPoints,
             CurrentRankEligibleDualTeamPoints   = s.CurrentRankEligibleDualTeamPoints,
@@ -97,6 +98,7 @@ public class AdminMemberRanksController : ControllerBase
     {
         public string CurrentRankName                     { get; set; } = string.Empty;
         public string NextRankName                        { get; set; } = string.Empty;
+        public string LifetimeRankName                    { get; set; } = string.Empty;
         public int    CurrentRankDualTeamPoints           { get; set; }
         public int    CurrentRankEnrollmentPoints         { get; set; }
         /// <summary>Eligible (capped) dual-team points toward current rank.

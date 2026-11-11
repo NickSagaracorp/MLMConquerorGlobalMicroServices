@@ -9,8 +9,14 @@ public class LoyaltyPointsService : ILoyaltyPointsService
 
     public LoyaltyPointsService(AppDbContext db) => _db = db;
 
+    public const int MaxPageSize = 100;
+
     public async Task<LoyaltyPointsPageView> GetPageAsync(string memberId, int page, int pageSize, CancellationToken ct = default)
     {
+        // La pagina y su tamano vienen de la consulta: una pagina 0 daria un OFFSET negativo (500) y un tamano enorme, la tabla entera.
+        page     = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
         var mine = _db.LoyaltyPoints.AsNoTracking().Where(lp => lp.MemberId == memberId);
 
         var totalCount = await mine.CountAsync(ct);

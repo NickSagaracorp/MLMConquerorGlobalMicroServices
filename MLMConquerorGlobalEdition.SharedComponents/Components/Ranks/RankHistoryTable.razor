@@ -120,8 +120,10 @@
 
     /// <summary>
     /// El certificado se pide por el HttpClient (lleva el token; un enlace directo no lo llevaría) y se
-    /// entrega al navegador con <c>mlmDownloadFile</c>.
+    /// entrega al navegador con el módulo compartido <c>download.js</c> (sirve en cualquier portal).
     /// </summary>
+    public const string DownloadModule = "./_content/MLMConquerorGlobalEdition.SharedComponents/js/download.js";
+
     private async Task DownloadAsync(string rankHistoryId)
     {
         _downloading = rankHistoryId;
@@ -131,7 +133,8 @@
             var response = await Http.GetAsync($"{ApiBaseUrl}/ranks/{rankHistoryId}/certificate");
             if (!response.IsSuccessStatusCode) { _downloadError = true; return; }
             var bytes = await response.Content.ReadAsByteArrayAsync();
-            await JS.InvokeVoidAsync("mlmDownloadFile", $"certificate-{rankHistoryId}.pdf", "application/pdf",
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", DownloadModule);
+            await module.InvokeVoidAsync("downloadFile", $"certificate-{rankHistoryId}.pdf", "application/pdf",
                 Convert.ToBase64String(bytes));
         }
         catch { _downloadError = true; }

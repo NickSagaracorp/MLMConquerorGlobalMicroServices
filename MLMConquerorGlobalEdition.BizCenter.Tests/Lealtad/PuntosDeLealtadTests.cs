@@ -111,7 +111,35 @@ public class PuntosDeLealtadTests : BunitContext
         var filas = p.FindAll("tbody tr").Select(f => f.TextContent).ToList();
         filas[0].Should().Contain("Oct 2026").And.Contain("50");
         filas[1].Should().Contain("Sep 2026").And.Contain("30");
-        p.Markup.Should().Contain(">80<").And.Contain(">30<").And.Contain(">50<");
+    }
+
+    [Fact]
+    public void Las_tarjetas_muestran_los_totales_del_API_y_no_los_de_las_filas()
+    {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+        // Totales que no coinciden con ninguna fila: si la pantalla no los leyera, no aparecerían.
+        var datos = Datos();
+        datos.TotalPoints = 1234; datos.UnlockedPoints = 567; datos.LockedPoints = 667;
+
+        var p = Montar(datos);
+
+        p.WaitForAssertion(() => p.Markup.Should().Contain(">1,234<"));
+        p.Markup.Should().Contain(">567<").And.Contain(">667<");
+    }
+
+    [Fact]
+    public async Task La_pagina_y_su_tamano_se_acotan()
+    {
+        using var db = NuevaBase();
+        db.LoyaltyPoints.AddRange(Enumerable.Range(1, 12).Select(m => Registro("A", m, m, false)));
+        await db.SaveChangesAsync();
+
+        var cero = await new LoyaltyPointsService(db).GetPageAsync("A", 0, 5);
+        var enorme = await new LoyaltyPointsService(db).GetPageAsync("A", 1, 1_000_000);
+
+        cero.Page.Should().Be(1);
+        cero.Items.Should().HaveCount(5);
+        enorme.PageSize.Should().Be(LoyaltyPointsService.MaxPageSize);
     }
 
     [Fact]
