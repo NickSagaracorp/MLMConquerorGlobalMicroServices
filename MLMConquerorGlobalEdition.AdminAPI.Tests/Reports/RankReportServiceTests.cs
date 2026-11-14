@@ -176,4 +176,20 @@ public class RankReportServiceTests
         sinInvalidar.Should().HaveCount(3);
         despues.Should().HaveCount(4).And.Contain("AMB-6");
     }
+
+    [Fact]
+    public async Task Marcar_la_cuenta_corporativa_saca_al_miembro_del_reporte_guardado()
+    {
+        using var db = Base();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        (await Ids(db, new RankReportFilter(RankReportMode.Lifetime), cache)).Should().Contain("AMB-1");
+
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.SetupGet(r => r.Now).Returns(Hoy);
+        var usuario = new Mock<ICurrentUserService>();
+        usuario.SetupGet(u => u.UserId).Returns("admin-1");
+        await new AdminMemberCorporateAccountController(db, reloj.Object, usuario.Object).Set("AMB-1", new(true), default);
+
+        (await Ids(db, new RankReportFilter(RankReportMode.Lifetime), cache)).Should().NotContain("AMB-1");
+    }
 }

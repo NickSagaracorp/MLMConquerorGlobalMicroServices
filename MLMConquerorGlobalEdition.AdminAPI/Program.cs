@@ -108,6 +108,8 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IEarningsRankingService,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.EarningsRankingService>();
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.AdminAPI.Reports.CsvReportWriter>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IRankReportService,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.RankReportService>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 
 // Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se

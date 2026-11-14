@@ -56,6 +56,7 @@ public class AdminMemberCorporateAccountController : ControllerBase
             member.LastUpdateBy       = _currentUser.UserId;
             await _db.SaveChangesAsync(ct);
             EarningsRankingService.InvalidateAll();   // el ranking guardado ya no es valido
+            RankReportService.InvalidateAll();        // ni los reportes de rango guardados
         }
 
         return Ok(ApiResponse<object>.Ok(new { member.MemberId, member.IsCorporateAccount }));
