@@ -125,6 +125,48 @@ public class SqlServerClubRecognitionTests
     });
 
     [SqlServerFact]
+    public async Task Dos_cargas_historicas_a_la_vez_funcionan_y_no_duplican_registros()
+    {
+        // Comisiones de 2001: ningun dato real las tiene, asi que solo este miembro califica en la carga hasta 2001-12-31.
+        var n = SqlServerReportes.NuevoId("CZ");
+        await using var limpieza = SqlServerReportes.Db();
+        var antes   = await limpieza.MemberRecognitions.AsNoTracking().Select(r => r.Id).ToListAsync();
+        var marcador = await limpieza.GlobalParameters.AsNoTracking()
+            .Where(p => p.Key == ClubRecognitionDetector.HistoryLoadedKey).Select(p => p.Value).FirstOrDefaultAsync();
+        try
+        {
+            await using (var siembra = SqlServerReportes.Db())
+            {
+                ReportesDb.Miembro(siembra, n);
+                Comision(siembra, n, 120_000m, new DateTime(2001, 3, 1, 9, 0, 0));
+                await siembra.SaveChangesAsync();
+            }
+
+            async Task<int> Cargar()
+            {
+                await using var db = SqlServerReportes.Db();
+                return await Detector(db).LoadHistoryAsync(new DateTime(2001, 12, 31));
+            }
+
+            var resultados = await Task.WhenAll(Task.Run(Cargar), Task.Run(Cargar));
+
+            resultados.Sum().Should().Be(2);                    // niveles 1 y 4, una sola vez entre las dos cargas
+            await using var db2 = SqlServerReportes.Db();
+            var filas = await db2.MemberRecognitions.AsNoTracking().Where(r => r.MemberId == n).ToListAsync();
+            filas.Select(f => f.RecognitionLevelId).Should().BeEquivalentTo(new[] { 1, 4 });
+        }
+        finally
+        {
+            await limpieza.MemberRecognitions.Where(r => !antes.Contains(r.Id)).ExecuteDeleteAsync();
+            await limpieza.CommissionEarnings.Where(c => c.BeneficiaryMemberId == n).ExecuteDeleteAsync();
+            await limpieza.MemberProfiles.IgnoreQueryFilters().Where(m => m.MemberId == n).ExecuteDeleteAsync();
+            var q = limpieza.GlobalParameters.Where(p => p.Key == ClubRecognitionDetector.HistoryLoadedKey);
+            if (marcador is null) await q.ExecuteDeleteAsync();
+            else await q.ExecuteUpdateAsync(s => s.SetProperty(p => p.Value, marcador));
+        }
+    }
+
+    [SqlServerFact]
     public void La_consulta_nocturna_se_traduce_a_SQL()
     {
         using var db = SqlServerReportes.Db();

@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -53,6 +56,45 @@ public class AdminClubRecognitionParametersControllerTests
         (await db.RecognitionLevels.CountAsync()).Should().Be(0);
     }
 
+
+    [Theory]
+    [InlineData("100000000000000")]
+    [InlineData("999999999999999999")]
+    public async Task Un_umbral_que_no_cabe_en_la_columna_da_400(string umbral)
+    {
+        using var db = ClubRecognitionTestData.Db();
+
+        var r = await Controlador(db).CreateLevel(new LevelRequest("Club", decimal.Parse(umbral), null, null, false, 1), default);
+
+        Codigo(r).Should().Be("INVALID_THRESHOLD");
+    }
+
+    private sealed class FalloDeClaveDuplicada : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            var error = (SqlError)RuntimeHelpers.GetUninitializedObject(typeof(SqlError));
+            typeof(SqlError).GetField("_number", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(error, 2601);
+            var lista = (SqlErrorCollection)RuntimeHelpers.GetUninitializedObject(typeof(SqlErrorCollection));
+            typeof(SqlErrorCollection).GetField("_errors", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .SetValue(lista, new List<object> { error });
+            var sql = (SqlException)RuntimeHelpers.GetUninitializedObject(typeof(SqlException));
+            typeof(SqlException).GetField("_errors", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(sql, lista);
+            throw new DbUpdateException("duplicate", sql);
+        }
+    }
+
+    [Fact]
+    public async Task Una_clave_duplicada_al_guardar_da_400_y_no_500()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(new FalloDeClaveDuplicada()).Options);
+        var c = Controlador(db);
+
+        Codigo(await c.CreateLevel(new LevelRequest("Club", 1000m, null, null, false, 1), default)).Should().Be("LEVEL_NAME_TAKEN");
+        Codigo(await c.CreateOption(new OptionRequest("Opcion", false, 1), default)).Should().Be("OPTION_NAME_TAKEN");
+    }
     [Fact]
     public async Task Dos_niveles_no_pueden_llamarse_igual()
     {

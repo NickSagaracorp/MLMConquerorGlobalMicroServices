@@ -73,7 +73,7 @@ public partial class ClubRecognitionDetector
         try
         {
             foreach (var window in windows)
-                added += await _db.Database.ExecuteSqlRawAsync(HistoricalSql, HistoryParameters(day, window), ct);
+                added += await InsertWindowAsync(day, window, ct);
         }
         finally
         {
@@ -82,6 +82,19 @@ public partial class ClubRecognitionDetector
 
         await MarkHistoryLoadedAsync(day, ct);
         return added;
+    }
+
+    private async Task<int> InsertWindowAsync(DateTime day, int? window, CancellationToken ct)
+    {
+        try
+        {
+            return await _db.Database.ExecuteSqlRawAsync(HistoricalSql, HistoryParameters(day, window), ct);
+        }
+        catch (Exception ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
+        {
+            // Otra carga inserto primero entre el NOT EXISTS y el INSERT: se repite una vez; ahora el NOT EXISTS la ve.
+            return await _db.Database.ExecuteSqlRawAsync(HistoricalSql, HistoryParameters(day, window), ct);
+        }
     }
 
     private object[] HistoryParameters(DateTime day, int? window) => new object[]
@@ -98,8 +111,21 @@ public partial class ClubRecognitionDetector
         new SqlParameter("@author",     SqlDbType.NVarChar, 100) { Value = Author },
     };
 
-    /// <summary>Deja (o actualiza) el marcador con el último día cargado: el job nocturno deja de hacer la carga inicial.</summary>
     private async Task MarkHistoryLoadedAsync(DateTime day, CancellationToken ct)
+    {
+        try
+        {
+            await MarkHistoryLoadedOnceAsync(day, ct);
+        }
+        catch (Exception ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
+        {
+            _db.ChangeTracker.Clear();
+            await MarkHistoryLoadedOnceAsync(day, ct);
+        }
+    }
+
+    /// <summary>Deja (o actualiza) el marcador con el último día cargado: el job nocturno deja de hacer la carga inicial.</summary>
+    private async Task MarkHistoryLoadedOnceAsync(DateTime day, CancellationToken ct)
     {
         var now    = _clock.Now;
         var marker = await _db.GlobalParameters.FirstOrDefaultAsync(p => p.Key == HistoryLoadedKey, ct);

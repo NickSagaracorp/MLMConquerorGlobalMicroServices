@@ -132,6 +132,37 @@ public class AdminMemberRecognitionControllerTests
         Codigo(await C(db).Capture("AMB-1", 10, Vacio() with { EventOptionId = 9 }, default)).Should().Be("OPTION_NOT_FOUND");
     }
 
+
+    [Fact]
+    public async Task Un_evento_borrado_no_se_asigna_pero_el_que_el_registro_ya_tiene_se_acepta()
+    {
+        using var db = Base();
+        Evento(db, "EVT-DEL", "Evento borrado", new DateTime(2026, 1, 5), borrado: true);
+        await db.SaveChangesAsync();
+
+        Codigo(await C(db).Capture("AMB-1", 10, Vacio() with { EventId = "EVT-DEL" }, default)).Should().Be("EVENT_NOT_FOUND");
+
+        // El registro ya lo tenia (se borro despues): sigue pudiendo editar lo demas sin perderlo.
+        var registro = await db.MemberRecognitions.SingleAsync(x => x.Id == 11);
+        registro.EventId = "EVT-DEL";
+        await db.SaveChangesAsync();
+        var r = await C(db).Capture("AMB-1", 11, Vacio() with { EventId = "EVT-DEL", Notes = "ok" }, default);
+        r.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task Si_el_registro_ya_no_sale_en_la_lista_responde_404_y_no_500()
+    {
+        using var db = Base();
+        var reportes = new Mock<IClubRecognitionReportService>();
+        reportes.Setup(s => s.GetForMemberAsync("AMB-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ClubRecognitionRowView>());
+        var c = new AdminMemberRecognitionController(db, reportes.Object, Reloj(Ahora), Usuario());
+
+        var r = await c.Capture("AMB-1", 10, Vacio() with { Notes = "x" }, default);
+
+        r.Should().BeOfType<NotFoundObjectResult>();
+    }
     [Fact]
     public async Task Una_opcion_inactiva_no_se_elige_salvo_la_que_el_registro_ya_tiene()
     {

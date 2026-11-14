@@ -71,7 +71,8 @@ public class AdminMemberRecognitionController : ControllerBase
         var eventId = Clean(request.EventId);
         if (eventId is not null && request.EventOptionId is not null)
             return BadRequest(Fail("EVENT_CONFLICT", "Choose an event or an option, not both."));
-        if (eventId is not null && !await _db.CorporateEvents.AnyAsync(e => e.Id == eventId, ct))
+        // Un evento borrado no se puede asignar; si el registro ya lo tiene, se acepta para poder editar lo demas.
+        if (eventId is not null && eventId != record.EventId && !await _db.CorporateEvents.AnyAsync(e => e.Id == eventId && !e.IsDeleted, ct))
             return BadRequest(Fail("EVENT_NOT_FOUND", "Corporate event not found."));
 
         var (ceoReason, ceoError) = await ReasonAsync(request.CeoCallOptionId, request.CeoCallReason, record.CeoCallOptionId, ct);
@@ -117,7 +118,9 @@ public class AdminMemberRecognitionController : ControllerBase
             await _db.SaveChangesAsync(ct);
         }
 
-        var row = (await _reports.GetForMemberAsync(memberId, ct)).Single(r => r.Id == id);
+        var row = (await _reports.GetForMemberAsync(memberId, ct)).SingleOrDefault(r => r.Id == id);
+        if (row is null)
+            return NotFound(Fail("RECOGNITION_NOT_FOUND", "Recognition record not found."));
         return Ok(ApiResponse<ClubRecognitionRowView>.Ok(row));
     }
 

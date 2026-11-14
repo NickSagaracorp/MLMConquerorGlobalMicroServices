@@ -14,12 +14,13 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 /// </summary>
 public class ClubRecognitionJobTests
 {
-    private static (ClubRecognitionJob Job, Mock<IClubRecognitionDetector> Detector) Montar(string ahora, bool cargada)
+    private static (ClubRecognitionJob Job, Mock<IClubRecognitionDetector> Detector) Montar(string ahora, bool cargada, string? ultimo = null)
     {
         var reloj = new Mock<IDateTimeProvider>();
         reloj.SetupGet(r => r.Now).Returns(DateTime.Parse(ahora, CultureInfo.InvariantCulture));
         var detector = new Mock<IClubRecognitionDetector>();
-        detector.Setup(d => d.HistoryLoadedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(cargada);
+        DateTime? marcador = !cargada ? null : ultimo is null ? reloj.Object.Now.Date.AddDays(-2) : DateTime.Parse(ultimo, CultureInfo.InvariantCulture);
+        detector.Setup(d => d.LastProcessedDayAsync(It.IsAny<CancellationToken>())).ReturnsAsync(marcador);
         return (new ClubRecognitionJob(detector.Object, reloj.Object, NullLogger<ClubRecognitionJob>.Instance), detector);
     }
 
@@ -51,6 +52,48 @@ public class ClubRecognitionJobTests
         detector.Verify(d => d.DetectDayAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+
+    [Fact]
+    public async Task Se_pone_al_dia_desde_el_marcador_hasta_ayer_en_orden()
+    {
+        var (job, detector) = Montar("2026-11-14T00:45:00", cargada: true, ultimo: "2026-11-10");
+        var vistos = new List<DateTime>();
+        detector.Setup(d => d.DetectDayAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, CancellationToken>((dia, _) => vistos.Add(dia)).ReturnsAsync(0);
+
+        await job.ExecuteAsync(CancellationToken.None);
+
+        vistos.Should().Equal(new DateTime(2026, 11, 11), new DateTime(2026, 11, 12), new DateTime(2026, 11, 13));
+    }
+
+    [Fact]
+    public async Task El_catch_up_se_limita_a_31_dias_por_corrida()
+    {
+        var (job, detector) = Montar("2026-11-14T00:45:00", cargada: true, ultimo: "2026-06-01");
+        var vistos = new List<DateTime>();
+        detector.Setup(d => d.DetectDayAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, CancellationToken>((dia, _) => vistos.Add(dia)).ReturnsAsync(0);
+
+        await job.ExecuteAsync(CancellationToken.None);
+
+        vistos.Should().HaveCount(31);
+        vistos.First().Should().Be(new DateTime(2026, 6, 2));
+    }
+
+    [Fact]
+    public async Task Con_el_marcador_en_ayer_reevalua_ayer()
+    {
+        var (job, detector) = Montar("2026-11-14T00:45:00", cargada: true, ultimo: "2026-11-13");
+
+        await job.ExecuteAsync(CancellationToken.None);
+
+        detector.Verify(d => d.DetectDayAsync(new DateTime(2026, 11, 13), It.IsAny<CancellationToken>()), Times.Once);
+        detector.Verify(d => d.DetectDayAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void No_corre_dos_veces_a_la_vez()
+        => typeof(ClubRecognitionJob).GetCustomAttribute<DisableConcurrentExecutionAttribute>().Should().NotBeNull();
     [Fact]
     public void Va_en_la_cola_del_bizcenter()
         => typeof(ClubRecognitionJob).GetCustomAttribute<QueueAttribute>()!.Queue.Should().Be("bizcenter");

@@ -224,13 +224,13 @@
 
     private async Task LoadHistoryAsync()
     {
-        if (!await Js.InvokeAsync<bool>("confirm",
-                "Read all past commissions and add every Ambassador who already reached a level? Existing records are not changed."))
-            return;
-        _loadingHistory = true;
         _error = null;
         try
         {
+            if (!await Js.InvokeAsync<bool>("confirm",
+                    "Read all past commissions and add every Ambassador who already reached a level? Existing records are not changed."))
+                return;
+            _loadingHistory = true;
             var resp = await Http.PostAsync("api/v1/admin/club-recognition/detection/history", null);
             if (resp.IsSuccessStatusCode)
             {
@@ -241,6 +241,11 @@
                 await RefreshAsync();
             }
             else _error = $"Historical load failed ({(int)resp.StatusCode}).";
+        }
+        catch (TaskCanceledException)
+        {
+            // El cliente se cansa de esperar, pero el servidor sigue con la carga.
+            _info = "The historical load is still running on the server; refresh in a few minutes.";
         }
         catch (Exception ex) { _error = $"Historical load failed: {ex.Message}"; }
         finally { _loadingHistory = false; }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Recognition;
@@ -11,6 +12,9 @@ public interface IClubRecognitionDetector
 {
     /// <summary>¿Ya se hizo la carga histórica (existe el marcador en GlobalParameters)?</summary>
     Task<bool> HistoryLoadedAsync(CancellationToken ct = default);
+
+    /// <summary>Ultimo dia cubierto segun el marcador (carga historica o deteccion nocturna); null si no hay marcador.</summary>
+    Task<DateTime?> LastProcessedDayAsync(CancellationToken ct = default);
 
     /// <summary>Carga histórica hasta <paramref name="lastDay"/> inclusive. Devuelve los registros nuevos.</summary>
     Task<int> LoadHistoryAsync(DateTime lastDay, CancellationToken ct = default);
@@ -64,7 +68,38 @@ public partial class ClubRecognitionDetector : IClubRecognitionDetector
     public Task<bool> HistoryLoadedAsync(CancellationToken ct = default) =>
         _db.GlobalParameters.AsNoTracking().AnyAsync(p => p.Key == HistoryLoadedKey, ct);
 
+    public async Task<DateTime?> LastProcessedDayAsync(CancellationToken ct = default)
+    {
+        var value = await _db.GlobalParameters.AsNoTracking()
+            .Where(p => p.Key == HistoryLoadedKey).Select(p => p.Value).FirstOrDefaultAsync(ct);
+        return DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
+    }
+
     public async Task<int> DetectDayAsync(DateTime day, CancellationToken ct = default)
+    {
+        var relational = _db.Database.IsRelational();
+        var previous   = relational ? _db.Database.GetCommandTimeout() : null;
+        try
+        {
+            try
+            {
+                return await DetectDayOnceAsync(day, ct);
+            }
+            catch (Exception ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
+            {
+                // Otra carga (el job y la manual a la vez) inserto primero: se descartan los cambios pendientes y se
+                // repite entera; ahora ve los registros y no los repite.
+                _db.ChangeTracker.Clear();
+                return await DetectDayOnceAsync(day, ct);
+            }
+        }
+        finally
+        {
+            if (relational) _db.Database.SetCommandTimeout(previous);
+        }
+    }
+
+    private async Task<int> DetectDayOnceAsync(DateTime day, CancellationToken ct)
     {
         var closed = day.Date;
         var to     = closed.AddDays(1);                                   // el día que cerró entra entero
@@ -105,8 +140,20 @@ public partial class ClubRecognitionDetector : IClubRecognitionDetector
             }
         }
 
+        await AdvanceMarkerAsync(closed, ct);
         await _db.SaveChangesAsync(ct);
         return added;
+    }
+
+    /// <summary>Si el marcador existe y esta antes de <paramref name="day"/>, lo adelanta (en el mismo SaveChanges). Nunca lo crea ni lo retrocede.</summary>
+    private async Task AdvanceMarkerAsync(DateTime day, CancellationToken ct)
+    {
+        var marker = await _db.GlobalParameters.FirstOrDefaultAsync(p => p.Key == HistoryLoadedKey, ct);
+        if (marker is null) return;
+        if (DateTime.TryParseExact(marker.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var last) && last >= day) return;
+        marker.Value          = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        marker.LastUpdateDate = _clock.Now;
+        marker.LastUpdateBy   = Author;
     }
 
     // SQL Server compara MemberId sin mayúsculas (intercalación CI): la clave en memoria hace lo mismo.

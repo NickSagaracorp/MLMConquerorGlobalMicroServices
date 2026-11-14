@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Recognition;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Reports;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -18,6 +19,7 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class AdminClubRecognitionParametersController : ControllerBase
 {
     public const int MaxWindowDays = 3650;
+    public const decimal MaxThreshold = 100_000_000_000_000m;
 
     private readonly AppDbContext        _db;
     private readonly IDateTimeProvider   _clock;
@@ -60,7 +62,8 @@ public class AdminClubRecognitionParametersController : ControllerBase
         var level = new RecognitionLevel { CreationDate = _clock.Now, CreatedBy = _currentUser.UserId };
         Apply(level, request);
         _db.RecognitionLevels.Add(level);
-        await _db.SaveChangesAsync(ct);
+        var dupLevel = await SaveAsync("LEVEL_NAME_TAKEN", "Another level already has that name.", ct);
+        if (dupLevel is not null) return BadRequest(dupLevel);
         return Ok(ApiResponse<LevelDto>.Ok(ToDto(level)));
     }
 
@@ -76,7 +79,8 @@ public class AdminClubRecognitionParametersController : ControllerBase
         Apply(level, request);
         level.LastUpdateDate = _clock.Now;
         level.LastUpdateBy   = _currentUser.UserId;
-        await _db.SaveChangesAsync(ct);
+        var dupLevel = await SaveAsync("LEVEL_NAME_TAKEN", "Another level already has that name.", ct);
+        if (dupLevel is not null) return BadRequest(dupLevel);
         return Ok(ApiResponse<LevelDto>.Ok(ToDto(level)));
     }
 
@@ -95,7 +99,8 @@ public class AdminClubRecognitionParametersController : ControllerBase
         var option = new RecognitionOption { CreationDate = _clock.Now, CreatedBy = _currentUser.UserId };
         Apply(option, request);
         _db.RecognitionOptions.Add(option);
-        await _db.SaveChangesAsync(ct);
+        var dupOption = await SaveAsync("OPTION_NAME_TAKEN", "Another option already has that name.", ct);
+        if (dupOption is not null) return BadRequest(dupOption);
         return Ok(ApiResponse<OptionDto>.Ok(ToDto(option)));
     }
 
@@ -111,7 +116,8 @@ public class AdminClubRecognitionParametersController : ControllerBase
         Apply(option, request);
         option.LastUpdateDate = _clock.Now;
         option.LastUpdateBy   = _currentUser.UserId;
-        await _db.SaveChangesAsync(ct);
+        var dupOption = await SaveAsync("OPTION_NAME_TAKEN", "Another option already has that name.", ct);
+        if (dupOption is not null) return BadRequest(dupOption);
         return Ok(ApiResponse<OptionDto>.Ok(ToDto(option)));
     }
 
@@ -132,6 +138,20 @@ public class AdminClubRecognitionParametersController : ControllerBase
 
     // ── Apoyo ────────────────────────────────────────────────────────────────
 
+    /// <summary>Guarda; si otro guardado simultaneo uso el mismo nombre (indice unico), devuelve el error 400 en vez de un 500.</summary>
+    private async Task<ApiResponse<object>?> SaveAsync(string code, string message, CancellationToken ct)
+    {
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            return null;
+        }
+        catch (DbUpdateException ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
+        {
+            return Fail(code, message);
+        }
+    }
+
     private Task<List<LevelDto>> LevelsAsync(CancellationToken ct) =>
         _db.RecognitionLevels.AsNoTracking()
             .OrderBy(l => l.SortOrder).ThenBy(l => l.Id)
@@ -151,6 +171,8 @@ public class AdminClubRecognitionParametersController : ControllerBase
             return Fail("INVALID_NAME", "Name is required (100 characters max).");
         if (r.Threshold <= 0)
             return Fail("INVALID_THRESHOLD", "Threshold must be greater than zero.");
+        if (r.Threshold >= MaxThreshold)
+            return Fail("INVALID_THRESHOLD", "Threshold must be less than 100,000,000,000,000.");
         if (r.WindowDays is < 1 or > MaxWindowDays)
             return Fail("INVALID_WINDOW", $"Window must be between 1 and {MaxWindowDays} days, or empty for lifetime.");
         if (r.Reward?.Trim().Length > 200)
