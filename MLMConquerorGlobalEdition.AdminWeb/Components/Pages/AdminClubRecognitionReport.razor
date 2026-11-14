@@ -1,0 +1,269 @@
+@page "/admin/club-recognition/all"
+@page "/admin/club-recognition/not-recognized-online"
+@page "/admin/club-recognition/not-recognized-events"
+@page "/admin/club-recognition/recognized-online"
+@page "/admin/club-recognition/recognized-events"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@using MLMConquerorGlobalEdition.SharedComponents.Services
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject IViewContextService ViewContext
+
+<PageTitle>@Current.Title</PageTitle>
+
+<h4 class="mb-1">@Current.Title</h4>
+<p class="text-muted mb-4">@Current.Subtitle</p>
+
+<div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div class="flex-grow-1" style="min-width:240px">
+        <input class="form-control" placeholder="Search name, email or country..." @bind="_search" @bind:event="oninput"
+               @onkeyup="OnSearchKeyAsync" />
+    </div>
+    <div>
+        <button class="btn btn-primary" @onclick="ApplySearchAsync"><i class="ri-search-line me-1"></i>Search</button>
+    </div>
+    <div>
+        <label class="form-label small mb-1">Level</label>
+        <select class="form-select" @bind="_levelId" @bind:after="RefreshAsync">
+            <option value="">All levels</option>
+            @foreach (var l in _levels)
+            {
+                <option value="@l.Id">@l.Name@(l.IsActive ? string.Empty : " (inactive)")</option>
+            }
+        </select>
+    </div>
+    @if (ViewContext.HasPermission(Permissions.Reports.Export))
+    {
+        <button class="btn btn-outline-success" @onclick="ExportAsync" disabled="@_exporting">
+            <i class="ri-file-download-line me-1"></i>Export CSV
+        </button>
+    }
+    @if (Current.View == "All")
+    {
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                <button class="btn btn-outline-secondary" @onclick="LoadHistoryAsync" disabled="@_loadingHistory"
+                        title="Reads all past commissions and adds who already reached each level, with the day they crossed it">
+                    @if (_loadingHistory) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <i class="ri-history-line me-1"></i>Run historical load
+                </button>
+            </Authorized>
+        </AuthorizeView>
+    }
+</div>
+
+@if (_info is not null)
+{
+    <div class="alert alert-info alert-dismissible">
+        @_info <button type="button" class="btn-close" @onclick="() => _info = null"></button>
+    </div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_total is not null)
+{
+    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+}
+
+<SfGrid TValue="RecognitionRow" @ref="_grid" @key="Current.View" AllowPaging="true">
+    <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+        <ServerGridAdaptor TValue="RecognitionRow" Http="Http" Endpoint="api/v1/admin/reports/club-recognition/grid"
+                           QueryStringProvider="Query" OnCount="OnCountAsync" OnServerError="OnServerErrorAsync" />
+    </SfDataManager>
+    <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
+    <GridColumns>
+        <GridColumn Field="@nameof(RecognitionRow.MemberName)" HeaderText="Ambassador">
+            <Template>
+                @{ var r = (context as RecognitionRow)!; }
+                <a href="@($"/admin/members/{r.MemberId}?tab=recognition")">@r.MemberName</a>
+            </Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(RecognitionRow.Email)" HeaderText="Email" />
+        <GridColumn Field="@nameof(RecognitionRow.Username)" HeaderText="Username" />
+        <GridColumn Field="@nameof(RecognitionRow.Country)" HeaderText="Country" />
+        <GridColumn Field="@nameof(RecognitionRow.LevelName)" HeaderText="Level" />
+        <GridColumn Field="@nameof(RecognitionRow.ReachedDate)" HeaderText="Reached" Width="120">
+            <Template>@((context as RecognitionRow)!.ReachedDate.ToString("yyyy-MM-dd"))</Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(RecognitionRow.QualifyingTotal)" HeaderText="Total" TextAlign="TextAlign.Right" Width="130">
+            <Template>@((context as RecognitionRow)!.QualifyingTotal.ToString("N2"))</Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(RecognitionRow.CeoCallRecognized)" HeaderText="CEO Call Recognized" />
+        <GridColumn Field="@nameof(RecognitionRow.EventRecognized)" HeaderText="Event Recognized" />
+        <GridColumn Field="@nameof(RecognitionRow.RewardSize)" HeaderText="Reward Size" Width="120" />
+    </GridColumns>
+</SfGrid>
+
+@code {
+    private sealed record ViewInfo(string Slug, string View, string Title, string Subtitle);
+
+    private static readonly ViewInfo[] Views =
+    {
+        new("all", "All", "All Records", "Every Ambassador who reached a recognition level."),
+        new("not-recognized-online", "NotRecognizedOnline", "Not Recognized Online",
+            "Reached a level and still without a CEO call result."),
+        new("not-recognized-events", "NotRecognizedEvents", "Not Recognized on Events",
+            "Reached a level and still without an event result."),
+        new("recognized-online", "RecognizedOnline", "Recognized Online",
+            "Recognized on the CEO call, or marked with a recognition option."),
+        new("recognized-events", "RecognizedEvents", "Recognized Events",
+            "Recognized at an event, or marked with a recognition option."),
+    };
+
+    private SfGrid<RecognitionRow>? _grid;
+    private List<LevelItem> _levels = new();
+    private string  _search = string.Empty;
+    private string  _appliedSearch = string.Empty;   // el termino que la rejilla ya aplico: el que usa la exportacion
+    private int?    _levelId;
+    private int?    _total;
+    private string? _lastView;
+    private bool    _exporting;
+    private bool    _loadingHistory;
+    private string? _error;
+    private string? _info;
+
+    private ViewInfo Current
+    {
+        get
+        {
+            var path = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
+            var slug = path[(path.LastIndexOf('/') + 1)..];
+            return Views.FirstOrDefault(v => v.Slug.Equals(slug, StringComparison.OrdinalIgnoreCase)) ?? Views[0];
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Lookups>>("api/v1/admin/club-recognition/lookups");
+            _levels = resp?.Data?.Levels ?? new();
+        }
+        catch { /* sin la lista, el filtro queda en «All levels» */ }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var view = Current.View;
+        if (_lastView is not null && _lastView != view)
+        {
+            _search = _appliedSearch = string.Empty;
+            _levelId = null;
+            _total = null;
+            _error = null;
+            _info = null;
+        }
+        _lastView = view;
+    }
+
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        _total = null;
+        _error = errorCode is null ? "The report could not be loaded." : $"The report could not be loaded ({errorCode}).";
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCountAsync(int count)
+    {
+        _error = null;
+        _total = count;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string Query()
+    {
+        var q = new List<string> { $"view={Current.View}" };
+        if (_levelId is not null) q.Add($"levelId={_levelId}");
+        return string.Join("&", q);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    // Como Earnings y Rank: la busqueda se lanza con Enter o con el boton, no en cada tecla.
+    private async Task OnSearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ApplySearchAsync();
+    }
+
+    private async Task ApplySearchAsync()
+    {
+        _appliedSearch = (_search ?? string.Empty).Trim();
+        if (_grid is not null) await _grid.SearchAsync(_appliedSearch);
+    }
+
+    private async Task ExportAsync()
+    {
+        _exporting = true;
+        _error = null;
+        try
+        {
+            var url   = $"api/v1/admin/reports/club-recognition/export?{Query()}&search={Uri.EscapeDataString(_appliedSearch)}";
+            var bytes = await Http.GetByteArrayAsync(url);
+            var file  = $"club-recognition-{Current.Slug}-{DateTime.Today:yyyy-MM-dd}.csv";
+            await Js.InvokeVoidAsync("mlmDownloadFile", file, "text/csv", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex)
+        {
+            _error = $"Export failed: {ex.Message}";
+        }
+        finally { _exporting = false; }
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        if (!await Js.InvokeAsync<bool>("confirm",
+                "Read all past commissions and add every Ambassador who already reached a level? Existing records are not changed."))
+            return;
+        _loadingHistory = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.PostAsync("api/v1/admin/club-recognition/detection/history", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = (await resp.Content.ReadFromJsonAsync<ApiResp<HistoryResult>>())?.Data;
+                _info = result is null
+                    ? "Historical load finished."
+                    : $"Historical load through {result.LastDay:yyyy-MM-dd}: {result.Added:N0} new records.";
+                await RefreshAsync();
+            }
+            else _error = $"Historical load failed ({(int)resp.StatusCode}).";
+        }
+        catch (Exception ex) { _error = $"Historical load failed: {ex.Message}"; }
+        finally { _loadingHistory = false; }
+    }
+
+    private sealed record LevelItem(int Id, string Name, int SortOrder, bool IsActive);
+    private sealed record Lookups(List<LevelItem> Levels);
+    private sealed record HistoryResult(DateTime LastDay, int Added);
+    private sealed record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private sealed class RecognitionRow
+    {
+        public long     Id                { get; set; }
+        public string   MemberId          { get; set; } = string.Empty;
+        public string   MemberName        { get; set; } = string.Empty;
+        public string   Email             { get; set; } = string.Empty;
+        public string?  Username          { get; set; }
+        public string   Country           { get; set; } = string.Empty;
+        public string   LevelName         { get; set; } = string.Empty;
+        public DateTime ReachedDate       { get; set; }
+        public decimal  QualifyingTotal   { get; set; }
+        public string?  CeoCallRecognized { get; set; }
+        public string?  EventRecognized   { get; set; }
+        public string?  RewardSize        { get; set; }
+    }
+}
