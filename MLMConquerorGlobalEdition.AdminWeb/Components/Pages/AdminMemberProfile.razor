@@ -36,6 +36,16 @@ else
                 <span class="badge @StatusBadge(_member.Status) ms-1">@_member.Status</span>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
+                <AuthorizeView Roles="SuperAdmin,Admin">
+                    <Authorized>
+                        <div class="form-check form-switch mb-0 me-2" title="Corporate accounts are excluded from rankings and recognition reports">
+                            <input class="form-check-input" type="checkbox" id="corporate-account"
+                                   checked="@_member.IsCorporateAccount" disabled="@_savingCorporate"
+                                   @onchange="ToggleCorporateAsync" />
+                            <label class="form-check-label small" for="corporate-account">Corporate account</label>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
                 <a href="/admin/network/binary-tree?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
                     <i class="ri-share-circle-line me-1"></i>Binary Tree
                 </a>
@@ -776,6 +786,22 @@ else
     [Parameter] public string MemberId { get; set; } = string.Empty;
 
     private MemberDetailDto? _member;
+    private bool _savingCorporate;
+
+    private async Task ToggleCorporateAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (_member is null) return;
+        var value = e.Value is bool b && b;
+        _savingCorporate = true;
+        try
+        {
+            var resp = await Http.PutAsJsonAsync($"api/v1/admin/members/{MemberId}/corporate-account",
+                new { isCorporateAccount = value });
+            if (resp.IsSuccessStatusCode)
+                _member = _member with { IsCorporateAccount = value };
+        }
+        finally { _savingCorporate = false; }
+    }
     private bool _loading = true;
     private string _activeTab = "profile";
     private string _newStatus = "Active";
@@ -1145,7 +1171,8 @@ else
         int DualTeamPoints, int EnrollmentPoints, int DualTeamSize, int EnrollmentTeamSize,
         decimal CurrentMonthIncome, decimal CurrentYearIncome,
         string? CurrentRank, int? CurrentRankId,
-        string? LifetimeRank, int? LifetimeRankId);
+        string? LifetimeRank, int? LifetimeRankId,
+        bool IsCorporateAccount = false);
 
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors, string? ErrorCode = null);
 
