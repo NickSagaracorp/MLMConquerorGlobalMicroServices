@@ -8,6 +8,18 @@ namespace MLMConquerorGlobalEdition.Repository.Queries;
 public sealed record MemberRankEntry(string MemberId, int RankDefinitionId, string RankName, int SortOrder, DateTime AchievedAt);
 
 /// <summary>
+/// El rango de un miembro y desde cuándo lo tiene (reportes Lifetime Rank y Current Rank). Clase con init (no record
+/// posicional) para que EF pueda seguir componiendo la consulta (filtrar y unir) después de la proyección.
+/// </summary>
+public sealed class MemberRankSince
+{
+    public string   MemberId         { get; init; } = string.Empty;
+    public int      RankDefinitionId { get; init; }
+    public int      SortOrder        { get; init; }
+    public DateTime Since            { get; init; }
+}
+
+/// <summary>
 /// Plan Q (visualizador del admin): el unico sitio que decide cual es el rango vigente de un miembro (la fila de su
 /// historial con el AchievedAt mas reciente) y cual su rango maximo (la de mayor SortOrder). Antes, siete sitios lo
 /// repetian: unos con GroupBy(...).First() en SQL (dos recorridos de la tabla, ROW_NUMBER y una cola de trabajo, sin
@@ -88,4 +100,44 @@ public static class MemberRankQueries
                    && (od.SortOrder > d.SortOrder || (od.SortOrder == d.SortOrder && string.Compare(o.Id, r.Id) < 0))
                 select o.Id).Any()
         select new MemberRankEntry(r.MemberId, r.RankDefinitionId, d.Name, d.SortOrder, r.AchievedAt);
+
+    /// <summary>
+    /// Rango vigente de TODOS los miembros con historial (la fila de <see cref="CurrentRankRows"/>), con su SortOrder y la
+    /// fecha de esa fila. Reporte Current Rank.
+    /// </summary>
+    public static IQueryable<MemberRankSince> CurrentRankSinceRows(this AppDbContext db) =>
+        from r in db.CurrentRankRows()
+        join d in db.RankDefinitions.AsNoTracking() on r.RankDefinitionId equals d.Id
+        select new MemberRankSince
+        {
+            MemberId = r.MemberId, RankDefinitionId = r.RankDefinitionId, SortOrder = d.SortOrder, Since = r.AchievedAt
+        };
+
+    /// <summary>
+    /// Rango de por vida de TODOS los miembros con historial: el de mayor SortOrder, con la fecha de la PRIMERA vez que lo
+    /// alcanzaron (MIN(AchievedAt) de sus filas de ese rango). Reporte Lifetime Rank. A diferencia de
+    /// <see cref="LifetimeRanks"/> (lista de ids, fila de menor Id), es una agregacion por miembro: MAX(SortOrder) y, unida
+    /// a ella, MIN(AchievedAt). Lee el indice IX_MemberRankHistories_MemberId_AchievedAt, que ya incluye el rango.
+    /// Si dos definiciones compartieran SortOrder, gana el Id de definicion menor (las del seed no lo comparten).
+    /// </summary>
+    public static IQueryable<MemberRankSince> LifetimeRankSinceRows(this AppDbContext db)
+    {
+        var rows = from r in db.MemberRankHistories.AsNoTracking()
+                   join d in db.RankDefinitions.AsNoTracking() on r.RankDefinitionId equals d.Id
+                   select new { r.MemberId, r.RankDefinitionId, d.SortOrder, r.AchievedAt };
+
+        var top = rows.GroupBy(x => x.MemberId)
+                      .Select(g => new { MemberId = g.Key, SortOrder = g.Max(x => x.SortOrder) });
+
+        return from x in rows
+               join t in top on new { x.MemberId, x.SortOrder } equals new { t.MemberId, t.SortOrder }
+               group x by new { x.MemberId, x.SortOrder } into g
+               select new MemberRankSince
+               {
+                   MemberId         = g.Key.MemberId,
+                   SortOrder        = g.Key.SortOrder,
+                   RankDefinitionId = g.Min(y => y.RankDefinitionId),
+                   Since            = g.Min(y => y.AchievedAt)
+               };
+    }
 }
