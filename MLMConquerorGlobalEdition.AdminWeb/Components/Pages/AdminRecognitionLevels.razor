@@ -1,0 +1,242 @@
+@page "/admin/parameters/recognition-levels"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@inject HttpClient Http
+
+<PageTitle>Recognition Levels — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Recognition Levels") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-trophy-line me-2 text-primary"></i>Recognition Levels
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Level
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Order</th><th>Name</th><th class="text-end">Threshold</th><th>Window</th>
+                            <th>Reward</th><th>Needs size</th><th>Status</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in _items)
+                        {
+                            <tr>
+                                <td>@l.SortOrder</td>
+                                <td class="fw-semibold">@l.Name</td>
+                                <td class="text-end">@l.Threshold.ToString("N2")</td>
+                                <td>@(l.WindowDays is null ? "Lifetime" : $"{l.WindowDays} days")</td>
+                                <td>@l.Reward</td>
+                                <td>@(l.RewardNeedsSize ? "Yes" : "No")</td>
+                                <td>
+                                    <span class="badge @(l.IsActive ? "bg-success" : "bg-secondary")">@(l.IsActive ? "Active" : "Inactive")</span>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenEdit(l)">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Recognition Level" : "Edit Recognition Level")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_formError is not null)
+                    {
+                        <div class="alert alert-danger py-2">@_formError</div>
+                    }
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" maxlength="100" @bind="_form.Name" placeholder="e.g. 100k Earner" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Threshold <span class="text-danger">*</span></label>
+                            <input type="number" min="0" step="0.01" class="form-control" @bind="_form.Threshold" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Window</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lvlLifetime" @bind="_form.Lifetime" />
+                                <label class="form-check-label" for="lvlLifetime">Lifetime</label>
+                            </div>
+                            @if (!_form.Lifetime)
+                            {
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" min="1" max="3650" class="form-control" @bind="_form.WindowDays" />
+                                    <span class="input-group-text">days</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Reward</label>
+                            <input class="form-control" maxlength="200" @bind="_form.Reward" placeholder="e.g. Ring" />
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lvlSize" @bind="_form.RewardNeedsSize" />
+                                <label class="form-check-label fw-semibold" for="lvlSize">Reward needs a size</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lvlActive" @bind="_form.IsActive" />
+                                <label class="form-check-label fw-semibold" for="lvlActive">Active</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Sort Order</label>
+                            <input type="number" class="form-control" @bind="_form.SortOrder" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const string Endpoint = "api/v1/admin/club-recognition/levels";
+
+    private List<LevelDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private int? _editId;
+    private string? _formError;
+    private LevelForm _form = new();
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<LevelDto>>>(Endpoint);
+            _items = resp?.Data ?? new();
+        }
+        catch (Exception ex) { _alertMsg = $"Error loading levels: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _formError = null;
+        _form = new LevelForm { SortOrder = _items.Count + 1 };
+        _showForm = true;
+    }
+
+    private void OpenEdit(LevelDto l)
+    {
+        _editId = l.Id;
+        _formError = null;
+        _form = new LevelForm
+        {
+            Name = l.Name, Threshold = l.Threshold, Lifetime = l.WindowDays is null, WindowDays = l.WindowDays ?? 180,
+            Reward = l.Reward, RewardNeedsSize = l.RewardNeedsSize, SortOrder = l.SortOrder, IsActive = l.IsActive
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _formError = null;
+        try
+        {
+            var body = new
+            {
+                _form.Name, _form.Threshold, WindowDays = _form.Lifetime ? (int?)null : _form.WindowDays,
+                _form.Reward, _form.RewardNeedsSize, _form.SortOrder, _form.IsActive
+            };
+            var resp = _editId is null
+                ? await Http.PostAsJsonAsync(Endpoint, body)
+                : await Http.PutAsJsonAsync($"{Endpoint}/{_editId}", body);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "Level created." : "Level updated.";
+                _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else _formError = await ErrorAsync(resp);
+        }
+        catch (Exception ex) { _formError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private static async Task<string> ErrorAsync(HttpResponseMessage resp)
+    {
+        try
+        {
+            var body = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+            var msg  = body?.Errors?.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(msg)) return msg;
+        }
+        catch { /* cuerpo no JSON */ }
+        return $"Save failed ({(int)resp.StatusCode}).";
+    }
+
+    private sealed class LevelForm
+    {
+        public string  Name            { get; set; } = string.Empty;
+        public decimal Threshold       { get; set; }
+        public bool    Lifetime        { get; set; }
+        public int     WindowDays      { get; set; } = 180;
+        public string? Reward          { get; set; }
+        public bool    RewardNeedsSize { get; set; }
+        public int     SortOrder       { get; set; }
+        public bool    IsActive        { get; set; } = true;
+    }
+
+    private sealed record LevelDto(int Id, string Name, decimal Threshold, int? WindowDays, string? Reward,
+        bool RewardNeedsSize, int SortOrder, bool IsActive);
+    private sealed record ApiResp<T>(bool Success, T? Data, string? ErrorCode, IEnumerable<string>? Errors);
+}
