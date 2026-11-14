@@ -16981,3 +16981,42 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114193504_FotoDiariaDeMiembrosPorPais'
+)
+BEGIN
+    CREATE TABLE [MemberCountrySnapshots] (
+        [Id] bigint NOT NULL IDENTITY,
+        [SnapshotDate] date NOT NULL,
+        [Country] nvarchar(100) NOT NULL,
+        [MemberType] int NOT NULL,
+        [Status] int NOT NULL,
+        [MemberCount] int NOT NULL,
+        [CreationDate] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(100) NOT NULL,
+        CONSTRAINT [PK_MemberCountrySnapshots] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114193504_FotoDiariaDeMiembrosPorPais'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_MemberCountrySnapshots_Date_Country_Type_Status] ON [MemberCountrySnapshots] ([SnapshotDate], [Country], [MemberType], [Status]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114193504_FotoDiariaDeMiembrosPorPais'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261114193504_FotoDiariaDeMiembrosPorPais', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

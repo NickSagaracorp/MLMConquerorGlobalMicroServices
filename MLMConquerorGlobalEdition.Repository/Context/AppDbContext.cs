@@ -60,6 +60,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
     public DbSet<MemberStatisticHistoryEntity> MemberStatisticHistories => Set<MemberStatisticHistoryEntity>();
+    public DbSet<MemberCountrySnapshot> MemberCountrySnapshots => Set<MemberCountrySnapshot>();
     public DbSet<MemberStatisticDelta> MemberStatisticDeltas => Set<MemberStatisticDelta>();
     public DbSet<MemberProfileNotificationTracking> MemberNotifications => Set<MemberProfileNotificationTracking>();
     public DbSet<MemberFcmToken> MemberFcmTokens => Set<MemberFcmToken>();

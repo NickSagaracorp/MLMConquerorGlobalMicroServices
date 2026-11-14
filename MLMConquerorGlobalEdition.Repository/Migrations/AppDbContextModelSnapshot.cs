@@ -7984,6 +7984,48 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("MemberAddressHistories");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberCountrySnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MemberCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MemberType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SnapshotDate", "Country", "MemberType", "Status")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MemberCountrySnapshots_Date_Country_Type_Status");
+
+                    b.ToTable("MemberCountrySnapshots");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberCredentialChangeLog", b =>
                 {
                     b.Property<long>("Id")
