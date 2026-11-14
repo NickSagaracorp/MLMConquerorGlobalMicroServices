@@ -16939,3 +16939,24 @@ BEGIN
 END;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114161016_CuentaCorporativa'
+)
+BEGIN
+    ALTER TABLE [MemberProfiles] ADD [IsCorporateAccount] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114161016_CuentaCorporativa'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261114161016_CuentaCorporativa', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

@@ -75,6 +75,7 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
 
         builder.Property(x => x.ReplicateSiteSlug).HasMaxLength(100);
         builder.HasIndex(x => x.ReplicateSiteSlug).IsUnique().HasFilter("[ReplicateSiteSlug] IS NOT NULL");
+        builder.Property(x => x.IsCorporateAccount).HasDefaultValue(false);
 
         // Active membership — one-to-one (nullable)
         builder.HasOne(x => x.ActiveMembership)

@@ -50,6 +50,12 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public string? ReplicateSiteSlug { get; set; }
 
     /// <summary>
+    /// Cuenta de la empresa (p. ej. «MWR Corp.»). La activa el admin en el perfil; los reportes que no deben mostrar
+    /// cuentas corporativas (rankings, rangos, Club Recognition) la excluyen.
+    /// </summary>
+    public bool IsCorporateAccount { get; set; }
+
+    /// <summary>
     /// Plan Q (DQ10): el nivel del alta (regla N2 del Plan J: el nivel mas alto del primer pedido con productos de membresia).
     /// Lo mantiene SignupMembershipLevel.RefreshAsync; null si el miembro no tiene pedido de membresia.
     /// </summary>
