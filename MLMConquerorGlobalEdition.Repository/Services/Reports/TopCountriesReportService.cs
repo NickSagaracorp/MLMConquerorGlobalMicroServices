@@ -48,11 +48,11 @@ public class TopCountriesReportService : ITopCountriesReportService
         var before  = compared is null
             ? null
             : (await CountsAsync(compared.Value, st, ct))
-                .GroupBy(c => c.Country, StringComparer.OrdinalIgnoreCase)
+                .GroupBy(c => c.Country.TrimEnd(), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Sum(c => c.Count), StringComparer.OrdinalIgnoreCase);
 
         var rows = current
-            .GroupBy(c => c.Country, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.Country.TrimEnd(), StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
                 var ambassadors = g.Where(c => c.MemberType == MemberType.Ambassador).Sum(c => c.Count);

@@ -57,6 +57,19 @@ public class TopCountriesReportServiceTests
     }
 
     [Fact]
+    public async Task Un_pais_con_espacio_final_en_una_foto_y_sin_el_en_la_otra_es_el_mismo_pais()
+    {
+        using var db = Vacia();
+        Foto(db, Oct14, "US ", Amb, MemberAccountStatus.Active, 10);
+        Foto(db, Nov13, "US", Amb, MemberAccountStatus.Active, 12);
+        db.SaveChanges();
+
+        var t = await Servicio(db).GetTableAsync(Nov13, null);
+
+        t.Rows.Select(r => (r.Country, r.Total, r.Change)).Should().Equal(("US", 12, (int?)2));
+    }
+
+    [Fact]
     public async Task El_filtro_de_estados_cuenta_solo_esos()
     {
         using var db = Base();
