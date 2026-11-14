@@ -65,7 +65,8 @@
 <SfGrid TValue="RankRow" @ref="_grid" @key="IsLifetime" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
         <ServerGridAdaptor TValue="RankRow" Http="Http" Endpoint="api/v1/admin/reports/ranks/grid"
-                           QueryStringProvider="Query" OnCount="OnCountAsync" />
+                           QueryStringProvider="Query" OnCount="OnCountAsync"
+                           OnServerError="OnServerErrorAsync" />
     </SfDataManager>
     <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
     <GridColumns>
@@ -138,8 +139,16 @@
         _lastIsLifetime = isLifetime;
     }
 
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        _total = null;
+        _error = errorCode is null ? "The report could not be loaded." : $"The report could not be loaded ({errorCode}).";
+        return InvokeAsync(StateHasChanged);
+    }
+
     private async Task OnCountAsync(int count)
     {
+        _error = null;
         _total = count;
         await InvokeAsync(StateHasChanged);
     }

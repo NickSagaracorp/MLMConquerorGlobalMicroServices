@@ -17,9 +17,12 @@
     <MemberStatusFilter Options="AllStatuses" Selected="_statuses" IdPrefix="tc-status" Changed="ReloadAllAsync" />
 </div>
 
-@if (_error is not null)
+@foreach (var message in new[] { _tableError, _chartError, _error })
 {
-    <div class="alert alert-danger">@_error</div>
+    if (message is not null)
+    {
+        <div class="alert alert-danger">@message</div>
+    }
 }
 
 <div class="card mb-4">
@@ -176,7 +179,9 @@
     private List<ChartPoint> _points = new();
     private bool    _exporting;
     private bool    _snapshotting;
-    private string? _error;
+    private string? _error;        // exportacion y foto manual
+    private string? _tableError;
+    private string? _chartError;
 
     private string StatusQuery => string.Join("&", _statuses.Select(s => $"statuses={s}"));
 
@@ -190,19 +195,20 @@
 
     private async Task LoadTableAsync()
     {
-        _error = null;
+        _tableError = null;
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiResp<TableResp>>(
+            var (data, error) = await GetApiAsync<TableResp>(
                 $"api/v1/admin/reports/countries/table?date={_tableDate:yyyy-MM-dd}&{StatusQuery}");
-            _table = resp?.Data;
+            if (error is null) _table = data;
+            else _tableError = $"Could not load the table: {error}";
         }
-        catch (Exception ex) { _error = $"Could not load the table: {ex.Message}"; }
+        catch (Exception ex) { _tableError = $"Could not load the table: {ex.Message}"; }
     }
 
     private async Task LoadChartAsync()
     {
-        _error = null;
+        _chartError = null;
         var q = _frequency switch
         {
             "Weekly" => $"frequency=Weekly&date={_weekMonth:yyyy-MM-dd}",
@@ -211,11 +217,12 @@
         };
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiResp<List<ChartPoint>>>(
+            var (data, error) = await GetApiAsync<List<ChartPoint>>(
                 $"api/v1/admin/reports/countries/chart?{q}&{StatusQuery}");
-            _points = resp?.Data ?? new();   // lista nueva: SfChart redibuja al cambiar la referencia de DataSource
+            if (error is null) _points = data ?? new();   // lista nueva: SfChart redibuja al cambiar la referencia de DataSource
+            else _chartError = $"Could not load the chart: {error}";
         }
-        catch (Exception ex) { _error = $"Could not load the chart: {ex.Message}"; }
+        catch (Exception ex) { _chartError = $"Could not load the chart: {ex.Message}"; }
     }
 
     private async Task ExportAsync()
@@ -246,6 +253,25 @@
         }
         catch (Exception ex) { _error = $"Snapshot failed: {ex.Message}"; }
         finally { _snapshotting = false; }
+    }
+
+    /// <summary>GET que, si el servidor rechaza (p. ej. 400 con From &gt; To), devuelve el mensaje de su ApiResponse y no el texto de la excepcion.</summary>
+    private async Task<(T? Data, string? Error)> GetApiAsync<T>(string url)
+    {
+        using var resp = await Http.GetAsync(url);
+        if (resp.IsSuccessStatusCode)
+        {
+            var ok = await resp.Content.ReadFromJsonAsync<ApiResp<T>>();
+            return (ok is null ? default : ok.Data, null);
+        }
+        string? message = null;
+        try
+        {
+            var fail = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+            message = fail?.Errors?.FirstOrDefault();
+        }
+        catch { /* cuerpo que no es JSON */ }
+        return (default, message ?? $"the server answered {(int)resp.StatusCode}.");
     }
 
     private sealed record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
