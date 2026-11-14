@@ -15,6 +15,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Entities.Recognition;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Domain.Entities.Sms;
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
@@ -61,6 +62,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
     public DbSet<MemberStatisticHistoryEntity> MemberStatisticHistories => Set<MemberStatisticHistoryEntity>();
     public DbSet<MemberCountrySnapshot> MemberCountrySnapshots => Set<MemberCountrySnapshot>();
+    public DbSet<RecognitionLevel>  RecognitionLevels  => Set<RecognitionLevel>();
+    public DbSet<RecognitionOption> RecognitionOptions => Set<RecognitionOption>();
+    public DbSet<MemberRecognition> MemberRecognitions => Set<MemberRecognition>();
     public DbSet<MemberStatisticDelta> MemberStatisticDeltas => Set<MemberStatisticDelta>();
     public DbSet<MemberProfileNotificationTracking> MemberNotifications => Set<MemberProfileNotificationTracking>();
     public DbSet<MemberFcmToken> MemberFcmTokens => Set<MemberFcmToken>();

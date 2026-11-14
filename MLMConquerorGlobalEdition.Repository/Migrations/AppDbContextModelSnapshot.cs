@@ -10923,6 +10923,296 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Recognition.MemberRecognition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CeoCallMonth")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("CeoCallOptionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CeoCallReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("EventOptionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EventReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("QualifyingTotal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("ReachedDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("RecognitionLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RewardSize")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CeoCallOptionId");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("EventOptionId");
+
+                    b.HasIndex("MemberId", "RecognitionLevelId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MemberRecognitions_Member_Level");
+
+                    b.HasIndex("RecognitionLevelId", "ReachedDate");
+
+                    b.ToTable("MemberRecognitions");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Recognition.RecognitionLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Reward")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("RewardNeedsSize")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Threshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("WindowDays")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("RecognitionLevels");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "100k Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 1,
+                            Threshold = 50000m,
+                            WindowDays = 180
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "500k Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 2,
+                            Threshold = 250000m,
+                            WindowDays = 180
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Million Dollar Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 3,
+                            Threshold = 500000m,
+                            WindowDays = 180
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "100k Lifetime Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 4,
+                            Threshold = 100000m
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "500k Lifetime Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 5,
+                            Threshold = 500000m
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Lifetime Million Dollar Earner",
+                            RewardNeedsSize = false,
+                            SortOrder = 6,
+                            Threshold = 1000000m
+                        });
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Recognition.RecognitionOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("RequiresReason")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("RecognitionOptions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Recognized Higher Level",
+                            RequiresReason = false,
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Recognized Long Time Ago",
+                            RequiresReason = false,
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 11, 14, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Do not recognize",
+                            RequiresReason = true,
+                            SortOrder = 3
+                        });
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Security.AuthSecurityEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -17685,6 +17975,38 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasForeignKey("RankDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Recognition.MemberRecognition", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Recognition.RecognitionOption", "CeoCallOption")
+                        .WithMany()
+                        .HasForeignKey("CeoCallOptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporateEvent", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Recognition.RecognitionOption", "EventOption")
+                        .WithMany()
+                        .HasForeignKey("EventOptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Recognition.RecognitionLevel", "Level")
+                        .WithMany()
+                        .HasForeignKey("RecognitionLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CeoCallOption");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("EventOption");
+
+                    b.Navigation("Level");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Security.AuthSecurityEvent", b =>

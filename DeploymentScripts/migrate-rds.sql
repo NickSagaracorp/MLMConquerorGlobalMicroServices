@@ -17020,3 +17020,178 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE TABLE [RecognitionLevels] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(100) NOT NULL,
+        [Threshold] decimal(18,4) NOT NULL,
+        [WindowDays] int NULL,
+        [Reward] nvarchar(200) NULL,
+        [RewardNeedsSize] bit NOT NULL,
+        [SortOrder] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CreationDate] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(100) NOT NULL,
+        [LastUpdateDate] datetime2 NULL,
+        [LastUpdateBy] nvarchar(100) NULL,
+        CONSTRAINT [PK_RecognitionLevels] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE TABLE [RecognitionOptions] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(100) NOT NULL,
+        [RequiresReason] bit NOT NULL,
+        [SortOrder] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CreationDate] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(100) NOT NULL,
+        [LastUpdateDate] datetime2 NULL,
+        [LastUpdateBy] nvarchar(100) NULL,
+        CONSTRAINT [PK_RecognitionOptions] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE TABLE [MemberRecognitions] (
+        [Id] bigint NOT NULL IDENTITY,
+        [MemberId] nvarchar(20) NOT NULL,
+        [RecognitionLevelId] int NOT NULL,
+        [ReachedDate] date NOT NULL,
+        [QualifyingTotal] decimal(18,4) NOT NULL,
+        [Source] int NOT NULL,
+        [CeoCallMonth] date NULL,
+        [CeoCallOptionId] int NULL,
+        [CeoCallReason] nvarchar(300) NULL,
+        [EventId] nvarchar(450) NULL,
+        [EventOptionId] int NULL,
+        [EventReason] nvarchar(300) NULL,
+        [RewardSize] nvarchar(20) NULL,
+        [Notes] nvarchar(1000) NULL,
+        [LastUpdateDate] datetime2 NULL,
+        [LastUpdateBy] nvarchar(100) NULL,
+        [CreationDate] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(100) NOT NULL,
+        CONSTRAINT [PK_MemberRecognitions] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_MemberRecognitions_CorporateEvents_EventId] FOREIGN KEY ([EventId]) REFERENCES [CorporateEvents] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_MemberRecognitions_RecognitionLevels_RecognitionLevelId] FOREIGN KEY ([RecognitionLevelId]) REFERENCES [RecognitionLevels] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_MemberRecognitions_RecognitionOptions_CeoCallOptionId] FOREIGN KEY ([CeoCallOptionId]) REFERENCES [RecognitionOptions] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_MemberRecognitions_RecognitionOptions_EventOptionId] FOREIGN KEY ([EventOptionId]) REFERENCES [RecognitionOptions] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreationDate', N'IsActive', N'LastUpdateBy', N'LastUpdateDate', N'Name', N'Reward', N'RewardNeedsSize', N'SortOrder', N'Threshold', N'WindowDays') AND [object_id] = OBJECT_ID(N'[RecognitionLevels]'))
+        SET IDENTITY_INSERT [RecognitionLevels] ON;
+    EXEC(N'INSERT INTO [RecognitionLevels] ([Id], [CreatedBy], [CreationDate], [IsActive], [LastUpdateBy], [LastUpdateDate], [Name], [Reward], [RewardNeedsSize], [SortOrder], [Threshold], [WindowDays])
+    VALUES (1, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''100k Earner'', NULL, CAST(0 AS bit), 1, 50000.0, 180),
+    (2, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''500k Earner'', NULL, CAST(0 AS bit), 2, 250000.0, 180),
+    (3, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''Million Dollar Earner'', NULL, CAST(0 AS bit), 3, 500000.0, 180),
+    (4, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''100k Lifetime Earner'', NULL, CAST(0 AS bit), 4, 100000.0, NULL),
+    (5, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''500k Lifetime Earner'', NULL, CAST(0 AS bit), 5, 500000.0, NULL),
+    (6, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''Lifetime Million Dollar Earner'', NULL, CAST(0 AS bit), 6, 1000000.0, NULL)');
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreationDate', N'IsActive', N'LastUpdateBy', N'LastUpdateDate', N'Name', N'Reward', N'RewardNeedsSize', N'SortOrder', N'Threshold', N'WindowDays') AND [object_id] = OBJECT_ID(N'[RecognitionLevels]'))
+        SET IDENTITY_INSERT [RecognitionLevels] OFF;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreationDate', N'IsActive', N'LastUpdateBy', N'LastUpdateDate', N'Name', N'RequiresReason', N'SortOrder') AND [object_id] = OBJECT_ID(N'[RecognitionOptions]'))
+        SET IDENTITY_INSERT [RecognitionOptions] ON;
+    EXEC(N'INSERT INTO [RecognitionOptions] ([Id], [CreatedBy], [CreationDate], [IsActive], [LastUpdateBy], [LastUpdateDate], [Name], [RequiresReason], [SortOrder])
+    VALUES (1, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''Recognized Higher Level'', CAST(0 AS bit), 1),
+    (2, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''Recognized Long Time Ago'', CAST(0 AS bit), 2),
+    (3, N''system'', ''2026-11-14T00:00:00.0000000'', CAST(1 AS bit), NULL, NULL, N''Do not recognize'', CAST(1 AS bit), 3)');
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreationDate', N'IsActive', N'LastUpdateBy', N'LastUpdateDate', N'Name', N'RequiresReason', N'SortOrder') AND [object_id] = OBJECT_ID(N'[RecognitionOptions]'))
+        SET IDENTITY_INSERT [RecognitionOptions] OFF;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE INDEX [IX_MemberRecognitions_CeoCallOptionId] ON [MemberRecognitions] ([CeoCallOptionId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE INDEX [IX_MemberRecognitions_EventId] ON [MemberRecognitions] ([EventId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE INDEX [IX_MemberRecognitions_EventOptionId] ON [MemberRecognitions] ([EventOptionId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE INDEX [IX_MemberRecognitions_RecognitionLevelId_ReachedDate] ON [MemberRecognitions] ([RecognitionLevelId], [ReachedDate]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_MemberRecognitions_Member_Level] ON [MemberRecognitions] ([MemberId], [RecognitionLevelId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RecognitionLevels_Name] ON [RecognitionLevels] ([Name]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RecognitionOptions_Name] ON [RecognitionOptions] ([Name]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114211022_ReconocimientoDeClubes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261114211022_ReconocimientoDeClubes', N'10.0.11');
+END;
+
+COMMIT;
+GO
+
