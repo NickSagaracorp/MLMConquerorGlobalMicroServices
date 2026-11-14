@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -141,14 +140,8 @@ public class EarningsRankingService : IEarningsRankingService
         var to   = day.AddDays(1);                                          // el corte incluye su día entero
         var from = window is null ? (DateTime?)null : day.AddDays(1 - window.Value);
 
-        var earnings = _db.CommissionEarnings.AsNoTracking()
-            .Where(c => (c.Status == CommissionEarningStatus.Paid || c.Status == CommissionEarningStatus.Pending)
-                     && c.EarnedDate < to);
-        if (from is not null) earnings = earnings.Where(c => c.EarnedDate >= from);
-
         var totals = await (
-            from t in earnings.GroupBy(c => c.BeneficiaryMemberId)
-                              .Select(g => new { MemberId = g.Key, Total = g.Sum(c => c.Amount) })
+            from t in EarningsQueries.TotalsByMember(_db, @from, to)
             join m in _db.MemberProfiles.AsNoTracking() on t.MemberId equals m.MemberId
             where !m.IsCorporateAccount && t.Total > 0
             select new
