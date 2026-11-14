@@ -2960,7 +2960,14 @@ Tarea 3 (SQL de EF):
 
 | Consulta | Filas | Lecturas lógicas | Servidor (3 corridas) | Con envío de filas |
 |---|---|---|---|---|
-| Lifetime | | | | |
-| Current | | | | |
+| Lifetime | 119.835 | MemberRankHistories 491.766 (119.836 búsquedas), MemberProfiles 838.845, RankDefinitions 9 | 4,8 / 4,4 / 4,5 s (CPU 4,4 / 3,9 / 4,3 s) | 5,6 / 5,7 / 8,3 s (CPU 4,6 / 4,8 / 6,9 s) |
+| Current | 119.835 | MemberRankHistories 10.232, MemberProfiles 88.745 (84.808 con envío), RankDefinitions 4 | 0,58 / 0,53 / 0,50 s (CPU 2,7 / 2,9 / 2,8 s, en paralelo) | 3,4 / 3,1 / 3,4 s (CPU 6,6 / 7,9 / 10,8 s) |
+
+Notas de la Tarea 3 (14-nov-2026, máquina con otras cargas: varios procesos dotnet de servicios levantados):
+- SQL tal como lo genera EF (salida de `Las_consultas_se_traducen_a_SQL`), quitando solo `IsCorporateAccount` (de la condición y de la lista de columnas de la subconsulta de perfiles), que la base de escala no tiene. Las dos consultas se traducen y la prueba con datos elige bien en SQL Server (2/2 PASS).
+- «Servidor» = `SELECT COUNT(*) FROM (...) q`; «Con envío de filas» = el SELECT sin envolver, con `sqlcmd` como cliente (que formatea 119.835 filas en consola: es una cota alta del coste de envío, EF las materializa más rápido).
+- Lifetime no cumple los 2 s: el plan hace bucles anidados (una búsqueda en `IX_MemberRankHistories_MemberId_AchievedAt` por miembro para el MIN del rango máximo) y una búsqueda por fila en `MemberProfiles` (838.845 lecturas). Current sí cumple en el servidor (~0,5 s, plan paralelo con exploraciones).
+- Base de escala: sin filas de rango 0 y todos los perfiles Ambassador/Active, así que los filtros no descartan nada (119.835 filas en los dos modos).
+- Queda para la decisión de Nick («Preguntas abiertas», 1): aceptar ~4,5 s en frío de Lifetime cada 10 minutos (caché por modo) o guardar el rango de por vida con su fecha en `MemberStatistics`.
 
 Tarea 7 (GROUP BY de la foto): | | | |
