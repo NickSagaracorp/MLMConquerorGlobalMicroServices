@@ -74,6 +74,59 @@
                         </li>
                     </ul>
                 </li>
+                @* ── Club Recognition ── *@
+                <li class="menu-item @(IsSection("/admin/club-recognition") ? "open active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-trophy-line menu-icon"></i>
+                        <span class="title">Club Recognition</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/club-recognition/all")">
+                            <a href="/admin/club-recognition/all" class="menu-link @IsActive("/admin/club-recognition/all")">
+                                <span class="title">All Records</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/club-recognition/not-recognized-online")">
+                            <a href="/admin/club-recognition/not-recognized-online" class="menu-link @IsActive("/admin/club-recognition/not-recognized-online")">
+                                <span class="title">Not Recognized Online</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/club-recognition/not-recognized-events")">
+                            <a href="/admin/club-recognition/not-recognized-events" class="menu-link @IsActive("/admin/club-recognition/not-recognized-events")">
+                                <span class="title">Not Recognized on Events</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/club-recognition/recognized-online")">
+                            <a href="/admin/club-recognition/recognized-online" class="menu-link @IsActive("/admin/club-recognition/recognized-online")">
+                                <span class="title">Recognized Online</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/club-recognition/recognized-events")">
+                            <a href="/admin/club-recognition/recognized-events" class="menu-link @IsActive("/admin/club-recognition/recognized-events")">
+                                <span class="title">Recognized Events</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                @* ── Parameters ── *@
+                <li class="menu-item @(IsSection("/admin/parameters") ? "open active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-equalizer-line menu-icon"></i>
+                        <span class="title">Parameters</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/parameters/recognition-levels")">
+                            <a href="/admin/parameters/recognition-levels" class="menu-link @IsActive("/admin/parameters/recognition-levels")">
+                                <span class="title">Recognition Levels</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/parameters/recognition-options")">
+                            <a href="/admin/parameters/recognition-options" class="menu-link @IsActive("/admin/parameters/recognition-options")">
+                                <span class="title">Recognition Options</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
             </Authorized>
         </AuthorizeView>
 
