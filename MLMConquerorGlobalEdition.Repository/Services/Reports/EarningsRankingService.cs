@@ -4,6 +4,8 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using System.Collections.Concurrent;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Reports;
 
@@ -21,6 +23,11 @@ public interface IEarningsRankingService
 /// 180 Days). Suma lo pagado y lo pendiente, sin canceladas ni cuentas corporativas. El ranking completo se calcula una
 /// vez por (corte, ventana) y se guarda 10 minutos en memoria: buscar y paginar no lo recalculan y el Rank es siempre
 /// la posición entre todos.
+/// <para>Los resultados pueden estar desfasados hasta 10 minutos: una comisión nueva o el cambio del indicador de cuenta
+/// corporativa no se ven hasta que vence la entrada de memoria.</para>
+/// <para>El corte se acota a la fecha de hoy (hora de servidor): un corte futuro se trata como hoy.</para>
+/// <para>Los pedidos simultáneos en frío para la misma clave se serializan: se calcula una sola vez y el resto lee la
+/// entrada ya guardada.</para>
 /// </summary>
 public class EarningsRankingService : IEarningsRankingService
 {
@@ -28,13 +35,17 @@ public class EarningsRankingService : IEarningsRankingService
     public const int DefaultWindow = 180;
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
 
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> Locks = new();
+
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly IDateTimeProvider _clock;
 
-    public EarningsRankingService(AppDbContext db, IMemoryCache cache)
+    public EarningsRankingService(AppDbContext db, IMemoryCache cache, IDateTimeProvider clock)
     {
         _db    = db;
         _cache = cache;
+        _clock = clock;
     }
 
     public static int? NormalizeWindow(int? days) =>
@@ -60,7 +71,7 @@ public class EarningsRankingService : IEarningsRankingService
 
     private static List<EarningsRankRowView> Filter(IReadOnlyList<EarningsRankRowView> rows, string? search)
     {
-        if (string.IsNullOrWhiteSpace(search)) return rows as List<EarningsRankRowView> ?? rows.ToList();
+        if (string.IsNullOrWhiteSpace(search)) return rows.ToList();   // copia: nunca la lista cacheada
         var term = search.Trim();
         return rows.Where(r => r.MemberName.Contains(term, StringComparison.OrdinalIgnoreCase)
                             || r.Email.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -69,12 +80,43 @@ public class EarningsRankingService : IEarningsRankingService
     private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays, CancellationToken ct)
     {
         var window = NormalizeWindow(windowDays);
-        var key = $"reports:earnings:{cutoff:yyyyMMdd}:{window?.ToString() ?? "all"}";
-        if (_cache.TryGetValue(key, out IReadOnlyList<EarningsRankRowView>? cached) && cached is not null)
-            return cached;
+        var day    = cutoff.Date;
+        var today  = _clock.Now.Date;
+        if (day > today) day = today;
+        var key = $"reports:earnings:{day:yyyyMMdd}:{window?.ToString() ?? "all"}";
 
-        var to   = cutoff.Date.AddDays(1);                                  // el corte incluye su día entero
-        var from = window is null ? (DateTime?)null : cutoff.Date.AddDays(1 - window.Value);
+        if (TryGetCached(key, out var cached)) return cached;
+
+        var gate = Locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            if (TryGetCached(key, out cached)) return cached;
+            var ranked = await ComputeAsync(day, window, ct);
+            _cache.Set(key, ranked, CacheFor);
+            return ranked;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private bool TryGetCached(string key, out IReadOnlyList<EarningsRankRowView> rows)
+    {
+        if (_cache.TryGetValue(key, out IReadOnlyList<EarningsRankRowView>? cached) && cached is not null)
+        {
+            rows = cached;
+            return true;
+        }
+        rows = Array.Empty<EarningsRankRowView>();
+        return false;
+    }
+
+    private async Task<IReadOnlyList<EarningsRankRowView>> ComputeAsync(DateTime day, int? window, CancellationToken ct)
+    {
+        var to   = day.AddDays(1);                                          // el corte incluye su día entero
+        var from = window is null ? (DateTime?)null : day.AddDays(1 - window.Value);
 
         var earnings = _db.CommissionEarnings.AsNoTracking()
             .Where(c => (c.Status == CommissionEarningStatus.Paid || c.Status == CommissionEarningStatus.Pending)
@@ -91,7 +133,7 @@ public class EarningsRankingService : IEarningsRankingService
                 t.MemberId, t.Total, m.ReplicateSiteSlug, m.FirstName, m.LastName, m.Email, m.Country
             }).ToListAsync(ct);
 
-        var ranked = totals
+        return totals
             .OrderByDescending(t => t.Total).ThenBy(t => t.MemberId, StringComparer.Ordinal)
             .Select((t, i) => new EarningsRankRowView
             {
@@ -102,9 +144,6 @@ public class EarningsRankingService : IEarningsRankingService
                 Email      = t.Email,
                 Country    = t.Country,
                 Total      = t.Total
-            }).ToList();
-
-        _cache.Set(key, (IReadOnlyList<EarningsRankRowView>)ranked, CacheFor);
-        return ranked;
+            }).ToList().AsReadOnly();
     }
 }

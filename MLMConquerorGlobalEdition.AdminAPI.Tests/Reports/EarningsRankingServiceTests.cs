@@ -6,6 +6,8 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Reports;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using Moq;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
@@ -42,8 +44,45 @@ public class EarningsRankingServiceTests
             CreatedBy = "seed", CreationDate = fecha, LastUpdateDate = fecha
         });
 
-    private static EarningsRankingService Servicio(AppDbContext db) =>
-        new(db, new MemoryCache(new MemoryCacheOptions()));
+    private static IDateTimeProvider Reloj(DateTime ahora)
+    {
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.SetupGet(r => r.Now).Returns(ahora);
+        reloj.SetupGet(r => r.UtcNow).Returns(ahora.ToUniversalTime());
+        return reloj.Object;
+    }
+
+    private static EarningsRankingService Servicio(AppDbContext db, IMemoryCache? cache = null, DateTime? ahora = null) =>
+        new(db, cache ?? new MemoryCache(new MemoryCacheOptions()), Reloj(ahora ?? Corte.AddDays(1)));
+
+    /// <summary>Cache que cuenta las escrituras y, en las dos primeras lecturas, espera a que ambos pedidos hayan llegado.</summary>
+    private sealed class CacheContada : IMemoryCache
+    {
+        private readonly MemoryCache _inner = new(new MemoryCacheOptions());
+        private readonly CountdownEvent _llegada = new(2);
+        private int _lecturas;
+        public int Escrituras;
+        public int Entradas => _inner.Count;
+
+        public bool TryGetValue(object key, out object? value)
+        {
+            if (Interlocked.Increment(ref _lecturas) <= 2)
+            {
+                _llegada.Signal();
+                _llegada.Wait(TimeSpan.FromSeconds(5));
+            }
+            return _inner.TryGetValue(key, out value);
+        }
+
+        public ICacheEntry CreateEntry(object key)
+        {
+            Interlocked.Increment(ref Escrituras);
+            return _inner.CreateEntry(key);
+        }
+
+        public void Remove(object key) => _inner.Remove(key);
+        public void Dispose() => _inner.Dispose();
+    }
 
     [Fact]
     public async Task Suma_pagadas_y_pendientes_sin_canceladas_ni_cuentas_corporativas()
@@ -157,5 +196,108 @@ public class EarningsRankingServiceTests
         var filas = await Servicio(db).GetAllAsync(Corte, null, search: null);
 
         filas.Select(f => f.MemberId).Should().Equal("AMB-2", "AMB-1");
+    }
+
+    [Fact]
+    public async Task Quien_neto_es_cero_o_negativo_no_aparece()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 50, Corte);
+        Comision(db, "AMB-1", -50, Corte);
+        Comision(db, "AMB-2", -10, Corte);
+        Comision(db, "AMB-4", 5, Corte);
+        await db.SaveChangesAsync();
+
+        var filas = await Servicio(db).GetAllAsync(Corte, null, null);
+
+        filas.Select(f => f.MemberId).Should().Equal("AMB-4");
+    }
+
+    [Fact]
+    public async Task Borde_inferior_de_la_ventana_con_hora_del_dia()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 10, Corte.AddDays(-180).AddHours(23));  // aun dentro del dia -180: fuera
+        Comision(db, "AMB-2", 20, Corte.AddDays(-179));               // primer instante incluido
+        await db.SaveChangesAsync();
+
+        var filas = await Servicio(db).GetAllAsync(Corte, 180, null);
+
+        filas.Select(f => f.MemberId).Should().Equal("AMB-2");
+    }
+
+    [Fact]
+    public async Task La_cache_separa_ventanas_y_cortes()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 100, Corte.AddDays(-300));
+        Comision(db, "AMB-1", 7, Corte.AddDays(-10));
+        Comision(db, "AMB-1", 1000, Corte.AddDays(2));
+        await db.SaveChangesAsync();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var ahora = Corte.AddDays(5);
+
+        var vida     = await Servicio(db, cache, ahora).GetAllAsync(Corte, null, null);
+        var ventana  = await Servicio(db, cache, ahora).GetAllAsync(Corte, 180, null);
+        var corteTarde = await Servicio(db, cache, ahora).GetAllAsync(Corte.AddDays(2), null, null);
+
+        vida.Single().Total.Should().Be(107);
+        ventana.Single().Total.Should().Be(7);
+        corteTarde.Single().Total.Should().Be(1107);
+    }
+
+    [Fact]
+    public async Task El_corte_futuro_se_acota_a_hoy()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 10, Corte);
+        Comision(db, "AMB-1", 90, Corte.AddDays(3));
+        await db.SaveChangesAsync();
+
+        var filas = await Servicio(db, ahora: Corte.AddHours(9)).GetAllAsync(Corte.AddDays(10), null, null);
+
+        filas.Single().Total.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Pedidos_simultaneos_en_frio_calculan_una_sola_vez()
+    {
+        var nombre = Guid.NewGuid().ToString();
+        AppDbContext Abrir() => new(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(nombre).Options);
+        using (var semilla = Abrir())
+        {
+            Miembro(semilla, "AMB-1", "Ana", "Lopez", "ana@example.com", "Bulgaria", "ana");
+            Comision(semilla, "AMB-1", 100, Corte);
+            await semilla.SaveChangesAsync();
+        }
+        using var cache = new CacheContada();
+        using var db1 = Abrir();
+        using var db2 = Abrir();
+
+        var t1 = Task.Run(() => Servicio(db1, cache).GetAllAsync(Corte, null, null));
+        var t2 = Task.Run(() => Servicio(db2, cache).GetAllAsync(Corte, null, null));
+        var r = await Task.WhenAll(t1, t2);
+
+        cache.Escrituras.Should().Be(1);
+        cache.Entradas.Should().Be(1);
+        r[0].Should().BeEquivalentTo(r[1]);
+        r[0].Single().Total.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task La_lista_devuelta_no_es_la_cacheada()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 100, Corte);
+        await db.SaveChangesAsync();
+        var servicio = Servicio(db);
+
+        var primera = await servicio.GetAllAsync(Corte, null, null);
+        if (primera is IList<EarningsRankRowView> lista && !lista.IsReadOnly)
+            lista.Clear();
+        var segunda = await servicio.GetAllAsync(Corte, null, null);
+
+        segunda.Should().ContainSingle();
+        ReferenceEquals(primera, segunda).Should().BeFalse();
     }
 }
