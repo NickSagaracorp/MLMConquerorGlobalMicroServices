@@ -10,6 +10,7 @@ using IDateTimeProvider = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDat
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
+[Collection(CacheDeReportesCollection.Nombre)]
 public class AdminReportsControllerTests
 {
     private static readonly DateTime Ahora = new(2026, 11, 14, 10, 30, 0);

@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
 /// <summary>El admin marca o desmarca la cuenta corporativa; el cambio queda en GeneralAuditTracking.</summary>
+[Collection(CacheDeReportesCollection.Nombre)]
 public class CuentaCorporativaTests
 {
     private static readonly DateTime Ahora = new(2026, 11, 14, 10, 0, 0);

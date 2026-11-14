@@ -11,6 +11,7 @@ using Moq;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
+[Collection(CacheDeReportesCollection.Nombre)]
 public class EarningsRankingServiceTests
 {
     private static readonly DateTime Corte = new(2026, 11, 13);

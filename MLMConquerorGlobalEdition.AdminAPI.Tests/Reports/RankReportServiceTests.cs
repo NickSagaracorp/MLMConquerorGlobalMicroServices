@@ -10,6 +10,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
+[Collection(CacheDeReportesCollection.Nombre)]
 public class RankReportServiceTests
 {
     private static readonly DateTime Hoy = new(2026, 11, 14);
