@@ -1,0 +1,137 @@
+@page "/admin/reports/earnings-lifetime"
+@page "/admin/reports/earnings-window"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@using MLMConquerorGlobalEdition.SharedComponents.Services
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject IViewContextService ViewContext
+
+<PageTitle>@Title</PageTitle>
+
+<h4 class="mb-1">@Title</h4>
+<p class="text-muted mb-4">@Subtitle</p>
+
+<div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div class="flex-grow-1" style="min-width:240px">
+        <input class="form-control" placeholder="Search name or email..." @bind="_search" @bind:event="oninput"
+               @onkeyup="OnSearchKeyAsync" />
+    </div>
+    <div>
+        <button class="btn btn-primary" @onclick="ApplySearchAsync"><i class="ri-search-line me-1"></i>Search</button>
+    </div>
+    @if (IsWindow)
+    {
+        <div>
+            <label class="form-label small mb-1">Window</label>
+            <select class="form-select" @bind="_days" @bind:after="RefreshAsync">
+                @foreach (var d in Windows) { <option value="@d">Last @d days</option> }
+            </select>
+        </div>
+    }
+    <div>
+        <label class="form-label small mb-1">Cutoff date</label>
+        <input type="date" class="form-control" @bind="_cutoff" @bind:after="RefreshAsync" />
+    </div>
+    @if (ViewContext.HasPermission(Permissions.Reports.Export))
+    {
+        <button class="btn btn-outline-success" @onclick="ExportAsync" disabled="@_exporting">
+            <i class="ri-file-download-line me-1"></i>Export CSV
+        </button>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<SfGrid TValue="EarningsRow" @ref="_grid" @key="IsWindow" AllowPaging="true">
+    <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+        <ServerGridAdaptor TValue="EarningsRow" Http="Http" Endpoint="api/v1/admin/reports/earnings/grid"
+                           QueryStringProvider="Query" />
+    </SfDataManager>
+    <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
+    <GridColumns>
+        <GridColumn Field="@nameof(EarningsRow.Rank)" HeaderText="Rank" Width="80">
+            <Template>#@((context as EarningsRow)!.Rank)</Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(EarningsRow.Username)" HeaderText="Username" />
+        <GridColumn Field="@nameof(EarningsRow.MemberName)" HeaderText="Member Name" />
+        <GridColumn Field="@nameof(EarningsRow.Email)" HeaderText="Email" />
+        <GridColumn Field="@nameof(EarningsRow.Country)" HeaderText="Country" />
+        <GridColumn Field="@nameof(EarningsRow.Total)" HeaderText="Total" Format="N2" TextAlign="TextAlign.Right" />
+    </GridColumns>
+</SfGrid>
+
+@code {
+    private static readonly int[] Windows = { 30, 90, 180, 365 };
+
+    private SfGrid<EarningsRow>? _grid;
+    private string   _search = string.Empty;
+    private int      _days   = 180;
+    private DateTime _cutoff = DateTime.Today.AddDays(-1);
+    private bool     _exporting;
+    private string?  _error;
+
+    private bool   IsWindow => Nav.Uri.Contains("/earnings-window", StringComparison.OrdinalIgnoreCase);
+    private string Title    => IsWindow ? $"Earnings {_days} Days" : "Earnings Lifetime";
+    private string Subtitle => IsWindow ? $"Commissions earned in the last {_days} days up to the cutoff date."
+                                        : "Lifetime commissions earned up to the cutoff date.";
+
+    private string Query()
+    {
+        var q = $"cutoff={_cutoff:yyyy-MM-dd}";
+        return IsWindow ? $"{q}&days={_days}" : q;
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    // Como Members: la busqueda se lanza con Enter o con el boton, no en cada tecla.
+    private async Task OnSearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ApplySearchAsync();
+    }
+
+    private async Task ApplySearchAsync()
+    {
+        if (_grid is not null) await _grid.SearchAsync(_search ?? string.Empty);
+    }
+
+    private async Task ExportAsync()
+    {
+        _exporting = true;
+        _error = null;
+        try
+        {
+            var url = $"api/v1/admin/reports/earnings/export?{Query()}&search={Uri.EscapeDataString(_search)}";
+            var bytes = await Http.GetByteArrayAsync(url);
+            var file = IsWindow ? $"earnings-{_days}d-{_cutoff:yyyy-MM-dd}.csv" : $"earnings-lifetime-{_cutoff:yyyy-MM-dd}.csv";
+            await Js.InvokeVoidAsync("mlmDownloadFile", file,
+                "text/csv", Convert.ToBase64String(bytes));
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Export failed.";
+        }
+        finally { _exporting = false; }
+    }
+
+    private sealed class EarningsRow
+    {
+        public int     Rank       { get; set; }
+        public string? Username   { get; set; }
+        public string  MemberName { get; set; } = string.Empty;
+        public string  Email      { get; set; } = string.Empty;
+        public string  Country    { get; set; } = string.Empty;
+        public decimal Total      { get; set; }
+    }
+}
