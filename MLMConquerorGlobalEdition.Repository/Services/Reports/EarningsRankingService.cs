@@ -42,8 +42,20 @@ public class EarningsRankingService : IEarningsRankingService
     // Invalida todas las entradas guardadas: cada una lleva el token de la fuente vigente al calcular.
     private static CancellationTokenSource _invalidation = new();
 
+    // Si InvalidateAll cancelo y desecho la fuente justo despues de leerla, la entrada nace vencida (token ya cancelado).
+    private static CancellationToken CurrentToken()
+    {
+        try { return Volatile.Read(ref _invalidation).Token; }
+        catch (ObjectDisposedException) { return new CancellationToken(true); }
+    }
+
     /// <summary>Descarta todo ranking guardado (p. ej. al cambiar el indicador de cuenta corporativa).</summary>
-    public static void InvalidateAll() => Interlocked.Exchange(ref _invalidation, new CancellationTokenSource()).Cancel();
+    public static void InvalidateAll()
+    {
+        var old = Interlocked.Exchange(ref _invalidation, new CancellationTokenSource());
+        old.Cancel();
+        old.Dispose();
+    }
 
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
@@ -101,7 +113,7 @@ public class EarningsRankingService : IEarningsRankingService
         {
             if (TryGetCached(key, out cached)) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
-            var token  = Volatile.Read(ref _invalidation).Token;
+            var token  = CurrentToken();
             var ranked = await ComputeAsync(day, window, ct);
             _cache.Set(key, ranked, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
                 .AddExpirationToken(new CancellationChangeToken(token)));

@@ -37,14 +37,29 @@ public class RankReportService : IRankReportService
 
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
 
-    // Solo hay dos claves (una por modo): un cerrojo basta para que un pedido en frio calcule y el resto espere.
-    private static readonly SemaphoreSlim Gate = new(1, 1);
+    // Un cerrojo por modo: un Lifetime en frio no hace esperar al Current (cada uno calcula su propia lista).
+    private static readonly SemaphoreSlim[] Gates =
+        Enum.GetValues<RankReportMode>().Select(_ => new SemaphoreSlim(1, 1)).ToArray();
+
+    private static SemaphoreSlim GateOf(RankReportMode mode) => Gates[Array.IndexOf(Enum.GetValues<RankReportMode>(), mode)];
 
     // Cada entrada lleva el token vigente al calcular; InvalidateAll lo cancela y las vence todas.
     private static CancellationTokenSource _invalidation = new();
 
+    // Si InvalidateAll cancelo y desecho la fuente justo despues de leerla, la entrada nace vencida (token ya cancelado).
+    private static CancellationToken CurrentToken()
+    {
+        try { return Volatile.Read(ref _invalidation).Token; }
+        catch (ObjectDisposedException) { return new CancellationToken(true); }
+    }
+
     /// <summary>Descarta las listas guardadas (p. ej. al cambiar el indicador de cuenta corporativa).</summary>
-    public static void InvalidateAll() => Interlocked.Exchange(ref _invalidation, new CancellationTokenSource()).Cancel();
+    public static void InvalidateAll()
+    {
+        var old = Interlocked.Exchange(ref _invalidation, new CancellationTokenSource());
+        old.Cancel();
+        old.Dispose();
+    }
 
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
@@ -131,12 +146,13 @@ public class RankReportService : IRankReportService
         var key = $"reports:ranks:{mode}";
         if (_cache.TryGetValue(key, out IReadOnlyList<RankReportRowView>? cached) && cached is not null) return cached;
 
-        await Gate.WaitAsync(ct);
+        var gate = GateOf(mode);
+        await gate.WaitAsync(ct);
         try
         {
             if (_cache.TryGetValue(key, out cached) && cached is not null) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
-            var token  = Volatile.Read(ref _invalidation).Token;
+            var token  = CurrentToken();
             var source = await SourceQuery(_db, mode).ToListAsync(ct);
             IReadOnlyList<RankReportRowView> rows = source
                 .OrderByDescending(r => r.SortOrder)
@@ -161,7 +177,7 @@ public class RankReportService : IRankReportService
         }
         finally
         {
-            Gate.Release();
+            gate.Release();
         }
     }
 }
