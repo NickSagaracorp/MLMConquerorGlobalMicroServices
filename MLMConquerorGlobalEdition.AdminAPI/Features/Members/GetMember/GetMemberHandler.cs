@@ -70,6 +70,7 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             MemberId = member.MemberId,
             FirstName = member.FirstName,
             LastName = member.LastName,
+            IsCorporateAccount = member.IsCorporateAccount,
             Phone = member.Phone,
             Country = member.Country,
             Status = member.Status.ToString(),

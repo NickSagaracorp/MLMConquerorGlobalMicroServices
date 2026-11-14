@@ -25,4 +25,5 @@ public class AdminMemberDetailDto
     public int? CurrentRankId { get; set; }
     public string? LifetimeRank { get; set; }
     public int? LifetimeRankId { get; set; }
+    public bool IsCorporateAccount { get; set; }
 }
