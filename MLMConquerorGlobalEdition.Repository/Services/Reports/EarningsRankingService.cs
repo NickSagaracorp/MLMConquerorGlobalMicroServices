@@ -1,0 +1,110 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.SharedKernel;
+
+namespace MLMConquerorGlobalEdition.Repository.Services.Reports;
+
+public interface IEarningsRankingService
+{
+    Task<PagedResult<EarningsRankRowView>> GetPageAsync(DateTime cutoff, int? windowDays, GridDataRequest request,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<EarningsRankRowView>> GetAllAsync(DateTime cutoff, int? windowDays, string? search,
+        CancellationToken ct = default);
+}
+
+/// <summary>
+/// Ranking de comisiones por miembro hasta una fecha de corte (Earnings Lifetime) o en una ventana de días (Earnings
+/// 180 Days). Suma lo pagado y lo pendiente, sin canceladas ni cuentas corporativas. El ranking completo se calcula una
+/// vez por (corte, ventana) y se guarda 10 minutos en memoria: buscar y paginar no lo recalculan y el Rank es siempre
+/// la posición entre todos.
+/// </summary>
+public class EarningsRankingService : IEarningsRankingService
+{
+    public static readonly int[] AllowedWindows = { 30, 90, 180, 365 };
+    public const int DefaultWindow = 180;
+    private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
+
+    private readonly AppDbContext _db;
+    private readonly IMemoryCache _cache;
+
+    public EarningsRankingService(AppDbContext db, IMemoryCache cache)
+    {
+        _db    = db;
+        _cache = cache;
+    }
+
+    public static int? NormalizeWindow(int? days) =>
+        days is null ? null : AllowedWindows.Contains(days.Value) ? days : DefaultWindow;
+
+    public async Task<PagedResult<EarningsRankRowView>> GetPageAsync(DateTime cutoff, int? windowDays,
+        GridDataRequest request, CancellationToken ct = default)
+    {
+        var rows = Filter(await RankingAsync(cutoff, windowDays, ct), request.Search);
+        var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
+        return new PagedResult<EarningsRankRowView>
+        {
+            Items      = rows.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+            TotalCount = rows.Count,
+            Page       = page,
+            PageSize   = pageSize
+        };
+    }
+
+    public async Task<IReadOnlyList<EarningsRankRowView>> GetAllAsync(DateTime cutoff, int? windowDays, string? search,
+        CancellationToken ct = default) =>
+        Filter(await RankingAsync(cutoff, windowDays, ct), search);
+
+    private static List<EarningsRankRowView> Filter(IReadOnlyList<EarningsRankRowView> rows, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search)) return rows as List<EarningsRankRowView> ?? rows.ToList();
+        var term = search.Trim();
+        return rows.Where(r => r.MemberName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                            || r.Email.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays, CancellationToken ct)
+    {
+        var window = NormalizeWindow(windowDays);
+        var key = $"reports:earnings:{cutoff:yyyyMMdd}:{window?.ToString() ?? "all"}";
+        if (_cache.TryGetValue(key, out IReadOnlyList<EarningsRankRowView>? cached) && cached is not null)
+            return cached;
+
+        var to   = cutoff.Date.AddDays(1);                                  // el corte incluye su día entero
+        var from = window is null ? (DateTime?)null : cutoff.Date.AddDays(1 - window.Value);
+
+        var earnings = _db.CommissionEarnings.AsNoTracking()
+            .Where(c => (c.Status == CommissionEarningStatus.Paid || c.Status == CommissionEarningStatus.Pending)
+                     && c.EarnedDate < to);
+        if (from is not null) earnings = earnings.Where(c => c.EarnedDate >= from);
+
+        var totals = await (
+            from t in earnings.GroupBy(c => c.BeneficiaryMemberId)
+                              .Select(g => new { MemberId = g.Key, Total = g.Sum(c => c.Amount) })
+            join m in _db.MemberProfiles.AsNoTracking() on t.MemberId equals m.MemberId
+            where !m.IsCorporateAccount && t.Total > 0
+            select new
+            {
+                t.MemberId, t.Total, m.ReplicateSiteSlug, m.FirstName, m.LastName, m.Email, m.Country
+            }).ToListAsync(ct);
+
+        var ranked = totals
+            .OrderByDescending(t => t.Total).ThenBy(t => t.MemberId, StringComparer.Ordinal)
+            .Select((t, i) => new EarningsRankRowView
+            {
+                Rank       = i + 1,
+                MemberId   = t.MemberId,
+                Username   = t.ReplicateSiteSlug,
+                MemberName = $"{t.FirstName} {t.LastName}".Trim(),
+                Email      = t.Email,
+                Country    = t.Country,
+                Total      = t.Total
+            }).ToList();
+
+        _cache.Set(key, (IReadOnlyList<EarningsRankRowView>)ranked, CacheFor);
+        return ranked;
+    }
+}

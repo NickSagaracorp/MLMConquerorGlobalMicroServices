@@ -1311,3 +1311,34 @@ Expected: 0 fallos en las dos.
 ## Medidas
 
 _(Task 5, Step 7: tiempos de la consulta del ranking contra la base de escala.)_
+
+Medido el 14-nov-2026 con sqlcmd contra `MLMConquerorGlobalEditionDb_Escala` en `Server=.`, solo lectura. La consulta es la
+que genera EF (sacada con `ToQueryString()`), ejecutada con `sp_executesql` como la manda EF, corte 2026-11-14.
+
+Base de escala:
+- `CommissionEarnings`: 1.939.875 filas, todas sin borrar, todas `Status = 1` (Pending); `EarnedDate` de 2024-10-21 a
+  2026-10-22; 293.534 beneficiarios distintos. `MemberProfiles`: 802.003 filas.
+- No tiene la migración `CuentaCorporativa` (no existe `IsCorporateAccount`): se midió sin ese predicado. Tampoco tiene el
+  índice nuevo `IX_CommissionEarnings_EarnedDate_Beneficiary` (no se creó nada en esa base): los tiempos son SIN el índice.
+  El plan lee `CommissionEarnings` entero (~185k lecturas lógicas) y `MemberProfiles` entero (~85k), en paralelo.
+
+| Consulta | Filas | Servidor (resultado consumido en el servidor, 3 corridas) | Con envío de filas al cliente (sqlcmd, 2 corridas) |
+|---|---|---|---|
+| De por vida | 293.534 | 17,5 s / 5,8 s / 1,6 s (CPU 26 / 22 / 9 s) | 13,2 s / 8,3 s |
+| 180 días (desde 2026-05-19) | 128.368 | 8,1 s / 2,5 s / 1,2 s (CPU 19 / 11 / 6 s) | 6,8 s / 18,4 s |
+| Solo el agrupado de por vida (sin unir perfiles) | 293.534 | 7,7 s / 1,7 s / 1,6 s | — |
+
+Lectura: con la caché caliente el servidor queda en 1,2–1,6 s, pero la variación entre corridas es grande (la máquina
+estaba cargada con compilaciones a la vez) y el uso de CPU es alto (6–26 s de CPU en paralelo por consulta). Además, el
+servicio trae al proceso las ~294k filas para ordenarlas y cachearlas, lo que suma el envío. En el peor caso medido no se
+cumple «< 2 s»: hay que avisar a Nick antes de seguir. Alternativa si no basta: foto diaria del acumulado por miembro.
+
+Con el índice nuevo, en la base local `MLMConquerorGlobalEditionDb` (972.578 comisiones de 2026-04-19 a 2026-11-11, 65.031
+beneficiarios; ahí sí está aplicado), misma consulta de EF con `IsCorporateAccount`:
+- Ojo: sqlcmd arranca con `QUOTED_IDENTIFIER OFF` y así SQL Server no puede usar índices filtrados; hay que medir con
+  `sqlcmd -I` (EF/SqlClient lo pone en ON).
+- El agrupado usa el índice nuevo: 16.711 lecturas lógicas contra 86.544 recorriendo la tabla (5 veces menos). Una ventana
+  corta (desde 2026-09-01) baja a 2.122 lecturas.
+- Tiempos (3 corridas, resultado consumido en el servidor): de por vida 1,0 / 4,8 / 1,5 s; 180 días 1,5 / 4,2 / 4,7 s.
+  El coste que queda es CPU del agrupado hash por `BeneficiaryMemberId` nvarchar(450) (3–7 s de CPU en paralelo) y la
+  máquina estaba ocupada (el CommissionEngine corriendo): varias corridas tienen más tiempo transcurrido que CPU.

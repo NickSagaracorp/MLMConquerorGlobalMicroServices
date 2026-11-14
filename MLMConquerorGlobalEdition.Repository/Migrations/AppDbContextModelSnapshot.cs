@@ -1609,6 +1609,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("BeneficiaryMemberId", "Status");
 
+                    b.HasIndex("EarnedDate", "BeneficiaryMemberId")
+                        .HasDatabaseName("IX_CommissionEarnings_EarnedDate_Beneficiary")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("EarnedDate", "BeneficiaryMemberId"), new[] { "Amount", "Status" });
+
                     b.HasIndex("SourceOrderId", "CommissionTypeId")
                         .IsUnique()
                         .HasFilter("[SourceOrderId] IS NOT NULL");

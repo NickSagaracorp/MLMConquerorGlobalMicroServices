@@ -92,5 +92,21 @@ public class IndicesDeReportesTests
         TieneIndice(typeof(CorporateEventRegistration), "EventId", "MemberId").Should().BeTrue();
     }
 
+    /// <summary>
+    /// Reportes Earnings del admin: la suma por beneficiario hasta una fecha (o en una ventana) lee el índice por
+    /// fecha y beneficiario con importe y estado incluidos, sin borrados.
+    /// </summary>
+    [Fact]
+    public void Comisiones_por_fecha_y_beneficiario_con_importe_y_estado()
+    {
+        using var db = ReportesDb.Nueva();
+        var modelo = db.GetService<Microsoft.EntityFrameworkCore.Metadata.IDesignTimeModel>().Model;
+        var indice = modelo.FindEntityType(typeof(CommissionEarning))!.GetIndexes()
+            .Single(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "EarnedDate", "BeneficiaryMemberId" }));
+
+        indice.GetIncludeProperties().Should().BeEquivalentTo("Amount", "Status");
+        indice.GetFilter().Should().Be("[IsDeleted] = 0");
+    }
+
     // (índices de los bloques siguientes)
 }

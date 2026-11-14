@@ -16960,3 +16960,24 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114165434_IndiceDeGananciasPorFecha'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_CommissionEarnings_EarnedDate_Beneficiary] ON [CommissionEarnings] ([EarnedDate], [BeneficiaryMemberId]) INCLUDE ([Amount], [Status]) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261114165434_IndiceDeGananciasPorFecha'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261114165434_IndiceDeGananciasPorFecha', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

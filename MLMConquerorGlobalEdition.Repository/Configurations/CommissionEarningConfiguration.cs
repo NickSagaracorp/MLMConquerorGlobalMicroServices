@@ -15,6 +15,11 @@ public class CommissionEarningConfiguration : IEntityTypeConfiguration<Commissio
         builder.HasIndex(x => x.PeriodDate);
         builder.HasIndex(x => new { x.SourceOrderId, x.CommissionTypeId }).IsUnique()
             .HasFilter("[SourceOrderId] IS NOT NULL");
+        // Reportes Earnings: suma por beneficiario hasta una fecha. Sin este índice, el agrupado recorre la tabla entera.
+        builder.HasIndex(x => new { x.EarnedDate, x.BeneficiaryMemberId })
+               .HasDatabaseName("IX_CommissionEarnings_EarnedDate_Beneficiary")
+               .IncludeProperties(x => new { x.Amount, x.Status })
+               .HasFilter("[IsDeleted] = 0");
         builder.HasQueryFilter(x => !x.IsDeleted);
     }
 }
