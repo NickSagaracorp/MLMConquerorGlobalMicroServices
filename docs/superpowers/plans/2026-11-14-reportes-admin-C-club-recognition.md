@@ -4170,7 +4170,12 @@ Tarea 6 (SQL del plan y de EF):
 
 | Consulta | Filas | Lecturas lógicas | Servidor (3 corridas) |
 |---|---|---|---|
-| Histórica 180 días | | | |
-| Histórica de por vida | | | |
-| Nocturna 180 días (EF) | | | |
-| Nocturna de por vida (EF) | | | |
+| Histórica 180 días (umbrales 500 / 1.500 / 3.000) | 51.383 / 8 / 5 | `CommissionEarnings` ~182.200-182.500, `MemberProfiles` ~84.900-88.700 | CPU 30,2 / 22,8 / 29,5 s; **14,2 / 7,9 / 10,7 s** |
+| Histórica de por vida (umbrales 1.000 / 2.000 / 4.000) | 4.219 / 7 / 5 | `CommissionEarnings` ~183.300-186.100, `MemberProfiles` ~87.800-88.700 | CPU 22,3 / 20,6 / 23,8 s; **6,2 / 7,1 / 9,7 s** |
+| Nocturna 180 días (EF, ≥ 500) | 19.959 | `CommissionEarnings` ~185.800-196.100, `MemberProfiles` ~86.000-88.700 | CPU 9,6 / 10,4 / 9,5 s; **3,4 / 3,5 / 3,4 s** |
+| Nocturna de por vida (EF, ≥ 500) | 54.513 | `CommissionEarnings` ~182.400-186.700, `MemberProfiles` 88.745 | CPU 11,9 / 14,8 / 16,3 s; **3,9 / 6,4 / 5,6 s** |
+
+Notas (14-nov-2026, máquina con otras cargas: servicios `-run` y pruebas en curso):
+- Una sola exploración de `CommissionEarnings` por consulta en las cuatro (Scan count 7 = grado de paralelismo, no 2×).
+- La histórica: el `SELECT` de recuento sobre la misma CTE del plan (sin `INSERT`, niveles en `VALUES`, sin `IsCorporateAccount`); < 15 s por ventana, lejos del límite de 60 s. El nocturno: < 10 s las dos ventanas juntas (límite 30 s).
+- Las nocturnas usan `@to` = mañana 00:00 de la fecha de la corrida (ventana de 180 días que termina hoy), por eso 19.959 frente a los 20.044 de la preparación; la de por vida se midió con el mínimo de 500 que indica el Step 5 (la preparación usó 1.000 → 4.219).
