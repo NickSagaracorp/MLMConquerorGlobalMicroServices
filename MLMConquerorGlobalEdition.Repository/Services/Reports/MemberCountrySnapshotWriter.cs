@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -32,6 +33,24 @@ public class MemberCountrySnapshotWriter : IMemberCountrySnapshotWriter
     }
 
     public async Task<int> WriteAsync(DateTime snapshotDate, CancellationToken ct = default)
+    {
+        try
+        {
+            return await WriteOnceAsync(snapshotDate, ct);
+        }
+        catch (DbUpdateException ex) when (IsDuplicateKey(ex))
+        {
+            // Otra escritura del mismo dia inserto primero (el job nocturno y la foto manual a la vez): se descartan los
+            // cambios pendientes y se repite entera; ahora ve las filas y las actualiza.
+            _db.ChangeTracker.Clear();
+            return await WriteOnceAsync(snapshotDate, ct);
+        }
+    }
+
+    private static bool IsDuplicateKey(DbUpdateException ex) =>
+        ex.InnerException is SqlException { Number: 2601 or 2627 };
+
+    private async Task<int> WriteOnceAsync(DateTime snapshotDate, CancellationToken ct)
     {
         var day = snapshotDate.Date;
 
