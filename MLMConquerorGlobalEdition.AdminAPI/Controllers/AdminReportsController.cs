@@ -36,6 +36,7 @@ public class AdminReportsController : ControllerBase
 
     /// <summary>GET reports/earnings/export?cutoff=&amp;days=&amp;search= — CSV con las filas filtradas.</summary>
     [HttpGet("earnings/export")]
+    // Punto de enganche para acotar la exportacion a un rol propio mas adelante (permiso reports.export).
     [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<IActionResult> EarningsExport([FromQuery] DateTime? cutoff, [FromQuery] int? days,
         [FromQuery] string? search, CancellationToken ct)

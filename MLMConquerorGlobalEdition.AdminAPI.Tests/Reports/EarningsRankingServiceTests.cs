@@ -300,4 +300,43 @@ public class EarningsRankingServiceTests
         segunda.Should().ContainSingle();
         ReferenceEquals(primera, segunda).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task InvalidateAll_obliga_a_recalcular_aunque_la_cache_sea_compartida()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 100, Corte);
+        await db.SaveChangesAsync();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+
+        var antes = await Servicio(db, cache).GetAllAsync(Corte, null, null);
+        Comision(db, "AMB-1", 50, Corte);
+        await db.SaveChangesAsync();
+        var sinInvalidar = await Servicio(db, cache).GetAllAsync(Corte, null, null);
+        EarningsRankingService.InvalidateAll();
+        var despues = await Servicio(db, cache).GetAllAsync(Corte, null, null);
+
+        antes.Single().Total.Should().Be(100);
+        sinInvalidar.Single().Total.Should().Be(100);
+        despues.Single().Total.Should().Be(150);
+    }
+
+    [Fact]
+    public async Task Cambiar_el_indicador_corporativo_saca_al_miembro_del_ranking_guardado()
+    {
+        using var db = Base();
+        Comision(db, "AMB-1", 100, Corte);
+        await db.SaveChangesAsync();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        (await Servicio(db, cache).GetAllAsync(Corte, null, null)).Should().ContainSingle();
+
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.SetupGet(r => r.Now).Returns(Corte);
+        var usuario = new Mock<ICurrentUserService>();
+        usuario.SetupGet(u => u.UserId).Returns("admin-1");
+        await new MLMConquerorGlobalEdition.AdminAPI.Controllers.AdminMemberCorporateAccountController(db, reloj.Object, usuario.Object)
+            .Set("AMB-1", new(true), default);
+
+        (await Servicio(db, cache).GetAllAsync(Corte, null, null)).Should().BeEmpty();
+    }
 }

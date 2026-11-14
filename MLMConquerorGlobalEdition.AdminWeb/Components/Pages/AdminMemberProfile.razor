@@ -39,10 +39,14 @@ else
                 <AuthorizeView Roles="SuperAdmin,Admin">
                     <Authorized>
                         <div class="form-check form-switch mb-0 me-2" title="Corporate accounts are excluded from rankings and recognition reports">
-                            <input class="form-check-input" type="checkbox" id="corporate-account"
+                            <input class="form-check-input" type="checkbox" id="corporate-account" @key="_corporateRenderKey"
                                    checked="@_member.IsCorporateAccount" disabled="@_savingCorporate"
                                    @onchange="ToggleCorporateAsync" />
                             <label class="form-check-label small" for="corporate-account">Corporate account</label>
+                            @if (_corporateError is not null)
+                            {
+                                <span class="ms-2 text-danger small">@_corporateError</span>
+                            }
                         </div>
                     </Authorized>
                 </AuthorizeView>
@@ -787,18 +791,31 @@ else
 
     private MemberDetailDto? _member;
     private bool _savingCorporate;
+    private string? _corporateError;
+    private int _corporateRenderKey;
 
     private async Task ToggleCorporateAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         if (_member is null) return;
         var value = e.Value is bool b && b;
         _savingCorporate = true;
+        _corporateError = null;
         try
         {
             var resp = await Http.PutAsJsonAsync($"api/v1/admin/members/{MemberId}/corporate-account",
                 new { isCorporateAccount = value });
             if (resp.IsSuccessStatusCode)
                 _member = _member with { IsCorporateAccount = value };
+            else
+            {
+                _corporateError = $"Could not update ({(int)resp.StatusCode}).";
+                _corporateRenderKey++;   // el checkbox vuelve al valor real
+            }
+        }
+        catch (Exception ex)
+        {
+            _corporateError = ex.Message;
+            _corporateRenderKey++;
         }
         finally { _savingCorporate = false; }
     }

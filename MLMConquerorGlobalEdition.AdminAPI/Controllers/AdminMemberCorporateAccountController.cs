@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.General;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Reports;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -54,6 +55,7 @@ public class AdminMemberCorporateAccountController : ControllerBase
             member.LastUpdateDate     = now;
             member.LastUpdateBy       = _currentUser.UserId;
             await _db.SaveChangesAsync(ct);
+            EarningsRankingService.InvalidateAll();   // el ranking guardado ya no es valido
         }
 
         return Ok(ApiResponse<object>.Ok(new { member.MemberId, member.IsCorporateAccount }));

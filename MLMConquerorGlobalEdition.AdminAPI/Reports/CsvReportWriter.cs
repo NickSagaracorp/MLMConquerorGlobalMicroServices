@@ -31,7 +31,7 @@ public class CsvReportWriter
 
     private static string Escape(string value, bool isNumber)
     {
-        var formula = !isNumber && value.Length > 0 && value[0] is '=' or '+' or '-' or '@';
+        var formula = !isNumber && value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r';
         if (formula) value = "'" + value;
         var quote = formula || value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
         return quote ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;

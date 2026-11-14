@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Primitives;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Reports;
 
@@ -24,7 +24,7 @@ public interface IEarningsRankingService
 /// vez por (corte, ventana) y se guarda 10 minutos en memoria: buscar y paginar no lo recalculan y el Rank es siempre
 /// la posición entre todos.
 /// <para>Los resultados pueden estar desfasados hasta 10 minutos: una comisión nueva o el cambio del indicador de cuenta
-/// corporativa no se ven hasta que vence la entrada de memoria.</para>
+/// corporativa invalida todo con <see cref="InvalidateAll"/>.</para>
 /// <para>El corte se acota a la fecha de hoy (hora de servidor): un corte futuro se trata como hoy.</para>
 /// <para>Los pedidos simultáneos en frío para la misma clave se serializan: se calcula una sola vez y el resto lee la
 /// entrada ya guardada.</para>
@@ -35,7 +35,15 @@ public class EarningsRankingService : IEarningsRankingService
     public const int DefaultWindow = 180;
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
 
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> Locks = new();
+    // Cerrojos por tramos: un arreglo fijo evita que el diccionario de cerrojos crezca con cada clave (corte x ventana).
+    private const int LockStripes = 32;
+    private static readonly SemaphoreSlim[] Locks = Enumerable.Range(0, LockStripes).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
+
+    // Invalida todas las entradas guardadas: cada una lleva el token de la fuente vigente al calcular.
+    private static CancellationTokenSource _invalidation = new();
+
+    /// <summary>Descarta todo ranking guardado (p. ej. al cambiar el indicador de cuenta corporativa).</summary>
+    public static void InvalidateAll() => Interlocked.Exchange(ref _invalidation, new CancellationTokenSource()).Cancel();
 
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
@@ -87,13 +95,16 @@ public class EarningsRankingService : IEarningsRankingService
 
         if (TryGetCached(key, out var cached)) return cached;
 
-        var gate = Locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        var gate = Locks[(uint)key.GetHashCode() % LockStripes];
         await gate.WaitAsync(ct);
         try
         {
             if (TryGetCached(key, out cached)) return cached;
+            // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
+            var token  = Volatile.Read(ref _invalidation).Token;
             var ranked = await ComputeAsync(day, window, ct);
-            _cache.Set(key, ranked, CacheFor);
+            _cache.Set(key, ranked, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
+                .AddExpirationToken(new CancellationChangeToken(token)));
             return ranked;
         }
         finally

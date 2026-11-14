@@ -103,6 +103,12 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     /// </summary>
     [Parameter] public Func<bool, Task>? OnLimited { get; set; }
 
+    /// <summary>
+    /// Opcional. Se llama tras cada lectura con el total de registros que devolvio el servidor (todas las paginas),
+    /// para que el anfitrion lo muestre. Los anfitriones que no lo pasan no cambian.
+    /// </summary>
+    [Parameter] public Func<int, Task>? OnCount { get; set; }
+
     private HttpClient Client => Http ?? InjectedHttp;
 
     /// <inheritdoc />
@@ -166,6 +172,7 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
 
         var items = payload?.Data?.Items ?? new List<TValue>();
         var count = payload?.Data?.TotalCount ?? 0;
+        if (OnCount is not null) await OnCount(count).ConfigureAwait(false);
 
         // Always return Count so the server-side pager renders the correct page bar.
         // RequiresCounts is true on the operations that build the pager; returning a

@@ -36,7 +36,7 @@
     }
     <div>
         <label class="form-label small mb-1">Cutoff date</label>
-        <input type="date" class="form-control" @bind="_cutoff" @bind:after="RefreshAsync" />
+        <input type="date" class="form-control" max="@Today.ToString("yyyy-MM-dd")" @bind="_cutoff" @bind:after="RefreshAsync" />
     </div>
     @if (ViewContext.HasPermission(Permissions.Reports.Export))
     {
@@ -51,10 +51,15 @@
     <div class="alert alert-danger">@_error</div>
 }
 
+@if (_total is not null)
+{
+    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+}
+
 <SfGrid TValue="EarningsRow" @ref="_grid" @key="IsWindow" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
         <ServerGridAdaptor TValue="EarningsRow" Http="Http" Endpoint="api/v1/admin/reports/earnings/grid"
-                           QueryStringProvider="Query" />
+                           QueryStringProvider="Query" OnCount="OnCountAsync" />
     </SfDataManager>
     <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
     <GridColumns>
@@ -74,24 +79,53 @@
 
     private SfGrid<EarningsRow>? _grid;
     private string   _search = string.Empty;
+    private string   _appliedSearch = string.Empty;   // el termino que la rejilla ya aplico: el que usa la exportacion
+    private int?     _total;
+    private bool?    _lastIsWindow;
     private int      _days   = 180;
     private DateTime _cutoff = DateTime.Today.AddDays(-1);
     private bool     _exporting;
     private string?  _error;
+
+    private static DateTime Today => DateTime.Today;   // hora de servidor
 
     private bool   IsWindow => Nav.Uri.Contains("/earnings-window", StringComparison.OrdinalIgnoreCase);
     private string Title    => IsWindow ? $"Earnings {_days} Days" : "Earnings Lifetime";
     private string Subtitle => IsWindow ? $"Commissions earned in the last {_days} days up to the cutoff date."
                                         : "Lifetime commissions earned up to the cutoff date.";
 
+    // Un corte futuro se trata como hoy (el servidor tambien lo acota).
+    private DateTime Cutoff => _cutoff.Date > Today ? Today : _cutoff.Date;
+
+    protected override void OnParametersSet()
+    {
+        var isWindow = IsWindow;
+        if (_lastIsWindow is not null && _lastIsWindow != isWindow)
+        {
+            _search = _appliedSearch = string.Empty;
+            _days   = 180;
+            _cutoff = Today.AddDays(-1);
+            _total  = null;
+            _error  = null;
+        }
+        _lastIsWindow = isWindow;
+    }
+
+    private async Task OnCountAsync(int count)
+    {
+        _total = count;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private string Query()
     {
-        var q = $"cutoff={_cutoff:yyyy-MM-dd}";
+        var q = $"cutoff={Cutoff:yyyy-MM-dd}";
         return IsWindow ? $"{q}&days={_days}" : q;
     }
 
     private async Task RefreshAsync()
     {
+        _cutoff = Cutoff;
         if (_grid is not null) await _grid.Refresh();
     }
 
@@ -103,7 +137,8 @@
 
     private async Task ApplySearchAsync()
     {
-        if (_grid is not null) await _grid.SearchAsync(_search ?? string.Empty);
+        _appliedSearch = (_search ?? string.Empty).Trim();
+        if (_grid is not null) await _grid.SearchAsync(_appliedSearch);
     }
 
     private async Task ExportAsync()
@@ -112,15 +147,15 @@
         _error = null;
         try
         {
-            var url = $"api/v1/admin/reports/earnings/export?{Query()}&search={Uri.EscapeDataString(_search)}";
+            var url = $"api/v1/admin/reports/earnings/export?{Query()}&search={Uri.EscapeDataString(_appliedSearch)}";
             var bytes = await Http.GetByteArrayAsync(url);
-            var file = IsWindow ? $"earnings-{_days}d-{_cutoff:yyyy-MM-dd}.csv" : $"earnings-lifetime-{_cutoff:yyyy-MM-dd}.csv";
+            var file = IsWindow ? $"earnings-{_days}d-{Cutoff:yyyy-MM-dd}.csv" : $"earnings-lifetime-{Cutoff:yyyy-MM-dd}.csv";
             await Js.InvokeVoidAsync("mlmDownloadFile", file,
                 "text/csv", Convert.ToBase64String(bytes));
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
-            _error = "Export failed.";
+            _error = $"Export failed: {ex.Message}";
         }
         finally { _exporting = false; }
     }

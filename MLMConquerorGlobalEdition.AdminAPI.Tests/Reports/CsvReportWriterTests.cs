@@ -44,6 +44,16 @@ public class CsvReportWriterTests
     }
 
     [Fact]
+    public void Neutraliza_tabulador_y_retorno_al_inicio()
+    {
+        var csv = Texto(new CsvReportWriter().Write(
+            new[] { new Fila(1, "\tcmd", 1m), new Fila(2, "\rcmd", 1m) },
+            ("Name", f => f.Name)));
+
+        csv.Should().Be("Name\r\n\"'\tcmd\"\r\n\"'\rcmd\"\r\n");
+    }
+
+    [Fact]
     public void Nulos_salen_vacios()
     {
         var csv = Texto(new CsvReportWriter().Write(new[] { new Fila(1, null, 1m) }, ("Name", f => f.Name)));
