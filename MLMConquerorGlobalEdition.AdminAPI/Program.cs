@@ -112,6 +112,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports
                             MLMConquerorGlobalEdition.Repository.Services.Reports.RankReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IClubRecognitionDetector,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.ClubRecognitionDetector>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IClubRecognitionReportService,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.ClubRecognitionReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.ITopCountriesReportService,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.TopCountriesReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IMemberCountrySnapshotWriter,
