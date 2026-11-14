@@ -264,6 +264,9 @@ builder.Services.AddScoped<ExpiredTokenCleanupJob>();
 builder.Services.AddScoped<LoyaltyPointsMonthlyRollupJob>();
 builder.Services.AddScoped<AutoPlacementJob>();
 builder.Services.AddScoped<ApplyDualLegDeltasJob>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IMemberCountrySnapshotWriter,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.MemberCountrySnapshotWriter>();
+builder.Services.AddScoped<MemberCountrySnapshotJob>();
 builder.Services.AddHangfire(cfg =>
 {
     cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -444,6 +447,14 @@ RecurringJob.AddOrUpdate<MemberStatisticSnapshotJob>(
     job => job.ExecuteAsync(),
     "0 1 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Reportes (Top Countries): foto del dia que cerro. 05:30 UTC = 01:30 en verano (UTC-4) y 00:30 en invierno (UTC-5):
+// siempre despues de la medianoche del servidor; el dia lo decide IDateTimeProvider.Now, no esta hora.
+RecurringJob.AddOrUpdate<MemberCountrySnapshotJob>(
+    "member-country-snapshot",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "30 5 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
 
 RecurringJob.AddOrUpdate<ExpiredTokenCleanupJob>(
     "expired-token-cleanup",
