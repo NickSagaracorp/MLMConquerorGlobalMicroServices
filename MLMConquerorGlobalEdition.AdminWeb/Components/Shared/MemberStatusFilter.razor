@@ -1,0 +1,34 @@
+@* Multiseleccion de estados de membresia para los reportes del admin. Ninguno marcado = todos (lo mismo que hace el
+   servidor): al desmarcar el ultimo, se vuelven a marcar todos. *@
+
+<div class="d-flex flex-wrap gap-1 align-items-center">
+    <span class="small text-muted me-1">Status</span>
+    @foreach (var option in Options)
+    {
+        var id = $"{IdPrefix}-{option}";
+        <input type="checkbox" class="btn-check" id="@id" autocomplete="off"
+               checked="@Selected.Contains(option)" @onchange="() => ToggleAsync(option)" />
+        <label class="btn btn-sm btn-outline-primary" for="@id">@option</label>
+    }
+</div>
+
+@code {
+    /// <summary>Los estados que se ofrecen, con el nombre del enum (Active, Inactive, ...).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Options { get; set; } = Array.Empty<string>();
+
+    /// <summary>El conjunto del anfitrion; el componente lo modifica en sitio.</summary>
+    [Parameter, EditorRequired] public HashSet<string> Selected { get; set; } = new();
+
+    /// <summary>Prefijo de los id de los checkbox, para que dos filtros en una pagina no choquen.</summary>
+    [Parameter] public string IdPrefix { get; set; } = "status";
+
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private async Task ToggleAsync(string option)
+    {
+        if (!Selected.Remove(option)) Selected.Add(option);
+        if (Selected.Count == 0)
+            foreach (var o in Options) Selected.Add(o);
+        await Changed.InvokeAsync();
+    }
+}

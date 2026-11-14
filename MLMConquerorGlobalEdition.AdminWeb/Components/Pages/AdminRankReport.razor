@@ -1,0 +1,205 @@
+@page "/admin/reports/lifetime-rank"
+@page "/admin/reports/current-rank"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@using MLMConquerorGlobalEdition.SharedComponents.Services
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject IViewContextService ViewContext
+
+<PageTitle>@RankLabel</PageTitle>
+
+<h4 class="mb-1">@RankLabel</h4>
+<p class="text-muted mb-4">@Subtitle</p>
+
+<div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+    <div class="flex-grow-1" style="min-width:240px">
+        <input class="form-control" placeholder="Search name, email or country..." @bind="_search" @bind:event="oninput"
+               @onkeyup="OnSearchKeyAsync" />
+    </div>
+    <div>
+        <button class="btn btn-primary" @onclick="ApplySearchAsync"><i class="ri-search-line me-1"></i>Search</button>
+    </div>
+    <div>
+        <label class="form-label small mb-1">Rank</label>
+        <select class="form-select" @bind="_rankId" @bind:after="RefreshAsync">
+            <option value="">All ranks</option>
+            @foreach (var r in _ranks) { <option value="@r.Id">@r.Name</option> }
+        </select>
+    </div>
+    <div>
+        <label class="form-label small mb-1">@RankLabel since — from</label>
+        <input type="date" class="form-control" @bind="_sinceFrom" @bind:after="RefreshAsync" />
+    </div>
+    <div>
+        <label class="form-label small mb-1">to</label>
+        <input type="date" class="form-control" @bind="_sinceTo" @bind:after="RefreshAsync" />
+    </div>
+    @if (ViewContext.HasPermission(Permissions.Reports.Export))
+    {
+        <button class="btn btn-outline-success" @onclick="ExportAsync" disabled="@_exporting">
+            <i class="ri-file-download-line me-1"></i>Export CSV
+        </button>
+    }
+</div>
+
+<div class="mb-3">
+    <MemberStatusFilter Options="Statuses" Selected="_statuses" IdPrefix="rank-status" Changed="RefreshAsync" />
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_total is not null)
+{
+    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+}
+
+<SfGrid TValue="RankRow" @ref="_grid" @key="IsLifetime" AllowPaging="true">
+    <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+        <ServerGridAdaptor TValue="RankRow" Http="Http" Endpoint="api/v1/admin/reports/ranks/grid"
+                           QueryStringProvider="Query" OnCount="OnCountAsync" />
+    </SfDataManager>
+    <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
+    <GridColumns>
+        <GridColumn Field="@nameof(RankRow.MemberName)" HeaderText="Ambassador" />
+        <GridColumn Field="@nameof(RankRow.Email)" HeaderText="Email" />
+        <GridColumn Field="@nameof(RankRow.Country)" HeaderText="Country" />
+        <GridColumn Field="@nameof(RankRow.Status)" HeaderText="Status" Width="120">
+            <Template>
+                @{ var status = (context as RankRow)!.Status; }
+                <span class="badge @(status == "Active" ? "bg-success" : "bg-secondary")">@status</span>
+            </Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(RankRow.RankName)" HeaderText="@RankLabel" />
+        <GridColumn Field="@nameof(RankRow.Since)" HeaderText="@($"{RankLabel} Since")" Width="170">
+            <Template>@((context as RankRow)!.Since.ToString("yyyy-MM-dd"))</Template>
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    // Terminated no se ofrece: nunca aparece en estos reportes.
+    private static readonly IReadOnlyList<string> Statuses = new[] { "Active", "Inactive", "Suspended", "Pending" };
+
+    private SfGrid<RankRow>? _grid;
+    private readonly HashSet<string> _statuses = new(Statuses);
+    private List<RankOption> _ranks = new();
+    private string    _search = string.Empty;
+    private string    _appliedSearch = string.Empty;   // el termino que la rejilla ya aplico: el que usa la exportacion
+    private int?      _rankId;
+    private DateTime? _sinceFrom;
+    private DateTime? _sinceTo;
+    private int?      _total;
+    private bool?     _lastIsLifetime;
+    private bool      _exporting;
+    private string?   _error;
+
+    private bool   IsLifetime => Nav.Uri.Contains("/lifetime-rank", StringComparison.OrdinalIgnoreCase);
+    private string Mode       => IsLifetime ? "Lifetime" : "Current";
+    private string RankLabel  => IsLifetime ? "Lifetime Rank" : "Current Rank";
+    private string Subtitle   => IsLifetime
+        ? "Highest rank each Ambassador has reached, and the first day they reached it."
+        : "Rank each Ambassador holds today, and since when.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<RankOption>>>("api/v1/admin/rank-definitions");
+            _ranks = (resp?.Data ?? new())
+                .Where(r => r.SortOrder > 0 && r.Status == "Active")
+                .OrderBy(r => r.SortOrder)
+                .ToList();
+        }
+        catch { /* sin la lista, el filtro queda en «All ranks» */ }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var isLifetime = IsLifetime;
+        if (_lastIsLifetime is not null && _lastIsLifetime != isLifetime)
+        {
+            _search = _appliedSearch = string.Empty;
+            _rankId = null;
+            _sinceFrom = _sinceTo = null;
+            _statuses.Clear();
+            foreach (var s in Statuses) _statuses.Add(s);
+            _total = null;
+            _error = null;
+        }
+        _lastIsLifetime = isLifetime;
+    }
+
+    private async Task OnCountAsync(int count)
+    {
+        _total = count;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string Query()
+    {
+        var q = new List<string> { $"mode={Mode}" };
+        if (_rankId is not null)    q.Add($"rankId={_rankId}");
+        if (_sinceFrom is not null) q.Add($"sinceFrom={_sinceFrom:yyyy-MM-dd}");
+        if (_sinceTo is not null)   q.Add($"sinceTo={_sinceTo:yyyy-MM-dd}");
+        q.AddRange(_statuses.Select(s => $"statuses={s}"));
+        return string.Join("&", q);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    // Como Members y Earnings: la busqueda se lanza con Enter o con el boton, no en cada tecla.
+    private async Task OnSearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ApplySearchAsync();
+    }
+
+    private async Task ApplySearchAsync()
+    {
+        _appliedSearch = (_search ?? string.Empty).Trim();
+        if (_grid is not null) await _grid.SearchAsync(_appliedSearch);
+    }
+
+    private async Task ExportAsync()
+    {
+        _exporting = true;
+        _error = null;
+        try
+        {
+            var url   = $"api/v1/admin/reports/ranks/export?{Query()}&search={Uri.EscapeDataString(_appliedSearch)}";
+            var bytes = await Http.GetByteArrayAsync(url);
+            var file  = $"{(IsLifetime ? "lifetime" : "current")}-rank-{DateTime.Today:yyyy-MM-dd}.csv";
+            await Js.InvokeVoidAsync("mlmDownloadFile", file, "text/csv", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex)
+        {
+            _error = $"Export failed: {ex.Message}";
+        }
+        finally { _exporting = false; }
+    }
+
+    private sealed record RankOption(int Id, string Name, int SortOrder, string Status);
+    private sealed record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private sealed class RankRow
+    {
+        public string   MemberId   { get; set; } = string.Empty;
+        public string   MemberName { get; set; } = string.Empty;
+        public string   Email      { get; set; } = string.Empty;
+        public string   Country    { get; set; } = string.Empty;
+        public string   Status     { get; set; } = string.Empty;
+        public string   RankName   { get; set; } = string.Empty;
+        public DateTime Since      { get; set; }
+    }
+}
