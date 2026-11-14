@@ -1,0 +1,269 @@
+@* Pestaña «Recognition» del perfil del admin: los niveles de Club Recognition que alcanzó el miembro y la captura de
+   CEO Call, evento, talla y notas (PUT api/v1/admin/members/{id}/recognitions/{recId}, auditado en el AdminAPI). *@
+@inject HttpClient Http
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold"><i class="ri-trophy-line me-2 text-primary"></i>Club Recognition</h6>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="alert alert-danger m-3">@_loadError</div>
+        }
+        else if (_rows.Count == 0)
+        {
+            <p class="text-muted text-center py-5 mb-0">This member has not reached any recognition level yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Level</th><th>Reached</th><th class="text-end">Total</th><th>CEO Call Recognized</th>
+                            <th>Event Recognized</th><th>Reward</th><th>Reward Size</th><th>Notes</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _rows)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@r.LevelName</td>
+                                <td>@r.ReachedDate.ToString("yyyy-MM-dd")</td>
+                                <td class="text-end">@r.QualifyingTotal.ToString("N2")</td>
+                                <td>
+                                    @if (r.CeoCallRecognized is null) { <span class="badge bg-warning text-dark">Not recognized</span> }
+                                    else { @r.CeoCallRecognized }
+                                </td>
+                                <td>
+                                    @if (r.EventRecognized is null) { <span class="badge bg-warning text-dark">Not recognized</span> }
+                                    else { @r.EventRecognized }
+                                </td>
+                                <td>@r.Reward</td>
+                                <td>@(r.RewardNeedsSize ? r.RewardSize ?? "—" : string.Empty)</td>
+                                <td class="small text-muted">@r.Notes</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary py-0" title="Edit recognition" @onclick="() => Edit(r)">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_editing is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@_editing.LevelName — reached @_editing.ReachedDate.ToString("yyyy-MM-dd")</h5>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_formError is not null)
+                    {
+                        <div class="alert alert-danger py-2">@_formError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">CEO Call Recognized</label>
+                        <select class="form-select" @bind="_form.CeoChoice">
+                            <option value="">Not recognized yet</option>
+                            <option value="@MonthChoice">Recognized on the CEO call (pick the month)</option>
+                            @foreach (var o in OptionsFor(_editing.CeoCallOptionId))
+                            {
+                                <option value="@($"opt:{o.Id}")">@o.Name</option>
+                            }
+                        </select>
+                        @if (_form.CeoChoice == MonthChoice)
+                        {
+                            <input type="month" class="form-control mt-2" @bind="_form.CeoMonth" />
+                        }
+                        @if (NeedsReason(_form.CeoChoice))
+                        {
+                            <input class="form-control mt-2" maxlength="300" placeholder="Reason" @bind="_form.CeoReason" />
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Event Recognized</label>
+                        <select class="form-select" @bind="_form.EventChoice">
+                            <option value="">Not recognized yet</option>
+                            @foreach (var e in _events)
+                            {
+                                <option value="@($"evt:{e.Id}")">@e.Title (@e.EventDate.ToString("yyyy-MM-dd"))</option>
+                            }
+                            @foreach (var o in OptionsFor(_editing.EventOptionId))
+                            {
+                                <option value="@($"opt:{o.Id}")">@o.Name</option>
+                            }
+                        </select>
+                        @if (NeedsReason(_form.EventChoice))
+                        {
+                            <input class="form-control mt-2" maxlength="300" placeholder="Reason" @bind="_form.EventReason" />
+                        }
+                    </div>
+                    @if (_editing.RewardNeedsSize)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Reward Size</label>
+                            <input class="form-control" maxlength="20" placeholder="e.g. US9" @bind="_form.RewardSize" />
+                        </div>
+                    }
+                    <div>
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea class="form-control" rows="3" maxlength="1000" @bind="_form.Notes"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="Close">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberId { get; set; } = string.Empty;
+
+    private const string MonthChoice = "month";
+
+    private List<Row> _rows = new();
+    private List<OptionItem> _options = new();
+    private List<EventItem> _events = new();
+    private bool _loading = true;
+    private string? _loadError;
+    private Row? _editing;
+    private CaptureForm _form = new();
+    private string? _formError;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var rows    = await Http.GetFromJsonAsync<ApiResp<List<Row>>>($"api/v1/admin/members/{MemberId}/recognitions");
+            var lookups = await Http.GetFromJsonAsync<ApiResp<Lookups>>("api/v1/admin/club-recognition/lookups");
+            _rows    = rows?.Data ?? new();
+            _options = lookups?.Data?.Options ?? new();
+            _events  = lookups?.Data?.Events ?? new();
+        }
+        catch (Exception ex) { _loadError = $"Could not load club recognition: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private void Edit(Row r)
+    {
+        _formError = null;
+        _form = new CaptureForm
+        {
+            CeoChoice   = r.CeoCallMonth is not null ? MonthChoice : r.CeoCallOptionId is int c ? $"opt:{c}" : string.Empty,
+            CeoMonth    = r.CeoCallMonth ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
+            CeoReason   = r.CeoCallReason,
+            EventChoice = r.EventId is not null ? $"evt:{r.EventId}" : r.EventOptionId is int e ? $"opt:{e}" : string.Empty,
+            EventReason = r.EventReason,
+            RewardSize  = r.RewardSize,
+            Notes       = r.Notes
+        };
+        _editing = r;
+    }
+
+    private void Close() => _editing = null;
+
+    private IEnumerable<OptionItem> OptionsFor(int? current) =>
+        _options.Where(o => o.IsActive || o.Id == current).OrderBy(o => o.SortOrder);
+
+    private bool NeedsReason(string choice) =>
+        OptionId(choice) is int id && _options.Any(o => o.Id == id && o.RequiresReason);
+
+    private static int? OptionId(string choice) =>
+        choice.StartsWith("opt:", StringComparison.Ordinal) && int.TryParse(choice[4..], out var id) ? id : null;
+
+    private static string? EventId(string choice) =>
+        choice.StartsWith("evt:", StringComparison.Ordinal) ? choice[4..] : null;
+
+    private async Task SaveAsync()
+    {
+        if (_editing is null) return;
+        _saving = true;
+        _formError = null;
+        try
+        {
+            var body = new
+            {
+                CeoCallMonth    = _form.CeoChoice == MonthChoice ? _form.CeoMonth : null,
+                CeoCallOptionId = OptionId(_form.CeoChoice),
+                CeoCallReason   = NeedsReason(_form.CeoChoice) ? _form.CeoReason : null,
+                EventId         = EventId(_form.EventChoice),
+                EventOptionId   = OptionId(_form.EventChoice),
+                EventReason     = NeedsReason(_form.EventChoice) ? _form.EventReason : null,
+                _form.RewardSize,
+                _form.Notes
+            };
+            var resp = await Http.PutAsJsonAsync($"api/v1/admin/members/{MemberId}/recognitions/{_editing.Id}", body);
+            if (resp.IsSuccessStatusCode)
+            {
+                var saved = (await resp.Content.ReadFromJsonAsync<ApiResp<Row>>())?.Data;
+                var index = saved is null ? -1 : _rows.FindIndex(x => x.Id == saved.Id);
+                if (index >= 0) _rows[index] = saved!;
+                _editing = null;
+            }
+            else
+            {
+                var error = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _formError = error?.Errors?.FirstOrDefault() ?? $"Save failed ({(int)resp.StatusCode}).";
+            }
+        }
+        catch (Exception ex) { _formError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private sealed class CaptureForm
+    {
+        public string    CeoChoice   { get; set; } = string.Empty;
+        public DateTime? CeoMonth    { get; set; }
+        public string?   CeoReason   { get; set; }
+        public string    EventChoice { get; set; } = string.Empty;
+        public string?   EventReason { get; set; }
+        public string?   RewardSize  { get; set; }
+        public string?   Notes       { get; set; }
+    }
+
+    private sealed class Row
+    {
+        public long      Id                { get; set; }
+        public string    LevelName         { get; set; } = string.Empty;
+        public string?   Reward            { get; set; }
+        public bool      RewardNeedsSize   { get; set; }
+        public DateTime  ReachedDate       { get; set; }
+        public decimal   QualifyingTotal   { get; set; }
+        public DateTime? CeoCallMonth      { get; set; }
+        public int?      CeoCallOptionId   { get; set; }
+        public string?   CeoCallReason     { get; set; }
+        public string?   CeoCallRecognized { get; set; }
+        public string?   EventId           { get; set; }
+        public int?      EventOptionId     { get; set; }
+        public string?   EventReason       { get; set; }
+        public string?   EventRecognized   { get; set; }
+        public string?   RewardSize        { get; set; }
+        public string?   Notes             { get; set; }
+    }
+
+    private sealed record OptionItem(int Id, string Name, bool RequiresReason, int SortOrder, bool IsActive);
+    private sealed record EventItem(string Id, string Title, DateTime EventDate);
+    private sealed record Lookups(List<OptionItem> Options, List<EventItem> Events);
+    private sealed record ApiResp<T>(bool Success, T? Data, string? ErrorCode, IEnumerable<string>? Errors);
+}

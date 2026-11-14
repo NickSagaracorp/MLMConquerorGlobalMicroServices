@@ -536,6 +536,17 @@ else
             </div>
         </div>
     }
+    else if (_activeTab == "recognition")
+    {
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                <MemberRecognitionPanel MemberId="@MemberId" />
+            </Authorized>
+            <NotAuthorized>
+                <div class="alert alert-secondary">Club recognition is available to SuperAdmin and Admin only.</div>
+            </NotAuthorized>
+        </AuthorizeView>
+    }
     else if (_activeTab == "membership")
     {
         @if (_membershipLoading)
@@ -844,6 +855,7 @@ else
         new("dualteam",   "Dual Team",       "ri-share-circle-line"),
         new("commissions","Commissions",     "ri-money-dollar-circle-line"),
         new("ranks",      "Ranks",           "ri-award-line"),
+        new("recognition","Recognition",     "ri-trophy-line"),
         new("membership", "Membership",      "ri-vip-crown-line"),
         new("events",     "Events",          "ri-calendar-event-line"),
         new("loyalty",    "Loyalty",         "ri-heart-line"),
