@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Dejar la base de la sección de Reportes del admin (indicador de cuenta corporativa, permiso de exportación, grupo del menú) y entregar los reportes Earnings Lifetime y Earnings 180 Days con exportación a Excel.
+**Goal:** Dejar la base de la sección de Reportes del admin (indicador de cuenta corporativa, permiso de exportación, grupo del menú) y entregar los reportes Earnings Lifetime y Earnings 180 Days con exportación a CSV.
 
-**Architecture:** Un servicio de solo lectura en Repository (`EarningsRankingService`) calcula el ranking completo de comisiones por miembro para una fecha de corte y una ventana, lo cachea en memoria 10 minutos y lo pagina/filtra en memoria. El AdminAPI lo expone con una rejilla de servidor (`POST .../grid`, el mismo `ServerGridAdaptor` del resto del admin) y un `GET .../export` que devuelve un .xlsx hecho con ClosedXML. AdminWeb tiene una página con dos rutas (lifetime y por ventana).
+**Architecture:** Un servicio de solo lectura en Repository (`EarningsRankingService`) calcula el ranking completo de comisiones por miembro para una fecha de corte y una ventana, lo cachea en memoria 10 minutos y lo pagina/filtra en memoria. El AdminAPI lo expone con una rejilla de servidor (`POST .../grid`, el mismo `ServerGridAdaptor` del resto del admin) y un `GET .../export` que devuelve un CSV. AdminWeb tiene una página con dos rutas (lifetime y por ventana).
 
-**Tech Stack:** .NET 10, EF Core 10 (SQL Server), ASP.NET Core Web API, Blazor Server + Syncfusion Grid, ClosedXML (MIT), xUnit + FluentAssertions + Moq + EF InMemory.
+**Tech Stack:** .NET 10, EF Core 10 (SQL Server), ASP.NET Core Web API, Blazor Server + Syncfusion Grid, xUnit + FluentAssertions + Moq + EF InMemory.
 
 **Especificación:** `docs/superpowers/specs/2026-11-14-reportes-admin-design.md` (secciones Principios, Reporte 2, Reporte 3).
 
@@ -37,7 +37,7 @@
 | `MLMConquerorGlobalEdition.SharedComponents/Services/ViewContextService.cs` | Modificar | `Reports.Export` solo SuperAdmin y Admin |
 | `MLMConquerorGlobalEdition.Repository/Services/Reports/EarningsRankingService.cs` | Crear | ranking, página, exportación |
 | `MLMConquerorGlobalEdition.Repository/Services/Reports/EarningsRankingViews.cs` | Crear | `EarningsRankRowView` |
-| `MLMConquerorGlobalEdition.AdminAPI/Reports/ExcelReportWriter.cs` | Crear | genera .xlsx con ClosedXML |
+| `MLMConquerorGlobalEdition.AdminAPI/Reports/CsvReportWriter.cs` | Crear | genera CSV |
 | `MLMConquerorGlobalEdition.AdminAPI/Controllers/AdminReportsController.cs` | Crear | `POST reports/earnings/grid`, `GET reports/earnings/export` |
 | `MLMConquerorGlobalEdition.AdminAPI/Program.cs` | Modificar | registro del servicio y del writer |
 | `MLMConquerorGlobalEdition.AdminWeb/Components/Pages/AdminEarningsReport.razor` | Crear | página con dos rutas |
@@ -406,7 +406,7 @@ En `Permissions.cs`, después de la clase `SystemUsers`:
 ```csharp
     public static class Reports
     {
-        /// <summary>Exportar cualquier reporte a Excel. Solo SuperAdmin y Admin (no IT, aunque IT vea todo lo demás).</summary>
+        /// <summary>Exportar cualquier reporte a CSV. Solo SuperAdmin y Admin (no IT, aunque IT vea todo lo demás).</summary>
         public const string Export = "reports.export";
     }
 ```
@@ -792,102 +792,137 @@ git commit -m "Reportes: servicio del ranking de comisiones (pagadas y pendiente
 
 ---
 
-### Task 6: Escritor de Excel
+### Task 6: Escritor de CSV
 
 **Files:**
-- Modify: `MLMConquerorGlobalEdition.AdminAPI/MLMConquerorGlobalEdition.AdminAPI.csproj`
-- Create: `MLMConquerorGlobalEdition.AdminAPI/Reports/ExcelReportWriter.cs`
-- Test: `MLMConquerorGlobalEdition.AdminAPI.Tests/Reports/ExcelReportWriterTests.cs`
+- Create: `MLMConquerorGlobalEdition.AdminAPI/Reports/CsvReportWriter.cs`
+- Test: `MLMConquerorGlobalEdition.AdminAPI.Tests/Reports/CsvReportWriterTests.cs`
 
-- [ ] **Step 1: Paquete**
+Formato (decisión de Nick, 2026-11-14: CSV, no Excel):
+- UTF-8 con BOM, para que una hoja de cálculo lea bien las tildes.
+- Separador coma y fin de línea CRLF.
+- Comillas dobles solo cuando el valor lleva coma, comilla o salto de línea, o empieza por `=`, `+`, `-` o `@`. En
+  ese último caso se antepone además `'`, para que una hoja de cálculo no lo ejecute como fórmula.
+- Números y fechas en cultura invariante.
+- Sin paquetes nuevos.
 
-Run: `dotnet add MLMConquerorGlobalEdition.AdminAPI package ClosedXML --version 0.105.0`
-Run: `dotnet add MLMConquerorGlobalEdition.AdminAPI.Tests package ClosedXML --version 0.105.0`
-Expected: los dos csproj tienen `<PackageReference Include="ClosedXML" Version="0.105.0" />`. ClosedXML es MIT (no repite el problema de licencia de iText7).
-
-- [ ] **Step 2: Prueba que falla**
+- [ ] **Step 1: Prueba que falla**
 
 ```csharp
-using ClosedXML.Excel;
+using System.Text;
 using MLMConquerorGlobalEdition.AdminAPI.Reports;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Reports;
 
-public class ExcelReportWriterTests
+public class CsvReportWriterTests
 {
-    private sealed record Fila(int Rank, string Name, decimal Total);
+    private sealed record Fila(int Rank, string? Name, decimal Total);
+
+    private static string Texto(byte[] bytes)
+    {
+        bytes.Take(3).Should().Equal(new byte[] { 0xEF, 0xBB, 0xBF }, "lleva BOM para que se lea como UTF-8");
+        return Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+    }
 
     [Fact]
-    public void Escribe_encabezados_y_filas_en_una_hoja_con_el_nombre_dado()
+    public void Escribe_encabezados_y_filas_con_numeros_invariantes()
     {
-        var bytes = new ExcelReportWriter().Write("Earnings Lifetime",
+        var csv = Texto(new CsvReportWriter().Write(
             new[] { new Fila(1, "Ana", 1234.5m), new Fila(2, "Beto", 10m) },
-            ("Rank", f => f.Rank), ("Member Name", f => f.Name), ("Total", f => f.Total));
+            ("Rank", f => f.Rank), ("Member Name", f => f.Name), ("Total", f => f.Total)));
 
-        using var libro = new XLWorkbook(new MemoryStream(bytes));
-        var hoja = libro.Worksheet("Earnings Lifetime");
-        hoja.Cell(1, 1).GetString().Should().Be("Rank");
-        hoja.Cell(1, 3).GetString().Should().Be("Total");
-        hoja.Cell(2, 2).GetString().Should().Be("Ana");
-        hoja.Cell(2, 3).GetValue<decimal>().Should().Be(1234.5m);
-        hoja.Cell(3, 1).GetValue<int>().Should().Be(2);
-        hoja.Cell(4, 1).IsEmpty().Should().BeTrue();
+        csv.Should().Be("Rank,Member Name,Total\r\n1,Ana,1234.5\r\n2,Beto,10\r\n");
+    }
+
+    [Fact]
+    public void Entrecomilla_comas_comillas_y_saltos()
+    {
+        var csv = Texto(new CsvReportWriter().Write(
+            new[] { new Fila(1, "Lopez, \"Ana\"\nJr", 1m) },
+            ("Name", f => f.Name)));
+
+        csv.Should().Be("Name\r\n\"Lopez, \"\"Ana\"\"\nJr\"\r\n");
+    }
+
+    [Fact]
+    public void Neutraliza_formulas()
+    {
+        var csv = Texto(new CsvReportWriter().Write(
+            new[] { new Fila(1, "=HYPERLINK(\"x\")", 1m), new Fila(2, "@cmd", 1m) },
+            ("Name", f => f.Name)));
+
+        csv.Should().Be("Name\r\n\"'=HYPERLINK(\"\"x\"\")\"\r\n\"'@cmd\"\r\n");
+    }
+
+    [Fact]
+    public void Nulos_salen_vacios()
+    {
+        var csv = Texto(new CsvReportWriter().Write(new[] { new Fila(1, null, 1m) }, ("Name", f => f.Name)));
+
+        csv.Should().Be("Name\r\n\r\n");
     }
 }
 ```
 
-- [ ] **Step 3: Correr y ver que falla**
+- [ ] **Step 2: Correr y ver que falla**
 
-Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~ExcelReportWriterTests"`
-Expected: FAIL de compilación.
+Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~CsvReportWriterTests"`
+Expected: FAIL de compilación («CsvReportWriter no existe»).
 
-- [ ] **Step 4: Implementar**
+- [ ] **Step 3: Implementar**
 
 ```csharp
-using ClosedXML.Excel;
+using System.Globalization;
+using System.Text;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Reports;
 
-/// <summary>Convierte filas de cualquier reporte en un .xlsx de una hoja: encabezados en negrita y columnas ajustadas.</summary>
-public class ExcelReportWriter
+/// <summary>
+/// Convierte filas de cualquier reporte del admin en CSV: UTF-8 con BOM, comas, CRLF y cultura invariante. Un texto que
+/// empieza por =, +, - o @ se antepone con ' para que una hoja de cálculo no lo ejecute como fórmula; los números no.
+/// </summary>
+public class CsvReportWriter
 {
-    public const string ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    public const string ContentType = "text/csv";
 
-    public byte[] Write<T>(string sheetName, IEnumerable<T> rows, params (string Header, Func<T, object?> Value)[] columns)
+    public byte[] Write<T>(IEnumerable<T> rows, params (string Header, Func<T, object?> Value)[] columns)
     {
-        using var workbook = new XLWorkbook();
-        var sheet = workbook.Worksheets.Add(sheetName.Length > 31 ? sheetName[..31] : sheetName);
-
-        for (var c = 0; c < columns.Length; c++)
-            sheet.Cell(1, c + 1).Value = columns[c].Header;
-        sheet.Row(1).Style.Font.Bold = true;
-
-        var r = 2;
+        var sb = new StringBuilder();
+        sb.Append(string.Join(",", columns.Select(c => Escape(c.Header, isNumber: false)))).Append("\r\n");
         foreach (var row in rows)
-        {
-            for (var c = 0; c < columns.Length; c++)
-                sheet.Cell(r, c + 1).Value = XLCellValue.FromObject(columns[c].Value(row));
-            r++;
-        }
+            sb.Append(string.Join(",", columns.Select(c => Cell(c.Value(row))))).Append("\r\n");
 
-        sheet.Columns().AdjustToContents();
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+    }
+
+    private static string Cell(object? value) => value switch
+    {
+        null           => string.Empty,
+        DateTime d     => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        IFormattable f => Escape(f.ToString(null, CultureInfo.InvariantCulture), isNumber: true),
+        _              => Escape(value.ToString() ?? string.Empty, isNumber: false)
+    };
+
+    private static string Escape(string value, bool isNumber)
+    {
+        var formula = !isNumber && value.Length > 0 && value[0] is '=' or '+' or '-' or '@';
+        if (formula) value = "'" + value;
+        var quote = formula || value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
+        return quote ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
     }
 }
 ```
 
-- [ ] **Step 5: Correr la prueba**
+- [ ] **Step 4: Correr las pruebas**
 
-Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~ExcelReportWriterTests"`
-Expected: PASS.
+Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "FullyQualifiedName~CsvReportWriterTests"`
+Expected: PASS (4).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add MLMConquerorGlobalEdition.AdminAPI MLMConquerorGlobalEdition.AdminAPI.Tests
-git commit -m "Reportes: escritor de Excel comun para todos los reportes del admin (ClosedXML, licencia MIT)"
+git add MLMConquerorGlobalEdition.AdminAPI/Reports MLMConquerorGlobalEdition.AdminAPI.Tests/Reports/CsvReportWriterTests.cs
+git commit -m "Reportes: escritor de CSV comun para los reportes del admin (UTF-8 con BOM, cultura invariante y formulas neutralizadas)"
 ```
 
 ---
@@ -901,7 +936,7 @@ git commit -m "Reportes: escritor de Excel comun para todos los reportes del adm
 
 Contrato:
 - `POST api/v1/admin/reports/earnings/grid?cutoff=2026-11-13&days=180` con `GridDataRequest` en el cuerpo → `ApiResponse<PagedResult<EarningsRankRowView>>`. Sin `days` = de por vida. Sin `cutoff` = ayer (hora del servidor).
-- `GET api/v1/admin/reports/earnings/export?cutoff=...&days=...&search=...` → .xlsx. Solo SuperAdmin y Admin.
+- `GET api/v1/admin/reports/earnings/export?cutoff=...&days=...&search=...` → CSV. Solo SuperAdmin y Admin.
 - La clase entera: SuperAdmin y Admin (especificación: acceso a reportes).
 
 - [ ] **Step 1: Pruebas que fallan**
@@ -928,7 +963,7 @@ public class AdminReportsControllerTests
         var reloj = new Mock<IDateTimeProvider>();
         reloj.SetupGet(r => r.Now).Returns(Ahora);
         var servicio = new Mock<IEarningsRankingService>();
-        return (new AdminReportsController(servicio.Object, new ExcelReportWriter(), reloj.Object), servicio);
+        return (new AdminReportsController(servicio.Object, new CsvReportWriter(), reloj.Object), servicio);
     }
 
     [Fact]
@@ -946,7 +981,7 @@ public class AdminReportsControllerTests
     }
 
     [Fact]
-    public async Task Exportar_devuelve_un_xlsx_con_las_filas_filtradas()
+    public async Task Exportar_devuelve_un_csv_con_las_filas_filtradas()
     {
         var (c, s) = Montar();
         s.Setup(x => x.GetAllAsync(new DateTime(2026, 10, 31), null, "ana", It.IsAny<CancellationToken>()))
@@ -955,8 +990,8 @@ public class AdminReportsControllerTests
         var r = await c.EarningsExport(new DateTime(2026, 10, 31), days: null, search: "ana", default);
 
         var archivo = r.Should().BeOfType<FileContentResult>().Subject;
-        archivo.ContentType.Should().Be(ExcelReportWriter.ContentType);
-        archivo.FileDownloadName.Should().Be("earnings-lifetime-2026-10-31.xlsx");
+        archivo.ContentType.Should().Be(CsvReportWriter.ContentType);
+        archivo.FileDownloadName.Should().Be("earnings-lifetime-2026-10-31.csv");
         archivo.FileContents.Should().NotBeEmpty();
     }
 
@@ -988,20 +1023,20 @@ using IDateTimeProvider = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDat
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
-/// <summary>Reportes del admin. Lectura para SuperAdmin y Admin; exportar a Excel también solo para ellos (no IT).</summary>
+/// <summary>Reportes del admin. Lectura para SuperAdmin y Admin; exportar a CSV también solo para ellos (no IT).</summary>
 [ApiController]
 [Route("api/v1/admin/reports")]
 [Authorize(Roles = "SuperAdmin,Admin")]
 public class AdminReportsController : ControllerBase
 {
     private readonly IEarningsRankingService _earnings;
-    private readonly ExcelReportWriter       _excel;
+    private readonly CsvReportWriter         _csv;
     private readonly IDateTimeProvider       _clock;
 
-    public AdminReportsController(IEarningsRankingService earnings, ExcelReportWriter excel, IDateTimeProvider clock)
+    public AdminReportsController(IEarningsRankingService earnings, CsvReportWriter csv, IDateTimeProvider clock)
     {
         _earnings = earnings;
-        _excel    = excel;
+        _csv      = csv;
         _clock    = clock;
     }
 
@@ -1014,7 +1049,7 @@ public class AdminReportsController : ControllerBase
         Ok(ApiResponse<PagedResult<EarningsRankRowView>>.Ok(
             await _earnings.GetPageAsync(Cutoff(cutoff), days, request, ct)));
 
-    /// <summary>GET reports/earnings/export?cutoff=&amp;days=&amp;search= — .xlsx con las filas filtradas.</summary>
+    /// <summary>GET reports/earnings/export?cutoff=&amp;days=&amp;search= — CSV con las filas filtradas.</summary>
     [HttpGet("earnings/export")]
     [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<IActionResult> EarningsExport([FromQuery] DateTime? cutoff, [FromQuery] int? days,
@@ -1023,12 +1058,11 @@ public class AdminReportsController : ControllerBase
         var date   = Cutoff(cutoff);
         var window = EarningsRankingService.NormalizeWindow(days);
         var rows   = await _earnings.GetAllAsync(date, days, search, ct);
-        var name   = window is null ? "Earnings Lifetime" : $"Earnings {window} Days";
-        var bytes  = _excel.Write(name, rows,
+        var bytes  = _csv.Write(rows,
             ("Rank", r => r.Rank), ("Username", r => r.Username), ("Member Name", r => r.MemberName),
             ("Email", r => r.Email), ("Country", r => r.Country), ("Total", r => r.Total));
-        var file = window is null ? $"earnings-lifetime-{date:yyyy-MM-dd}.xlsx" : $"earnings-{window}d-{date:yyyy-MM-dd}.xlsx";
-        return File(bytes, ExcelReportWriter.ContentType, file);
+        var file = window is null ? $"earnings-lifetime-{date:yyyy-MM-dd}.csv" : $"earnings-{window}d-{date:yyyy-MM-dd}.csv";
+        return File(bytes, CsvReportWriter.ContentType, file);
     }
 }
 ```
@@ -1040,7 +1074,7 @@ Junto al registro de `ILoyaltyPointsService`:
 ```csharp
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IEarningsRankingService,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.EarningsRankingService>();
-builder.Services.AddSingleton<MLMConquerorGlobalEdition.AdminAPI.Reports.ExcelReportWriter>();
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.AdminAPI.Reports.CsvReportWriter>();
 ```
 
 (`AddMemoryCache()` ya está registrado en la línea ~295.)
@@ -1056,7 +1090,7 @@ Expected: Build succeeded.
 
 ```bash
 git add MLMConquerorGlobalEdition.AdminAPI MLMConquerorGlobalEdition.AdminAPI.Tests/Reports/AdminReportsControllerTests.cs
-git commit -m "Admin: endpoints del ranking de comisiones (rejilla de servidor y exportacion a Excel) con corte por defecto ayer en hora del servidor"
+git commit -m "Admin: endpoints del ranking de comisiones (rejilla de servidor y exportacion a CSV) con corte por defecto ayer en hora del servidor"
 ```
 
 ---
@@ -1110,7 +1144,7 @@ Una página, dos rutas: `/admin/reports/earnings-lifetime` (sin ventana) y `/adm
     @if (ViewContext.HasPermission(Permissions.Reports.Export))
     {
         <button class="btn btn-outline-success" @onclick="ExportAsync" disabled="@_exporting">
-            <i class="ri-file-excel-2-line me-1"></i>Export
+            <i class="ri-file-download-line me-1"></i>Export CSV
         </button>
     }
 </div>
@@ -1170,9 +1204,9 @@ Una página, dos rutas: `/admin/reports/earnings-lifetime` (sin ventana) y `/adm
         {
             var url = $"api/v1/admin/reports/earnings/export?{Query()}&search={Uri.EscapeDataString(_search)}";
             var bytes = await Http.GetByteArrayAsync(url);
-            var file = IsWindow ? $"earnings-{_days}d-{_cutoff:yyyy-MM-dd}.xlsx" : $"earnings-lifetime-{_cutoff:yyyy-MM-dd}.xlsx";
+            var file = IsWindow ? $"earnings-{_days}d-{_cutoff:yyyy-MM-dd}.csv" : $"earnings-lifetime-{_cutoff:yyyy-MM-dd}.csv";
             await Js.InvokeVoidAsync("mlmDownloadFile", file,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+                "text/csv", Convert.ToBase64String(bytes));
         }
         finally { _exporting = false; }
     }
@@ -1269,7 +1303,7 @@ Expected: 0 fallos en las dos.
 1. Entrar como SuperAdmin, abrir un perfil, activar «Corporate account» y recargar: sigue activado.
 2. Abrir Reports → Earnings Lifetime: la cuenta marcada no aparece; buscar un nombre conserva su Rank.
 3. Earnings 180 Days: cambiar la ventana a 30 y la fecha de corte; la rejilla se recarga.
-4. Exportar: se descarga un .xlsx con las mismas filas filtradas.
+4. Exportar: se descarga un CSV con las mismas filas filtradas.
 5. Entrar con un usuario IT: ve los reportes solo si su rol está en el menú (no lo está: el grupo es SuperAdmin/Admin) y nunca el botón Export.
 
 - [ ] **Step 3: Revisión de código de la rama** con `superpowers:requesting-code-review` y corregir lo que encuentre.

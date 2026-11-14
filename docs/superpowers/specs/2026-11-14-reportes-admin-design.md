@@ -7,7 +7,7 @@ Fecha: 2026-11-14. Estado: **completa, pendiente de revisión de Nick**. Nick va
 - Los datos salen de **nuestra base**, con endpoints del AdminAPI. Nada de CSV.
 - Las fechas y los cortes usan la **hora del servidor** (`IDateTimeProvider.Now`), no UTC.
 - Acceso: roles SuperAdmin y Admin.
-- **Exportar a Excel en todos los reportes**, solo para un rol específico de admin/superadmin (permiso propio,
+- **Exportar a CSV en todos los reportes**, solo para un rol específico de admin/superadmin (permiso propio,
   p. ej. `reports.export`); quien no lo tenga ve el reporte pero no el botón ni el endpoint de exportación.
 - Lo que dependa de fechas pasadas sale de **fotos diarias** precalculadas, no de reconstruir historia en cada consulta.
   Con más de 1M de miembros, eso hace que la consulta sea instantánea.
@@ -255,7 +255,7 @@ En la misma barra hay otras secciones (Club Recognition, Notes, Tasks); fuera de
   sobre la foto diaria.
 - 2026-11-14: las semanas empiezan el lunes. Las fotos diarias empiezan el día que se activa el feature, sin reconstruir el pasado.
 - 2026-11-14: Earnings Lifetime suma lo pagado y lo pendiente; Username = ReplicateSiteSlug; se excluyen las cuentas corporativas;
-  los residuales cuentan solo una vez consolidados. Exportar a Excel en todos los reportes, con un rol/permiso específico.
+  los residuales cuentan solo una vez consolidados. Exportar a CSV en todos los reportes, con un rol/permiso específico.
 - 2026-11-14: las cuentas corporativas se marcan con un indicador `IsCorporateAccount` en el perfil, que activa el admin (opción A).
 - 2026-11-14: los reportes de rangos excluyen el rango 0, a quienes no tienen historial, las cuentas canceladas (Terminated)
   y las corporativas; llevan filtro de estado de membresía. Current Rank es el mismo reporte con el rango vigente.
@@ -270,3 +270,4 @@ En la misma barra hay otras secciones (Club Recognition, Notes, Tasks); fuera de
   Las opciones de reconocimiento son un catálogo. Los reconocimientos ya capturados por el cliente se importan en la migración.
 - 2026-11-14: las semanas se cortan en el cierre del mes. El Overview no lleva nada y no se incluye.
 - 2026-11-14: la ventana de Earnings 180 Days es seleccionable (30/90/180/365), 180 por defecto.
+- 2026-11-14: la exportación es a CSV, no a Excel.
