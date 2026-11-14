@@ -144,6 +144,10 @@ public class ViewContextService : IViewContextService
         if (permission == Permissions.SystemUsers.Manage)
             return _viewerRoles.Contains(AppRoles.SuperAdmin);
 
+        // Exportar reportes: solo SuperAdmin y Admin, evaluado antes del atajo que da todo a IT.
+        if (permission == Permissions.Reports.Export)
+            return _viewerRoles.Contains(AppRoles.SuperAdmin) || _viewerRoles.Contains(AppRoles.Admin);
+
         // Top-tier shortcut: SuperAdmin, Admin, and IT see everything (Nick: SuperAdmin = IT,
         // Admin inherits all manager and support tiers).
         if (_viewerRoles.Contains(AppRoles.SuperAdmin)

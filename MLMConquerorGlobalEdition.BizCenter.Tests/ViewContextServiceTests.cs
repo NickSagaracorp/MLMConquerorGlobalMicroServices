@@ -255,4 +255,18 @@ public class ViewContextServiceTests
 
         svc.IsInAnyRole(AppRoles.Ambassador).Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData(AppRoles.SuperAdmin, true)]
+    [InlineData(AppRoles.Admin, true)]
+    [InlineData(AppRoles.IT, false)]
+    [InlineData(AppRoles.CommissionManager, false)]
+    [InlineData(AppRoles.BillingManager, false)]
+    public void Exportar_reportes_es_solo_de_SuperAdmin_y_Admin(string rol, bool puede)
+    {
+        var svc = CreateService();
+        svc.SetContext("mem-1", "usr-1", false, true, [rol]);
+
+        svc.HasPermission(Permissions.Reports.Export).Should().Be(puede);
+    }
 }

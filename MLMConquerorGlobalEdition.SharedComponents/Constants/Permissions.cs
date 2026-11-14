@@ -59,4 +59,10 @@ public static class Permissions
     {
         public const string Manage = "systemusers.manage";
     }
+
+    public static class Reports
+    {
+        /// <summary>Exportar cualquier reporte a CSV. Solo SuperAdmin y Admin (no IT, aunque IT vea todo lo demas).</summary>
+        public const string Export = "reports.export";
+    }
 }
