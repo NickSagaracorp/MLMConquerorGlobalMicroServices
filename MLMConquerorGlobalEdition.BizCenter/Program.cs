@@ -267,6 +267,9 @@ builder.Services.AddScoped<ApplyDualLegDeltasJob>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IMemberCountrySnapshotWriter,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.MemberCountrySnapshotWriter>();
 builder.Services.AddScoped<MemberCountrySnapshotJob>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IClubRecognitionDetector,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.ClubRecognitionDetector>();
+builder.Services.AddScoped<ClubRecognitionJob>();
 builder.Services.AddHangfire(cfg =>
 {
     cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -454,6 +457,14 @@ RecurringJob.AddOrUpdate<MemberCountrySnapshotJob>(
     "member-country-snapshot",
     job => job.ExecuteAsync(CancellationToken.None),
     "30 5 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
+
+// Club Recognition: dia que cerro (la primera vez, la carga historica). 05:45 UTC = 00:45 en invierno y 01:45 en verano,
+// 15 minutos despues de la foto de paises; el dia lo decide IDateTimeProvider.Now, no esta hora.
+RecurringJob.AddOrUpdate<ClubRecognitionJob>(
+    "club-recognition",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "45 5 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
 
 RecurringJob.AddOrUpdate<ExpiredTokenCleanupJob>(

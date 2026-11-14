@@ -110,6 +110,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.AdminAPI.Reports.CsvReportWriter>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IRankReportService,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.RankReportService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IClubRecognitionDetector,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.ClubRecognitionDetector>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.ITopCountriesReportService,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.TopCountriesReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IMemberCountrySnapshotWriter,
