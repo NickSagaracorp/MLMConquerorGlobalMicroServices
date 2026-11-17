@@ -81,17 +81,10 @@ public partial class ClubRecognitionDetector : IClubRecognitionDetector
         var previous   = relational ? _db.Database.GetCommandTimeout() : null;
         try
         {
-            try
-            {
-                return await DetectDayOnceAsync(day, ct);
-            }
-            catch (Exception ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
-            {
-                // Otra carga (el job y la manual a la vez) inserto primero: se descartan los cambios pendientes y se
-                // repite entera; ahora ve los registros y no los repite.
-                _db.ChangeTracker.Clear();
-                return await DetectDayOnceAsync(day, ct);
-            }
+            // Otra carga (el job y la manual a la vez) inserto primero o gano un interbloqueo: se descartan los cambios
+            // pendientes y se repite entera; ahora ve los registros y no los repite.
+            return await WriteConflictRetry.RunAsync(
+                () => DetectDayOnceAsync(day, ct), () => _db.ChangeTracker.Clear());
         }
         finally
         {

@@ -27,3 +27,34 @@ public static class DeadlockErrors
         return false;
     }
 }
+
+/// <summary>
+/// Repite una escritura de reportes que chocó con otra igual a la vez (el job nocturno y la carga manual): clave
+/// duplicada o víctima de un interbloqueo. En los dos casos esta escritura no dejó nada y puede repetirse entera; la
+/// repetición ve lo que escribió la otra.
+/// </summary>
+public static class WriteConflictRetry
+{
+    public const int MaxAttempts = 3;
+
+    public static bool IsConflict(Exception ex) => DuplicateKeyErrors.IsDuplicateKey(ex) || DeadlockErrors.IsDeadlock(ex);
+
+    /// <param name="beforeRetry">Lo que hay que limpiar antes de repetir (normalmente el ChangeTracker).</param>
+    public static async Task<T> RunAsync<T>(Func<Task<T>> write, Action? beforeRetry = null)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await write();
+            }
+            catch (Exception ex) when (attempt < MaxAttempts && IsConflict(ex))
+            {
+                beforeRetry?.Invoke();
+            }
+        }
+    }
+
+    public static Task RunAsync(Func<Task> write, Action? beforeRetry = null) =>
+        RunAsync(async () => { await write(); return true; }, beforeRetry);
+}
