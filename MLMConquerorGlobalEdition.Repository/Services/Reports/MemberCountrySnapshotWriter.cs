@@ -33,18 +33,24 @@ public class MemberCountrySnapshotWriter : IMemberCountrySnapshotWriter
 
     public async Task<int> WriteAsync(DateTime snapshotDate, CancellationToken ct = default)
     {
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            return await WriteOnceAsync(snapshotDate, ct);
-        }
-        catch (DbUpdateException ex) when (DuplicateKeyErrors.IsDuplicateKey(ex))
-        {
-            // Otra escritura del mismo dia inserto primero (el job nocturno y la foto manual a la vez): se descartan los
-            // cambios pendientes y se repite entera; ahora ve las filas y las actualiza.
-            _db.ChangeTracker.Clear();
-            return await WriteOnceAsync(snapshotDate, ct);
+            try
+            {
+                return await WriteOnceAsync(snapshotDate, ct);
+            }
+            catch (Exception ex) when (attempt < MaxAttempts &&
+                                       (DuplicateKeyErrors.IsDuplicateKey(ex) || DeadlockErrors.IsDeadlock(ex)))
+            {
+                // Otra escritura del mismo dia (el job nocturno y la foto manual a la vez) inserto primero o gano el
+                // interbloqueo: esta no dejo nada escrito. Se descartan los cambios pendientes y se repite entera; ahora
+                // ve las filas de la otra y las actualiza.
+                _db.ChangeTracker.Clear();
+            }
         }
     }
+
+    private const int MaxAttempts = 3;
 
     private async Task<int> WriteOnceAsync(DateTime snapshotDate, CancellationToken ct)
     {
