@@ -16,6 +16,9 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/signups")]
+// Cerrado por defecto: cada accion anonima lo declara con [AllowAnonymous] (el alta todavia no tiene cuenta y el
+// callback de Entrax se autentica por firma). Una accion nueva sin atributo exige sesion en vez de quedar abierta.
+[Authorize]
 public class EntraxSignupsController : ControllerBase
 {
     /// <summary>Un callback de Entrax es un JSON de unos cientos de bytes.</summary>

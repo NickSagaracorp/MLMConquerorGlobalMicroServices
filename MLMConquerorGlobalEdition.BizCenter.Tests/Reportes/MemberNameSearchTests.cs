@@ -70,4 +70,22 @@ public class MemberNameSearchTests
         parametros.Single(p => p.ParameterName == "@x_top").Value.Should().Be(1_000);
         parametros.Single(p => p.ParameterName == "@x_t").Value.Should().Be("amb-1%");
     }
+
+    [Theory]
+    [InlineData("@x; DROP TABLE MemberProfiles --")]
+    [InlineData("x")]
+    [InlineData("@1x")]
+    [InlineData("")]
+    public void El_prefijo_de_los_parametros_solo_admite_un_identificador(string prefijo)
+    {
+        var act = () => MemberNameSearch.MatchingIdsSql("ana", 10, prefijo);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void El_termino_nunca_entra_en_el_texto_del_sql()
+    {
+        var (sql, _) = MemberNameSearch.MatchingIdsSql("ana'; DROP TABLE MemberProfiles --", 10);
+        sql.Should().NotContain("DROP").And.NotContain("ana");
+    }
 }

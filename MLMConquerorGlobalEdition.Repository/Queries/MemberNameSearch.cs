@@ -50,6 +50,7 @@ public static class MemberNameSearch
     /// Los ids son letras, un guion opcional y digitos (AMB-DDDDDD, MBR-DDDDDD, ROOTDDD; ValidationPatterns de Signups).
     /// Hasta el primer digito, el termino es el prefijo comun de miles de ids: no dice nada del miembro.
     /// </summary>
+    private static readonly Regex SafeParameterPrefix = new(@"^@[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant);
     private static readonly Regex IdPastCommonPrefix = new(@"^[A-Za-z]{3,4}-?[0-9]", RegexOptions.CultureInvariant);
 
     /// <summary>El termino sin espacios alrededor y cortado a <see cref="MaxTermLength"/>.</summary>
@@ -74,6 +75,11 @@ public static class MemberNameSearch
     /// </summary>
     public static (string Sql, SqlParameter[] Parameters) MatchingIdsSql(string term, int candidatesPerBranch, string prefix = "@nb")
     {
+        // Solo el NOMBRE de los parametros entra en el texto del SQL; el termino va siempre como parametro. El prefijo lo
+        // ponen los llamadores, pero se valida igual para que nunca pueda llevar otra cosa que un identificador.
+        if (!SafeParameterPrefix.IsMatch(prefix))
+            throw new ArgumentException($"Prefijo de parametro no valido: '{prefix}'.", nameof(prefix));
+
         var t = $"{prefix}_t";
         var cap = $"{prefix}_top";
         var sql = $@"SELECT MemberId FROM (SELECT TOP ({cap}) MemberId FROM MemberProfiles

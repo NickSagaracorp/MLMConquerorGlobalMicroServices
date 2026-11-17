@@ -140,15 +140,19 @@ public class AdminEntraxSignupsController : ControllerBase
     [HttpPost("{id}/recheck")]
     public async Task<IActionResult> Recheck(string id, CancellationToken ct = default)
     {
-        var before = await _db.EntraxPayments.AsNoTracking()
+        var payment = await _db.EntraxPayments.AsNoTracking()
             .Where(p => p.Id == id)
-            .Select(p => (EntraxPaymentStatus?)p.Status)
+            .Select(p => new { p.Id, p.Status })
             .FirstOrDefaultAsync(ct);
-        if (before is null)
+        if (payment is null)
             return NotFound(ApiResponse<object>.Fail("ENTRAX_PAYMENT_NOT_FOUND", "Payment not found."));
+        var before = payment.Status;
 
+        // La ruta se arma con el Id guardado, no con el de la URL, y va contra la direccion base fija del cliente de
+        // SignupAPI: lo que escriba quien llama no decide a donde sale la peticion.
         var http = _httpFactory.CreateClient(SignupApiRegistration.HttpClientName);
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/signups/entrax/{Uri.EscapeDataString(id)}/recheck");
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"api/v1/signups/entrax/{Uri.EscapeDataString(payment.Id)}/recheck");
 
         var bearer = Request.Headers.Authorization.ToString();
         if (!string.IsNullOrWhiteSpace(bearer) && AuthenticationHeaderValue.TryParse(bearer, out var parsed))
@@ -169,13 +173,13 @@ public class AdminEntraxSignupsController : ControllerBase
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             // El administrador cerró la pantalla; SignupAPI pudo liquidar igualmente. Queda auditado.
-            await AuditAsync(id, before.Value, httpStatus: 0, ClientCancelled);
+            await AuditAsync(id, before, httpStatus: 0, ClientCancelled);
             throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {
             // Caído o sin respuesta a tiempo: no se sabe si llegó a liquidar; es idempotente, repetir es seguro.
-            await AuditAsync(id, before.Value, httpStatus: 0, SignupApiUnavailable);
+            await AuditAsync(id, before, httpStatus: 0, SignupApiUnavailable);
             return Unavailable();
         }
 
@@ -184,17 +188,17 @@ public class AdminEntraxSignupsController : ControllerBase
             // El [Authorize] de SignupAPI rechaza sin cuerpo: un problema de permisos no es un servicio caído.
             if (status is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden)
             {
-                await AuditAsync(id, before.Value, status, "FORBIDDEN");
+                await AuditAsync(id, before, status, "FORBIDDEN");
                 return StatusCode(status, ApiResponse<object>.Fail("FORBIDDEN",
                     "You do not have permission to re-check Entrax payments."));
             }
 
             // Un proxy o una página de error delante de SignupAPI: no se reenvía a la pantalla.
-            await AuditAsync(id, before.Value, status, SignupApiUnavailable);
+            await AuditAsync(id, before, status, SignupApiUnavailable);
             return Unavailable();
         }
 
-        await AuditAsync(id, before.Value, status, OutcomeOf(body));
+        await AuditAsync(id, before, status, OutcomeOf(body));
         return new ContentResult { Content = body, ContentType = "application/json", StatusCode = status };
     }
 

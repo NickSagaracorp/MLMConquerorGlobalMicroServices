@@ -41,3 +41,13 @@ decide qué texto mostrar; la firma del reto la comprueba la API al canjearlo).
 Es la plantilla HTML de referencia del diseño. No se compila ni se despliega; sus scripts
 (`custom.js`, `dragdrop.js`, echarts…) seguirán apareciendo en el escáner. Se puede excluir la
 ruta `UI-Templates/` en Aikido.
+
+## Segunda tanda (17-nov-2026)
+
+| Alerta | Resultado |
+|---|---|
+| Critical: `BouncyCastle.Cryptography` (missing input validation) | **Ya resuelta.** Entraba solo como dependencia de `itext7.bouncy-castle-adapter`, que se quitó con iText7 en la primera tanda; ningún proyecto la referencia ahora. Si sigue apareciendo, el escaneo es anterior a ese commit. |
+| High: "Rendering unescaped input can lead to XSS" en `AdminClubRecognitionReportController`, `AdminRankStandingsReportController` (y las otras exportaciones) | **Falso positivo.** Es la exportación a CSV: `File(bytes, "text/csv", nombre)` sale como descarga (`Content-Disposition: attachment`), el AdminAPI manda `X-Content-Type-Options: nosniff` en todas las respuestas, y `CsvReportWriter` neutraliza las fórmulas (`=`, `+`, `-`, `@`, tabulador, retorno). Nada se interpreta como HTML. Justificación: *"CSV file download (attachment, text/csv, nosniff); not rendered as HTML. Formula injection is neutralized in CsvReportWriter."* |
+| High: SQL injection por concatenación en `MemberNameSearch.cs`, `LegPointMaintenance.cs` y otros 3 | **Falso positivo, con endurecimiento.** Lo concatenado son fragmentos fijos de SQL y nombres de parámetros; todo valor que llega del usuario va como `SqlParameter`. Se añadió validación del prefijo de parámetros en `MemberNameSearch.MatchingIdsSql` (solo `@identificador`) y pruebas de que el término nunca entra en el texto del SQL. Justificación: *"Only constant SQL fragments and parameter names are concatenated; all user values are bound as SqlParameter."* |
+| Medium: authorization bypass en `EntraxSignupsController.cs` (SignupAPI) | **Corregida.** El controlador queda cerrado por defecto con `[Authorize]` a nivel de clase; las acciones que tienen que ser anónimas (opciones de pago y estado del QR durante el alta, y el callback de Entrax, que se autentica por firma HMAC) lo declaran con `[AllowAnonymous]`. |
+| Medium: SSRF en `AdminEntraxSignupsController.cs` | **Endurecida.** La petición va siempre a la dirección base fija del cliente de SignupAPI, y ahora la ruta se arma con el Id del pago leído de la base, no con el de la URL. |
