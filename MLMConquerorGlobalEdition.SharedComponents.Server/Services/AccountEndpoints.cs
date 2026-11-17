@@ -54,7 +54,7 @@ public static class AccountEndpoints
         // Solo se rompe la ambigüedad cuando el fallo NO habla de la cuenta: si la API no
         // respondió, callarlo dejaría al usuario esperando un correo que nadie llegó a pedir.
         return outcome.Success
-            ? Results.Redirect(routes.ForgotPasswordSentPage)
+            ? Results.LocalRedirect(routes.ForgotPasswordSentPage)
             : Failure(routes.ForgotPasswordPage, outcome.ErrorCodeOr("PASSWORD_RESET_FAILED"));
     }
 
@@ -100,7 +100,7 @@ public static class AccountEndpoints
             authenticated: false, ct);
 
         return outcome.Success
-            ? Results.Redirect(routes.ResetPasswordDonePage)
+            ? Results.LocalRedirect(routes.ResetPasswordDonePage)
             : Failure(returnUrl, outcome.ErrorCodeOr("PASSWORD_RESET_FAILED"));
     }
 
@@ -133,7 +133,7 @@ public static class AccountEndpoints
             new { Email = email }, authenticated: false, ct);
 
         return outcome.Success
-            ? Results.Redirect($"{routes.ProfilePage}?resent=1")
+            ? Results.LocalRedirect($"{routes.ProfilePage}?resent=1")
             : Failure(routes.ProfilePage, outcome.ErrorCodeOr("SEND_CONFIRMATION_FAILED"));
     }
 
@@ -228,7 +228,7 @@ public static class AccountEndpoints
             ? string.Empty
             : $"?target={Uri.EscapeDataString(outcome.Data.MaskedTarget)}";
 
-        return Results.Redirect($"{routes.PhoneVerifyPage}{target}");
+        return Results.LocalRedirect($"{routes.PhoneVerifyPage}{target}");
     }
 
     /// <summary>Confirma el teléfono con el código del SMS y el reto que viaja en cookie.</summary>
@@ -328,7 +328,7 @@ public static class AccountEndpoints
             new { Channel = form.Channel ?? string.Empty }, authenticated: true, ct);
 
         return outcome.Success
-            ? Results.Redirect(routes.SecurityPage)
+            ? Results.LocalRedirect(routes.SecurityPage)
             : Failure(routes.SecurityPage, outcome.ErrorCodeOr("CHANNEL_UNAVAILABLE"));
     }
 
@@ -468,7 +468,7 @@ public static class AccountEndpoints
     private static IResult Failure(string page, string errorCode)
     {
         var separator = page.Contains('?') ? '&' : '?';
-        return Results.Redirect($"{page}{separator}error={Uri.EscapeDataString(errorCode)}");
+        return Results.LocalRedirect($"{page}{separator}error={Uri.EscapeDataString(errorCode)}");
     }
 
     /// <summary>
