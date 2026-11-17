@@ -118,7 +118,8 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
     // hace que un primer inicio de sesión en un dispositivo nuevo ya aterrice en su idioma.
     FollowsMemberLanguage = true
 },
-challengeCookieNames);
+challengeCookieNames,
+builder.Configuration);
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();

@@ -120,7 +120,8 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
     // para cuentas con MemberProfile, y voltear el idioma del portal de administración a un
     // administrador que además sea miembro no es lo que este portal hacía.
 },
-challengeCookieNames);
+challengeCookieNames,
+builder.Configuration);
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();

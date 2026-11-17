@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Resources;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -114,7 +115,7 @@ public static class AuthEndpoints
                 return Failure(portal.LoginPage, InvalidCredentials);
 
             ChallengeCookies.Set(httpContext, challengeCookies.Enrollment, tokens.EnrollmentToken!);
-            return Results.Redirect(portal.EnrollAuthenticatorPage);
+            return Results.LocalRedirect(portal.EnrollAuthenticatorPage);
         }
 
         if (tokens.RequiresTwoFactor)
@@ -123,7 +124,7 @@ public static class AuthEndpoints
                 return Failure(portal.LoginPage, InvalidCredentials);
 
             ChallengeCookies.Set(httpContext, challengeCookies.Login, tokens.ChallengeToken!);
-            return Results.Redirect(
+            return Results.LocalRedirect(
                 portal.TwoFactorPage + TargetQuery(tokens.MaskedTarget, '?'));
         }
 
@@ -197,7 +198,7 @@ public static class AuthEndpoints
         if (!string.IsNullOrWhiteSpace(outcome.Data.ChallengeToken))
             ChallengeCookies.Set(httpContext, challengeCookies.Login, outcome.Data.ChallengeToken!);
 
-        return Results.Redirect(
+        return Results.LocalRedirect(
             $"{portal.TwoFactorPage}?resent=1{TargetQuery(outcome.Data.MaskedTarget, '&')}");
     }
 
@@ -296,7 +297,7 @@ public static class AuthEndpoints
 
         return reason == SessionExpiredCode
             ? Failure(portal.LoginPage, SessionExpiredCode)
-            : Results.Redirect(portal.LoginPage);
+            : Results.LocalRedirect(portal.LoginPage);
     }
 
     // ===========================================================================================
@@ -333,11 +334,13 @@ public static class AuthEndpoints
         string?             accessToken,
         string?             refreshToken)
     {
-        var handler = new JwtSecurityTokenHandler();
-        if (string.IsNullOrWhiteSpace(accessToken) || !handler.CanReadToken(accessToken))
+        // Firma, emisor, audiencia y vigencia: de estos claims sale la cookie de sesión, roles
+        // incluidos. Ver PortalAccessTokenValidator.
+        var validator = httpContext.RequestServices.GetRequiredService<PortalAccessTokenValidator>();
+        var jwt       = validator.Validate(accessToken);
+        if (jwt is null)
             return Failure(portal.LoginPage, InvalidCredentials);
 
-        var jwt    = handler.ReadJwtToken(accessToken);
         var claims = jwt.Claims.ToList();
         claims.Add(new Claim(SessionExpiry.AccessTokenClaim, accessToken!));
 
@@ -368,7 +371,7 @@ public static class AuthEndpoints
         if (portal.FollowsMemberLanguage)
             ApplyMemberLanguage(httpContext, jwt);
 
-        return Results.Redirect(portal.HomePage);
+        return Results.LocalRedirect(portal.HomePage);
     }
 
     /// <summary>
@@ -523,7 +526,7 @@ public static class AuthEndpoints
     private static IResult Failure(string page, string errorCode)
     {
         var separator = page.Contains('?') ? '&' : '?';
-        return Results.Redirect($"{page}{separator}error={Uri.EscapeDataString(errorCode)}");
+        return Results.LocalRedirect($"{page}{separator}error={Uri.EscapeDataString(errorCode)}");
     }
 
     // ===========================================================================================

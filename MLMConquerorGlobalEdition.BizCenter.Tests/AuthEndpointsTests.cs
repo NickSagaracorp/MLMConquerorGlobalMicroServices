@@ -423,6 +423,59 @@ public class AuthEndpointsTests
         FirmasDeSesion(contexto).Should().BeEmpty("no se firma sesión para quien no puede entrar");
     }
 
+    [Theory]
+    [InlineData("sin firma")]
+    [InlineData("otra llave")]
+    [InlineData("reto de 2FA")]
+    [InlineData("caducado")]
+    public async Task Login_NoAbreSesionConUnTokenQueNoFirmoNuestroEmisor(string caso)
+    {
+        var contexto = Contexto();
+        var gateway  = GatewayConToken(TokenInvalido(caso));
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
+            gateway, contexto, Admin, CookiesAdmin, Almacen(), default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().StartWith("/admin/login?error=");
+        FirmasDeSesion(contexto).Should().BeEmpty(
+            "los roles de la cookie salen del token: uno que no valida no abre sesión");
+    }
+
+    private static string TokenInvalido(string caso)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub,   "un-usuario"),
+            new(JwtRegisteredClaimNames.Email, "quien@ejemplo.com"),
+            new(ClaimTypes.Role, "SuperAdmin")
+        };
+
+        switch (caso)
+        {
+            case "sin firma":
+                return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+                    TokensDePortal.Emisor, TokensDePortal.Audiencia, claims,
+                    DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15)));
+            case "otra llave":
+                var otra = new Microsoft.IdentityModel.Tokens.RsaSecurityKey(
+                    System.Security.Cryptography.RSA.Create(2048));
+                return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+                    TokensDePortal.Emisor, TokensDePortal.Audiencia, claims,
+                    DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15),
+                    new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                        otra, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256)));
+            case "reto de 2FA":
+                claims.Add(new Claim(MLMConquerorGlobalEdition.SharedKernel.Configuration.ChallengeAudience.PurposeClaim, "login"));
+                return TokensDePortal.Firmar(claims, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15));
+            default:
+                return TokensDePortal.Firmar(
+                    claims, DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow.AddMinutes(-5));
+        }
+    }
+
     [Fact]
     public async Task Login_EnAdministracion_AdmiteAQuienSiTieneUnRolDeLaLista()
     {
@@ -720,6 +773,7 @@ public class AuthEndpointsTests
         var servicios = new ServiceCollection();
         servicios.AddLogging();
         servicios.AddSingleton<IAuthenticationService>(new AutenticacionFalsa());
+        servicios.ConValidador();
 
         var contexto = new DefaultHttpContext
         {
@@ -747,9 +801,8 @@ public class AuthEndpointsTests
             .Firmadas.ToArray();
 
     /// <summary>
-    /// Un JWT sin firmar con los claims que mira el manejador. No se valida en ningún sitio del
-    /// camino de entrada —la firma la comprobó la API al emitirlo—, así que basta con que se pueda
-    /// leer.
+    /// Un JWT firmado con la llave de <see cref="TokensDePortal"/> y los claims que mira el
+    /// manejador: el portal valida la firma antes de abrir sesión.
     /// </summary>
     private static string TokenCon(string rol, string? idiomaPreferido = null)
     {
@@ -763,12 +816,7 @@ public class AuthEndpointsTests
         if (idiomaPreferido is not null)
             claims.Add(new Claim("default_language", idiomaPreferido));
 
-        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            issuer:    "pruebas",
-            audience:  "pruebas",
-            claims:    claims,
-            notBefore: DateTime.UtcNow,
-            expires:   DateTime.UtcNow.AddMinutes(15)));
+        return TokensDePortal.Firmar(claims, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(15));
     }
 
     private sealed class HandlerFalso(Func<HttpRequestMessage, HttpResponseMessage> responder)

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MLMConquerorGlobalEdition.ClientCore;
@@ -30,10 +31,16 @@ public static class AuthSurfaceExtensions
     public static IServiceCollection AddAuthSurface(
         this IServiceCollection services,
         AuthPortalOptions       portal,
-        ChallengeCookieNames    challengeCookies)
+        ChallengeCookieNames    challengeCookies,
+        IConfiguration          configuration)
     {
         // Destinos, roles admitidos e idioma. Inmutables y de toda la aplicación.
         services.AddSingleton(portal);
+
+        // Valida el token de acceso antes de montar la cookie de sesión con sus claims. Se arma
+        // aquí y no al primer login para que un portal sin Jwt:PublicKeyBase64, Jwt:Issuer o
+        // Jwt:Audience no llegue a arrancar.
+        services.TryAddSingleton(PortalAccessTokenValidator.FromConfiguration(configuration));
 
         // Los tokens vigentes de cada sesión y quien los renueva. La puerta es quien SIEMBRA el
         // almacén al firmar, así que sin esto el refresh token que acaba de capturar no tendría

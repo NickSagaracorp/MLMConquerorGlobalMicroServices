@@ -943,6 +943,7 @@ public class RefrescoDeSesionTests
         var servicios = new ServiceCollection();
         servicios.AddLogging();
         servicios.AddSingleton<IAuthenticationService>(new AutenticacionFalsa());
+        servicios.ConValidador();
 
         return new DefaultHttpContext
         {
@@ -1027,15 +1028,13 @@ public class RefrescoDeSesionTests
     private static string TokenCaducado() => Token(DateTime.UtcNow.AddMinutes(-1));
 
     /// <summary>
-    /// Un JWT sin firmar. Nada del camino comprueba la firma —la comprobó la API al emitirlo—, así
-    /// que basta con que se pueda leer y con que su <c>exp</c> diga la verdad. Lleva un identificador
+    /// Un JWT firmado con la llave de <see cref="TokensDePortal"/>, porque el login valida la firma,
+    /// y con un <c>exp</c> que dice la verdad. Lleva un identificador
     /// al azar para que dos tokens seguidos no salgan idénticos y una prueba de rotación pueda
     /// distinguirlos.
     /// </summary>
     private static string Token(DateTime caduca) =>
-        new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            issuer:    "pruebas",
-            audience:  "pruebas",
+        TokensDePortal.Firmar(
             claims:    [
                 new Claim(JwtRegisteredClaimNames.Sub,   "un-usuario"),
                 new Claim(JwtRegisteredClaimNames.Email, "quien@ejemplo.com"),
@@ -1043,5 +1042,5 @@ public class RefrescoDeSesionTests
                 new Claim(ClaimTypes.Role, "Member")
             ],
             notBefore: DateTime.UtcNow.AddMinutes(-30),
-            expires:   caduca));
+            caduca:    caduca);
 }
