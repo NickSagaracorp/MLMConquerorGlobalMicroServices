@@ -105,9 +105,9 @@ builder.Services.AddScoped<IS3FileService, S3FileService>();
 builder.Services.AddScoped<ICertificatePdfFillerService>(sp =>
 {
     var env    = sp.GetRequiredService<IWebHostEnvironment>();
-    var logger = sp.GetRequiredService<ILogger<ITextCertificatePdfFillerService>>();
+    var logger = sp.GetRequiredService<ILogger<CertificatePdfFillerService>>();
     var folder = Path.Combine(env.ContentRootPath, "CertificateTemplates");
-    return new ITextCertificatePdfFillerService(folder, logger);
+    return new CertificatePdfFillerService(folder, logger);
 });
 
 // Certificate storage — local filesystem until S3 credentials are available.

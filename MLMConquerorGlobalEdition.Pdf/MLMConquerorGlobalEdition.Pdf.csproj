@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    PDF de los servicios: el recibo de pago de Billing y el certificado de rango de RankEngine.
+    Sustituye a iText7, que es AGPL (alerta de licencia de Aikido).
+
+    PDFsharp FIJADO EN 6.2.4, la ultima version MIT. La 6.5.0 (octubre de 2026) paso a
+    AGPL-3.0: subir de version reintroduce justo el problema que esto resuelve.
+
+    Las fuentes van incrustadas (Liberation, licencia SIL OFL 1.1, ver Fonts/LICENSE-LiberationFonts.txt)
+    para que el PDF salga igual en Windows y en Linux sin depender de las fuentes del servidor.
+    Liberation Serif y Sans tienen las mismas metricas que Times y Helvetica, que eran las del PDF
+    con iText, asi que el texto ocupa lo mismo.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\*.ttf" />
+  </ItemGroup>
+
+</Project>

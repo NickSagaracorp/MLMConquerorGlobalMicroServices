@@ -5,10 +5,10 @@ namespace MLMConquerorGlobalEdition.RankEngine.Tests.Services;
 
 /// <summary>
 /// Integration-style tests for the certificate PDF filler — these exercise the real
-/// iText pipeline against the real template PDFs in the RankEngine project, so they
-/// catch packaging issues (missing iText adapters) and template-layout regressions.
+/// PDFsharp pipeline against the real template PDFs in the RankEngine project, so they
+/// catch packaging issues (missing embedded fonts) and template-layout regressions.
 /// </summary>
-public class ITextCertificatePdfFillerServiceTests
+public class CertificatePdfFillerServiceTests
 {
     /// <summary>The real CertificateTemplates folder in the sibling RankEngine project.</summary>
     private static string TemplatesFolder()
@@ -16,8 +16,8 @@ public class ITextCertificatePdfFillerServiceTests
             AppContext.BaseDirectory, "..", "..", "..", "..",
             "MLMConquerorGlobalEdition.RankEngine", "CertificateTemplates"));
 
-    private static ITextCertificatePdfFillerService Build()
-        => new(TemplatesFolder(), new Mock<ILogger<ITextCertificatePdfFillerService>>().Object);
+    private static CertificatePdfFillerService Build()
+        => new(TemplatesFolder(), new Mock<ILogger<CertificatePdfFillerService>>().Object);
 
     [Fact]
     public async Task FillAsync_WithRealSilverTemplate_ProducesValidPdf()

@@ -1,5 +1,5 @@
 // One-off sample generator for the rank-certificate PDF filler.
-// Renders a Silver certificate using the real ITextCertificatePdfFillerService so you
+// Renders a Silver certificate using the real CertificatePdfFillerService so you
 // can eyeball the canvas-overlay output for any recipient name (including long names
 // that exercise the adaptive font-size path).
 //
@@ -28,9 +28,9 @@ var outputFolder = Path.Combine(repoRoot,
 
 Directory.CreateDirectory(outputFolder);
 
-var filler = new ITextCertificatePdfFillerService(
+var filler = new CertificatePdfFillerService(
     templatesFolder,
-    NullLogger<ITextCertificatePdfFillerService>.Instance);
+    NullLogger<CertificatePdfFillerService>.Instance);
 
 var data = new CertificateTemplateData(
     FullName:   fullName,

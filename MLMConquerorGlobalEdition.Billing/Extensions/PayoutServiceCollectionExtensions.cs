@@ -32,7 +32,7 @@ public static class PayoutServiceCollectionExtensions
                               MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>();
         services.AddScoped<IPayoutOrchestrator, PayoutOrchestrator>();
 
-        services.AddSingleton<IReceiptPdfRenderer, ITextReceiptPdfRenderer>();
+        services.AddSingleton<IReceiptPdfRenderer, ReceiptPdfRenderer>();
         services.AddScoped<IPayoutReceiptService, PayoutReceiptService>();
         services.AddScoped<IReceiptStorage>(sp =>
         {

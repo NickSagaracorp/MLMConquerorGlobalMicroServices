@@ -30,10 +30,24 @@ public class ReceiptRendererStorageTests
     [Fact]
     public void Renderer_ProducesNonEmptyPdfBytes()
     {
-        var bytes = new ITextReceiptPdfRenderer().Render(SampleData());
+        var bytes = new ReceiptPdfRenderer().Render(SampleData());
         bytes.Should().NotBeNullOrEmpty();
         // PDF magic header "%PDF"
         System.Text.Encoding.ASCII.GetString(bytes, 0, 4).Should().Be("%PDF");
+    }
+
+    [Fact]
+    public void Renderer_ContinuesTheEarningsTableOnNewPages()
+    {
+        var many = Enumerable.Range(1, 120)
+            .Select(i => new ReceiptEarningLine($"CE-{i}", 1m))
+            .ToList();
+
+        var bytes = new ReceiptPdfRenderer().Render(SampleData() with { Earnings = many });
+
+        using var pdf = PdfSharp.Pdf.IO.PdfReader.Open(
+            new MemoryStream(bytes), PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        pdf.PageCount.Should().BeGreaterThan(1, "120 filas no caben en una carta");
     }
 
     [Fact]

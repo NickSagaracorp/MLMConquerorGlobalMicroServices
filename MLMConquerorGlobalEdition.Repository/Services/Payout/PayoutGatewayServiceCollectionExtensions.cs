@@ -15,7 +15,7 @@ public static class PayoutGatewayServiceCollectionExtensions
     /// Vive en Repository, no en Billing, porque BizCenter también lo necesita: cuando un
     /// ambassador elige o cambia su método de cobro hay que darlo de alta en el proveedor.
     /// Si esto viviera en Billing, BizCenter —el API que usa el ambassador— tendría que
-    /// referenciar al proyecto de facturación y arrastrar Stripe e iText que nunca usa.
+    /// referenciar al proyecto de facturación y arrastrar Stripe ni la libreria de PDF, que nunca usa.
     ///
     /// Billing y AdminAPI llaman a AddPayoutServices, que además suma el orquestador, los
     /// recibos, la exportación de lotes y la reconciliación.

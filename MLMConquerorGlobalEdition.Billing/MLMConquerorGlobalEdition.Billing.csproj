@@ -4,6 +4,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Domain\MLMConquerorGlobalEdition.Domain.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel.Server\MLMConquerorGlobalEdition.SharedKernel.Server.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Pdf\MLMConquerorGlobalEdition.Pdf.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Notifications\MLMConquerorGlobalEdition.Notifications.csproj" />
   </ItemGroup>
@@ -20,8 +21,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
     <PackageReference Include="Stripe.net" Version="47.3.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
-    <PackageReference Include="itext7" Version="9.1.0" />
-    <PackageReference Include="itext7.bouncy-castle-adapter" Version="9.1.0" />
   </ItemGroup>
 
   <PropertyGroup>
