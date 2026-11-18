@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using System.Security.Claims;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -17,7 +18,8 @@ public class CurrentUserService : ICurrentUserService
     private ClaimsPrincipal? User => _httpContextAccessor.HttpContext?.User;
 
     public string UserId   => User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-    public string MemberId => User?.FindFirstValue("member_id") ?? string.Empty;
+    // JwtService emite "memberId"; aquí se leía "member_id" y salía siempre vacío.
+    public string MemberId => CallerIdentity.MemberIdOf(User) ?? string.Empty;
     public string Email    => User?.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
     public bool   IsAdmin  => User?.IsInRole("Admin") ?? false;
 

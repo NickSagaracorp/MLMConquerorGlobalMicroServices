@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -57,9 +58,12 @@ public class PersistingServerAuthStateProvider : AuthenticationStateProvider, IH
         {
             _state.PersistAsJson("UserInfo", new UserInfo
             {
-                UserId   = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-                Email    = user.FindFirstValue(ClaimTypes.Email)          ?? string.Empty,
-                MemberId = user.FindFirstValue("member_id")               ?? string.Empty,
+                // La cookie lleva los claims tal como los escribe el emisor ("sub", "email",
+                // "memberId"); antes se buscaban los nombres largos de .NET y "member_id", y el
+                // cliente WASM recibía los tres vacíos.
+                UserId   = CallerIdentity.UserIdOf(user)   ?? string.Empty,
+                Email    = user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirstValue("email") ?? string.Empty,
+                MemberId = CallerIdentity.MemberIdOf(user) ?? string.Empty,
                 Roles    = user.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToArray()
             });
         }

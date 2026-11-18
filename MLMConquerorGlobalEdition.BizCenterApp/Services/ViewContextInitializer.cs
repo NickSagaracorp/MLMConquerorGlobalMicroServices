@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using System.IdentityModel.Tokens.Jwt;
 using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 using System.Security.Claims;
@@ -35,8 +36,11 @@ public class ViewContextInitializer
 
         var claims = check.Token!.Claims.ToList();
 
-        var userId   = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value ?? string.Empty;
-        var memberId = claims.FirstOrDefault(c => c.Type == "member_id")?.Value ?? string.Empty;
+        // Los nombres de los claims salen de CallerIdentity, que es quien sabe cómo los escribe el
+        // emisor: el miembro va en "memberId" y aquí se buscaba "member_id", que llegaba siempre vacío.
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+        var userId    = CallerIdentity.UserIdOf(principal) ?? string.Empty;
+        var memberId  = CallerIdentity.MemberIdOf(principal) ?? string.Empty;
         var roles    = claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").Select(c => c.Value);
 
         // BizCenter: member always views their own data

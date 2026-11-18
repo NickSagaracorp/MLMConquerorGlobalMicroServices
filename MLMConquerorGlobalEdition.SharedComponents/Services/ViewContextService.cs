@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MLMConquerorGlobalEdition.SharedComponents.Constants;
 using MLMConquerorGlobalEdition.SharedKernel.Constants;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
@@ -53,10 +54,12 @@ public class ViewContextService : IViewContextService
         var user = _seed.GetUser();
         if (user?.Identity?.IsAuthenticated != true) return;
 
-        _viewerUserId    = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
-        _viewingMemberId = user.FindFirst("memberId")?.Value ?? user.FindFirst("member_id")?.Value ?? string.Empty;
+        // Los claims llegan tal como los escribe el emisor ("sub", "email", "memberId") o con los
+        // nombres largos de .NET, según el anfitrión; CallerIdentity resuelve los dos.
+        _viewerUserId    = CallerIdentity.UserIdOf(user)   ?? string.Empty;
+        _viewingMemberId = CallerIdentity.MemberIdOf(user) ?? string.Empty;
 
-        _memberEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        _memberEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? string.Empty;
 
         var given  = user.FindFirst(ClaimTypes.GivenName)?.Value ?? user.FindFirst("given_name")?.Value ?? string.Empty;
         var family = user.FindFirst(ClaimTypes.Surname)?.Value   ?? user.FindFirst("family_name")?.Value ?? string.Empty;

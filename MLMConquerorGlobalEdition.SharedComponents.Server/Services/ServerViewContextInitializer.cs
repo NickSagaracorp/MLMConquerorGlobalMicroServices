@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
@@ -37,8 +38,10 @@ public class ServerViewContextInitializer
         var user = _http.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated != true) return;
 
-        var userId   = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        var memberId = user.FindFirstValue("member_id")               ?? string.Empty;
+        // La cookie lleva los claims tal como los escribe el emisor ("sub", "memberId"); los nombres
+        // los resuelve CallerIdentity. Antes se buscaba "member_id" y salía siempre vacío.
+        var userId   = CallerIdentity.UserIdOf(user)   ?? string.Empty;
+        var memberId = CallerIdentity.MemberIdOf(user) ?? string.Empty;
         var roles    = user.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
 
         _viewContext.SetContext(
