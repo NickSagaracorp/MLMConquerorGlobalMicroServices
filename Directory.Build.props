@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Cada proyecto guarda su packages.lock.json con las versiones exactas de todos sus paquetes,
+    tambien los transitivos. Asi el escaner de dependencias (Aikido) ve lo que realmente se instala
+    en vez de adivinarlo, y una restauracion no puede traer en silencio una version distinta.
+    Al cambiar un paquete, el lock se actualiza solo con dotnet restore; hay que subirlo con el cambio.
+  -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>
