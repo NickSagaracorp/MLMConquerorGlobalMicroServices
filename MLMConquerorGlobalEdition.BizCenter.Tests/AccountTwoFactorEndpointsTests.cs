@@ -274,6 +274,7 @@ public class AccountTwoFactorEndpointsTests
                 new FabricaDeClientes(new HandlerFalso(
                     _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
                 NullLogger<AuthTokenRefresher>.Instance),
+            TokensDePortal.Validador,
             NullLogger<PortalSessionTokens>.Instance);
 
     /// <summary>

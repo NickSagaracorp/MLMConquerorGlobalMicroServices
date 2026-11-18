@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 using System.Security.Claims;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
@@ -14,11 +15,14 @@ public class AdminViewContextInitializer
 {
     private readonly AdminJwtAuthStateProvider _authProvider;
     private readonly ViewContextService        _viewContext;
+    private readonly ClientAccessTokenValidator _validator;
 
-    public AdminViewContextInitializer(AdminJwtAuthStateProvider authProvider, ViewContextService viewContext)
+    public AdminViewContextInitializer(
+        AdminJwtAuthStateProvider authProvider, ViewContextService viewContext, ClientAccessTokenValidator validator)
     {
         _authProvider = authProvider;
         _viewContext  = viewContext;
+        _validator    = validator;
     }
 
     /// <summary>
@@ -30,11 +34,11 @@ public class AdminViewContextInitializer
         var token = await _authProvider.GetEffectiveTokenAsync();
         if (string.IsNullOrEmpty(token)) return;
 
-        var handler = new JwtSecurityTokenHandler();
-        if (!handler.CanReadToken(token)) return;
+        // Solo un token con nuestra firma decide qué miembro y qué roles ve la interfaz.
+        var check = await _validator.CheckAsync(token);
+        if (!check.IsValid) return;
 
-        var jwt    = handler.ReadJwtToken(token);
-        var claims = jwt.Claims.ToList();
+        var claims = check.Token!.Claims.ToList();
 
         var userId          = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value ?? string.Empty;
         var memberId        = claims.FirstOrDefault(c => c.Type == "member_id")?.Value ?? string.Empty;
@@ -47,9 +51,10 @@ public class AdminViewContextInitializer
             // When impersonating, viewerUserId should be the original admin, not the impersonated user
             var adminToken = await _authProvider.GetAdminTokenAsync();
             var adminUserId = userId; // fallback
-            if (!string.IsNullOrEmpty(adminToken) && handler.CanReadToken(adminToken))
+            var adminCheck = await _validator.CheckAsync(adminToken);
+            if (adminCheck.IsValid)
             {
-                var adminJwt = handler.ReadJwtToken(adminToken);
+                var adminJwt = adminCheck.Token!;
                 adminUserId  = adminJwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value ?? userId;
                 // For permissions, use the admin's roles
                 var adminRoles = adminJwt.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").Select(c => c.Value).ToList();

@@ -1,6 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 
 namespace MLMConquerorGlobalEdition.BizCenterApp.Services;
 
@@ -8,12 +8,18 @@ namespace MLMConquerorGlobalEdition.BizCenterApp.Services;
 /// Reads the stored JWT from SecureStorage and builds the ClaimsPrincipal.
 /// Called by Blazor's CascadingAuthenticationState on every render cycle.
 /// </summary>
+/// <remarks>
+/// La identidad solo se arma con un token que valida <see cref="ClientAccessTokenValidator"/>:
+/// firma de nuestro emisor, audiencia y vigencia. Antes se leía sin comprobar la firma.
+/// </remarks>
 public class JwtAuthStateProvider : AuthenticationStateProvider
 {
     private const string AccessTokenKey  = "access_token";
     private const string RefreshTokenKey = "refresh_token";
 
-    private readonly JwtSecurityTokenHandler _handler = new();
+    private readonly ClientAccessTokenValidator _validator;
+
+    public JwtAuthStateProvider(ClientAccessTokenValidator validator) => _validator = validator;
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -23,19 +29,19 @@ public class JwtAuthStateProvider : AuthenticationStateProvider
             if (string.IsNullOrWhiteSpace(token))
                 return Anonymous();
 
-            if (!_handler.CanReadToken(token))
-                return Anonymous();
-
-            var jwt = _handler.ReadJwtToken(token);
+            var check = await _validator.CheckAsync(token);
 
             // Reject expired tokens
-            if (jwt.ValidTo < DateTime.UtcNow)
+            if (check.Status == AccessTokenStatus.Expired)
             {
                 await ClearTokens();
                 return Anonymous();
             }
 
-            var identity = new ClaimsIdentity(jwt.Claims, "jwt");
+            if (!check.IsValid)
+                return Anonymous();
+
+            var identity = new ClaimsIdentity(check.Token!.Claims, "jwt");
             var user     = new ClaimsPrincipal(identity);
             return new AuthenticationState(user);
         }

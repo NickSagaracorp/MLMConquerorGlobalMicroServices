@@ -1,6 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 
 namespace MLMConquerorGlobalEdition.AdminApp.Services;
 
@@ -8,13 +8,19 @@ namespace MLMConquerorGlobalEdition.AdminApp.Services;
 /// Reads the stored admin JWT from SecureStorage.
 /// Manages both the normal admin token and the short-lived impersonation token.
 /// </summary>
+/// <remarks>
+/// Los dos tokens pasan por <see cref="ClientAccessTokenValidator"/> (firma de nuestro emisor,
+/// audiencia y vigencia) antes de armar la identidad. Antes se leían sin comprobar la firma.
+/// </remarks>
 public class AdminJwtAuthStateProvider : AuthenticationStateProvider
 {
     private const string AdminTokenKey         = "admin_access_token";
     private const string AdminRefreshTokenKey  = "admin_refresh_token";
     private const string ImpersonationTokenKey = "impersonation_token";
 
-    private readonly JwtSecurityTokenHandler _handler = new();
+    private readonly ClientAccessTokenValidator _validator;
+
+    public AdminJwtAuthStateProvider(ClientAccessTokenValidator validator) => _validator = validator;
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -22,30 +28,34 @@ public class AdminJwtAuthStateProvider : AuthenticationStateProvider
         {
             // If actively impersonating, return impersonation identity
             var impToken = await SecureStorage.GetAsync(ImpersonationTokenKey);
-            if (!string.IsNullOrEmpty(impToken) && _handler.CanReadToken(impToken))
+            if (!string.IsNullOrEmpty(impToken))
             {
-                var impJwt = _handler.ReadJwtToken(impToken);
-                if (impJwt.ValidTo > DateTime.UtcNow)
+                var imp = await _validator.CheckAsync(impToken);
+                if (imp.IsValid)
                 {
-                    var impId = new ClaimsIdentity(impJwt.Claims, "jwt_impersonation");
+                    var impId = new ClaimsIdentity(imp.Token!.Claims, "jwt_impersonation");
                     return new AuthenticationState(new ClaimsPrincipal(impId));
                 }
+                // Caducado o sin nuestra firma: fuera, y se sigue con la identidad del admin.
                 SecureStorage.Remove(ImpersonationTokenKey);
             }
 
             // Normal admin token
             var token = await SecureStorage.GetAsync(AdminTokenKey);
-            if (string.IsNullOrWhiteSpace(token) || !_handler.CanReadToken(token))
+            if (string.IsNullOrWhiteSpace(token))
                 return Anonymous();
 
-            var jwt = _handler.ReadJwtToken(token);
-            if (jwt.ValidTo < DateTime.UtcNow)
+            var check = await _validator.CheckAsync(token);
+            if (check.Status == AccessTokenStatus.Expired)
             {
                 await ClearAdminTokens();
                 return Anonymous();
             }
 
-            var identity = new ClaimsIdentity(jwt.Claims, "jwt");
+            if (!check.IsValid)
+                return Anonymous();
+
+            var identity = new ClaimsIdentity(check.Token!.Claims, "jwt");
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
         catch

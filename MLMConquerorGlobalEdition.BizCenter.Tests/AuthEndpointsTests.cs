@@ -741,6 +741,7 @@ public class AuthEndpointsTests
                 new FabricaDeClientes(new HandlerFalso(
                     _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
                 NullLogger<AuthTokenRefresher>.Instance),
+            TokensDePortal.Validador,
             NullLogger<PortalSessionTokens>.Instance);
 
     /// <summary>Un gateway cuyo cliente HTTP lanza: es SignupAPI apagada, o la red caída.</summary>

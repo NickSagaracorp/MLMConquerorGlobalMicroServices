@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -22,26 +23,21 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 /// </remarks>
 public sealed class PortalAccessTokenValidator
 {
-    private readonly TokenValidationParameters _parameters;
+    /// <summary>
+    /// Treinta segundos: el portal y SignupAPI son máquinas distintas y sus relojes no coinciden al
+    /// milisegundo. Las API usan cero porque el token lo valida el mismo reloj durante toda su vida.
+    /// </summary>
+    private static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(30);
+
+    private readonly SecurityKey[] _keys;
+    private readonly string        _issuer;
+    private readonly string        _audience;
 
     public PortalAccessTokenValidator(SecurityKey signingKey, string issuer, string audience)
     {
-        _parameters = new TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = issuer,
-            ValidAudience            = audience,
-            IssuerSigningKey         = signingKey,
-            ValidAlgorithms          = [SecurityAlgorithms.RsaSha256],
-
-            // Treinta segundos: el portal y SignupAPI son máquinas distintas y sus relojes no
-            // coinciden al milisegundo. Las API usan cero porque el token lo valida el mismo
-            // reloj durante toda su vida; aquí se valida una vez, recién emitido.
-            ClockSkew = TimeSpan.FromSeconds(30)
-        };
+        _keys     = [signingKey];
+        _issuer   = issuer;
+        _audience = audience;
     }
 
     /// <summary>
@@ -65,19 +61,28 @@ public sealed class PortalAccessTokenValidator
     /// </summary>
     public JwtSecurityToken? Validate(string? token)
     {
-        if (string.IsNullOrWhiteSpace(token)) return null;
+        var check = SignedAccessToken.CheckAccess(token, _keys, _issuer, _audience, ClockSkew);
+        return check.IsValid ? check.Token : null;
+    }
 
-        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
-        try
-        {
-            handler.ValidateToken(token, _parameters, out var validated);
-            var jwt = validated as JwtSecurityToken;
-            return jwt is null || ChallengeAudience.CarriesPurpose(jwt.Claims) ? null : jwt;
-        }
-        catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
-        {
-            return null;
-        }
+    /// <summary>
+    /// ¿Hay que dar este token por caducado? Sí si no es válido —ilegible, sin nuestra firma o ya
+    /// vencido— o si vence dentro de <paramref name="earlyBy"/>.
+    /// </summary>
+    public bool IsExpiredOrInvalid(string? token, TimeSpan earlyBy)
+    {
+        var jwt = Validate(token);
+        return jwt is null || jwt.ValidTo <= DateTime.UtcNow.Add(earlyBy);
+    }
+
+    /// <summary>
+    /// El reto de 2FA, si lo firmó nuestro emisor para la audiencia de retos; null si no. No mira
+    /// la vigencia: solo sirve para decidir qué texto enseña la pantalla del código.
+    /// </summary>
+    public JwtSecurityToken? ValidateChallengeForDisplay(string? token)
+    {
+        var check = SignedAccessToken.CheckChallenge(token, _keys, _issuer, _audience);
+        return check.IsValid ? check.Token : null;
     }
 
     private static string Required(IConfiguration configuration, string key)

@@ -22,9 +22,13 @@ internal static class TokensDePortal
     public static readonly PortalAccessTokenValidator Validador = new(Llave, Emisor, Audiencia);
 
     public static string Firmar(IEnumerable<Claim> claims, DateTime notBefore, DateTime caduca) =>
+        FirmarPara(Audiencia, claims, notBefore, caduca);
+
+    /// <summary>Firmado con la llave de pruebas para otra audiencia (por ejemplo, la de los retos).</summary>
+    public static string FirmarPara(string audiencia, IEnumerable<Claim> claims, DateTime notBefore, DateTime caduca) =>
         new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
             issuer:             Emisor,
-            audience:           Audiencia,
+            audience:           audiencia,
             claims:             claims,
             notBefore:          notBefore,
             expires:            caduca,

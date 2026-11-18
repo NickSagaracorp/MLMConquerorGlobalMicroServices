@@ -190,6 +190,7 @@ public class SessionExpiredRedirectTests
     {
         var servicios = new ServiceCollection();
         servicios.AddLogging();
+        servicios.ConValidador();
         servicios.AddPortalApiAuthHandler(LoginAdmin, SalidaDelPortal);
 
         using var raiz     = servicios.BuildServiceProvider();
@@ -478,6 +479,7 @@ public class SessionExpiredRedirectTests
             servicios.AddLogging();
 
             // El registro REAL del portal: si cambia, esta prueba lo ejerce.
+            servicios.ConValidador();
             servicios.AddPortalApiAuthHandler(loginPage, SalidaDelPortal);
 
             // Uno por ámbito, que es lo que hace un portal de verdad.
@@ -722,6 +724,7 @@ public class SessionExpiredRedirectTests
                 new FabricaDeClientes(new ApiFalsa(
                     _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
                 NullLogger<AuthTokenRefresher>.Instance),
+            TokensDePortal.Validador,
             NullLogger<PortalSessionTokens>.Instance);
 
     private static AuthApiGateway GatewayCaido() =>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.BizCenterApp.Services;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 
@@ -30,6 +31,15 @@ public static class MauiProgram
         builder.Services.AddScoped<JwtAuthStateProvider>();
         builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
             sp.GetRequiredService<JwtAuthStateProvider>());
+
+        // La identidad de la interfaz solo se arma con un token cuya firma se comprobó contra las
+        // llaves públicas que publica SignupAPI (/.well-known/jwks.json). Se guardan en Preferences
+        // para poder validar al arrancar sin red; una llave nueva se descarga sola.
+        builder.Services.AddAccessTokenValidation(
+            builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005",
+            new DelegateJwksCache(
+                () => Preferences.Default.Get<string?>("jwks", null),
+                json => Preferences.Default.Set("jwks", json)));
 
         // Shared components (IViewContextService, IThemeService)
         builder.Services.AddSharedComponents();

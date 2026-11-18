@@ -781,6 +781,7 @@ public class RefrescoDeSesionTests
 
     private static PortalSessionTokens Almacen(ApiFalsa api) =>
         new(new AuthTokenRefresher(new FabricaDeClientes(api), NullLogger<AuthTokenRefresher>.Instance),
+            TokensDePortal.Validador,
             NullLogger<PortalSessionTokens>.Instance);
 
     private sealed class FabricaDeClientes(HttpMessageHandler handler) : IHttpClientFactory
@@ -858,6 +859,7 @@ public class RefrescoDeSesionTests
 
             var servicios = new ServiceCollection();
             servicios.AddLogging();
+            servicios.ConValidador();
             servicios.AddPortalApiAuthHandler(LoginBizCenter, SalidaDelPortal);
             servicios.AddScoped<NavigationManager>(_ => new NavegadorFalso());
             servicios.AddScoped<AuthenticationStateProvider>(_ => new EstadoDelCircuito());

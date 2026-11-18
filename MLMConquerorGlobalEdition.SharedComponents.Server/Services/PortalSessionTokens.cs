@@ -75,6 +75,7 @@ public sealed class PortalSessionTokens
     private static readonly TimeSpan PruneInterval = TimeSpan.FromMinutes(5);
 
     private readonly AuthTokenRefresher              _refresher;
+    private readonly PortalAccessTokenValidator      _validator;
     private readonly ILogger<PortalSessionTokens>    _logger;
     private readonly TimeSpan                        _idleWindow;
 
@@ -85,10 +86,12 @@ public sealed class PortalSessionTokens
 
     public PortalSessionTokens(
         AuthTokenRefresher           refresher,
+        PortalAccessTokenValidator   validator,
         ILogger<PortalSessionTokens> logger,
         TimeSpan?                    idleWindow = null)
     {
         _refresher  = refresher;
+        _validator  = validator;
         _logger     = logger;
         _idleWindow = idleWindow ?? DefaultIdleWindow;
     }
@@ -200,7 +203,7 @@ public sealed class PortalSessionTokens
         var current = Current(user);
         if (current is null) return null;
 
-        if (!SessionExpiry.IsExpired(current.AccessToken)) return current;
+        if (!SessionExpiry.IsExpired(current.AccessToken, _validator)) return current;
 
         // Caducado y sin con qué renovar: esta sesión no tiene salvación. Es el caso de las cookies
         // firmadas antes de que existiera la renovación, y también el de un token de refresco que ya
@@ -223,7 +226,7 @@ public sealed class PortalSessionTokens
             // aquí ya hay una pareja buena: usarla es lo correcto, y lanzar otra renovación sería
             // gastar el refresh token que aquella acaba de recibir.
             var vigentes = session.Tokens;
-            if (!SessionExpiry.IsExpired(vigentes.AccessToken))
+            if (!SessionExpiry.IsExpired(vigentes.AccessToken, _validator))
                 return vigentes;
 
             var renovados = await _refresher.RefreshAsync(vigentes.RefreshToken, ct);

@@ -332,7 +332,8 @@
       "mlmconquerorglobaledition.clientcore": {
         "type": "Project",
         "dependencies": {
-          "MLMConquerorGlobalEdition.SharedKernel": "[1.0.0, )"
+          "MLMConquerorGlobalEdition.SharedKernel": "[1.0.0, )",
+          "System.IdentityModel.Tokens.Jwt": "[8.9.0, )"
         }
       },
       "mlmconquerorglobaledition.domain": {

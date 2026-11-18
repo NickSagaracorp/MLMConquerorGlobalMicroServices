@@ -138,6 +138,8 @@ public static class PortalServerAuthExtensions
         // parámetro con valor por defecto es apoyarse en un detalle suyo sin necesidad.
         services.TryAddSingleton(sp => new PortalSessionTokens(
             sp.GetRequiredService<AuthTokenRefresher>(),
+            // Lo registra AddAuthSurface con la llave pública de Jwt:PublicKeyBase64.
+            sp.GetRequiredService<PortalAccessTokenValidator>(),
             sp.GetRequiredService<ILogger<PortalSessionTokens>>()));
 
         return services;

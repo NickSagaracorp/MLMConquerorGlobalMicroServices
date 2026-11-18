@@ -1365,7 +1365,8 @@
         "dependencies": {
           "MLMConquerorGlobalEdition.SharedKernel": "[1.0.0, )",
           "Microsoft.Extensions.Http": "[10.0.2, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )"
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )",
+          "System.IdentityModel.Tokens.Jwt": "[8.9.0, )"
         }
       },
       "mlmconquerorglobaledition.domain": {

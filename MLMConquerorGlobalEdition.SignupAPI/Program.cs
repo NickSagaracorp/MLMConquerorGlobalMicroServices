@@ -412,6 +412,16 @@ app.UseImpersonationReadOnly();
 
 app.MapControllers();
 
+// Llave PÚBLICA de firma en formato JWKS, para que las aplicaciones MAUI validen la firma del token
+// antes de armar la identidad con sus claims, sin llevar la llave incrustada (una rotación no exige
+// publicar una versión nueva en las tiendas). No es un secreto; se arma una vez, al arrancar.
+var jwksJson = MLMConquerorGlobalEdition.Authn.Services.JwksDocument.FromPublicKey(publicKeyBase64);
+app.MapGet(MLMConquerorGlobalEdition.Authn.Services.JwksDocument.Route, (HttpContext http) =>
+{
+    http.Response.Headers.CacheControl = "public, max-age=3600";
+    return Results.Content(jwksJson, "application/json");
+}).AllowAnonymous();
+
 // HangFire
 app.UseHangfireDashboard("/hangfire");
 RecurringJob.AddOrUpdate<ProcessScheduledCancellationsJob>(

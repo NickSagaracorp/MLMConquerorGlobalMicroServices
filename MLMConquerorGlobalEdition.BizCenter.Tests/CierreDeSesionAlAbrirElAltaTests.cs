@@ -506,6 +506,7 @@ public class CierreDeSesionAlAbrirElAltaTests
                 new AuthTokenRefresher(
                     new FabricaDeClientes(new ApiCaida()),
                     NullLogger<AuthTokenRefresher>.Instance),
+                TokensDePortal.Validador,
                 NullLogger<PortalSessionTokens>.Instance);
 
             // La sesión de la persona anterior, sembrada como la deja la puerta al firmar.
@@ -649,17 +650,15 @@ public class CierreDeSesionAlAbrirElAltaTests
     private static string TokenVivo() => Token(DateTime.UtcNow.AddMinutes(15));
 
     /// <summary>
-    /// Un JWT sin firmar. Nada de este camino comprueba la firma —la comprobó la API al emitirlo—,
-    /// así que basta con que se pueda leer y con que su <c>exp</c> diga la verdad.
+    /// Un JWT firmado con la llave de <see cref="TokensDePortal"/>: el almacén de sesión del portal
+    /// valida la firma antes de dar un token por vigente.
     /// </summary>
     private static string Token(DateTime caduca) =>
-        new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            issuer:    "pruebas",
-            audience:  "pruebas",
-            claims:    [
+        TokensDePortal.Firmar(
+            [
                 new Claim(JwtRegisteredClaimNames.Sub,   "la-persona-anterior"),
                 new Claim(JwtRegisteredClaimNames.Email, "la-persona-anterior@ejemplo.com")
             ],
             notBefore: DateTime.UtcNow.AddMinutes(-30),
-            expires:   caduca));
+            caduca:    caduca);
 }

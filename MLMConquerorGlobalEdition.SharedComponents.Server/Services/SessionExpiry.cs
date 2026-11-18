@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -78,29 +77,21 @@ public static class SessionExpiry
     private static readonly TimeSpan Skew = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// ¿Este JWT ya no vale? Un token ilegible cuenta como caducado: si no se puede leer, tampoco se
-    /// puede confiar en él.
+    /// ¿Este JWT ya no vale? Cuenta como caducado todo token que no pase la validación —ilegible,
+    /// sin la firma de nuestro emisor, de otra audiencia o ya vencido—: si no se puede confiar en
+    /// él, se renueva o se cierra la sesión, nunca se usa.
     /// </summary>
     /// <remarks>
+    /// Antes solo se LEÍA el <c>exp</c> sin comprobar la firma. Ahora pasa por el mismo validador
+    /// que abre la sesión (<see cref="PortalAccessTokenValidator"/>), así que un token renovado que
+    /// no firmó nuestro emisor tampoco entra por la renovación.
+    ///
     /// <c>UtcNow</c> y no <c>Now</c>: el <c>exp</c> de un JWT es una fecha de protocolo, definida en
     /// UTC por el RFC, y compararla contra la hora del servidor daría por caducada media jornada de
     /// sesiones en cuanto el servidor no esté en UTC.
     /// </remarks>
-    public static bool IsExpired(string? token)
-    {
-        if (string.IsNullOrWhiteSpace(token)) return true;
-
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (!handler.CanReadToken(token)) return true;
-            return handler.ReadJwtToken(token).ValidTo <= DateTime.UtcNow.Add(Skew);
-        }
-        catch
-        {
-            return true;
-        }
-    }
+    public static bool IsExpired(string? token, PortalAccessTokenValidator validator) =>
+        validator.IsExpiredOrInvalid(token, Skew);
 
     /// <summary>
     /// La URL de la pantalla de login con el aviso puesto.

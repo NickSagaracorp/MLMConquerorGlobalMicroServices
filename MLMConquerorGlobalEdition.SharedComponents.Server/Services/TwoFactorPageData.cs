@@ -27,17 +27,20 @@ public sealed class TwoFactorPageData
     private readonly IHttpClientFactory   _httpClientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ChallengeCookieNames _challengeCookies;
+    private readonly PortalAccessTokenValidator _tokens;
     private readonly ILogger<TwoFactorPageData> _logger;
 
     public TwoFactorPageData(
         IHttpClientFactory   httpClientFactory,
         IHttpContextAccessor httpContextAccessor,
         ChallengeCookieNames challengeCookies,
+        PortalAccessTokenValidator tokens,
         ILogger<TwoFactorPageData> logger)
     {
         _httpClientFactory   = httpClientFactory;
         _httpContextAccessor = httpContextAccessor;
         _challengeCookies    = challengeCookies;
+        _tokens              = tokens;
         _logger              = logger;
     }
 
@@ -51,8 +54,10 @@ public sealed class TwoFactorPageData
     /// que viajase en la query se habría perdido justo ahí. Con el canal perdido reaparecería el
     /// botón de reenviar en una pantalla de autenticador, que es exactamente lo que no debe pasar.
     ///
-    /// El token NO se valida aquí, solo se lee: esto decide qué frase se enseña, no qué se deja
-    /// hacer. La firma la comprueba la API cuando el reto se canjea, que es donde importa.
+    /// Se comprueba la firma, el emisor y la audiencia de retos antes de leer nada, para que la
+    /// pantalla no enseñe un canal o un correo que no salió de nuestra API. La vigencia NO se mira:
+    /// un reto caducado tiene que poder pintar su pantalla para ofrecer el reenvío, y canjearlo
+    /// sigue siendo cosa de la API, que lo valida entero.
     /// </remarks>
     public ChallengeDisplay? ReadChallenge()
     {
@@ -60,13 +65,12 @@ public sealed class TwoFactorPageData
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
-        var handler = new JwtSecurityTokenHandler();
-        if (!handler.CanReadToken(token))
-            return null;
-
         try
         {
-            var jwt     = handler.ReadJwtToken(token);
+            var jwt = _tokens.ValidateChallengeForDisplay(token);
+            if (jwt is null)
+                return null;
+
             var channel = jwt.Claims.FirstOrDefault(c => c.Type == ChannelClaim)?.Value;
             var email   = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value;
 

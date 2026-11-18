@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.AdminApp.Services;
 using MLMConquerorGlobalEdition.ClientCore;
+using MLMConquerorGlobalEdition.ClientCore.AccessTokens;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 
 namespace MLMConquerorGlobalEdition.AdminApp;
@@ -46,6 +47,15 @@ public static class MauiProgram
         // TODO: dirección de SignupAPI desde configuración antes de producción, igual que las de
         // AdminAPI de más abajo.
         builder.Services.AddAuthApiClient("https://localhost:7005");
+
+        // La identidad de la interfaz solo se arma con un token cuya firma se comprobó contra las
+        // llaves públicas que publica SignupAPI (/.well-known/jwks.json). Se guardan en Preferences
+        // para poder validar al arrancar sin red; una llave nueva se descarga sola.
+        builder.Services.AddAccessTokenValidation(
+            "https://localhost:7005",
+            new DelegateJwksCache(
+                () => Preferences.Default.Get<string?>("jwks", null),
+                json => Preferences.Default.Set("jwks", json)));
         builder.Services.AddScoped<IAccessTokenProvider, SecureStorageAccessTokenProvider>();
         builder.Services.AddScoped<AuthApiGateway>();
 

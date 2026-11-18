@@ -26,6 +26,8 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
     <!-- ILogger<T>. Solo las abstracciones: quién escribe el registro lo decide el anfitrión. -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <!-- Validar la firma del token de acceso (AccessTokens/). No depende de ASP.NET Core. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
   </ItemGroup>
 
   <ItemGroup>
