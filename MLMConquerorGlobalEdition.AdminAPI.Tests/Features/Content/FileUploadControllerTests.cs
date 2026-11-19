@@ -6,14 +6,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.AdminAPI.Controllers;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Moq;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Content;
 
 /// <summary>
-/// La subida valida el contenido con ImageSharp y genera la miniatura webp. Fija ese
-/// comportamiento al pasar de ImageSharp 3.1 a 4.1 (GHSA-gwg2-r3hj-4w44).
+/// La subida de imágenes de producto valida el contenido por su firma (los primeros bytes de
+/// cada formato) y exige que coincida con la extensión. Ya no usa ImageSharp: la 4.x pide licencia
+/// comercial para compilar en Release y solo servía para validar y hacer una miniatura que nadie
+/// leía.
 /// </summary>
 public class FileUploadControllerTests : IDisposable
 {
@@ -44,28 +44,36 @@ public class FileUploadControllerTests : IDisposable
             ContentType = "image/png"
         };
 
-    private static byte[] Png(int ancho, int alto)
-    {
-        using var imagen = new Image<Rgba32>(ancho, alto, new Rgba32(200, 10, 10));
-        using var ms = new MemoryStream();
-        imagen.SaveAsPng(ms);
-        return ms.ToArray();
-    }
+    // Cabeceras reales de cada formato seguidas de relleno: la validación solo mira la firma.
+    private static byte[] Con(byte[] cabecera) => cabecera.Concat(new byte[64]).ToArray();
+    private static readonly byte[] Png  = Con([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    private static readonly byte[] Jpeg = Con([0xFF, 0xD8, 0xFF, 0xE0]);
+    private static readonly byte[] Gif  = Con("GIF89a"u8.ToArray());
+    private static readonly byte[] Webp = Con([.. "RIFF"u8.ToArray(), 0x24, 0, 0, 0, .. "WEBPVP8 "u8.ToArray()]);
 
-    [Fact]
-    public async Task Una_imagen_valida_se_guarda_con_su_miniatura_de_100x100()
+    public static TheoryData<byte[], string> ImagenesValidas => new()
     {
-        var resultado = await Controller().UploadFile(Archivo(Png(300, 200), "foto.png"));
+        { Png,  "foto.png"  },
+        { Jpeg, "foto.jpg"  },
+        { Jpeg, "foto.JPEG" },
+        { Gif,  "foto.gif"  },
+        { Webp, "foto.webp" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ImagenesValidas))]
+    public async Task Una_imagen_valida_se_guarda_tal_cual_con_nombre_nuevo(byte[] contenido, string nombre)
+    {
+        var resultado = await Controller().UploadFile(Archivo(contenido, nombre));
 
         var ok = resultado.Should().BeOfType<OkObjectResult>().Subject;
         var cuerpo = ok.Value.Should().BeOfType<ApiResponse<FileUploadController.UploadResult>>().Subject;
-        cuerpo.Data!.Url.Should().StartWith("https://admin.example/uploads/").And.EndWith(".png");
+        var extension = Path.GetExtension(nombre).ToLowerInvariant();
+        cuerpo.Data!.Url.Should().StartWith("https://admin.example/uploads/").And.EndWith(extension);
 
-        var uploads = Path.Combine(_webRoot, "uploads");
-        var miniatura = Directory.GetFiles(uploads, "*_thumb.webp").Should().ContainSingle().Subject;
-        using var thumb = await Image.LoadAsync(miniatura);
-        thumb.Width.Should().Be(100);
-        thumb.Height.Should().Be(100);
+        var guardado = Directory.GetFiles(Path.Combine(_webRoot, "uploads")).Should().ContainSingle().Subject;
+        Path.GetFileName(guardado).Should().NotBe(nombre);
+        (await File.ReadAllBytesAsync(guardado)).Should().Equal(contenido);
     }
 
     [Fact]
@@ -73,19 +81,38 @@ public class FileUploadControllerTests : IDisposable
     {
         var resultado = await Controller().UploadFile(Archivo("<?php echo 1; ?>"u8.ToArray(), "foto.png"));
 
-        var bad = resultado.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value.Should().BeOfType<ApiResponse<FileUploadController.UploadResult>>()
-            .Which.ErrorCode.Should().Be("INVALID_IMAGE_CONTENT");
+        Rechazo(resultado).Should().Be("INVALID_IMAGE_CONTENT");
         Directory.Exists(Path.Combine(_webRoot, "uploads")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Una_imagen_cuya_firma_no_coincide_con_la_extension_se_rechaza()
+    {
+        // Un GIF disfrazado de PNG: el navegador lo serviría con el tipo equivocado.
+        var resultado = await Controller().UploadFile(Archivo(Gif, "foto.png"));
+
+        Rechazo(resultado).Should().Be("INVALID_IMAGE_CONTENT");
+    }
+
+    [Fact]
+    public async Task Un_riff_que_no_es_webp_se_rechaza()
+    {
+        var wav = Con([.. "RIFF"u8.ToArray(), 0x24, 0, 0, 0, .. "WAVEfmt "u8.ToArray()]);
+
+        var resultado = await Controller().UploadFile(Archivo(wav, "foto.webp"));
+
+        Rechazo(resultado).Should().Be("INVALID_IMAGE_CONTENT");
     }
 
     [Fact]
     public async Task Una_extension_no_permitida_se_rechaza()
     {
-        var resultado = await Controller().UploadFile(Archivo(Png(10, 10), "foto.svg"));
+        var resultado = await Controller().UploadFile(Archivo(Png, "foto.svg"));
 
-        resultado.Should().BeOfType<BadRequestObjectResult>().Which.Value
-            .Should().BeOfType<ApiResponse<FileUploadController.UploadResult>>()
-            .Which.ErrorCode.Should().Be("INVALID_FILE_TYPE");
+        Rechazo(resultado).Should().Be("INVALID_FILE_TYPE");
     }
+
+    private static string? Rechazo(IActionResult resultado) =>
+        resultado.Should().BeOfType<BadRequestObjectResult>().Which.Value
+            .Should().BeOfType<ApiResponse<FileUploadController.UploadResult>>().Which.ErrorCode;
 }

@@ -131,15 +131,13 @@ curl -s http://localhost:8080/health
 
 La imagen de compilación es `sdk:10.0.203`, de la misma banda que `global.json` (10.0.2xx); con la etiqueta genérica `sdk:10.0` no arranca. La restauración respeta los `packages.lock.json` sin modo bloqueado, porque los proyectos WebAssembly guardan en el lockfile paquetes atados al parche exacto del SDK.
 
-### 2.5 Pendiente de decisión antes de construir AdminAPI
+### 2.5 ImageSharp eliminado de AdminAPI
 
-AdminAPI usa `SixLabors.ImageSharp` 4.1.3 para las miniaturas de las imágenes que se suben. Esa versión exige una clave de licencia comercial para compilar en Release (`No Six Labors license found`), y usarla en producción sin licencia incumple sus términos. Hay tres salidas:
+AdminAPI usaba `SixLabors.ImageSharp` 4.1.3 en la subida de imágenes de producto. Esa versión exige una licencia comercial para compilar en Release. Solo servía para dos cosas:
+- Comprobar que el archivo era una imagen.
+- Generar una miniatura que ninguna pantalla usaba.
 
-- Comprar la licencia y pasar la clave al compilar (`-p:SixLaborsLicenseKey=...`, desde un secreto de GitHub).
-- Bajar a ImageSharp 2.1.x (Apache 2.0), tras comprobar que no tenga vulnerabilidades abiertas.
-- Cambiar a una biblioteca MIT como SkiaSharp.
-
-Hasta que se decida, la imagen de `adminapi` no se puede construir.
+Se quitó la biblioteca. Ahora la subida comprueba la firma de los primeros bytes de cada formato (PNG, JPEG, GIF, WebP) y exige que coincida con la extensión. La miniatura ya no se genera, y la respuesta trae solo `Url`.
 
 ### 2.6 Cierre de la Fase 0
 
