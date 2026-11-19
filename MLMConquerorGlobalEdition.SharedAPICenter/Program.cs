@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
 using AspNetCoreRateLimit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -108,7 +109,13 @@ builder.Services.AddSwaggerGen(c =>
     // lo mira. Quien viniera a integrarse perdería el tiempo consiguiendo uno.
 });
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 // Apply pending EF migrations automatically on startup (idempotent).
 // Wrapped: a failure here must not terminate the host — the service still

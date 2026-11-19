@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
@@ -377,7 +378,15 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+// Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
+builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.SignupAPI");
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 // Seed roles and root ambassador on startup
 using (var scope = app.Services.CreateScope())

@@ -1298,10 +1298,11 @@
         "type": "Project",
         "dependencies": {
           "MLMConquerorGlobalEdition.SharedKernel": "[1.0.0, )",
+          "MLMConquerorGlobalEdition.SharedKernel.Server": "[1.0.0, )",
           "MLMConquerorGlobalEdition.Signups.Client": "[1.0.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.0, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Server": "[10.0.13, )",
-          "System.IdentityModel.Tokens.Jwt": "[8.9.0, )"
+          "System.IdentityModel.Tokens.Jwt": "[8.22.0, )"
         }
       },
       "mlmconquerorglobaledition.signups.client": {

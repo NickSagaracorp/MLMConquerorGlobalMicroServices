@@ -29,4 +29,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!--
+    AdminAPI y SignupAPI referencian este proyecto web. Sin esto, su publish arrastra el
+    appsettings.json de Billing junto al suyo (NETSDK1152) y, si se forzara, uno pisaria al otro.
+    El appsettings de Billing se publica solo en el publish de Billing.
+  -->
+  <ItemGroup>
+    <Content Update="appsettings*.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+  <Target Name="PublicarAppsettingsDeBilling" AfterTargets="Publish">
+    <ItemGroup>
+      <_AppsettingsDeBilling Include="$(MSBuildProjectDirectory)/appsettings*.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_AppsettingsDeBilling)" DestinationFolder="$(PublishDir)" />
+  </Target>
+
 </Project>

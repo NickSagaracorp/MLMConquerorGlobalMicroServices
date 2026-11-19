@@ -4,10 +4,11 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 // Named client used by Signup.razor and MemberJoin.razor via IHttpClientFactory.
-// In WASM the browser calls SignupAPI directly at port 7005.
+// En el navegador se llama directo a SignupAPI. La URL publica sale de wwwroot/appsettings.json
+// (desarrollo) y de wwwroot/appsettings.Production.json (lo que se publica); antes estaba fija.
 builder.Services.AddHttpClient("SignupsInternal", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7005");
+    client.BaseAddress = new Uri(builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7005");
 });
 
 // Default client kept for any component that injects HttpClient directly.

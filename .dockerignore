@@ -1,0 +1,16 @@
+.git
+.vs
+.claude
+**/bin
+**/obj
+**/*.Tests
+**/appsettings.Development.json
+**/appsettings.Local.json
+.env
+.env.*
+docs
+UI-Templates
+Scripts
+Proceso ImportarData OldSystem
+MLMConquerorGlobalEdition.AdminApp
+MLMConquerorGlobalEdition.BizCenterApp

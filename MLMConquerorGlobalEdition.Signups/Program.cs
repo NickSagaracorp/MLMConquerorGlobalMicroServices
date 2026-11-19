@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.Signups.Components;
 using MLMConquerorGlobalEdition.Signups.Middleware;
@@ -51,7 +52,15 @@ builder.Services.AddHttpClient("SignupsInternal", client =>
 // Los portales y sus direcciones salen de configuración: cambian de un entorno a otro.
 builder.Services.AddPortalSessionBounce(builder.Configuration);
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+// Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
+builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.Signups");
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 app.UseStaticFiles();
 // DELANTE DE TODO LO QUE PINTE, y esa es la mitad de la decisión: el navegador tiene que irse y

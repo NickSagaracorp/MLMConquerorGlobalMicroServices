@@ -1,4 +1,5 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -143,7 +144,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 // Apply pending EF migrations automatically on startup (idempotent).
 // Wrapped: a failure here must not terminate the host — the service still
@@ -176,10 +183,10 @@ app.UseImpersonationReadOnly();
 
 app.MapControllers();
 
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = []
-});
+// Sin Authorization: el filtro por defecto de Hangfire solo acepta peticiones locales, como en
+// Billing, SignupAPI, CommissionEngine y RankEngine. Se consulta con kubectl port-forward.
+// Antes era Authorization = [], que dejaba el panel abierto a quien llegara al servicio.
+app.UseHangfireDashboard("/hangfire");
 
 RecurringJob.AddOrUpdate<SlaCheckerJob>(
     "sla-checker",

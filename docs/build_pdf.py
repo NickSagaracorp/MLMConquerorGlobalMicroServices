@@ -10,6 +10,9 @@ from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame, Paragraph,
 from reportlab.lib.enums import TA_LEFT
 
 SRC, OUT, TITLE = sys.argv[1], sys.argv[2], sys.argv[3]
+# Cuarto argumento opcional: tamano de letra de los bloques de codigo. Las guias con comandos
+# largos lo bajan para que cada linea quepa entera y se pueda copiar sin cortes.
+CODE_PT = float(sys.argv[4]) if len(sys.argv) > 4 else 8.3
 INK   = colors.HexColor("#1b1f23")
 MUTED = colors.HexColor("#5b6570")
 RULE  = colors.HexColor("#d8dee4")
@@ -30,7 +33,8 @@ st = {
     "p":  S("p"),
     "li": S("li", leftIndent=12, bulletIndent=3, spaceAfter=3),
     "q":  S("q", leftIndent=10, textColor=MUTED, fontName="Helvetica-Oblique"),
-    "code": S("code", fontName="Courier", fontSize=8.3, leading=11.4),
+    "li2": S("li2", leftIndent=26, bulletIndent=16, spaceAfter=3),
+    "code": S("code", fontName="Courier", fontSize=CODE_PT, leading=CODE_PT * 1.37),
     "th": S("th", fontName="Helvetica-Bold", fontSize=8.8, leading=11.6),
     "td": S("td", fontSize=8.8, leading=11.6),
 }
@@ -91,16 +95,22 @@ while i < len(lines):
             buf.append(lines[i])
             i += 1
         i += 1
-        body = "<br/>".join(
-            (l.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-               .replace(" ", "&nbsp;")) for l in buf) or "&nbsp;"
-        t = Table([[Paragraph(body, st["code"])]], colWidths=[doc.width])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), BAND),
-            ("BOX", (0, 0), (-1, -1), .4, RULE),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-            ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
-        fl += [Spacer(1, 3), t, Spacer(1, 7)]
+        # Un bloque mas alto que la pagina no cabe en ningun marco: se parte en trozos que si.
+        per_page = min(40, max(10, int((A4[1] - 39 * mm - 24) // (CODE_PT * 1.37)) - 2))
+        chunks = [buf[k:k + per_page] for k in range(0, len(buf), per_page)] or [[]]
+        fl.append(Spacer(1, 3))
+        for chunk in chunks:
+            body = "<br/>".join(
+                (l.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                   .replace(" ", "&nbsp;")) for l in chunk) or "&nbsp;"
+            t = Table([[Paragraph(body, st["code"])]], colWidths=[doc.width])
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), BAND),
+                ("BOX", (0, 0), (-1, -1), .4, RULE),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
+            fl.append(t)
+        fl.append(Spacer(1, 7))
         continue
 
     if (ln.startswith("|") and i + 1 < len(lines)
@@ -139,6 +149,8 @@ while i < len(lines):
     elif re.match(r"^\d+\.\s", ln):
         fl.append(Paragraph(inline(re.sub(r"^\d+\.\s", "", ln)), st["li"],
                             bulletText=ln.split(".")[0] + "."))
+    elif ln.startswith("  - "):
+        fl.append(Paragraph(inline(ln[4:]), st["li2"], bulletText="–"))
     elif ln.startswith("- "):
         fl.append(Paragraph(inline(ln[2:]), st["li"], bulletText="•"))
     elif ln.strip():

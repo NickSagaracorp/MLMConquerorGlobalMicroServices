@@ -91,18 +91,13 @@ public class SignupsController : ControllerBase
         };
     }
 
-    /// <summary>Returns the public client IP, preferring the standard forward header when behind a proxy.</summary>
-    private string? ResolveClientIp()
-    {
-        var fwd = Request.Headers["X-Forwarded-For"].ToString();
-        if (!string.IsNullOrWhiteSpace(fwd))
-        {
-            // First entry is the originating client per RFC 7239.
-            var first = fwd.Split(',')[0].Trim();
-            if (!string.IsNullOrEmpty(first)) return first;
-        }
-        return HttpContext.Connection.RemoteIpAddress?.ToString();
-    }
+    /// <summary>
+    /// IP publica del cliente. Detras del balanceador la resuelve UseForwardedHeaders (ProxyHosting),
+    /// que solo acepta el salto del ALB. Antes se tomaba la PRIMERA entrada de X-Forwarded-For,
+    /// que es la que escribe el propio cliente: cualquiera podia inventarse la IP y saltarse el
+    /// control de altas duplicadas por IP.
+    /// </summary>
+    private string? ResolveClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
 
     [HttpPost("{signupId}/select-products")]

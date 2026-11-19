@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using MLMConquerorGlobalEdition.AdminWeb.Middleware;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
@@ -162,7 +163,18 @@ builder.Services.AddHttpClient("RankEngineApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["RankEngineApiBaseUrl"] ?? "https://localhost:7009");
 }).AddHttpMessageHandler<ApiAuthHandler>();
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+// Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
+builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.AdminWeb");
+var syncfusionLicenseKey = builder.Configuration["Syncfusion:LicenseKey"];
+if (!string.IsNullOrWhiteSpace(syncfusionLicenseKey))
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionLicenseKey);
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.BizCenterWeb.Components;
@@ -158,7 +159,18 @@ builder.Services.AddStepUpClient(
 // AmbassadorSignupRequest no tiene, así que el patrocinador se perdía en silencio— y se ha borrado:
 // el alta solo se hace desde la aplicación de alta. Sin ella, este cliente no lo pedía nadie.
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+// Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
+builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.BizCenterWeb");
+var syncfusionLicenseKey = builder.Configuration["Syncfusion:LicenseKey"];
+if (!string.IsNullOrWhiteSpace(syncfusionLicenseKey))
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionLicenseKey);
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

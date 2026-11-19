@@ -1,4 +1,5 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Text;
 using Amazon.S3;
 using AspNetCoreRateLimit;
@@ -203,7 +204,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+builder.Services.AddProxyForwardedHeaders(builder.Configuration);
+
 var app = builder.Build();
+
+// Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
+app.UseForwardedHeaders();
 
 // Apply pending EF migrations and seed baseline data on startup (idempotent).
 using (var scope = app.Services.CreateScope())
