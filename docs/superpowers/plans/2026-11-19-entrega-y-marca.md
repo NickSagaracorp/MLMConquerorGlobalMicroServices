@@ -10,6 +10,8 @@
 
 **Diseño:** `docs/superpowers/specs/2026-11-19-entrega-y-marca-design.md`.
 
+**Remoto y rama del cliente (ya hechos el 19-nov):** rama `MWRLife` creada desde `master` (`c849b9b`); remoto `mwrlife` = `https://github.com/mwrlifeteam/MLMConquerorGlobalMicroServiceMWRLife.git`, vacío, con `remote.mwrlife.pushurl` anulado para que un `git push mwrlife` por error falle. Las entregas van a la rama `main` del remoto.
+
 **Reglas:** commits en español sin acentos y sin firma; no se agrega el `.gitignore` de Nick ni `Proceso ImportarData OldSystem/`; nada se empuja a ningún remoto sin OK explícito de Nick; los PDFs se agregan con `git add -f`.
 
 ---
@@ -33,44 +35,76 @@
 
 ---
 
-### Task 1: Limpiar los dos comentarios que delatan el método
+### Task 1: Quitar del código y de las presentaciones las referencias a documentos internos
 
 **Files:**
-- Modify: `MLMConquerorGlobalEdition.AdminAPI/Features/Members/GetMemberStats/GetMemberStatsHandler.cs:40`
-- Modify: `MLMConquerorGlobalEdition.Repository/Migrations/20260405130705_HelpdeskModule.cs:14`
+- Modify: los 15 archivos de código que lista el Step 1 (18 líneas)
+- Modify: `docs/billing/build-deck.js`, `docs/billing/Billing-Workflow.pptx`, `docs/commissions/build-deck.js`, `docs/commissions/Commissions-Workflow.pptx`
 
-- [ ] **Step 1: GetMemberStatsHandler**
+Se trabaja en `master` (no en `secretos-aws`): son cambios del producto, y llegan a `MWRLife` con un merge.
 
-La línea 40 pasa de
-
-```csharp
-        // IDateTimeProvider per CLAUDE.md — never DateTime.UtcNow directly.
-```
-
-a
-
-```csharp
-        // IDateTimeProvider: la hora sale siempre del proveedor, nunca de DateTime.UtcNow directo.
-```
-
-- [ ] **Step 2: Migración HelpdeskModule**
-
-Leer el comentario completo (líneas 10 a 25). En la línea 14 se quita el paréntesis con la ruta del plan, dejando el resto del texto igual. Por ejemplo `Plan Q, Bloque 6 (DQ11, docs/superpowers/plans/2026-10-19-plan-q-escala-binario-y-reportes.md): en una base` pasa a `Bloque 6 (DQ11): en una base`. Es solo un comentario: no cambia la migración.
-
-- [ ] **Step 3: Comprobar que no queda nada**
-
-Run: `git grep -in "superpowers\|claude\|anthropic\|AGENTS\.md" -- . ':!docs' ':!*.md' ':!Scripts' ':!*.Tests' ':!*remixicon*' ':!.gitignore' ':!.dockerignore'`
-Expected: ninguna línea.
-
-Run: `dotnet build MLMConquerorGlobalEdition.AdminAPI -v q` y `dotnet build MLMConquerorGlobalEdition.Repository -v q`
-Expected: `0 Error(s)`.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 1: Lista exacta**
 
 ```bash
-git add MLMConquerorGlobalEdition.AdminAPI/Features/Members/GetMemberStats/GetMemberStatsHandler.cs MLMConquerorGlobalEdition.Repository/Migrations/20260405130705_HelpdeskModule.cs
-git commit -m "Comentarios: la regla de la hora del proveedor se explica en el propio comentario y la migracion de Helpdesk deja de citar la ruta de un documento interno"
+git checkout master
+git grep -nE "[A-Za-z0-9_-]+\.md\b|docs/(superpowers|deployment|arquitectura|presentations)|claude|anthropic" -i -- . \
+  ':!docs' ':!*.md' ':!*.Tests' ':!Scripts' ':!deploy' ':!Dockerfile' ':!.gitignore' ':!.dockerignore' ':!UI-Templates' ':!*remixicon*'
 ```
+
+Expected: 18 líneas en 15 archivos (el 19-nov eran, entre otros, `GetMemberStatsHandler.cs` "per CLAUDE.md", `HelpdeskModule.cs` con la ruta del plan Q, `DualTeamPlacementRules.cs` y `RunAutoPlacementHandler.cs` con `diagnostico-huecos-binario.md`, `AutoPlacementJob.cs` con `placement-rules.md`, `ProxyHosting.cs` con `despliegue-aws-eks.md`, `AdminAPI.csproj` con `llaves-jwt-en-desarrollo.md`).
+
+- [ ] **Step 2: Reescribir cada comentario**
+
+Para cada línea: se quita la referencia al documento (nombre de archivo, ruta, sección `§`, "Plan X, Tarea N") y se deja la explicación de la regla. Si la explicación vivía solo en el documento, se agrega al comentario en una o dos frases. Ejemplos:
+
+- `// IDateTimeProvider per CLAUDE.md — never DateTime.UtcNow directly.` → `// IDateTimeProvider: la hora sale siempre del proveedor, nunca de DateTime.UtcNow directo.`
+- `/// Plan Q, Bloque 6 (DQ11, docs/superpowers/plans/2026-10-19-plan-q-escala-binario-y-reportes.md): en una base` → `/// En una base`
+- `(diagnostico-huecos-binario.md §1.2, fallo 1)` → se borra el paréntesis.
+- `/// Lo usan los once hosts; ver docs/deployment/despliegue-aws-eks.md, Fase 0.` → `/// Lo usan los once hosts.`
+
+Las migraciones solo cambian en comentarios.
+
+- [ ] **Step 3: Presentaciones**
+
+En `docs/billing/build-deck.js` (línea ~1105) y `docs/commissions/build-deck.js` (línea ~1025), el texto `"Code wins  ·  this deck second  ·  spec docs in /docs/superpowers/specs/ for history & rationale."` pasa a `"Code wins  ·  this deck second."`. En `docs/commissions/build-deck.js` (línea ~1009) se borra la fila `["Companion docs", "docs/billing/BILLING-RULES.md · docs/superpowers/specs/"]`.
+
+Regenerar los dos `.pptx` (pptxgenjs 4.0.1 está instalado globalmente):
+
+```bash
+export NODE_PATH="$(npm root -g)"
+( cd docs/billing && node build-deck.js )
+( cd docs/commissions && node build-deck.js )
+git status --short docs/billing docs/commissions
+```
+
+Expected: los cuatro archivos modificados. Comprobar que el texto ya no está dentro de los `.pptx`:
+
+```bash
+for f in docs/billing/Billing-Workflow.pptx docs/commissions/Commissions-Workflow.pptx; do
+  python -I -c "import zipfile,sys,re;z=zipfile.ZipFile(sys.argv[1]);print(sys.argv[1], sum(bool(re.search(r'(?i)superpowers|\.md\b', z.read(n).decode('utf-8','ignore'))) for n in z.namelist()))" "$f"
+done
+```
+
+Expected: `0` en los dos. Si `build-deck.js` escribe el `.pptx` en otra carpeta, moverlo a la suya con el mismo nombre.
+
+- [ ] **Step 4: Comprobar y compilar**
+
+Run: el comando del Step 1.
+Expected: ninguna línea.
+
+Run: `dotnet build MLMConquerorGlobalEdition.slnx -v q`
+Expected: `0 Error(s)`.
+
+- [ ] **Step 5: Commit en master y merge a MWRLife**
+
+```bash
+git add -u -- . ':!.gitignore'
+git status --short
+git commit -m "Comentarios y presentaciones sin referencias a documentos internos: cada comentario conserva la explicacion de la regla y deja de citar el archivo o la ruta donde estaba escrita"
+git checkout MWRLife && git merge --ff-only master && git checkout secretos-aws && git merge master
+```
+
+(Si `MWRLife` ya no es ancestro directo de `master`, se pregunta a Nick antes de hacer un merge con commit.)
 
 ---
 
@@ -511,6 +545,21 @@ class Revisar(Base):
         self.assertTrue(any("Handler.cs" in x for x in p))
         self.assertTrue(any("Otro.cs" in x for x in p))
 
+    def test_la_cita_de_un_documento_interno_es_un_problema(self):
+        self.escribir("App.Api/Reglas.cs", "// ver diagnostico-huecos-binario.md seccion 1\n")
+        self.escribir("App.Api/Hosting.cs", "// ver docs/deployment/despliegue.pdf\n")
+        p = self.problemas()
+        self.assertTrue(any("Reglas.cs" in x for x in p))
+        self.assertTrue(any("Hosting.cs" in x for x in p))
+
+    def test_revisa_el_texto_de_las_presentaciones(self):
+        import zipfile
+        ruta = self.raiz / "docs/billing/deck.pptx"
+        ruta.parent.mkdir(parents=True)
+        with zipfile.ZipFile(ruta, "w") as z:
+            z.writestr("ppt/slides/slide1.xml", "<a:t>spec docs in /docs/superpowers/specs/</a:t>")
+        self.assertTrue(any("deck.pptx" in x for x in self.problemas()))
+
     def test_las_excepciones_no_son_problema(self):
         self.escribir("App.Web/wwwroot/assets/css/remixicon.css", ".ri-claude-fill:before{}")
         self.assertEqual(self.problemas(), [])
@@ -544,7 +593,8 @@ revisar termina con codigo 1 y lista los problemas si encuentra algo que no debe
 """
 import fnmatch, pathlib, re, shutil, sys
 
-VIGILADAS = re.compile(r"claude|anthropic|superpowers|agents\.md", re.IGNORECASE)
+VIGILADAS = re.compile(r"claude|anthropic|superpowers|docs/(?:deployment|arquitectura|presentations)|[A-Za-z0-9_-]+\.md\b", re.IGNORECASE)
+OFFICE = (".pptx", ".docx", ".xlsx")
 INTERNALS_CSPROJ = re.compile(r'^\s*<InternalsVisibleTo\s+Include="[^"]*\.Tests"\s*/>\s*\r?\n', re.MULTILINE)
 INTERNALS_CS = re.compile(r'^\s*\[assembly:\s*InternalsVisibleTo\("[^"]*\.Tests"\)\]\s*\r?\n', re.MULTILINE)
 PROYECTO_PRUEBAS = re.compile(r'^\s*<Project\s+Path="[^"]*\.Tests/[^"]*"\s*/>\s*\r?\n', re.MULTILINE)
@@ -605,6 +655,14 @@ def preparar(raiz, no_viaja, gitignore_cliente):
     shutil.copyfile(gitignore_cliente, raiz / ".gitignore")
 
 
+def texto_de_office(p):
+    """El texto de un .pptx/.docx/.xlsx (son zip de XML), para revisarlo como cualquier otro."""
+    import zipfile
+    with zipfile.ZipFile(p) as z:
+        return "\n".join(z.read(n).decode("utf-8", errors="ignore")
+                         for n in z.namelist() if n.endswith(".xml"))
+
+
 def revisar(raiz, no_viaja, excepciones):
     problemas = []
     for p, rel in archivos(raiz):
@@ -613,10 +671,13 @@ def revisar(raiz, no_viaja, excepciones):
             continue
         if coincide(rel, excepciones):
             continue
-        datos = p.read_bytes()
-        if b"\x00" in datos[:8000]:
-            continue  # binario
-        texto = datos.decode("utf-8", errors="ignore")
+        if rel.lower().endswith(OFFICE):
+            texto = texto_de_office(p)
+        else:
+            datos = p.read_bytes()
+            if b"\x00" in datos[:8000]:
+                continue  # binario
+            texto = datos.decode("utf-8", errors="ignore")
         if rel.endswith((".slnx", ".sln", ".csproj")) and ".Tests" in texto:
             problemas.append(f"referencia a pruebas: {rel}")
         m = VIGILADAS.search(texto)
@@ -647,7 +708,7 @@ if __name__ == "__main__":
 - [ ] **Step 5: Correr y ver que pasa**
 
 Run: `cd docs/entrega && python -m unittest test_preparar -v; cd ../..`
-Expected: `OK` con 10 pruebas.
+Expected: `OK` con 12 pruebas.
 
 - [ ] **Step 6: Commit**
 
@@ -671,15 +732,19 @@ git commit -m "Entrega al cliente: lista de lo que no viaja, preparacion de la c
 # nada de docs/entrega/no-viaja.txt. NO empuja: deja la entrega lista en una carpeta y dice
 # como empujarla. Empujar es una segunda llamada explicita, solo con el OK de Nick.
 #
-#   bash docs/entrega/entregar.sh armar   <commit> <url-del-remoto> [rama]
+#   bash docs/entrega/entregar.sh armar   <rama-o-commit> <nombre-del-remoto> [rama-remota]
 #   bash docs/entrega/entregar.sh empujar <carpeta-que-dio-armar>
+# Ejemplo (MWRLife):  bash docs/entrega/entregar.sh armar MWRLife mwrlife
+# El remoto tiene el pushurl anulado; aqui se usa su url real desde un clon propio.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 RAIZ="$(git rev-parse --show-toplevel)"; DIR="$RAIZ/docs/entrega"
 SLN="MLMConquerorGlobalEdition.slnx"
 
 armar() {
-  local commit="${1:?falta el commit}" remoto="${2:?falta la url del remoto}" rama="${3:-entrega}"
+  local commit="${1:?falta la rama o el commit}" nombre="${2:?falta el nombre del remoto}" rama="${3:-main}"
+  local remoto; remoto=$(git -C "$RAIZ" config --get "remote.$nombre.url") \
+    || { echo "No existe el remoto $nombre" >&2; return 1; }
   local sha; sha=$(git -C "$RAIZ" rev-parse --verify "$commit^{commit}")
   local fecha; fecha=$(date +%F)
   local base; base="$HOME/mlm-entregas/$(date +%Y%m%d-%H%M%S)"
@@ -770,7 +835,8 @@ No toca ningún remoto real.
 ```bash
 ensayo="$HOME/mlm-entregas/ensayo-remoto.git"
 rm -rf "$ensayo" && git init -q --bare "$ensayo"
-bash docs/entrega/entregar.sh armar HEAD "$ensayo"
+git remote add ensayo "$ensayo"
+bash docs/entrega/entregar.sh armar MWRLife ensayo
 ```
 
 Expected: las 10 suites `Passed!`, revisión sin problemas, compila, y al final "Lista para empujar".
@@ -794,9 +860,9 @@ cd - >/dev/null
 
 Hacer un commit trivial en una rama de ensayo (por ejemplo, un comentario en `global.json` no: es JSON; usar un espacio en `Directory.Build.props`), `armar` contra el mismo remoto de ensayo y `empujar`. En el clon, `git pull` y `git log --oneline | wc -l` da 2, y `git show --stat HEAD` muestra solo `Directory.Build.props`. Después se deshace el commit de ensayo (`git reset --hard HEAD~1` en esa rama de ensayo, nunca en `secretos-aws` ni en `master`) y se borran `ensayo-remoto.git` y `ensayo-clon`.
 
-- [ ] **Step 4: Informe a Nick**
+- [ ] **Step 4: Limpiar el ensayo e informar**
 
-Contarle el resultado y que la entrega real espera la dirección del remoto del cliente.
+`git remote remove ensayo`. Contarle a Nick el resultado. La primera entrega real (`armar MWRLife mwrlife`, y `empujar` solo con su OK) se hace cuando él lo diga.
 
 ---
 

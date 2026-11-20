@@ -25,10 +25,17 @@ La lista vive en `docs/entrega/no-viaja.txt` (que tampoco viaja).
 
 ## 3. La rama de entrega
 
+### 3.0 Remoto y rama por cliente
+
+- Nick desarrolla un SaaS para MLM y lo entrega a varias empresas; cada una recibe solo lo que pagó. En el repositorio privado hay **una rama por cliente**; la de MWRLife es `MWRLife` (creada desde `master` en `c849b9b` el 19-nov-2026). Lo que MWRLife no paga no entra en esa rama.
+- El remoto del cliente se llama **`mwrlife`** (`https://github.com/mwrlifeteam/MLMConquerorGlobalMicroServiceMWRLife.git`), no `origin`: `origin` es el GitHub privado de Nick.
+- El remoto `mwrlife` tiene la dirección de envío anulada (`remote.mwrlife.pushurl = no-empujar://usa-docs-entrega-entregar.sh`): un `git push mwrlife ...` por error falla. `entregar.sh` lee la dirección real de `remote.mwrlife.url` y empuja desde su propio clon limpio.
+- En el remoto del cliente las entregas van a la rama `main`.
+
 - Una rama que **solo contiene entregas** (`entrega` por defecto en el remoto del cliente). Cada entrega es **un commit** cuyo árbol es la foto completa del código entregado, encima de la entrega anterior; nunca lleva el historial del repositorio privado. Mensaje neutro: `Entrega AAAA-MM-DD`.
 - **Nunca** se empuja `master` ni ninguna rama del repositorio privado al remoto del cliente.
 
-### 3.1 `docs/entrega/entregar.sh <commit> <remoto> [rama]`
+### 3.1 `docs/entrega/entregar.sh armar <rama-o-commit> <nombre-del-remoto> [rama-remota]` (por ejemplo `armar MWRLife mwrlife`)
 
 1. **Pruebas en el repositorio privado:** crea un *worktree* temporal en `<commit>` y corre las 10 suites. Si alguna falla, se detiene.
 2. **Exporta** el árbol de `<commit>` con `git archive` (sin `.git`, sin historial) a una carpeta temporal.
@@ -40,17 +47,14 @@ La lista vive en `docs/entrega/no-viaja.txt` (que tampoco viaja).
 4. **Revisa la copia** (también `preparar.py`, modo `--revisar`); falla si encuentra:
    - un archivo cuyo nombre coincida con `no-viaja.txt`;
    - un proyecto o una referencia `*.Tests`;
-   - en el **contenido** de cualquier archivo de texto, las palabras `claude`, `anthropic`, `superpowers`, `CLAUDE.md` o `AGENTS.md` (sin distinguir mayúsculas), salvo en los archivos de terceros de una lista de excepciones (`docs/entrega/excepciones.txt`: las fuentes y el CSS de Remix Icon, que tienen un ícono con ese nombre).
+   - en el **contenido** de cualquier archivo de texto **y del texto de los documentos de Office** (`.pptx`, `.docx`, `.xlsx`, que son zip): las palabras `claude`, `anthropic`, `superpowers`, el nombre de cualquier archivo `.md` y las rutas `docs/superpowers`, `docs/deployment`, `docs/arquitectura` y `docs/presentations` (sin distinguir mayúsculas), salvo en los archivos de terceros de una lista de excepciones (`docs/entrega/excepciones.txt`: las fuentes y el CSS de Remix Icon, que tienen un ícono con ese nombre).
 5. **Compila** la copia (`dotnet build` del `.slnx` limpio). Si no compila, se detiene.
 6. **Commit de entrega:** clona solo la rama de entrega del remoto (o la crea vacía si es la primera), reemplaza su árbol por la copia y hace el commit `Entrega AAAA-MM-DD`.
 7. **Muestra el resumen** (archivos agregados, cambiados y borrados respecto de la entrega anterior) y **pregunta** antes de `git push`. Sin un "sí" explícito no empuja.
 
 ### 3.2 Limpieza previa en el repositorio privado
 
-Dos comentarios del código delatan el método y se corrigen en el repositorio privado (la revisión del paso 4 los detectaría):
-
-- `MLMConquerorGlobalEdition.AdminAPI/Features/Members/GetMemberStats/GetMemberStatsHandler.cs`: "per CLAUDE.md".
-- `MLMConquerorGlobalEdition.Repository/Migrations/20260405130705_HelpdeskModule.cs`: la ruta a un plan de `docs/superpowers/plans/`.
+En el código que viaja hay 18 líneas, en 15 archivos, que citan documentos internos (`CLAUDE.md`, `diagnostico-huecos-binario.md`, `placement-rules.md`, guías de `docs/deployment`, un plan de `docs/superpowers`...). Se corrigen en `master` (y llegan a `MWRLife` con el siguiente merge): el comentario conserva la explicación de la regla y pierde la referencia al documento. Las presentaciones de `docs/billing` y `docs/commissions` citan `docs/superpowers/specs/` y `BILLING-RULES.md`: se corrige el texto en su `build-deck.js` y se regeneran los `.pptx`.
 
 ## 4. PDFs con la marca
 
