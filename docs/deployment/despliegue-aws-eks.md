@@ -86,7 +86,7 @@ Las migraciones de la base se aplican **una vez, antes de arrancar los servicios
 
 ## 2. Fase 0 — Cambios de código obligatorios antes de construir las imágenes
 
-El código de `17197f4` estaba hecho para correr directamente en Kestrel en una máquina. Detrás de un balanceador, con varias réplicas y en Linux, había siete cosas que fallaban o quedaban inseguras. **Los siete cambios están hechos en la rama `fase0-eks`.** Esta sección dice qué se cambió y dónde, para que se pueda revisar. Las imágenes se construyen solo desde un `master` que ya los tenga integrados (sección 2.6).
+El código de `17197f4` estaba hecho para correr directamente en Kestrel en una máquina. Detrás de un balanceador, con varias réplicas y en Linux, había siete cosas que fallaban o quedaban inseguras. **Los siete cambios están hechos en la rama `fase0-eks`.** Esta sección dice qué se cambió y dónde, para que se pueda revisar. Las imágenes se construyen solo desde un `master` que ya los tenga integrados (sección 2.7).
 
 | # | Problema | Cambio | Dónde |
 |---|---|---|---|
@@ -94,7 +94,7 @@ El código de `17197f4` estaba hecho para correr directamente en Kestrel en una 
 | 2 | Detrás del ALB los servicios veían la IP del balanceador y `http`; el límite por IP se podía falsear con `X-Real-IP` | `AddProxyForwardedHeaders` y `app.UseForwardedHeaders()` como primer middleware en los 11 `Program.cs` | `SharedKernel.Server/Hosting/ProxyHosting.cs` |
 | 2b | SignupAPI tomaba la primera IP de `X-Forwarded-For`, que escribe el cliente | `ResolveClientIp()` usa `Connection.RemoteIpAddress` | `SignupAPI/Controllers/SignupsController.cs` |
 | 3 | Cuatro servicios perdían sus llaves de Data Protection en cada reinicio: sesiones, antifalsificación, enlaces de correo y PII de SignupAPI | `AddPersistentDataProtectionKeys` con `DataProtection:KeysPath` | SignupAPI, AdminWeb, BizCenterWeb y Signups |
-| 4 | El alta tenía `https://localhost:7005` fijo en el navegador | Lee `SignupApiBaseUrl`; `wwwroot/appsettings.Production.json` trae `https://auth-api.mlmconqueror.com` | `Signups.Client` |
+| 4 | El alta tenía `https://localhost:7005` fijo en el navegador | El servidor de Signups sirve el `appsettings.json` del cliente con `SignupApiPublicUrl`, así que la misma imagen vale en Docker local y en EKS | `Signups/Middleware/ClientConfigurationMiddleware.cs` y `Signups.Client/Program.cs` |
 | 5 | La licencia de Syncfusion no se registraba | `RegisterLicense(Syncfusion:LicenseKey)` y referencia a `Syncfusion.Licensing` | AdminWeb y BizCenterWeb |
 | 6 | El panel de Hangfire de TicketManagementSystem estaba abierto (`Authorization = []`) | Filtro por defecto: solo peticiones locales | `TicketManagementSystem/Program.cs` |
 | 7 | Seis `appsettings.json` tenían comentada una cadena de conexión con contraseña a la copia restaurada de la base de producción anterior, y Signups una contraseña de `RootAmbassador` | Líneas borradas | Billing, CommissionEngine, RankEngine, SharedAPICenter, TicketManagementSystem y Signups |
@@ -111,7 +111,7 @@ Las pruebas `DetrasDelBalanceadorTests` (BizCenter.Tests) comprueban dos cosas. 
   - Con `DataProtection__KeysPath=/keys` se guardan en el volumen EFS de cada servicio.
   - Los nombres de aplicación (`MLMConqueror.SignupAPI`, `MLMConqueror.AdminWeb`, `MLMConqueror.BizCenterWeb`, `MLMConqueror.Signups`) no se cambian nunca: cambiarlos invalida todo lo protegido.
   - No se usa la tabla `DataProtectionKeys` de la base, que es del anillo de credenciales de las pasarelas.
-- **Alta en el navegador:** si el dominio cambia, se edita `Signups.Client/wwwroot/appsettings.Production.json` y se reconstruye la imagen de `signups`.
+- **Alta en el navegador:** la dirección pública de SignupAPI es la variable `SignupApiPublicUrl` del servicio `signups` (Fase 10). Si cambia el dominio, se cambia la variable; no hace falta reconstruir la imagen.
 - **Syncfusion:** sin `Syncfusion__LicenseKey` los portales arrancan igual, pero muestran el aviso de licencia.
 
 ### 2.2 Credenciales que siguen en el historial de git
@@ -139,7 +139,29 @@ AdminAPI usaba `SixLabors.ImageSharp` 4.1.3 en la subida de imágenes de product
 
 Se quitó la biblioteca. Ahora la subida comprueba la firma de los primeros bytes de cada formato (PNG, JPEG, GIF, WebP) y exige que coincida con la extensión. La miniatura ya no se genera, y la respuesta trae solo `Url`.
 
-### 2.6 Cierre de la Fase 0
+### 2.6 Prueba completa en una sola máquina (docker-compose)
+
+`deploy/docker/docker-compose.yml` levanta los 11 servicios con las mismas imágenes que van a EKS, junto con SQL Server 2022 y Redis. La configuración es la de producción, con secretos de prueba y sin TLS. Sirve para probar el despliegue antes de tocar AWS.
+
+```
+bash deploy/docker/generar-secretos.sh        # una vez: crea deploy/docker/.env y el PFX de prueba
+docker compose -f deploy/docker/docker-compose.yml up -d --build
+docker compose -f deploy/docker/docker-compose.yml ps    # todos healthy
+```
+
+| Servicio | Dirección |
+|---|---|
+| Admin | `http://localhost:8101` |
+| Centro de negocios | `http://localhost:8104` |
+| Alta | `http://localhost:8147` |
+| SignupAPI | `http://localhost:8105` |
+| SQL Server | `localhost,14333` (usuario `sa`, contraseña `SA_PASSWORD` de `deploy/docker/.env`) |
+
+- SignupAPI arranca primero, aplica las migraciones sobre la base vacía y siembra la cuenta raíz: `root@mlmconqueror.local`, con la contraseña `ROOT_PASSWORD` del `.env`. Los demás servicios esperan a que esté sano.
+- Los puertos 8101 a 8147 no chocan con los de desarrollo (5001–5011, 7001–7011 y 7147) ni con un SQL Server local en el 1433.
+- `deploy/docker/.env` y `deploy/docker/secrets/` no se suben al repositorio.
+
+### 2.7 Cierre de la Fase 0
 
 En Windows, con la rama `fase0-eks` integrada en `master`:
 
@@ -683,11 +705,15 @@ set +o history      # no guardar en el historial lo que se escriba en esta fase
 Formato **PKCS#8 DER en base64**, de 2048 bits. Es el mismo procedimiento de `docs/deployment/rotacion-llaves-jwt.md`. No se usa PEM ni `genrsa`.
 
 ```
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform DER -out jwt-privada.der
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-privada.pem
+openssl pkcs8 -topk8 -nocrypt -in jwt-privada.pem -outform DER -out jwt-privada.der
+openssl asn1parse -inform DER -in jwt-privada.der | head -4   # debe aparecer rsaEncryption
 openssl rsa -inform DER -in jwt-privada.der -pubout -outform DER -out jwt-publica.der
 base64 -w0 jwt-privada.der > jwt-privada.b64
 base64 -w0 jwt-publica.der > jwt-publica.b64
 ```
+
+El paso por `pkcs8 -topk8` no es opcional: el openssl de Git para Windows saca la llave en PKCS#1 aunque se use `genpkey`, y SignupAPI no arranca con ella. Si en la salida de `asn1parse` no aparece `rsaEncryption`, la llave no sirve. Al terminar se borra `jwt-privada.pem` junto con los demás archivos de esta fase.
 
 La pública no es secreta: va a la configuración de todos los servicios (Fase 10).
 
@@ -1188,9 +1214,10 @@ kubectl get externalsecret -n $NS        # todos SecretSynced / Ready True
 
 Solo se sobrescribe lo que en producción tiene que ser distinto de `appsettings.json`. Lo demás (Entrax `Countries`, `IpRateLimiting:GeneralRules`, límites del 2FA, `MyLinks`, etc.) queda como viene en el repositorio.
 
-Hay tres reglas que no se cambian:
+Hay cuatro reglas que no se cambian:
 - `AllowedHosts=*`: el ALB y Kubernetes comprueban la salud del pod con su IP como `Host`. Con `localhost` (el valor del repositorio) responderían 400 y los pods nunca quedarían sanos. El filtro de nombres lo hace el ALB.
 - `Signup__CardEnabled`, `Membership__UpgradeEnabled`, `Billing__TokenPurchase__CardEnabled` y `Billing__Recurring__CardEnabled` van en `false`. Son bloqueantes de producción (`docs/deployment/pruebas-de-seguridad.md`).
+- Una lista de `appsettings.json` se sobrescribe por posición (`__0`, `__1`, ...), y las posiciones que no se definen se quedan con el valor del repositorio. Por eso `Cors__AllowedOrigins` repite el origen de producción en todas las posiciones que trae el `appsettings.json`: si no, seguirían permitidos los `https://localhost:...` de desarrollo.
 - `Auth__TwoFactor__MandatoryRoles` no se define en el primer despliegue. Se enciende en la Fase 14, siguiendo `docs/deployment/verificacion-2fa.md`.
 
 ```
@@ -1229,6 +1256,8 @@ data:
   Jwt__AccessTokenExpiryMinutes: "15"
   Jwt__RefreshTokenExpiryMinutes: "30"
   Cors__AllowedOrigins__0: https://signup.${DOMINIO}
+  Cors__AllowedOrigins__1: https://signup.${DOMINIO}
+  Cors__AllowedOrigins__2: https://signup.${DOMINIO}
   Auth__PortalBaseUrl: https://app.${DOMINIO}
   Auth__AdminPortalBaseUrl: https://admin.${DOMINIO}
   Signup__CardEnabled: "false"
@@ -1246,6 +1275,7 @@ metadata: {name: adminapi, namespace: ${NS}}
 data:
   Cache__Mode: Required
   Cors__AllowedOrigins__0: https://admin.${DOMINIO}
+  Cors__AllowedOrigins__1: https://admin.${DOMINIO}
   Services__SignupAPI: http://signupapi.${NS}.svc.cluster.local/
   Services__BillingBaseUrl: http://billing.${NS}.svc.cluster.local/
   Services__Billing: http://billing.${NS}.svc.cluster.local
@@ -1277,6 +1307,7 @@ data:
   Cache__Mode: Required
   Hangfire__WorkerCount: "5"
   Cors__AllowedOrigins__0: https://app.${DOMINIO}
+  Cors__AllowedOrigins__1: https://app.${DOMINIO}
   Services__RankEngineBaseUrl: http://rankengine.${NS}.svc.cluster.local/
   Services__BillingBaseUrl: http://billing.${NS}.svc.cluster.local/
   AWS__S3__BucketName: ${BUCKET}
@@ -1319,6 +1350,7 @@ kind: ConfigMap
 metadata: {name: signups, namespace: ${NS}}
 data:
   SignupApiBaseUrl: http://signupapi.${NS}.svc.cluster.local
+  SignupApiPublicUrl: https://auth-api.${DOMINIO}
   PortalSessionBounce__PublicBaseUrl: https://signup.${DOMINIO}
   PortalSessionBounce__Portals__0__Name: BizCenterWeb
   PortalSessionBounce__Portals__0__SignOutUrl: https://app.${DOMINIO}/account/logout
@@ -1894,7 +1926,7 @@ jobs:
           done
 ```
 
-El flujo no ejecuta las pruebas. Varias suites necesitan un SQL Server propio y la solución incluye las apps MAUI, que no compilan en Linux. Las pruebas se corren en Windows antes de lanzarlo, igual que en la sección 2.6. El flujo se lanza a mano (Actions, deploy, Run workflow) sobre `master`.
+El flujo no ejecuta las pruebas. Varias suites necesitan un SQL Server propio y la solución incluye las apps MAUI, que no compilan en Linux. Las pruebas se corren en Windows antes de lanzarlo, igual que en la sección 2.7. El flujo se lanza a mano (Actions, deploy, Run workflow) sobre `master`.
 
 El nombre del repositorio ECR coincide con el proyecto en minúsculas (`SignupAPI` da `signupapi`), por eso basta con `tr`.
 

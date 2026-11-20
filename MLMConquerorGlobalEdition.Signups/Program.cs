@@ -62,6 +62,11 @@ var app = builder.Build();
 // Primero de todo: lo que sigue (HSTS, redireccion, limite por IP, auth) ve al cliente real.
 app.UseForwardedHeaders();
 
+// El appsettings.json del cliente WebAssembly sale de la configuración del servidor (la dirección
+// pública de SignupAPI), no de un archivo fijo: la misma imagen sirve en Docker local y en EKS.
+// Delante de los estáticos, que si no servirían el archivo de Signups.Client/wwwroot.
+app.UseClientConfiguration();
+
 app.UseStaticFiles();
 // DELANTE DE TODO LO QUE PINTE, y esa es la mitad de la decisión: el navegador tiene que irse y
 // volver ANTES de que el visitante vea un formulario. Desde la página —o desde cualquier sitio

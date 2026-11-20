@@ -145,7 +145,17 @@ public class SharedComponentsNoServerHostingTests
 
                 try
                 {
-                    pendientes.Enqueue((Assembly.Load(referencia), caminoDestino));
+                    var cargado = Assembly.Load(referencia);
+
+                    // Lo que viene del propio runtime (Microsoft.NETCore.App) no se recorre por
+                    // dentro: nunca referencia ASP.NET Core, y entre sus ensamblados está mscorlib,
+                    // una fachada de compatibilidad que reenvía tipos a ensamblados que no tienen
+                    // por qué estar instalados (System.Security.Permissions, por ejemplo). Llegar a
+                    // mscorlib es normal: Syncfusion.Licensing, que entra con Syncfusion.Blazor.Core
+                    // desde nuget.org, lo referencia.
+                    if (EsDelRuntime(cargado)) continue;
+
+                    pendientes.Enqueue((cargado, caminoDestino));
                 }
                 catch (Exception ex)
                 {
@@ -156,6 +166,15 @@ public class SharedComponentsNoServerHostingTests
 
         return (offenders, unresolved);
     }
+
+    /// <summary>Carpeta del runtime de .NET con el que corre la prueba (Microsoft.NETCore.App).</summary>
+    private static readonly string CarpetaDelRuntime =
+        Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+
+    private static bool EsDelRuntime(Assembly ensamblado) =>
+        !string.IsNullOrEmpty(ensamblado.Location)
+        && string.Equals(Path.GetDirectoryName(ensamblado.Location), CarpetaDelRuntime,
+                         StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Que la prueba de arriba esté mirando el ensamblado que cree. Sin esto, un renombrado o una

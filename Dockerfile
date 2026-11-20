@@ -26,6 +26,10 @@ RUN chmod 644 /usr/local/share/ca-certificates/rds-global-bundle.crt \
  && update-ca-certificates
 WORKDIR /app
 COPY --from=build /out .
+# Carpetas donde se montan los volumenes (llaves, recibos, adjuntos, certificados), ya con el
+# usuario de la app: un volumen nuevo de Docker hereda el dueno de la carpeta de la imagen.
+RUN mkdir -p /keys /data/payout-receipts /app/wwwroot/uploads /app/wwwroot/certificates \
+ && chown -R $APP_UID:$APP_UID /keys /data /app/wwwroot/uploads /app/wwwroot/certificates
 ARG PROJECT
 ENV APP_DLL=${PROJECT}.dll \
     ASPNETCORE_HTTP_PORTS=8080

@@ -4,8 +4,8 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 // Named client used by Signup.razor and MemberJoin.razor via IHttpClientFactory.
-// En el navegador se llama directo a SignupAPI. La URL publica sale de wwwroot/appsettings.json
-// (desarrollo) y de wwwroot/appsettings.Production.json (lo que se publica); antes estaba fija.
+// En el navegador se llama directo a SignupAPI. La URL publica la sirve el servidor de Signups
+// en /appsettings.json desde su configuracion (ClientConfigurationMiddleware); antes estaba fija.
 builder.Services.AddHttpClient("SignupsInternal", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7005");

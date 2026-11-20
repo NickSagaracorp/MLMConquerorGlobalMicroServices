@@ -167,6 +167,18 @@ builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifi
 // /health/cache endpoint reads.
 {
     var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+
+    // La cadena puede traer opciones (ssl, password, abortConnect...): en ElastiCache siempre
+    // las trae. Se interpreta completa; meterla entera como un solo EndPoint la rompe y el
+    // sondeo da Redis por inalcanzable aunque este arriba.
+    static StackExchange.Redis.ConfigurationOptions OpcionesRedis(string cadena, int connectTimeout, int? connectRetry = null)
+    {
+        var opciones = StackExchange.Redis.ConfigurationOptions.Parse(cadena);
+        opciones.ConnectTimeout     = connectTimeout;
+        opciones.AbortOnConnectFail = false;
+        if (connectRetry is int reintentos) opciones.ConnectRetry = reintentos;
+        return opciones;
+    }
     var mode      = (builder.Configuration["Cache:Mode"] ?? "Optional").Trim();
     var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
 
@@ -175,12 +187,7 @@ builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifi
     try
     {
         multiplexer = StackExchange.Redis.ConnectionMultiplexer.Connect(
-            new StackExchange.Redis.ConfigurationOptions
-            {
-                EndPoints          = { redisConn },
-                ConnectTimeout     = 250,
-                AbortOnConnectFail = false
-            });
+            OpcionesRedis(redisConn, connectTimeout: required ? 5000 : 250)); // con TLS (ElastiCache) 250 ms no alcanza;
         redisReachable = multiplexer.IsConnected;
     }
     catch { redisReachable = false; }
@@ -200,13 +207,7 @@ builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifi
         multiplexer!.Dispose();
         builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
             StackExchange.Redis.ConnectionMultiplexer.Connect(
-                new StackExchange.Redis.ConfigurationOptions
-                {
-                    EndPoints          = { redisConn },
-                    ConnectTimeout     = 5000,
-                    ConnectRetry       = 3,
-                    AbortOnConnectFail = false
-                }));
+                OpcionesRedis(redisConn, connectTimeout: 5000, connectRetry: 3)));
         builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {

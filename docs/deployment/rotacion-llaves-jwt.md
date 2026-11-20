@@ -84,7 +84,8 @@ exactamente la misma en los siete. Son un par: si no corresponden entre sí, nad
 En cualquier máquina con OpenSSL, en un directorio temporal:
 
 ```bash
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform DER -out priv.der
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.pem
+openssl pkcs8 -topk8 -nocrypt -in priv.pem -outform DER -out priv.der
 openssl rsa -in priv.der -inform DER -pubout -outform DER -out pub.der
 base64 -w0 priv.der > priv.txt
 base64 -w0 pub.der  > pub.txt
@@ -102,8 +103,8 @@ Ahora tienes dos cadenas:
 - `priv.txt` → el contenido va en **PrivateKeyBase64** (secreto)
 - `pub.txt` → el contenido va en **PublicKeyBase64** (no secreto)
 
-**Importante sobre el formato.** Debe ser **PKCS#8**, que es lo que produce `openssl
-genpkey`. Si usas `openssl genrsa` obtendrás PKCS#1 y el servicio lo rechazará al arrancar
+**Importante sobre el formato.** Debe ser **PKCS#8**. Por eso se pasa por `openssl pkcs8
+-topk8`: el openssl de Git para Windows saca PKCS#1 aunque se use `genpkey`. Si usas `openssl genrsa` obtendrás PKCS#1 y el servicio lo rechazará al arrancar
 —aunque con un mensaje que te dice cómo convertirlo—. Tampoco pegues el contenido de un
 archivo `.pem` con sus cabeceras `-----BEGIN ...-----`: se necesita solo el base64 del DER.
 
@@ -284,7 +285,7 @@ que la llave no esté en el disco del servidor en texto plano.
 
 | | |
 |---|---|
-| **Generar** | `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform DER -out priv.der` |
+| **Generar** | `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.pem` y `openssl pkcs8 -topk8 -nocrypt -in priv.pem -outform DER -out priv.der` |
 | | `openssl rsa -in priv.der -inform DER -pubout -outform DER -out pub.der` |
 | **Privada en** | SignupAPI, AdminAPI |
 | **Pública en** | los 7 servicios |

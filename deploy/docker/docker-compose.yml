@@ -1,0 +1,280 @@
+# Los 11 servicios + SQL Server + Redis en una sola maquina, con la MISMA imagen que va a EKS.
+# Sirve para probar el despliegue antes de AWS. No es produccion: secretos de prueba, sin TLS.
+#
+#   bash deploy/docker/generar-secretos.sh               (una vez)
+#   docker compose -f deploy/docker/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker/docker-compose.yml ps
+#
+# Puertos en esta maquina (8101-8147, 14333, 16379) para no chocar con los de desarrollo
+# (5001-5011 / 7001-7011 / 7147) ni con un SQL Server local en 1433:
+#   Admin        http://localhost:8101      Centro de negocios  http://localhost:8104
+#   Alta         http://localhost:8147      SignupAPI           http://localhost:8105
+#   AdminAPI     http://localhost:8102      BizCenter API       http://localhost:8103
+#   SQL Server   localhost,14333 (sa / SA_PASSWORD de .env)
+#
+# Los paneles de Hangfire solo aceptan peticiones desde el propio contenedor, igual que en EKS
+# (alli se abren con kubectl port-forward); aqui no se publican.
+
+name: mlmconqueror
+
+x-build: &build
+  context: ../..
+  dockerfile: Dockerfile
+
+# Lo comun a los 11 (equivale al ConfigMap "comun" de EKS).
+x-comun: &comun
+  ASPNETCORE_ENVIRONMENT: Production
+  TZ: America/New_York
+  AllowedHosts: "*"
+  ForwardedHeaders__KnownNetwork: 172.16.0.0/12
+  IpRateLimiting__RealIpHeader: ""
+  Jwt__Issuer: MLMConquerorGlobalEdition
+  Jwt__Audience: MLMConquerorGlobalEdition.Clients
+  Jwt__PublicKeyBase64: "${JWT_PUBLIC:?falta deploy/docker/.env, ejecuta generar-secretos.sh}"
+  Notifications__Email__Provider: "Null"
+  Notifications__Email__Ses__FromAddress: no-reply@mlmconqueror.local
+  Notifications__Sms__Provider: "Null"
+
+# La base y Redis (equivale al secreto "datos" de EKS).
+x-datos: &datos
+  ConnectionStrings__DefaultConnection: &sql "Server=sqlserver,1433;Database=MLMConquerorGlobalEditionDb;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;Connect Timeout=30"
+  ConnectionStrings__HangFire: *sql
+  ConnectionStrings__Redis: redis:6379,abortConnect=False
+
+x-pasarelas: &pasarelas
+  DataProtection__Certificate__Path: /secrets/dp/gateway.pfx
+  DataProtection__Certificate__Password: ${PFX_PASSWORD}
+
+x-salud: &salud
+  # La imagen no trae curl: bash abre el puerto y pide /health a mano.
+  test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '"]
+  interval: 10s
+  timeout: 5s
+  retries: 6
+  start_period: 600s
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      TZ: America/New_York
+    ports: ["14333:1433"]
+    volumes: [sqldata:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    ports: ["16379:6379"]
+
+  # SignupAPI arranca primero: aplica las migraciones sobre la base vacia y siembra roles, cuenta
+  # raiz, paises y productos. Los demas esperan a que este sano para no migrar a la vez.
+  signupapi:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.SignupAPI } }
+    image: mlmconqueror/signupapi:local
+    environment:
+      <<: [*comun, *datos]
+      Jwt__PrivateKeyBase64: ${JWT_PRIVATE}
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: http://localhost:8147
+      Cors__AllowedOrigins__1: http://localhost:8147
+      Cors__AllowedOrigins__2: http://localhost:8147
+      Auth__PortalBaseUrl: http://localhost:8104
+      Auth__AdminPortalBaseUrl: http://localhost:8101
+      Signup__CardEnabled: "false"
+      Membership__UpgradeEnabled: "false"
+      Entrax__Enabled: "false"
+      Entrax__UseFake: "false"
+      RootAmbassador__Email: ${ROOT_EMAIL}
+      RootAmbassador__Password: ${ROOT_PASSWORD}
+      DataProtection__KeysPath: /keys
+    volumes: [llaves-signupapi:/keys]
+    ports: ["8105:8080"]
+    depends_on:
+      sqlserver: { condition: service_healthy }
+      redis: { condition: service_started }
+    healthcheck: *salud
+
+  adminapi:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.AdminAPI } }
+    image: mlmconqueror/adminapi:local
+    environment:
+      <<: [*comun, *datos, *pasarelas]
+      Jwt__PrivateKeyBase64: ${JWT_PRIVATE}
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: http://localhost:8101
+      Cors__AllowedOrigins__1: http://localhost:8101
+      Services__SignupAPI: http://signupapi:8080/
+      Services__BillingBaseUrl: http://billing:8080/
+      Services__Billing: http://billing:8080
+      Services__BizCenter: http://bizcenter:8080
+      Services__CommissionEngine: http://commissionengine:8080
+      Services__RankEngine: http://rankengine:8080
+      Services__TicketManagementSystem: http://ticketmanagementsystem:8080
+      Services__SharedAPICenter: http://sharedapicenter:8080
+      ReceiptStorage__LocalPath: /data/payout-receipts
+      ReceiptStorage__PublicBaseUrl: http://localhost:8102
+      Billing__TokenPurchase__CardEnabled: "false"
+      Billing__Recurring__CardEnabled: "false"
+    volumes:
+      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
+      - uploads:/app/wwwroot/uploads
+      - recibos:/data/payout-receipts
+    ports: ["8102:8080"]
+    depends_on:
+      signupapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  billing:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.Billing } }
+    image: mlmconqueror/billing:local
+    environment:
+      <<: [*comun, *datos, *pasarelas]
+      ReceiptStorage__LocalPath: /data/payout-receipts
+      ReceiptStorage__PublicBaseUrl: http://localhost:8102
+      Billing__TokenPurchase__CardEnabled: "false"
+      Billing__Recurring__CardEnabled: "false"
+    volumes:
+      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
+      - recibos:/data/payout-receipts
+    ports: ["8107:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  bizcenter:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.BizCenter } }
+    image: mlmconqueror/bizcenter:local
+    environment:
+      <<: [*comun, *datos, *pasarelas]
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: http://localhost:8104
+      Cors__AllowedOrigins__1: http://localhost:8104
+      Services__RankEngineBaseUrl: http://rankengine:8080/
+      Services__BillingBaseUrl: http://billing:8080/
+    volumes:
+      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
+      - uploads:/app/wwwroot/uploads
+    ports: ["8103:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  commissionengine:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.CommissionEngine } }
+    image: mlmconqueror/commissionengine:local
+    environment:
+      <<: [*comun, *datos]
+    ports: ["8108:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  rankengine:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.RankEngine } }
+    image: mlmconqueror/rankengine:local
+    environment:
+      <<: [*comun, *datos]
+      CertificateStorage__Provider: Local
+      CertificateStorage__LocalPath: /app/wwwroot/certificates
+      CertificateStorage__PublicBaseUrl: http://localhost:8109
+    volumes: [certificados:/app/wwwroot/certificates]
+    ports: ["8109:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  ticketmanagementsystem:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.TicketManagementSystem } }
+    image: mlmconqueror/ticketmanagementsystem:local
+    environment:
+      <<: [*comun, *datos]
+    ports: ["8110:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  sharedapicenter:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.SharedAPICenter } }
+    image: mlmconqueror/sharedapicenter:local
+    environment:
+      <<: [*comun, *datos]
+      ExternalApi__ApiKey: ${EXTERNAL_API_KEY}
+    ports: ["8111:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  adminweb:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.AdminWeb } }
+    image: mlmconqueror/adminweb:local
+    environment:
+      <<: *comun
+      ApiBaseUrl: http://adminapi:8080
+      AuthApiBaseUrl: http://signupapi:8080
+      RankEngineApiBaseUrl: http://rankengine:8080
+      HelpdeskApiUrl: http://ticketmanagementsystem:8080
+      SignOut__AllowedReturnUrls__0: http://localhost:8147/
+      DataProtection__KeysPath: /keys
+      Syncfusion__LicenseKey: ${SYNCFUSION_LICENSE_KEY:-}
+    volumes: [llaves-adminweb:/keys]
+    ports: ["8101:8080"]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+
+  bizcenterweb:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.BizCenterWeb } }
+    image: mlmconqueror/bizcenterweb:local
+    environment:
+      <<: *comun
+      ApiBaseUrl: http://bizcenter:8080
+      AuthApiBaseUrl: http://signupapi:8080
+      SignupAppUrl: http://localhost:8147/ambassador-join
+      SignOut__AllowedReturnUrls__0: http://localhost:8147/
+      DataProtection__KeysPath: /keys
+      Syncfusion__LicenseKey: ${SYNCFUSION_LICENSE_KEY:-}
+    volumes: [llaves-bizcenterweb:/keys]
+    ports: ["8104:8080"]
+    depends_on:
+      bizcenter: { condition: service_healthy }
+    healthcheck: *salud
+
+  signups:
+    build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.Signups } }
+    image: mlmconqueror/signups:local
+    environment:
+      <<: *comun
+      SignupApiBaseUrl: http://signupapi:8080
+      SignupApiPublicUrl: http://localhost:8105
+      PortalSessionBounce__PublicBaseUrl: http://localhost:8147
+      PortalSessionBounce__Portals__0__Name: BizCenterWeb
+      PortalSessionBounce__Portals__0__SignOutUrl: http://localhost:8104/account/logout
+      PortalSessionBounce__Portals__0__ProbeUrl: http://bizcenterweb:8080/health
+      PortalSessionBounce__Portals__1__Name: AdminWeb
+      PortalSessionBounce__Portals__1__SignOutUrl: http://localhost:8101/account/logout
+      PortalSessionBounce__Portals__1__ProbeUrl: http://adminweb:8080/health
+      DataProtection__KeysPath: /keys
+    volumes: [llaves-signups:/keys]
+    ports: ["8147:8080"]
+    depends_on:
+      signupapi: { condition: service_healthy }
+    healthcheck: *salud
+
+volumes:
+  sqldata:
+  uploads:
+  recibos:
+  certificados:
+  llaves-signupapi:
+  llaves-adminweb:
+  llaves-bizcenterweb:
+  llaves-signups:
