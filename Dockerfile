@@ -24,6 +24,16 @@ ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     /usr/local/share/ca-certificates/rds-global-bundle.crt
 RUN chmod 644 /usr/local/share/ca-certificates/rds-global-bundle.crt \
  && update-ca-certificates
+# IAM Roles Anywhere: en un servidor Docker fuera de AWS, cada servicio obtiene credenciales
+# temporales de su propio rol presentando su certificado (credential_process en AWS_CONFIG_FILE).
+# En EKS y en la maquina del desarrollador no se usa. Version y SHA-256 de la pagina oficial:
+# https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html
+ARG ROLES_ANYWHERE_VERSION=1.8.6
+ARG ROLES_ANYWHERE_SHA256=3553fdc515e5682541a9ebdd37031ec7f461169aa13ccbb6fbd5b7259644113d
+ADD https://rolesanywhere.amazonaws.com/releases/${ROLES_ANYWHERE_VERSION}/X86_64/Linux/Amzn2023/aws_signing_helper /usr/local/bin/aws_signing_helper
+RUN echo "${ROLES_ANYWHERE_SHA256}  /usr/local/bin/aws_signing_helper" | sha256sum -c - \
+ && chmod 755 /usr/local/bin/aws_signing_helper \
+ && /usr/local/bin/aws_signing_helper version
 WORKDIR /app
 COPY --from=build /out .
 # Carpetas donde se montan los volumenes (llaves, recibos, adjuntos, certificados), ya con el

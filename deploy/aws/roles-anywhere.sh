@@ -24,15 +24,20 @@ if [ "$ancla" = "None" ]; then
   rm -f "$CA/fuente.json"
 fi
 
-roles=$(for s in $(servicios); do echo "arn:aws:iam::$CUENTA:role/$(rol_de "$s")"; done | paste -sd' ')
+# Solo los roles que ya existen: en la primera pasada todavia no se crearon (crear-roles.sh
+# los crea despues, porque su confianza necesita el ARN del trust anchor). La segunda pasada
+# los agrega al perfil.
+roles=$(for s in $(servicios); do r=$(rol_de "$s"); aws iam get-role --role-name "$r" >/dev/null 2>&1 \
+          && echo "arn:aws:iam::$CUENTA:role/$r" || true; done | paste -sd' ')
 perfil=$(aws rolesanywhere list-profiles \
   --query "profiles[?name=='mlmconqueror-$ENTORNO'].profileArn | [0]" --output text)
 if [ "$perfil" = "None" ]; then
   perfil=$(aws rolesanywhere create-profile --name "mlmconqueror-$ENTORNO" --enabled \
-    --duration-seconds 3600 --role-arns $roles --query profile.profileArn --output text)
-else
+    --duration-seconds 3600 ${roles:+--role-arns $roles} --query profile.profileArn --output text)
+elif [ -n "$roles" ]; then
   aws rolesanywhere update-profile --profile-id "${perfil##*/}" --role-arns $roles >/dev/null
 fi
 
+[ -n "$roles" ] || echo "Perfil sin roles todavia: corre crear-roles.sh $ENTORNO docker y luego este script otra vez."
 echo "TRUST_ANCHOR_ARN=$ancla"
 echo "PROFILE_ARN=$perfil"

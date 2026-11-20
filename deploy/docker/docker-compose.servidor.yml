@@ -1,0 +1,327 @@
+# Servidor Docker FUERA de AWS (staging). Cada servicio lee sus secretos de
+# mlmconqueror/${ENTORNO}/* con su propio rol, por IAM Roles Anywhere (certificado por servicio).
+# Nadie llega directo: el servidor no publica puertos; todo entra por Cloudflare Tunnel (cloudflared).
+#
+#   bash deploy/docker/bajar-token-tunel.sh staging
+#   docker compose -f deploy/docker/docker-compose.servidor.yml --env-file deploy/docker/.env.servidor up -d
+
+name: mlmconqueror
+
+x-comun: &comun
+  ASPNETCORE_ENVIRONMENT: Production
+  TZ: America/New_York
+  AllowedHosts: "*"
+  SecretosAws__Entorno: ${ENTORNO:?falta ENTORNO en .env.servidor}
+  SecretosAws__Region: ${AWS_REGION:-us-east-1}
+  AWS_CONFIG_FILE: /run/aws/config
+  ForwardedHeaders__KnownNetwork: 172.30.0.0/24   # red "borde": solo cloudflared llega por ahi
+  IpRateLimiting__RealIpHeader: ""
+  Jwt__Issuer: MLMConquerorGlobalEdition
+  Jwt__Audience: MLMConquerorGlobalEdition.Clients
+  Jwt__PublicKeyBase64: ${JWT_PUBLIC:?falta JWT_PUBLIC en .env.servidor}
+  Notifications__Email__Provider: "Null"
+  Notifications__Sms__Provider: "Null"
+
+x-salud: &salud
+  # La imagen no trae curl: bash abre el puerto y pide /health a mano.
+  test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '"]
+  interval: 10s
+  timeout: 5s
+  retries: 6
+  start_period: 600s
+
+services:
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN_FILE: /run/tunel/token
+    volumes:
+      - ./secretos/tunel-token:/run/tunel/token:ro
+    networks: [borde]
+    restart: unless-stopped
+
+
+  signupapi:
+    image: ${REGISTRO}/signupapi:${VERSION}
+    environment:
+      <<: *comun
+      Auth__AdminPortalBaseUrl: "${URL_ADMIN}"
+      Auth__PortalBaseUrl: "${URL_APP}"
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: "${URL_SIGNUP}"
+      Cors__AllowedOrigins__1: "${URL_SIGNUP}"
+      Cors__AllowedOrigins__2: "${URL_SIGNUP}"
+      DataProtection__KeysPath: /keys
+      Entrax__Enabled: "false"
+      Entrax__UseFake: "false"
+      Membership__UpgradeEnabled: "false"
+      Signup__CardEnabled: "false"
+    configs: [{ source: aws-signupapi, target: /run/aws/config }]
+    volumes:
+      - llaves-signupapi:/keys
+      - ./certificados/signupapi/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/signupapi/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    healthcheck: *salud
+    restart: unless-stopped
+
+  adminapi:
+    image: ${REGISTRO}/adminapi:${VERSION}
+    environment:
+      <<: *comun
+      Billing__Recurring__CardEnabled: "false"
+      Billing__TokenPurchase__CardEnabled: "false"
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: "${URL_ADMIN}"
+      Cors__AllowedOrigins__1: "${URL_ADMIN}"
+      ReceiptStorage__LocalPath: /data/payout-receipts
+      ReceiptStorage__PublicBaseUrl: "${URL_RECIBOS}"
+      Services__Billing: "http://billing:8080"
+      Services__BillingBaseUrl: "http://billing:8080/"
+      Services__BizCenter: "http://bizcenter:8080"
+      Services__CommissionEngine: "http://commissionengine:8080"
+      Services__RankEngine: "http://rankengine:8080"
+      Services__SharedAPICenter: "http://sharedapicenter:8080"
+      Services__SignupAPI: "http://signupapi:8080/"
+      Services__TicketManagementSystem: "http://ticketmanagementsystem:8080"
+    configs: [{ source: aws-adminapi, target: /run/aws/config }]
+    volumes:
+      - uploads:/app/wwwroot/uploads
+      - recibos:/data/payout-receipts
+      - ./certificados/adminapi/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/adminapi/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      signupapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  billing:
+    image: ${REGISTRO}/billing:${VERSION}
+    environment:
+      <<: *comun
+      Billing__Recurring__CardEnabled: "false"
+      Billing__TokenPurchase__CardEnabled: "false"
+      ReceiptStorage__LocalPath: /data/payout-receipts
+      ReceiptStorage__PublicBaseUrl: "${URL_RECIBOS}"
+    configs: [{ source: aws-billing, target: /run/aws/config }]
+    volumes:
+      - recibos:/data/payout-receipts
+      - ./certificados/billing/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/billing/key.pem:/run/aws/key.pem:ro
+    networks: [interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  bizcenter:
+    image: ${REGISTRO}/bizcenter:${VERSION}
+    environment:
+      <<: *comun
+      Cache__Mode: Required
+      Cors__AllowedOrigins__0: "${URL_APP}"
+      Cors__AllowedOrigins__1: "${URL_APP}"
+      Services__BillingBaseUrl: "http://billing:8080/"
+      Services__RankEngineBaseUrl: "http://rankengine:8080/"
+    configs: [{ source: aws-bizcenter, target: /run/aws/config }]
+    volumes:
+      - uploads:/app/wwwroot/uploads
+      - ./certificados/bizcenter/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/bizcenter/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  commissionengine:
+    image: ${REGISTRO}/commissionengine:${VERSION}
+    environment:
+      <<: *comun
+    configs: [{ source: aws-commissionengine, target: /run/aws/config }]
+    volumes:
+      - ./certificados/commissionengine/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/commissionengine/key.pem:/run/aws/key.pem:ro
+    networks: [interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  rankengine:
+    image: ${REGISTRO}/rankengine:${VERSION}
+    environment:
+      <<: *comun
+      CertificateStorage__LocalPath: /app/wwwroot/certificates
+      CertificateStorage__Provider: Local
+      CertificateStorage__PublicBaseUrl: "${URL_CERTIFICADOS}"
+    configs: [{ source: aws-rankengine, target: /run/aws/config }]
+    volumes:
+      - certificados:/app/wwwroot/certificates
+      - ./certificados/rankengine/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/rankengine/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  ticketmanagementsystem:
+    image: ${REGISTRO}/ticketmanagementsystem:${VERSION}
+    environment:
+      <<: *comun
+    configs: [{ source: aws-ticketmanagementsystem, target: /run/aws/config }]
+    volumes:
+      - ./certificados/ticketmanagementsystem/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/ticketmanagementsystem/key.pem:/run/aws/key.pem:ro
+    networks: [interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  sharedapicenter:
+    image: ${REGISTRO}/sharedapicenter:${VERSION}
+    environment:
+      <<: *comun
+    configs: [{ source: aws-sharedapicenter, target: /run/aws/config }]
+    volumes:
+      - ./certificados/sharedapicenter/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/sharedapicenter/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  adminweb:
+    image: ${REGISTRO}/adminweb:${VERSION}
+    environment:
+      <<: *comun
+      ApiBaseUrl: "http://adminapi:8080"
+      AuthApiBaseUrl: "http://signupapi:8080"
+      DataProtection__KeysPath: /keys
+      HelpdeskApiUrl: "http://ticketmanagementsystem:8080"
+      RankEngineApiBaseUrl: "http://rankengine:8080"
+      SignOut__AllowedReturnUrls__0: "${URL_SIGNUP}/"
+    configs: [{ source: aws-adminweb, target: /run/aws/config }]
+    volumes:
+      - llaves-adminweb:/keys
+      - ./certificados/adminweb/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/adminweb/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      adminapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  bizcenterweb:
+    image: ${REGISTRO}/bizcenterweb:${VERSION}
+    environment:
+      <<: *comun
+      ApiBaseUrl: "http://bizcenter:8080"
+      AuthApiBaseUrl: "http://signupapi:8080"
+      DataProtection__KeysPath: /keys
+      SignOut__AllowedReturnUrls__0: "${URL_SIGNUP}/"
+      SignupAppUrl: "${URL_SIGNUP}/ambassador-join"
+    configs: [{ source: aws-bizcenterweb, target: /run/aws/config }]
+    volumes:
+      - llaves-bizcenterweb:/keys
+      - ./certificados/bizcenterweb/cert.pem:/run/aws/cert.pem:ro
+      - ./certificados/bizcenterweb/key.pem:/run/aws/key.pem:ro
+    networks: [borde, interna]
+    depends_on:
+      bizcenter: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+  signups:
+    image: ${REGISTRO}/signups:${VERSION}
+    environment:
+      <<: *comun
+      DataProtection__KeysPath: /keys
+      PortalSessionBounce__Portals__0__Name: BizCenterWeb
+      PortalSessionBounce__Portals__0__ProbeUrl: "http://bizcenterweb:8080/health"
+      PortalSessionBounce__Portals__0__SignOutUrl: "${URL_APP}/account/logout"
+      PortalSessionBounce__Portals__1__Name: AdminWeb
+      PortalSessionBounce__Portals__1__ProbeUrl: "http://adminweb:8080/health"
+      PortalSessionBounce__Portals__1__SignOutUrl: "${URL_ADMIN}/account/logout"
+      PortalSessionBounce__PublicBaseUrl: "${URL_SIGNUP}"
+      SignupApiBaseUrl: "http://signupapi:8080"
+      SignupApiPublicUrl: "${URL_AUTH_API}"
+    volumes:
+      - llaves-signups:/keys
+    networks: [borde, interna]
+    depends_on:
+      signupapi: { condition: service_healthy }
+    healthcheck: *salud
+    restart: unless-stopped
+
+networks:
+  borde:
+    ipam: { config: [{ subnet: 172.30.0.0/24 }] }
+  interna: {}
+
+volumes:
+  certificados:
+  llaves-adminweb:
+  llaves-bizcenterweb:
+  llaves-signupapi:
+  llaves-signups:
+  recibos:
+  uploads:
+
+configs:
+  aws-signupapi:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-signupapi
+  aws-adminapi:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-adminapi
+  aws-billing:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-billing
+  aws-bizcenter:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-bizcenter
+  aws-commissionengine:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-commissionengine
+  aws-rankengine:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-rankengine
+  aws-ticketmanagementsystem:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-ticketmanagementsystem
+  aws-sharedapicenter:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-sharedapicenter
+  aws-adminweb:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-adminweb
+  aws-bizcenterweb:
+    content: |
+      [default]
+      region = ${AWS_REGION:-us-east-1}
+      credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /run/aws/cert.pem --private-key /run/aws/key.pem --trust-anchor-arn ${TRUST_ANCHOR_ARN} --profile-arn ${PROFILE_ARN} --role-arn arn:aws:iam::${CUENTA}:role/MLM-${ENTORNO}-bizcenterweb

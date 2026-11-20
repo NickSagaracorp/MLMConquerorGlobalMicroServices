@@ -1,7 +1,10 @@
 # Los 11 servicios + SQL Server + Redis en una sola maquina, con la MISMA imagen que va a EKS.
 # Sirve para probar el despliegue antes de AWS. No es produccion: secretos de prueba, sin TLS.
 #
-#   bash deploy/docker/generar-secretos.sh               (una vez)
+# Los secretos salen de AWS Secrets Manager (mlmconqueror/local/*) con el perfil de AWS de quien lo
+# levanta, montado de solo lectura en cada contenedor. Antes de levantarlo: tener el perfil listo
+# (aws sso login, o claves en ~/.aws) y, una vez, generar la contrasena del SQL Server de prueba:
+#   bash deploy/docker/generar-secretos.sh
 #   docker compose -f deploy/docker/docker-compose.yml up -d --build
 #   docker compose -f deploy/docker/docker-compose.yml ps
 #
@@ -30,7 +33,8 @@ x-comun: &comun
   IpRateLimiting__RealIpHeader: ""
   Jwt__Issuer: MLMConquerorGlobalEdition
   Jwt__Audience: MLMConquerorGlobalEdition.Clients
-  Jwt__PublicKeyBase64: "${JWT_PUBLIC:?falta deploy/docker/.env, ejecuta generar-secretos.sh}"
+  SecretosAws__Entorno: local
+  AWS_PROFILE: ${AWS_PROFILE:-default}
   Notifications__Email__Provider: "Null"
   Notifications__Email__Ses__FromAddress: no-reply@mlmconqueror.local
   Notifications__Sms__Provider: "Null"
@@ -41,9 +45,13 @@ x-datos: &datos
   ConnectionStrings__HangFire: *sql
   ConnectionStrings__Redis: redis:6379,abortConnect=False
 
-x-pasarelas: &pasarelas
-  DataProtection__Certificate__Path: /secrets/dp/gateway.pfx
-  DataProtection__Certificate__Password: ${PFX_PASSWORD}
+# El perfil de AWS de quien levanta el compose, de solo lectura. Con el, cada servicio lee sus
+# secretos de mlmconqueror/local/*. En Windows, la carpeta es %USERPROFILE%\.aws.
+x-perfil-aws: &perfil-aws
+  type: bind
+  source: ${AWS_CONFIG_DIR:-${HOME:-${USERPROFILE}}/.aws}
+  target: /home/app/.aws
+  read_only: true
 
 x-salud: &salud
   # La imagen no trae curl: bash abre el puerto y pide /health a mano.
@@ -82,7 +90,6 @@ services:
     image: mlmconqueror/signupapi:local
     environment:
       <<: [*comun, *datos]
-      Jwt__PrivateKeyBase64: ${JWT_PRIVATE}
       Cache__Mode: Required
       Cors__AllowedOrigins__0: http://localhost:8147
       Cors__AllowedOrigins__1: http://localhost:8147
@@ -93,10 +100,10 @@ services:
       Membership__UpgradeEnabled: "false"
       Entrax__Enabled: "false"
       Entrax__UseFake: "false"
-      RootAmbassador__Email: ${ROOT_EMAIL}
-      RootAmbassador__Password: ${ROOT_PASSWORD}
       DataProtection__KeysPath: /keys
-    volumes: [llaves-signupapi:/keys]
+    volumes:
+      - llaves-signupapi:/keys
+      - *perfil-aws
     ports: ["8105:8080"]
     depends_on:
       sqlserver: { condition: service_healthy }
@@ -107,8 +114,7 @@ services:
     build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.AdminAPI } }
     image: mlmconqueror/adminapi:local
     environment:
-      <<: [*comun, *datos, *pasarelas]
-      Jwt__PrivateKeyBase64: ${JWT_PRIVATE}
+      <<: [*comun, *datos]
       Cache__Mode: Required
       Cors__AllowedOrigins__0: http://localhost:8101
       Cors__AllowedOrigins__1: http://localhost:8101
@@ -125,9 +131,9 @@ services:
       Billing__TokenPurchase__CardEnabled: "false"
       Billing__Recurring__CardEnabled: "false"
     volumes:
-      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
       - uploads:/app/wwwroot/uploads
       - recibos:/data/payout-receipts
+      - *perfil-aws
     ports: ["8102:8080"]
     depends_on:
       signupapi: { condition: service_healthy }
@@ -137,14 +143,14 @@ services:
     build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.Billing } }
     image: mlmconqueror/billing:local
     environment:
-      <<: [*comun, *datos, *pasarelas]
+      <<: [*comun, *datos]
       ReceiptStorage__LocalPath: /data/payout-receipts
       ReceiptStorage__PublicBaseUrl: http://localhost:8102
       Billing__TokenPurchase__CardEnabled: "false"
       Billing__Recurring__CardEnabled: "false"
     volumes:
-      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
       - recibos:/data/payout-receipts
+      - *perfil-aws
     ports: ["8107:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -154,15 +160,15 @@ services:
     build: { <<: *build, args: { PROJECT: MLMConquerorGlobalEdition.BizCenter } }
     image: mlmconqueror/bizcenter:local
     environment:
-      <<: [*comun, *datos, *pasarelas]
+      <<: [*comun, *datos]
       Cache__Mode: Required
       Cors__AllowedOrigins__0: http://localhost:8104
       Cors__AllowedOrigins__1: http://localhost:8104
       Services__RankEngineBaseUrl: http://rankengine:8080/
       Services__BillingBaseUrl: http://billing:8080/
     volumes:
-      - ./secrets/gateway.pfx:/secrets/dp/gateway.pfx:ro
       - uploads:/app/wwwroot/uploads
+      - *perfil-aws
     ports: ["8103:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -173,6 +179,8 @@ services:
     image: mlmconqueror/commissionengine:local
     environment:
       <<: [*comun, *datos]
+    volumes:
+      - *perfil-aws
     ports: ["8108:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -186,7 +194,9 @@ services:
       CertificateStorage__Provider: Local
       CertificateStorage__LocalPath: /app/wwwroot/certificates
       CertificateStorage__PublicBaseUrl: http://localhost:8109
-    volumes: [certificados:/app/wwwroot/certificates]
+    volumes:
+      - certificados:/app/wwwroot/certificates
+      - *perfil-aws
     ports: ["8109:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -197,6 +207,8 @@ services:
     image: mlmconqueror/ticketmanagementsystem:local
     environment:
       <<: [*comun, *datos]
+    volumes:
+      - *perfil-aws
     ports: ["8110:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -207,7 +219,8 @@ services:
     image: mlmconqueror/sharedapicenter:local
     environment:
       <<: [*comun, *datos]
-      ExternalApi__ApiKey: ${EXTERNAL_API_KEY}
+    volumes:
+      - *perfil-aws
     ports: ["8111:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -224,8 +237,9 @@ services:
       HelpdeskApiUrl: http://ticketmanagementsystem:8080
       SignOut__AllowedReturnUrls__0: http://localhost:8147/
       DataProtection__KeysPath: /keys
-      Syncfusion__LicenseKey: ${SYNCFUSION_LICENSE_KEY:-}
-    volumes: [llaves-adminweb:/keys]
+    volumes:
+      - llaves-adminweb:/keys
+      - *perfil-aws
     ports: ["8101:8080"]
     depends_on:
       adminapi: { condition: service_healthy }
@@ -241,8 +255,9 @@ services:
       SignupAppUrl: http://localhost:8147/ambassador-join
       SignOut__AllowedReturnUrls__0: http://localhost:8147/
       DataProtection__KeysPath: /keys
-      Syncfusion__LicenseKey: ${SYNCFUSION_LICENSE_KEY:-}
-    volumes: [llaves-bizcenterweb:/keys]
+    volumes:
+      - llaves-bizcenterweb:/keys
+      - *perfil-aws
     ports: ["8104:8080"]
     depends_on:
       bizcenter: { condition: service_healthy }
