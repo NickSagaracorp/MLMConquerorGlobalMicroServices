@@ -8,7 +8,9 @@
 
 **Tech Stack:** .NET 10, `AWSSDK.SecretsManager` 3.7.504.43 (la línea 3.7 de los `AWSSDK.S3` 3.7.414.3 que ya usa el repositorio), xUnit + FluentAssertions + Moq, bash + AWS CLI v2 + jq + openssl, `aws_signing_helper` de IAM Roles Anywhere, Docker Compose, eksctl.
 
-**Diseño:** `docs/superpowers/specs/2026-11-19-secretos-aws-design.md`.
+**Diseño:** `docs/superpowers/specs/2026-11-19-secretos-aws-design.md` (incluida la sección 5A, el borde: CloudFront con VPC origin en EKS y Cloudflare Tunnel en Docker).
+
+**Estilo obligatorio de las dos guías (Tasks 11 y 12):** cada fase empieza con tres apartados antes de los comandos: **Qué se persigue**, **Por qué así** (por qué es la forma más segura o escalable) y **Alternativas descartadas** (qué otras formas hay y por qué no). Nick las va a usar para crear contenido técnico.
 
 **Reglas del repositorio que aplican a todo el plan:**
 - Commits en español sin acentos, sin firma ni coautoría ni menciones de herramientas.
@@ -36,6 +38,9 @@
 | `MLMConquerorGlobalEdition.Billing.Tests/Services/CertificadoDelAnilloDesdeBase64Tests.cs` | Crear | Pruebas del PFX en base64 |
 | `MLMConquerorGlobalEdition.Billing.Tests/Services/FirebaseCredentialLoaderTests.cs` | Crear | Pruebas de Firebase en base64 |
 | `deploy/aws/secretos-por-servicio.json` | Crear | Tabla única: secretos y permisos extra (S3, SES) por servicio |
+| `MLMConquerorGlobalEdition.SharedKernel.Server/Hosting/ProxyHosting.cs` | Modificar | `ForwardedHeaders:ForwardLimit` configurable (CloudFront = 2) |
+| `MLMConquerorGlobalEdition.BizCenter.Tests/DetrasDelBalanceadorTests.cs` | Modificar | Casos de CloudFront, Cloudflare y cabeceras falsificadas |
+| `deploy/docker/bajar-token-tunel.sh` | Crear | Escribe el token de Cloudflare Tunnel desde `borde` a un archivo de solo lectura |
 | 11 × `MLMConquerorGlobalEdition.<Servicio>/appsettings.json` | Modificar | Sección `SecretosAws` |
 | 11 × `MLMConquerorGlobalEdition.<Servicio>/Program.cs` | Modificar | `builder.Configuration.AddSecretosDeAws();` |
 | `deploy/aws/comun.sh` | Crear | Variables y funciones compartidas por los scripts |
@@ -1157,7 +1162,8 @@ git commit -m "Firebase: la credencial de la cuenta de servicio se puede dar en 
 ```json
 {
   "_comentario": "Unica tabla de quien lee que. De aqui salen los roles de IAM (crear-roles.sh) y contra ella se prueba la lista SecretosAws:Secretos del appsettings.json de cada servicio (ListaDeCadaServicioTests). El nombre de cada servicio es el del proyecto sin el prefijo MLMConquerorGlobalEdition.",
-  "secretos": ["datos", "jwt-firma", "dp-gateway", "signupapi", "billing", "sharedapicenter", "portales", "firebase", "twilio"],
+  "secretos": ["datos", "jwt-firma", "dp-gateway", "signupapi", "billing", "sharedapicenter", "portales", "firebase", "twilio", "borde"],
+  "_borde": "borde (token de Cloudflare Tunnel) no lo lee ningun servicio: lo baja deploy/docker/bajar-token-tunel.sh con la credencial del administrador.",
   "servicios": {
     "AdminAPI":               { "secretos": ["datos", "jwt-firma", "dp-gateway", "twilio"], "aws": ["s3", "ses"] },
     "AdminWeb":               { "secretos": ["portales"], "aws": [] },
@@ -1331,6 +1337,126 @@ Expected: `0 Error(s)`.
 ```bash
 git add deploy/aws/secretos-por-servicio.json MLMConquerorGlobalEdition.Billing.Tests/SecretosAws/ListaDeCadaServicioTests.cs $(for s in AdminAPI AdminWeb Billing BizCenter BizCenterWeb CommissionEngine RankEngine SharedAPICenter SignupAPI Signups TicketManagementSystem; do echo MLMConquerorGlobalEdition.$s/appsettings.json MLMConquerorGlobalEdition.$s/Program.cs; done)
 git commit -m "Los 11 servicios leen sus secretos de AWS al arrancar: lista SecretosAws en cada appsettings.json (entorno local en el repositorio) y AddSecretosDeAws justo despues de crear el builder. deploy/aws/secretos-por-servicio.json es la tabla unica de quien lee que, con prueba de que cada lista coincide. Signups no lee ningun secreto y pierde sus cadenas de conexion, que no usaba"
+```
+
+---
+
+### Task 7B: `ForwardLimit` configurable (CloudFront delante del ALB)
+
+**Files:**
+- Modify: `MLMConquerorGlobalEdition.SharedKernel.Server/Hosting/ProxyHosting.cs`
+- Test: `MLMConquerorGlobalEdition.BizCenter.Tests/DetrasDelBalanceadorTests.cs`
+
+- [ ] **Step 1: Escribir las pruebas**
+
+En `DetrasDelBalanceadorTests`, el ayudante `Pasar` recibe un `int? saltos = null` que, si viene, se pone en `ProxyHosting.ForwardLimitKey`:
+
+```csharp
+    private static async Task<HttpContext> Pasar(string? red, string desde, string xff, string proto, int? saltos = null)
+    {
+        var valores = new Dictionary<string, string?>();
+        if (red is not null) valores[ProxyHosting.KnownNetworkKey] = red;
+        if (saltos is not null) valores[ProxyHosting.ForwardLimitKey] = saltos.Value.ToString();
+        // ... resto igual
+```
+
+y se agregan:
+
+```csharp
+    // EKS: cliente -> CloudFront -> ALB interno -> pod. CloudFront entra al ALB desde una IP de la
+    // VPC (VPC origin) y el ALB la agrega; antes va la IP que agregó CloudFront.
+    [Fact]
+    public async Task ConCloudFront_DosSaltos_TomaLaIpQueAgregoCloudFront()
+    {
+        var ctx = await Pasar(Vpc, desde: "10.20.5.6", xff: "203.0.113.9, 10.20.7.8", proto: "https", saltos: 2);
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+        ctx.Request.Scheme.Should().Be("https");
+    }
+
+    [Fact]
+    public async Task ConCloudFront_LoQueEscribeElClienteNoCuenta()
+    {
+        // El cliente mandó "X-Forwarded-For: 6.6.6.6"; CloudFront agregó su IP real y el ALB la de CloudFront.
+        var ctx = await Pasar(Vpc, desde: "10.20.5.6", xff: "6.6.6.6, 203.0.113.9, 10.20.7.8", proto: "https", saltos: 2);
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+    }
+
+    // Docker: cliente -> Cloudflare -> cloudflared (red "borde") -> servicio.
+    private const string Borde = "172.30.0.0/24";
+
+    [Fact]
+    public async Task ConCloudflare_TomaLaIpQueAgregoCloudflare()
+    {
+        var ctx = await Pasar(Borde, desde: "172.30.0.2", xff: "6.6.6.6, 203.0.113.9", proto: "https");
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+    }
+
+    [Fact]
+    public async Task DesdeLaRedInterna_NoSePuedeFalsificarLaIp()
+    {
+        var ctx = await Pasar(Borde, desde: "172.31.0.5", xff: "203.0.113.9", proto: "https");
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("172.31.0.5"));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("4")]
+    [InlineData("dos")]
+    public void SaltosFueraDeRango_NoArranca(string valor)
+    {
+        // Se valida al registrar: un valor malo detiene el arranque, no la primera petición.
+        FluentActions.Invoking(() => new ServiceCollection()
+                .AddProxyForwardedHeaders(Config(new() { [ProxyHosting.ForwardLimitKey] = valor })))
+            .Should().Throw<InvalidOperationException>().WithMessage("*ForwardLimit*");
+    }
+```
+
+- [ ] **Step 2: Correr y ver que falla**
+
+Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "FullyQualifiedName~DetrasDelBalanceadorTests" -v q`
+Expected: error de compilación, `ProxyHosting.ForwardLimitKey` no existe.
+
+- [ ] **Step 3: Implementar**
+
+En `ProxyHosting.cs`, constante nueva:
+
+```csharp
+    /// <summary>
+    /// Cuántos saltos de proxy de confianza se recorren en X-Forwarded-For. 1 = solo el ALB (o
+    /// cloudflared en Docker); 2 = CloudFront delante del ALB (EKS con VPC origin).
+    /// </summary>
+    public const string ForwardLimitKey = "ForwardedHeaders:ForwardLimit";
+```
+
+y dentro de `AddProxyForwardedHeaders`, antes de `services.Configure`:
+
+```csharp
+        var textoSaltos = configuration[ForwardLimitKey];
+        var saltos = 1;
+        if (!string.IsNullOrWhiteSpace(textoSaltos)
+            && (!int.TryParse(textoSaltos, out saltos) || saltos is < 1 or > 3))
+            throw new InvalidOperationException(
+                $"{ForwardLimitKey} = '{textoSaltos}': tiene que ser 1, 2 o 3.");
+```
+
+y `o.ForwardLimit = 1;` pasa a `o.ForwardLimit = saltos;`. El `summary` del método cambia "Se usa un único salto (el del ALB)" por "Se recorren tantos saltos como diga ForwardLimit (1 por defecto: el del ALB; 2 con CloudFront delante)".
+
+- [ ] **Step 4: Correr y ver que pasa**
+
+Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "FullyQualifiedName~DetrasDelBalanceadorTests" -v q`
+Expected: `Passed!` con 12 pruebas (5 de antes + 7 nuevas).
+
+Si `ConCloudFront_DosSaltos_...` deja el esquema en `http`: es por cómo el middleware empareja `X-Forwarded-Proto` (un valor, del ALB) con `X-Forwarded-For` (dos valores). En ese caso se comprueba en la documentación de `ForwardedHeadersOptions` el comportamiento con `RequireHeaderSymmetry = false` (el valor por defecto) y se ajusta la prueba al comportamiento real **solo si** el esquema resultante sigue siendo `https` cuando el ALB dice `https`; si no, se avisa a Nick antes de seguir, porque afectaría cookies seguras y direcciones de retorno.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add MLMConquerorGlobalEdition.SharedKernel.Server/Hosting/ProxyHosting.cs MLMConquerorGlobalEdition.BizCenter.Tests/DetrasDelBalanceadorTests.cs
+git commit -m "Cabeceras de proxy: el numero de saltos de confianza es configurable (ForwardedHeaders:ForwardLimit, 1 por defecto, entre 1 y 3) para CloudFront delante del ALB en EKS. Pruebas de CloudFront y Cloudflare, de cabeceras falsificadas por el cliente y de un contenedor interno que intenta falsificar su IP"
 ```
 
 ---
@@ -1644,7 +1770,7 @@ EOF
 bash deploy/aws/cargar-secreto.sh local datos /tmp/datos.json && rm -f /tmp/datos.json
 ```
 
-Igual para `jwt-firma`, `dp-gateway` (`DataProtection__Certificate__Base64` = `base64 -w0` del PFX de desarrollo), `signupapi`, `billing`, `sharedapicenter`, `portales`, `firebase` y `twilio`. Los que no tengan valor de desarrollo se cargan con las claves que hoy están vacías en `appsettings.json` y valor `""`.
+`borde` se deja vacío en `local` (no hay túnel en la máquina). Igual para `jwt-firma`, `dp-gateway` (`DataProtection__Certificate__Base64` = `base64 -w0` del PFX de desarrollo), `signupapi`, `billing`, `sharedapicenter`, `portales`, `firebase` y `twilio`. Los que no tengan valor de desarrollo se cargan con las claves que hoy están vacías en `appsettings.json` y valor `""`.
 
 Nunca se apunta un `local` a `MLMConquerorGlobalEditionDb_Escala` ni a la RDS del sistema anterior.
 
@@ -1744,7 +1870,7 @@ x-comun: &comun
   SecretosAws__Entorno: ${ENTORNO:?falta ENTORNO en .env.servidor}
   SecretosAws__Region: ${AWS_REGION:-us-east-1}
   AWS_CONFIG_FILE: /run/aws/config
-  ForwardedHeaders__KnownNetwork: ${RED_DEL_PROXY:?falta RED_DEL_PROXY}
+  ForwardedHeaders__KnownNetwork: 172.30.0.0/24   # red "borde": solo cloudflared llega por ahi
   IpRateLimiting__RealIpHeader: ""
   Jwt__Issuer: MLMConquerorGlobalEdition
   Jwt__Audience: MLMConquerorGlobalEdition.Clients
@@ -1797,10 +1923,58 @@ configs:
 | sharedapicenter | 8111 | — | `aws-sharedapicenter`, `certificados/sharedapicenter` |
 | signupapi | 8105 | `llaves-signupapi:/keys` | `aws-signupapi`, `certificados/signupapi` |
 | signups | 8147 | `llaves-signups:/keys` | ninguno: no usa AWS |
+
+(La columna Puerto es la del compose local; en el del servidor no se publica ningún puerto, ver punto 9.)
 | ticketmanagementsystem | 8110 | — | `aws-ticketmanagementsystem`, `certificados/ticketmanagementsystem` |
 
 8. En las variables no secretas, las direcciones públicas `http://localhost:81xx` se cambian por las del servidor, tomadas de `.env.servidor` (`URL_ADMIN`, `URL_APP`, `URL_SIGNUP`, `URL_AUTH_API`, `URL_CERTIFICADOS`, `URL_RECIBOS`), y los `Cors__AllowedOrigins__N` repiten el origen público en todas las posiciones (regla de la guía de EKS, Fase 10). Las direcciones entre servicios (`http://signupapi:8080`, etc.) no cambian. `Syncfusion__LicenseKey`, `RootAmbassador__Password` y `ExternalApi__ApiKey` no aparecen: llegan de los secretos.
-9. El encabezado del archivo:
+9. **Sin puertos publicados:** se borran todos los `ports:`. Nadie llega al servidor desde fuera; todo entra por el túnel.
+10. **Redes:**
+
+```yaml
+networks:
+  borde:
+    ipam: { config: [{ subnet: 172.30.0.0/24 }] }
+  interna: {}
+```
+
+`cloudflared` va solo en `borde`. adminweb, bizcenterweb, signups, signupapi, adminapi, bizcenter, rankengine y sharedapicenter van en `borde` e `interna`. billing, commissionengine y ticketmanagementsystem solo en `interna`. `x-comun` lleva `ForwardedHeaders__KnownNetwork: 172.30.0.0/24` (en lugar de `${RED_DEL_PROXY}`, que se borra también del `.env.servidor.ejemplo`).
+11. **`cloudflared`:**
+
+```yaml
+  cloudflared:
+    image: cloudflare/cloudflared:2025.11.1
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN_FILE: /run/tunel/token
+    volumes:
+      - ./secretos/tunel-token:/run/tunel/token:ro
+    networks: [borde]
+    restart: unless-stopped
+```
+
+Antes de fijar la etiqueta de la imagen, comprobar en `https://hub.docker.com/r/cloudflare/cloudflared/tags` la última versión estable y que `cloudflared` de esa versión admite `TUNNEL_TOKEN_FILE` (`cloudflared tunnel run --help`); si no lo admite, se usa `--token-file /run/tunel/token` en `command`.
+12. **`deploy/docker/bajar-token-tunel.sh`** (nuevo), que se corre en el servidor con la credencial del administrador justo antes de `up`:
+
+```bash
+#!/usr/bin/env bash
+# Escribe el token de Cloudflare Tunnel (secreto mlmconqueror/<entorno>/borde) en
+# deploy/docker/secretos/tunel-token, de solo lectura, para cloudflared. Es el unico secreto
+# que queda en disco en el servidor: solo sirve para hacerse pasar por el tunel y se revoca
+# desde Cloudflare. Uso: bash deploy/docker/bajar-token-tunel.sh <staging|prod>
+set -euo pipefail
+ENTORNO="${1:?uso: $0 <staging|prod>}"
+cd "$(dirname "$0")"
+umask 077; mkdir -p secretos
+aws secretsmanager get-secret-value --secret-id "mlmconqueror/$ENTORNO/borde" \
+  --query SecretString --output text | jq -er '.Cloudflare__TunnelToken' > secretos/tunel-token.tmp
+mv secretos/tunel-token.tmp secretos/tunel-token
+chmod 444 secretos/tunel-token   # cloudflared corre con otro usuario; nadie mas en el servidor
+echo "Token del tunel escrito en deploy/docker/secretos/tunel-token"
+```
+
+`deploy/docker/.gitignore` agrega `secretos/`.
+13. El encabezado del archivo:
 
 ```yaml
 # Servidor Docker FUERA de AWS (staging o prod). Cada servicio lee sus secretos de
@@ -1820,7 +1994,6 @@ TRUST_ANCHOR_ARN=arn:aws:rolesanywhere:us-east-1:123456789012:trust-anchor/...
 PROFILE_ARN=arn:aws:rolesanywhere:us-east-1:123456789012:profile/...
 REGISTRO=123456789012.dkr.ecr.us-east-1.amazonaws.com/mlmconqueror
 VERSION=1.0.0
-RED_DEL_PROXY=172.16.0.0/12
 # Llave publica JWT del entorno (base64 DER). No es secreta.
 JWT_PUBLIC=
 URL_ADMIN=https://admin.mlmconqueror.com
@@ -1877,8 +2050,8 @@ Expected: una fecha una hora en el futuro. Y con el rol de otro servicio (`MLM-s
 - [ ] **Step 8: Commit**
 
 ```bash
-git add Dockerfile deploy/docker/docker-compose.yml deploy/docker/docker-compose.servidor.yml deploy/docker/.env.servidor.ejemplo deploy/docker/.gitignore deploy/docker/generar-secretos.sh
-git commit -m "Docker: la imagen trae aws_signing_helper de Roles Anywhere con su sha256; compose local lee mlmconqueror/local con el perfil del desarrollador montado de solo lectura (SQL y Redis del compose siguen por variable de entorno y ganan); compose nuevo para el servidor fuera de AWS con certificado y credential_process por servicio; generar-secretos.sh solo genera la contrasena del SQL local y toma la publica JWT de local"
+git add Dockerfile deploy/docker/bajar-token-tunel.sh deploy/docker/docker-compose.yml deploy/docker/docker-compose.servidor.yml deploy/docker/.env.servidor.ejemplo deploy/docker/.gitignore deploy/docker/generar-secretos.sh
+git commit -m "Docker: la imagen trae aws_signing_helper de Roles Anywhere con su sha256; compose local lee mlmconqueror/local con el perfil del desarrollador montado de solo lectura (SQL y Redis del compose siguen por variable de entorno y ganan); compose nuevo para el servidor fuera de AWS con certificado y credential_process por servicio, sin puertos publicados, con cloudflared (Cloudflare Tunnel) y redes borde e interna; generar-secretos.sh solo genera la contrasena del SQL local y toma la publica JWT de local"
 ```
 
 ---
@@ -1890,6 +2063,7 @@ git commit -m "Docker: la imagen trae aws_signing_helper de Roles Anywhere con s
 
 - [ ] **Step 1: Cambios en el texto**
 
+0. **Estilo:** cada fase (las existentes y las nuevas) empieza con **Qué se persigue**, **Por qué así** y **Alternativas descartadas**. Ejemplos de contenido para las fases que cambian: secretos por servicio frente a External Secrets con un rol para todo; IRSA frente a claves de acceso; ALB interno con VPC origin frente a ALB público restringido por IP y cabecera secreta; WAF en CloudFront frente a WAF en el ALB; caché apagada frente a caché en contenido dinámico.
 1. **Sección 1 (decisiones):** "Secretos: cada servicio los lee de Secrets Manager al arrancar, solo los de su lista, con un rol propio (IRSA). Sin External Secrets." Entornos `staging` y `prod` con la variable `ENTORNO` al principio de la guía (`export ENTORNO=prod`).
 2. **Fase 2 (6.2 External Secrets Operator):** se borra entera; la numeración de las subsecciones siguientes se corrige.
 3. **Fase 6 (8.x Secretos):**
@@ -1910,11 +2084,17 @@ git commit -m "Docker: la imagen trae aws_signing_helper de Roles Anywhere con s
 5. **Fase 10 (ConfigMaps):** el ConfigMap común agrega `SecretosAws__Entorno: ${ENTORNO}` y `SecretosAws__Region: ${AWS_REGION}`; se quitan `DataProtection__Certificate__Path` y cualquier referencia a `/secrets/dp`.
 6. **Fase 11 (Deployments, generador `gen()`):** `serviceAccountName` pasa a ser el nombre del servicio; se quitan `envFrom: secretRef` y los volúmenes de secretos.
 7. **15.4 Cambiar un secreto:** `cargar-secreto.sh` y `kubectl rollout restart deployment/<servicio>` de los servicios que lista el script.
-8. **Checklist final:** quitar External Secrets; agregar "cada pod arranca con las líneas `[SecretosAws]` y sin `AccessDenied`" y "un pod de un servicio no puede leer un secreto que no está en su fila" (prueba con `kubectl exec` y `aws secretsmanager get-secret-value` desde la imagen de `amazon/aws-cli` usando la cuenta de servicio de billing contra `jwt-firma`: tiene que dar `AccessDeniedException`).
+8. **Borde con CloudFront (sección 5A del diseño):**
+   - Ingress: `alb.ingress.kubernetes.io/scheme: internal` (en lugar de `internet-facing`) y se quita `wafv2-acl-arn` del Ingress.
+   - Fase nueva "CloudFront": certificado de ACM en `us-east-1` para los nombres públicos; *VPC origin* apuntando al ARN del ALB interno con protocolo HTTPS; una distribución con un comportamiento por defecto `CachingDisabled` + `AllViewer`, métodos `GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE`, y los nombres alternos de la Fase de DNS; WAF con alcance `CLOUDFRONT` asociado a la distribución (las mismas reglas que tenía el ALB); el grupo de seguridad del ALB solo admite la lista de prefijos administrada `com.amazonaws.global.cloudfront.origin-facing`.
+   - DNS: cada nombre como alias a la distribución de CloudFront.
+   - ConfigMap común: `ForwardedHeaders__ForwardLimit: "2"`.
+   - Comprobación: el nombre DNS del ALB no responde desde internet; las peticiones por CloudFront sí; en el log de un inicio de sesión aparece la IP real del cliente, no una de CloudFront.
+9. **Checklist final:** quitar External Secrets; agregar "cada pod arranca con las líneas `[SecretosAws]` y sin `AccessDenied`" y "un pod de un servicio no puede leer un secreto que no está en su fila" (prueba con `kubectl exec` y `aws secretsmanager get-secret-value` desde la imagen de `amazon/aws-cli` usando la cuenta de servicio de billing contra `jwt-firma`: tiene que dar `AccessDeniedException`).
 
 - [ ] **Step 2: Comprobar que no quedan restos**
 
-Run: `grep -n "ExternalSecret\|external-secrets\|eso-aws\|mlm-aws\|mlm-sin-aws\|pfxBase64\|firebaseJson\|secretRef" docs/deployment/despliegue-aws-eks.md`
+Run: `grep -n "ExternalSecret\|external-secrets\|eso-aws\|mlm-aws\|mlm-sin-aws\|pfxBase64\|firebaseJson\|secretRef\|internet-facing" docs/deployment/despliegue-aws-eks.md`
 Expected: ninguna línea.
 
 - [ ] **Step 3: PDF y commit**
@@ -1922,7 +2102,7 @@ Expected: ninguna línea.
 ```bash
 python -I docs/build_pdf.py docs/deployment/despliegue-aws-eks.md docs/deployment/despliegue-aws-eks.pdf "Despliegue en AWS EKS" 7.4
 git add docs/deployment/despliegue-aws-eks.md docs/deployment/despliegue-aws-eks.pdf
-git commit -m "Guia de EKS: secretos por entorno desde la tabla unica, un rol por servicio con IRSA y una cuenta de servicio por Deployment; se quita External Secrets. PDF regenerado"
+git commit -m "Guia de EKS: secretos por entorno desde la tabla unica, un rol por servicio con IRSA y una cuenta de servicio por Deployment, sin External Secrets; CloudFront con VPC origin delante de un ALB interno, WAF en CloudFront y dos saltos de confianza para la IP del cliente. Cada fase explica que se persigue, por que asi y que alternativas se descartaron. PDF regenerado"
 ```
 
 ---
@@ -1934,20 +2114,21 @@ git commit -m "Guia de EKS: secretos por entorno desde la tabla unica, un rol po
 
 - [ ] **Step 1: Escribir la guía**
 
-Mismo estilo que la de EKS (fases numeradas, comandos completos, nada se salta). Secciones:
+Mismo estilo que la de EKS (fases numeradas, comandos completos, nada se salta) y cada fase empieza con **Qué se persigue**, **Por qué así** y **Alternativas descartadas** (por ejemplo: Roles Anywhere frente a usuarios de IAM con claves fijas; autoridad certificadora propia frente a AWS Private CA; Cloudflare Tunnel frente a IP pública con firewall a los rangos de Cloudflare; dos redes de Docker frente a una sola; fallar al arrancar frente a seguir con valores por defecto). Secciones:
 
-1. **Qué se despliega y qué se asume.** Servidor Linux x86_64 fuera de AWS con Docker Engine 24+ y Compose 2.23+; SQL Server y Redis propios (fuera del compose); un proxy inverso con TLS delante (dirección de su red en `RED_DEL_PROXY`); acceso de salida HTTPS a `secretsmanager.<region>.amazonaws.com`, `rolesanywhere.<region>.amazonaws.com` y `sts.amazonaws.com`; reloj del servidor sincronizado por NTP (Roles Anywhere rechaza firmas con más de 5 minutos de desfase).
+1. **Qué se despliega y qué se asume.** Servidor Linux x86_64 fuera de AWS con Docker Engine 24+ y Compose 2.23+; SQL Server y Redis propios (fuera del compose); dominio en Cloudflare; ningún puerto de entrada abierto en el servidor; salida HTTPS a Cloudflare (`*.argotunnel.com`, puerto 7844) y acceso de salida HTTPS a `secretsmanager.<region>.amazonaws.com`, `rolesanywhere.<region>.amazonaws.com` y `sts.amazonaws.com`; reloj del servidor sincronizado por NTP (Roles Anywhere rechaza firmas con más de 5 minutos de desfase).
 2. **Fase 1 — Herramientas en la máquina de administración** (no el servidor): AWS CLI v2, jq, openssl, acceso a la cuenta.
 3. **Fase 2 — Llave KMS y secretos del entorno:** `crear-kms-y-secretos.sh` y `cargar-secreto.sh` para cada uno de los 9, con el contenido de cada JSON.
 4. **Fase 3 — Autoridad certificadora y Roles Anywhere:** los tres comandos en orden (`roles-anywhere.sh`, `crear-roles.sh <entorno> docker`, `roles-anywhere.sh`). Dónde guardar `ca.key` (fuera del servidor) y por qué.
 5. **Fase 4 — Certificados de los servicios:** `emitir-certificados.sh`, copia al servidor con `scp` a `/opt/mlmconqueror/deploy/docker/certificados/<servicio>/`, permisos `600` y dueño uid 1654 (el usuario de la imagen).
 6. **Fase 5 — Imágenes:** construir y subir a un registro (ECR u otro), o `docker save`/`docker load`.
 7. **Fase 6 — Base de datos:** migraciones con el mismo `DeploymentScripts/migrate-rds.sql` de la guía de EKS, contra el SQL Server del servidor.
-8. **Fase 7 — `.env.servidor` y arranque:** copiar `.env.servidor.ejemplo`, llenar los valores, `docker compose ... up -d`, comprobar `ps` y las líneas `[SecretosAws]`.
-9. **Fase 8 — Comprobaciones:** salud de los 11, login, token aceptado, y la prueba de aislamiento (el certificado de billing no puede asumir el rol de signupapi).
-10. **Operación:** cambiar un secreto (`cargar-secreto.sh` + `docker compose restart <servicios que lista el script>`); renovar certificados antes de que venzan (`emitir-certificados.sh`, copiar, reiniciar; recordatorio a los 11 meses); revocar un certificado robado (generar CRL con `openssl ca -gencrl`, `aws rolesanywhere import-crl`, y emitir uno nuevo para ese servicio); qué hacer si AWS no responde (los servicios que ya están corriendo siguen; uno que reinicie no arranca hasta que vuelva).
-11. **Tu máquina (`local`):** permiso de desarrollador (`politica-desarrollador-local.sh`), `aws sso login`, `dotnet run`, el compose local, y cómo trabajar sin conexión (`SecretosAws:Habilitado=false` en `appsettings.Development.json`).
-12. **Checklist final.**
+8. **Fase 6B — Cloudflare Tunnel:** crear el túnel en Cloudflare Zero Trust, copiar su token a `mlmconqueror/{entorno}/borde` con `cargar-secreto.sh`, un *public hostname* por nombre (`admin.` → `http://adminweb:8080`, `app.` → `http://bizcenterweb:8080`, `signup.` → `http://signups:8080`, `auth-api.` → `http://signupapi:8080`, `admin-api.` → `http://adminapi:8080`, `api.` → `http://bizcenter:8080`, `rank.` → `http://rankengine:8080`, `integrations.` → `http://sharedapicenter:8080`), reglas de WAF que bloquean `/swagger*`, `/hangfire*` y `/api/v1/webhooks/*`, SSL/TLS en modo *Full*, y WebSockets activados (Blazor Server). En el servidor, `bash deploy/docker/bajar-token-tunel.sh <entorno>`.
+9. **Fase 7 — `.env.servidor` y arranque:** copiar `.env.servidor.ejemplo`, llenar los valores, `docker compose ... up -d`, comprobar `ps` y las líneas `[SecretosAws]`.
+10. **Fase 8 — Comprobaciones:** salud de los 11, login, token aceptado, la prueba de aislamiento (el certificado de billing no puede asumir el rol de signupapi), y que la IP de un inicio de sesión sea la del cliente y no una de Cloudflare.
+11. **Operación:** rotar el token del túnel (nuevo token en Cloudflare, `cargar-secreto.sh ... borde`, `bajar-token-tunel.sh`, `docker compose restart cloudflared`); cambiar un secreto (`cargar-secreto.sh` + `docker compose restart <servicios que lista el script>`); renovar certificados antes de que venzan (`emitir-certificados.sh`, copiar, reiniciar; recordatorio a los 11 meses); revocar un certificado robado (generar CRL con `openssl ca -gencrl`, `aws rolesanywhere import-crl`, y emitir uno nuevo para ese servicio); qué hacer si AWS no responde (los servicios que ya están corriendo siguen; uno que reinicie no arranca hasta que vuelva).
+12. **Tu máquina (`local`):** permiso de desarrollador (`politica-desarrollador-local.sh`), `aws sso login`, `dotnet run`, el compose local, y cómo trabajar sin conexión (`SecretosAws:Habilitado=false` en `appsettings.Development.json`).
+13. **Checklist final.** Incluye: el servidor no tiene puertos de entrada (`ss -tlnp` solo muestra lo local); billing no es alcanzable por el túnel; el log de un inicio de sesión trae la IP real del cliente.
 
 - [ ] **Step 2: PDF y commit**
 
@@ -1955,7 +2136,7 @@ Mismo estilo que la de EKS (fases numeradas, comandos completos, nada se salta).
 python -I docs/build_pdf.py docs/deployment/despliegue-docker.md docs/deployment/despliegue-docker.pdf "Despliegue en Docker fuera de AWS" 7.4
 git add -f docs/deployment/despliegue-docker.pdf
 git add docs/deployment/despliegue-docker.md
-git commit -m "Guia de despliegue en Docker fuera de AWS: secretos por entorno, autoridad certificadora y Roles Anywhere, un certificado y un rol por servicio, compose del servidor, operacion (cambio de secretos, renovacion y revocacion de certificados) y la maquina del desarrollador con el entorno local. PDF"
+git commit -m "Guia de despliegue en Docker fuera de AWS, cada fase con que se persigue, por que asi y alternativas descartadas: Cloudflare Tunnel sin puertos abiertos, secretos por entorno, autoridad certificadora y Roles Anywhere, un certificado y un rol por servicio, compose del servidor, operacion (cambio de secretos, renovacion y revocacion de certificados) y la maquina del desarrollador con el entorno local. PDF"
 ```
 
 ---

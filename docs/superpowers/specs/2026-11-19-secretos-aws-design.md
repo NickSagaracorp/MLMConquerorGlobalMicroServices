@@ -15,6 +15,12 @@ Aplica a tres entornos (`local`, `staging`, `prod`) y a dos formas de desplegar:
 
 Se entregan **dos guías separadas**: la de EKS (la actual, `docs/deployment/despliegue-aws-eks.md`, actualizada) y una nueva para Docker (`docs/deployment/despliegue-docker.md`). Cada una con su PDF.
 
+**Las guías también sirven para crear contenido técnico.** Cada fase empieza con tres apartados antes de los comandos:
+
+- **Qué se persigue:** el objetivo de la fase en lenguaje llano.
+- **Por qué así:** por qué esta forma es la más segura o la más escalable.
+- **Alternativas descartadas:** qué otras formas hay y por qué no se eligieron.
+
 ## 2. Decisiones tomadas
 
 | Decisión | Elegido | Descartado y por qué |
@@ -24,6 +30,8 @@ Se entregan **dos guías separadas**: la de EKS (la actual, `docs/deployment/des
 | Identidad en Docker fuera de AWS | **IAM Roles Anywhere**, un certificado por servicio | Un usuario de IAM por servicio: claves fijas que valen hasta que alguien las rota |
 | Entornos | **`local`, `staging`, `prod`**, cada uno con su propio juego de secretos | — |
 | Si falta un secreto | **El servicio no arranca** | Respaldo silencioso a `appsettings.json`: un servicio de prod podría arrancar con valores de desarrollo sin que nadie lo note |
+| Borde en EKS | **CloudFront con VPC origin y ALB interno** | ALB público restringido a las IP de CloudFront con cabecera secreta: el ALB seguiría teniendo IP pública |
+| Borde en Docker | **Cloudflare Tunnel** (`cloudflared`, sin puertos abiertos) | IP pública con firewall a los rangos de Cloudflare y Authenticated Origin Pulls: rangos que cambian y un certificado más que mantener |
 
 ## 3. Qué secretos hay y quién lee cada uno
 
@@ -40,9 +48,11 @@ Los secretos se agrupan **por tema**, no por servicio, para no repetir un mismo 
 | `portales` | `Syncfusion__LicenseKey` | | ✔ | | | ✔ | | | | | | |
 | `firebase` | `Firebase__CredentialsJsonBase64` | | | ✔ | ✔ | | ✔ | ✔ | ✔ | ✔ | | ✔ |
 | `twilio` | `Notifications__Sms__Twilio__AccountSid`, `Notifications__Sms__Twilio__AuthToken` | ✔ | | ✔ | ✔ | | | ✔ | | ✔ | | |
+| `borde` | `Cloudflare__TunnelToken` | | | | | | | | | | | |
 
 Reglas:
 
+- **`borde` no lo lee ningún servicio**: solo existe en los entornos con Docker y lo baja el script de despliegue para `cloudflared` (sección 5A).
 - **Las claves del JSON van en formato de variable de entorno de .NET** (`Seccion__Clave`). Son las mismas que ya enseña la guía de EKS.
 - **No van a Secrets Manager** las cosas que no son secretas: la llave pública JWT, URLs, CORS, zona horaria, puertos. Siguen en la configuración normal (ConfigMaps en EKS, `environment` del compose en Docker).
 - **S3 y SES** no necesitan secreto: usan la misma identidad de AWS del servicio.
@@ -125,6 +135,33 @@ No hay respaldo a `appsettings.json`.
 - **Revocación:** se importa la lista de revocación (CRL) en Roles Anywhere, o se desactiva el trust anchor. No hay que tocar los servicios.
 - **Renovación:** un script emite los 11 certificados nuevos; se reemplazan los archivos y se reinician los contenedores.
 - La llave privada de la autoridad certificadora no vive en el servidor de Docker.
+
+## 5A. El borde: CloudFront en EKS, Cloudflare en Docker
+
+Nadie llega directo a los servicios: en EKS todo entra por CloudFront y en Docker todo entra por Cloudflare.
+
+**Lo que se publica** (igual que la guía actual): portales `admin.`, `app.`, `signup.`; APIs `auth-api.` (SignupAPI), `admin-api.` (AdminAPI), `api.` (BizCenter); rutas parciales de `rank.` (RankEngine) e `integrations.` (SharedAPICenter). Billing, CommissionEngine y TicketManagementSystem nunca se publican; `/swagger`, `/hangfire` y los webhooks sin firma siguen bloqueados.
+
+### EKS: CloudFront con VPC origin
+
+- ALB **interno** (`alb.ingress.kubernetes.io/scheme: internal`), sin IP pública; CloudFront entra por un *VPC origin*.
+- CloudFront → ALB por **HTTPS** con el certificado de ACM del dominio, para que `X-Forwarded-Proto` sea `https`.
+- **WAF** en CloudFront (alcance `CLOUDFRONT`), no en el ALB.
+- Comportamientos con `CachingDisabled` y la política de petición al origen `AllViewer` (reenvía `Host`, cookies, query string y cabeceras; el ALB enruta por nombre). WebSockets habilitados por defecto en CloudFront.
+- DNS (Route 53) de cada nombre como alias a la distribución de CloudFront.
+
+### Docker: Cloudflare Tunnel
+
+- Contenedor `cloudflared` en el compose del servidor, con conexión saliente a Cloudflare. **El compose del servidor no publica puertos.**
+- Dos redes: `borde` (subred fija, `cloudflared` y los 8 servicios publicados) e `interna` (todos los servicios). Billing, CommissionEngine y TMS solo en `interna`.
+- En Cloudflare: un *public hostname* por nombre hacia `http://<servicio>:8080`, y reglas de WAF que bloquean `/swagger`, `/hangfire` y `/api/v1/webhooks/*`.
+- El token del túnel vive en `mlmconqueror/{entorno}/borde`. Al desplegar, un script con la credencial del administrador lo escribe en un archivo de solo lectura que se monta en `cloudflared` (`TUNNEL_TOKEN_FILE`). Es el único secreto que queda en disco en el servidor; solo sirve para hacerse pasar por el túnel y se revoca desde Cloudflare.
+
+### La IP real del cliente
+
+- `ForwardLimit` pasa a ser configurable (`ForwardedHeaders:ForwardLimit`, por defecto 1, entre 1 y 3).
+- **EKS:** cliente → CloudFront → ALB → pod. CloudFront agrega la IP del cliente a `X-Forwarded-For` y entra al ALB desde IPs de la VPC; el ALB agrega esa IP. Con `ForwardLimit=2` y `KnownNetwork` = CIDR de la VPC, queda la IP que agregó CloudFront. Lo que el cliente escriba antes se ignora: el recorrido se detiene en la primera IP que no es de confianza.
+- **Docker:** cliente → Cloudflare → cloudflared → servicio. Cloudflare agrega la IP del cliente al final de `X-Forwarded-For`. Con `ForwardLimit=1` y `KnownNetwork` = subred `borde`, queda esa IP. Un contenedor de la red `interna` no puede falsificar su IP.
 
 ## 6. Guías
 
