@@ -114,8 +114,20 @@ public static class SessionExpiry
     public static async Task SignOutAndRedirectAsync(HttpContext httpContext, string loginPage)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        httpContext.Response.Redirect(LoginUrl(loginPage));
+        httpContext.Response.Redirect(LoginUrl(EsRutaLocal(loginPage) ? loginPage : "/"));
     }
+
+    /// <summary>
+    /// ¿Es una ruta de este mismo sitio? Las mismas reglas que <c>Url.IsLocalUrl</c>: empieza con
+    /// una sola <c>/</c> (no <c>//</c> ni <c>/\</c>, que el navegador lee como otro dominio) y no
+    /// trae caracteres de control. La pantalla de login es configuración, pero la salida nunca manda
+    /// fuera del portal aunque la configuración venga mal.
+    /// </summary>
+    public static bool EsRutaLocal(string? ruta) =>
+        !string.IsNullOrEmpty(ruta)
+        && ruta[0] == '/'
+        && (ruta.Length == 1 || (ruta[1] != '/' && ruta[1] != '\\'))
+        && !ruta.Any(char.IsControl);
 
     /// <summary>
     /// Vuelve a firmar la cookie de sesión con una pareja de tokens nueva, dejando intacto todo lo

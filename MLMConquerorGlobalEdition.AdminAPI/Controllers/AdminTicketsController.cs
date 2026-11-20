@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.AdminUploadAttachm
 using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.GetAdminTicketDetail;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.GetAdminTickets;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -161,13 +162,7 @@ public class AdminTicketsController : ControllerBase
 
 internal static class AdminTicketAttachmentLimits
 {
-    public const long MaxFileSizeBytes = 10_000_000; // 10 MB
+    public const long MaxFileSizeBytes = AdjuntoEnDisco.TamanoMaximoBytes;
 
-    public static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".gif", ".webp",
-        ".pdf",
-        ".doc", ".docx",
-        ".txt"
-    };
+    public static IReadOnlySet<string> AllowedExtensions => AdjuntoEnDisco.ExtensionesPermitidas;
 }

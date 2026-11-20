@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -90,7 +91,7 @@ public class AdminContestsController : ControllerBase
         var entity = new CorporateContest
         {
             Name              = req.Name.Trim(),
-            Description       = req.Description,
+            Description       = HtmlSeguro.Limpiar(req.Description),
             StartDate         = req.StartDate,
             EndDate           = req.EndDate,
             BannerUrl         = req.BannerUrl,
@@ -117,7 +118,7 @@ public class AdminContestsController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail("INVALID_RANGE", "Start date must be before end date."));
 
         entity.Name              = req.Name.Trim();
-        entity.Description       = req.Description;
+        entity.Description       = HtmlSeguro.Limpiar(req.Description);
         entity.StartDate         = req.StartDate;
         entity.EndDate           = req.EndDate;
         entity.BannerUrl         = req.BannerUrl;

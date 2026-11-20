@@ -33,17 +33,17 @@ class Preparar(Base):
         for r in ["README.md", "App.Api/Notas.md", "App.Api.Tests/Prueba.cs", "docs/superpowers/plans/p.md",
                   "docs/arquitectura/a.pdf", "docs/build_pdf.py", "deploy/aws/x.sh", "Scripts/s.ps1",
                   "Dockerfile", ".claude/settings.json", "App.Api/Program.cs", "docs/billing/deck.pptx",
-                  "docs/commissions/build-deck.js", "UI-Templates/index.html", "global.json"]:
+                  "docs/commissions/build-deck.js", "UI-Templates/index.html", "Aikido/r.pdf", "global.json"]:
             self.escribir(r)
         self.escribir("App.slnx", SLNX)
 
         preparar.preparar(self.raiz, self.no_viaja, AQUI / "gitignore-cliente")
 
         for r in ["README.md", "App.Api/Notas.md", "App.Api.Tests", "docs/superpowers", "docs/arquitectura",
-                  "docs/build_pdf.py", "deploy", "Scripts", "Dockerfile", ".claude"]:
+                  "docs/build_pdf.py", "deploy", "Scripts", "Dockerfile", ".claude", "UI-Templates", "Aikido"]:
             self.assertFalse(self.existe(r), r)
         for r in ["App.Api/Program.cs", "docs/billing/deck.pptx", "docs/commissions/build-deck.js",
-                  "UI-Templates/index.html", "global.json"]:
+                  "global.json"]:
             self.assertTrue(self.existe(r), r)
 
     def test_quita_las_pruebas_del_slnx(self):

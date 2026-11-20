@@ -1,11 +1,13 @@
 using MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
 using AspNetCoreRateLimit;
 using MediatR;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedAPICenter.Middleware;
+using MLMConquerorGlobalEdition.SharedAPICenter.Seguridad;
 using MLMConquerorGlobalEdition.SharedAPICenter.Services;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
@@ -51,40 +53,17 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 
 builder.Services.AddControllers();
 
-// AQUÍ NO HAY AUTENTICACIÓN JWT, Y ES A PROPÓSITO.
-//
-// Había una: AddAuthentication + AddJwtBearer + AddAuthorization, con toda la pinta de estar
-// protegiendo este servicio. No protegía nada, y no podía protegerlo aunque alguien lo intentara:
-//
-//   • CERO ENDPOINTS. Este anfitrión tiene dos controladores y ninguno lleva [Authorize] ni
-//     RequireAuthorization(). Los webhooks son públicos por contrato —los llama la pasarela de
-//     pago, que no tiene token nuestro— y ExternalController se defiende con una cabecera
-//     X-Api-Key comprobada a mano. La tubería entera se ejecutaba en cada petición sin decidir
-//     nunca nada.
-//
-//   • LA LLAVE ERA HMAC MIENTRAS TODO EL SISTEMA FIRMA CON RSA. El emisor único (Authn.JwtService)
-//     firma RS256 con la llave privada; aquí se validaba con SymmetricSecurityKey sobre Jwt:Key.
-//     Ningún token real habría pasado esa validación jamás.
-//
-//   • Y ESA Jwt:Key ERA EL LITERAL "YOUR_JWT_KEY_REPLACE_BEFORE_DEPLOY_MIN32CHARS", con un
-//     throw que obligaba a que el despliegue tuviera un secreto puesto para un mecanismo que no
-//     se usa. La audiencia además estaba mal escrita —"MLMConquerorGlobalEditionClients", sin el
-//     punto— frente a la del resto del sistema.
-//
-// POR QUÉ SE BORRA EN VEZ DE ARREGLARSE. Arreglarlo entero sería poner la validación RSA correcta
-// en un anfitrión donde seguiría sin proteger cero endpoints: el mismo adorno, ahora con mejor
-// criptografía. Y el adorno es una trampa, no una comodidad: quien mañana ponga un [Authorize]
-// aquí lo vería registrado, daría la protección por hecha, y se encontraría con que ningún token
-// del sistema valida contra esa llave.
-//
-// QUÉ PASA SI ALGUIEN AÑADE UN [Authorize] AHORA. Falla en el acto y a la vista: sin middleware de
-// autorización, ASP.NET Core lanza al servir el endpoint ("Endpoint contains authorization
-// metadata, but a middleware was not found that supports authorization"). Eso es exactamente lo
-// que hay que ver — y hay una prueba que lo dice antes, al compilar.
-//
-// LO QUE HABRÍA QUE HACER ENTONCES: copiar el bloque de SignupAPI o AdminAPI —RsaSecurityKey desde
-// Jwt:PublicKeyBase64, emisor y audiencia del resto del sistema, y el evento OnTokenValidated que
-// rechaza los retos de 2FA— y volver a poner UseAuthentication/UseAuthorization.
+// AUTENTICACIÓN SIN JWT, A PROPÓSITO. Ningún llamante de este servicio tiene un token nuestro:
+//   • /api/v1/external lo llaman sistemas externos con la cabecera X-Api-Key (ApiKeyExternaHandler).
+//   • /api/v1/webhooks lo llaman las pasarelas, que firman el cuerpo con HMAC-SHA256 y el secreto
+//     de cada una, Webhooks:{provider}:Secreto (FirmaWebhookHandler).
+// Los dos esquemas fallan cerrados: sin secreto configurado no entra nadie. No hay esquema por
+// defecto: cada controlador declara el suyo en su [Authorize].
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddAuthentication()
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyExternaHandler>(ApiKeyExternaHandler.Esquema, null)
+    .AddScheme<AuthenticationSchemeOptions, FirmaWebhookHandler>(FirmaWebhookHandler.Esquema, null);
+builder.Services.AddAuthorization();
 
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
@@ -102,14 +81,12 @@ builder.Services.AddSwaggerGen(c =>
         Title       = "MLMConqueror SharedAPICenter",
         Version     = "v1",
         Description = "Inbound payment webhooks and external member data endpoints. " +
-                      "Ninguna ruta usa Bearer: los webhooks son públicos por contrato y " +
-                      "/api/v1/external se defiende con la cabecera X-Api-Key."
+                      "Ninguna ruta usa Bearer: los webhooks se firman con HMAC-SHA256 " +
+                      "(X-Webhook-Timestamp y X-Webhook-Signature) y /api/v1/external pide la " +
+                      "cabecera X-Api-Key."
     });
 
-    // SIN DEFINICIÓN DE SEGURIDAD BEARER. La había —con su botón "Authorize" y su requisito global—
-    // y era la misma mentira que el bloque de autenticación que se fue de este archivo, pero
-    // enseñada al integrador: la documentación decía que estas rutas piden un token cuando ninguna
-    // lo mira. Quien viniera a integrarse perdería el tiempo consiguiendo uno.
+    // Sin definición de seguridad Bearer: ninguna ruta de este servicio pide un token.
 });
 
 // Detras del balanceador: IP y esquema reales del cliente.
@@ -145,8 +122,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 app.UseIpRateLimiting();
-// Sin UseAuthentication/UseAuthorization: ver el bloque de arriba. Este anfitrión no protege
-// ningún endpoint con token, y dejar la tubería puesta solo serviría para aparentar que sí.
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>

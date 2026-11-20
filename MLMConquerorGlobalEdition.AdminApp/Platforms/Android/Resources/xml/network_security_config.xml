@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo HTTPS y solo las autoridades del sistema: sin tráfico en claro, sin certificados
+     instalados por el usuario y sin excepciones por dominio. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

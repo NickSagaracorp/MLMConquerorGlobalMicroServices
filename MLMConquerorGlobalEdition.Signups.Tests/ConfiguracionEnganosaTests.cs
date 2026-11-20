@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests;
 
 /// <summary>
-/// LOS DOS ANFITRIONES QUE NO REGISTRAN AUTENTICACIÓN, y la prueba que impide que eso se convierta
-/// en una trampa.
+/// EL ANFITRIÓN QUE NO REGISTRA AUTENTICACIÓN (Signups), y la prueba que impide que eso se
+/// convierta en una trampa. SharedAPICenter estuvo en esta lista hasta el 20-nov-2026: ahora tiene
+/// autenticación propia —API key y firma de webhooks, sin JWT— y la vigila
+/// <c>AutenticacionDeSharedApiCenterTests</c>.
 /// </summary>
 /// <remarks>
 /// QUÉ HABÍA. <c>SharedAPICenter</c> y <c>Signups</c> registraban <c>AddAuthentication</c> +
@@ -37,7 +39,6 @@ public class ConfiguracionEnganosaTests
 {
     public static TheoryData<string> LosDosAnfitrionesSinAutenticacion() => new()
     {
-        "MLMConquerorGlobalEdition.SharedAPICenter",
         "MLMConquerorGlobalEdition.Signups"
     };
 

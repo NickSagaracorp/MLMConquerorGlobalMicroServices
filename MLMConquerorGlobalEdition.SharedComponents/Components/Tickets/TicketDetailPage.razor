@@ -36,7 +36,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="mb-3 ticket-body">@((MarkupString)(_ticket.Body ?? string.Empty))</p>
+                    <p class="mb-3 ticket-body" style="white-space: pre-wrap;">@(_ticket.Body ?? string.Empty)</p>
                     <div class="row g-2 text-muted small">
                         <div class="col-12 col-sm-6">
                             @L["TicketDetail.LabelCategory"]: <strong class="text-body">@(string.IsNullOrWhiteSpace(_ticket.CategoryName) ? "—" : _ticket.CategoryName)</strong>

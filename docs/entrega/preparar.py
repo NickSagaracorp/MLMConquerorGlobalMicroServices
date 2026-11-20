@@ -8,7 +8,7 @@ revisar termina con codigo 1 y lista los problemas si encuentra algo que no debe
 """
 import fnmatch, pathlib, re, shutil, sys
 
-VIGILADAS = re.compile(r"claude|anthropic|superpowers|docs/(?:deployment|arquitectura|presentations)|[A-Za-z0-9_-]+\.md\b", re.IGNORECASE)
+VIGILADAS = re.compile(r"claude|anthropic|superpowers|docs/(?:deployment|arquitectura|presentations)|UI-Templates|[A-Za-z0-9_-]+\.md\b", re.IGNORECASE)
 OFFICE = (".pptx", ".docx", ".xlsx")
 INTERNALS_CSPROJ = re.compile(r'^\s*<InternalsVisibleTo\s+Include="[^"]*\.Tests"\s*/>\s*\r?\n', re.MULTILINE)
 INTERNALS_CS = re.compile(r'^\s*\[assembly:\s*InternalsVisibleTo\("[^"]*\.Tests"\)\]\s*\r?\n', re.MULTILINE)

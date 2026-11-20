@@ -25,4 +25,9 @@ Dockerfile
 .dockerignore
 .env.example
 fix_helpdesk_tables.sql
+# Plantillas HTML de referencia del diseno: no se despliegan y sus scripts de terceros disparan el
+# escaner del cliente (20-nov-2026, decision de Nick).
+UI-Templates/
+# Reportes del escaner de seguridad exportados por Nick.
+Aikido/
 Proceso ImportarData OldSystem/

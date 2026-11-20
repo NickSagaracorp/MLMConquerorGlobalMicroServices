@@ -83,15 +83,24 @@ public class ConfirmarCobroEnCriptoRolesTests
     [Fact]
     public void CompletarElAlta_SigueSiendoAnonimo()
     {
-        // El asistente de alta lo usa gente que todavía no tiene cuenta: si esto llevara
-        // [Authorize] no se podría dar de alta nadie.
-        typeof(SignupsController)
-            .GetMethod(nameof(SignupsController.CompleteSignup))!
-            .GetCustomAttribute<AuthorizeAttribute>()
-            .Should().BeNull();
-
+        // El asistente de alta lo usa gente que todavía no tiene cuenta. Desde el 20-nov-2026 el
+        // controlador está cerrado por defecto ([Authorize] de clase) y cada paso del alta se abre
+        // con [AllowAnonymous]: una acción nueva sin atributo exige sesión.
         typeof(SignupsController).GetCustomAttribute<AuthorizeAttribute>()
-            .Should().BeNull("el controlador de altas es público; solo la confirmación está cerrada.");
+            .Should().NotBeNull("el controlador de altas está cerrado por defecto");
+
+        var acciones = typeof(SignupsController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttributes().Any(a => a is Microsoft.AspNetCore.Mvc.Routing.HttpMethodAttribute))
+            .ToArray();
+
+        acciones.Where(m => m.Name != nameof(SignupsController.ConfirmCryptoPayment))
+            .Where(m => m.GetCustomAttribute<AllowAnonymousAttribute>() is null)
+            .Select(m => m.Name)
+            .Should().BeEmpty("todos los pasos del alta tienen que seguir siendo anónimos");
+
+        typeof(SignupsController).GetMethod(nameof(SignupsController.ConfirmCryptoPayment))!
+            .GetCustomAttribute<AllowAnonymousAttribute>()
+            .Should().BeNull("la confirmación de la cripto es solo para los cuatro roles");
     }
 
     // ── El validador de la confirmación ─────────────────────────────────────────

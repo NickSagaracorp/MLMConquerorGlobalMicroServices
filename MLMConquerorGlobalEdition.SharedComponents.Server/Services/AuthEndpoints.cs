@@ -402,16 +402,7 @@ public static class AuthEndpoints
 
         var cultureName = LanguageCodeMapper.ToCultureName(appCode);
 
-        httpContext.Response.Cookies.Append(
-            CookieRequestCultureProvider.DefaultCookieName,
-            CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(cultureName, cultureName)),
-            new CookieOptions
-            {
-                // UtcNow y no Now: es una fecha de protocolo HTTP, no un dato de negocio.
-                Expires  = DateTimeOffset.UtcNow.AddYears(1),
-                SameSite = SameSiteMode.Lax,
-                Path     = "/"
-            });
+        CookieDeIdioma.Escribir(httpContext.Response, cultureName);
     }
 
     /// <summary>

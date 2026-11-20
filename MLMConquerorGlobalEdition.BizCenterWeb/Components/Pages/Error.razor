@@ -16,10 +16,10 @@
 
 <h3>@L["Error.DevModeHeader"]</h3>
 <p>
-    @((MarkupString)L["Error.DevModeIntro"].Value)
+    @SinEtiquetas(L["Error.DevModeIntro"].Value)
 </p>
 <p>
-    @((MarkupString)L["Error.DevModeWarning"].Value)
+    @SinEtiquetas(L["Error.DevModeWarning"].Value)
 </p>
 
 @code{
@@ -28,6 +28,10 @@
 
     private string? RequestId { get; set; }
     private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    // Los textos traen <strong> de la plantilla original; se pintan como texto, sin las etiquetas.
+    private static string SinEtiquetas(string texto) =>
+        System.Text.RegularExpressions.Regex.Replace(texto, "<[^>]*>", string.Empty);
 
     protected override void OnInitialized() =>
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;

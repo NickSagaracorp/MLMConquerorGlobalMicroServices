@@ -33,6 +33,9 @@
     <!-- El formateador de consola que enmascara PII (Logging/). Lo trae este paquete, que
          antes llegaba de rebote por el framework compartido de ASP.NET Core. -->
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+    <!-- HtmlSeguro: la política única de HTML enriquecido (al guardar en AdminAPI y al pintar en
+         HtmlSaneado). Misma versión que ya usaba AdminAPI. -->
+    <PackageReference Include="HtmlSanitizer" Version="9.2.1039" />
   </ItemGroup>
 
 </Project>

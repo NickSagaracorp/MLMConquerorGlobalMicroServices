@@ -231,11 +231,7 @@ app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>
 {
     if (!string.IsNullOrWhiteSpace(culture))
     {
-        ctx.Response.Cookies.Append(
-            CookieRequestCultureProvider.DefaultCookieName,
-            CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture, culture)),
-            new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), SameSite = SameSiteMode.Lax }
-        );
+        CookieDeIdioma.Escribir(ctx.Response, culture);
     }
     var target = "/";
     if (!string.IsNullOrWhiteSpace(redirectUri))

@@ -49,7 +49,7 @@
                                 @if (!string.IsNullOrWhiteSpace(p.Description))
                                 {
                                     <div class="text-muted small product-desc-preview mt-1">
-                                        @((MarkupString)TruncateHtml(p.Description, 80))
+                                        @TruncateHtml(p.Description, 80)
                                     </div>
                                 }
                             }
@@ -429,7 +429,8 @@
             if (!inTag) sb.Append(c);
             if (sb.Length >= maxLength) break;
         }
-        var text = sb.ToString().Trim();
+        // Texto plano: se pinta escapado, así que las entidades (&amp;, &nbsp;) se decodifican aquí.
+        var text = System.Net.WebUtility.HtmlDecode(sb.ToString()).Trim();
         return text.Length > maxLength ? text[..maxLength] + "…" : text;
     }
 

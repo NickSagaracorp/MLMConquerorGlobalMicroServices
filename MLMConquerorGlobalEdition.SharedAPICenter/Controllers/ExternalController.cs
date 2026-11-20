@@ -1,9 +1,11 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedAPICenter.DTOs;
 using MLMConquerorGlobalEdition.SharedAPICenter.Features.GetExternalMemberProfile;
 using MLMConquerorGlobalEdition.SharedAPICenter.Features.GetExternalMemberRank;
 using MLMConquerorGlobalEdition.SharedAPICenter.Features.ValidateMemberToken;
+using MLMConquerorGlobalEdition.SharedAPICenter.Seguridad;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SharedAPICenter.Controllers;
@@ -11,35 +13,18 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Controllers;
 /// <summary>
 /// Exposes read-only member data to trusted external systems.
 ///
-/// Authentication: X-Api-Key header validated against IConfiguration["ExternalApi:ApiKey"].
-/// All three endpoints perform the check inline and return 401 when the key is missing
-/// or invalid.
+/// Autenticación: cabecera X-Api-Key contra ExternalApi:ApiKey, por el esquema
+/// <see cref="ApiKeyExternaHandler"/> (comparación en tiempo constante; sin llave configurada,
+/// 401 para todos).
 /// </summary>
 [ApiController]
 [Route("api/v1/external")]
+[Authorize(AuthenticationSchemes = ApiKeyExternaHandler.Esquema)]
 public class ExternalController : ControllerBase
 {
-    private readonly IMediator      _mediator;
-    private readonly IConfiguration _config;
+    private readonly IMediator _mediator;
 
-    public ExternalController(IMediator mediator, IConfiguration config)
-    {
-        _mediator = mediator;
-        _config   = config;
-    }
-
-
-    /// <summary>
-    /// Returns true when the X-Api-Key header matches the configured secret.
-    /// </summary>
-    private bool IsApiKeyValid()
-    {
-        var expected = _config["ExternalApi:ApiKey"];
-        if (string.IsNullOrWhiteSpace(expected)) return false;
-
-        Request.Headers.TryGetValue("X-Api-Key", out var provided);
-        return string.Equals(provided, expected, StringComparison.Ordinal);
-    }
+    public ExternalController(IMediator mediator) => _mediator = mediator;
 
 
     /// <summary>
@@ -55,10 +40,6 @@ public class ExternalController : ControllerBase
         [FromRoute] string memberId,
         CancellationToken ct)
     {
-        if (!IsApiKeyValid())
-            return Unauthorized(ApiResponse<object>.Fail(
-                "UNAUTHORIZED", "Invalid or missing API key.", HttpContext.TraceIdentifier));
-
         var result = await _mediator.Send(new GetExternalMemberProfileQuery(memberId), ct);
 
         if (!result.IsSuccess)
@@ -82,10 +63,6 @@ public class ExternalController : ControllerBase
         [FromRoute] string memberId,
         CancellationToken ct)
     {
-        if (!IsApiKeyValid())
-            return Unauthorized(ApiResponse<object>.Fail(
-                "UNAUTHORIZED", "Invalid or missing API key.", HttpContext.TraceIdentifier));
-
         var result = await _mediator.Send(new GetExternalMemberRankQuery(memberId), ct);
 
         if (!result.IsSuccess)
@@ -108,10 +85,6 @@ public class ExternalController : ControllerBase
         [FromBody] ValidateTokenRequest request,
         CancellationToken ct)
     {
-        if (!IsApiKeyValid())
-            return Unauthorized(ApiResponse<object>.Fail(
-                "UNAUTHORIZED", "Invalid or missing API key.", HttpContext.TraceIdentifier));
-
         var result = await _mediator.Send(new ValidateMemberTokenCommand(request), ct);
 
         if (!result.IsSuccess)

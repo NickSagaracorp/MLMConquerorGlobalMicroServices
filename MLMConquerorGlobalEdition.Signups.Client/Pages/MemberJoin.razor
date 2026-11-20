@@ -172,7 +172,7 @@
                             </div>
                             @if (!string.IsNullOrEmpty(p.Description))
                             {
-                                <div class="plan-card__desc">@((MarkupString)p.Description)</div>
+                                <div class="plan-card__desc"><HtmlSaneado Html="@p.Description" /></div>
                             }
                             <span class="price-chip">@p.Price.ToString("C")</span>
                         </div>

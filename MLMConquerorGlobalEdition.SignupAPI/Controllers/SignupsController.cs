@@ -25,8 +25,14 @@ using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 
+/// <summary>
+/// El alta. Cerrado por defecto: cada acción que tiene que ser anónima —los pasos del alta, que
+/// ocurren antes de que exista la cuenta, y sus consultas de apoyo— lo declara con
+/// [AllowAnonymous]. Una acción nueva sin atributo exige sesión.
+/// </summary>
 [ApiController]
 [Route("api/v1/signups")]
+[Authorize]
 public class SignupsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -39,6 +45,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpPost("ambassador")]
+    [AllowAnonymous]
     public async Task<IActionResult> SignupAmbassador(
         [FromBody] AmbassadorSignupRequest request, CancellationToken ct)
     {
@@ -58,6 +65,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpPost("member")]
+    [AllowAnonymous]
     public async Task<IActionResult> SignupMember(
         [FromBody] MemberSignupRequest request, CancellationToken ct)
     {
@@ -101,6 +109,7 @@ public class SignupsController : ControllerBase
 
 
     [HttpPost("{signupId}/select-products")]
+    [AllowAnonymous]
     public async Task<IActionResult> SelectProducts(
         string signupId, [FromBody] SelectProductsRequest request, CancellationToken ct)
     {
@@ -115,6 +124,7 @@ public class SignupsController : ControllerBase
 
 
     [HttpPost("{signupId}/complete")]
+    [AllowAnonymous]
     public async Task<IActionResult> CompleteSignup(
         string signupId, [FromBody] CompleteSignupRequest request, CancellationToken ct)
     {
@@ -190,6 +200,7 @@ public class SignupsController : ControllerBase
 
 
     [HttpPost("validate-replicate-site")]
+    [AllowAnonymous]
     public async Task<IActionResult> ValidateReplicateSite(
         [FromBody] ValidateReplicateSiteRequest request, CancellationToken ct)
     {
@@ -200,6 +211,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpPost("validate-sponsor")]
+    [AllowAnonymous]
     public async Task<IActionResult> ValidateSponsor(
         [FromBody] ValidateSponsorRequest request, CancellationToken ct)
     {
@@ -214,7 +226,7 @@ public class SignupsController : ControllerBase
     /// Always returns 200 with a structured ValidateTokenResponse to prevent enumeration attacks.
     /// </summary>
     [HttpPost("validate-token")]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [AllowAnonymous]
     public async Task<IActionResult> ValidateToken(
         [FromBody] ValidateTokenRequest request, CancellationToken ct)
     {
@@ -246,6 +258,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpGet("membership-levels")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetMembershipLevels(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetMembershipLevelsQuery(), ct);
@@ -253,7 +266,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpGet("products")]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [AllowAnonymous]
     public async Task<IActionResult> GetProducts(
         [FromQuery] string? countryIso2 = null,
         CancellationToken ct = default)
@@ -265,7 +278,7 @@ public class SignupsController : ControllerBase
     }
 
     [HttpGet("countries")]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [AllowAnonymous]
     public async Task<IActionResult> GetCountries(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetCountriesQuery(), ct);

@@ -167,7 +167,7 @@
                         </div>
                         @if (!string.IsNullOrEmpty(_enrollmentProduct.Description))
                         {
-                            <div class="plan-card__desc">@((MarkupString)_enrollmentProduct.Description)</div>
+                            <div class="plan-card__desc"><HtmlSaneado Html="@_enrollmentProduct.Description" /></div>
                         }
                         <span class="price-chip">@_enrollmentProduct.Price.ToString("C")</span>
                     </div>
@@ -222,7 +222,7 @@
                             </div>
                             @if (!string.IsNullOrEmpty(p.Description))
                             {
-                                <div class="plan-card__desc">@((MarkupString)p.Description)</div>
+                                <div class="plan-card__desc"><HtmlSaneado Html="@p.Description" /></div>
                             }
                             <span class="price-chip">@p.Price.ToString("C")</span>
                         </div>

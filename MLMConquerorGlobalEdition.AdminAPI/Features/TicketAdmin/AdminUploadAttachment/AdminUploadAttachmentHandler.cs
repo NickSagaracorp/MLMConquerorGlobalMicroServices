@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.AdminUploadAttachment;
 
@@ -46,13 +47,18 @@ public class AdminUploadAttachmentHandler
 
         var now = _dateTime.Now;
 
-        var ext        = Path.GetExtension(command.OriginalFileName).ToLowerInvariant();
-        var diskName   = $"{Guid.NewGuid():N}{ext}";
+        // En disco va un Guid con una extension de la lista; el nombre original solo se muestra.
+        // La ruta final se comprueba contra la carpeta antes de escribir.
+        var ext = AdjuntoEnDisco.ExtensionPermitida(command.OriginalFileName);
+        if (ext is null)
+            return Result<AdminTicketAttachmentDto>.Failure("INVALID_FILE_TYPE", "Allowed types: images, PDF, DOC/DOCX, TXT.");
+
+        var diskName   = AdjuntoEnDisco.NombreNuevo(ext);
         var webRoot    = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
         var folderPath = Path.Combine(webRoot, UploadsSubPath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(folderPath);
 
-        var filePath = Path.Combine(folderPath, diskName);
+        var filePath = AdjuntoEnDisco.RutaDentroDe(folderPath, diskName);
         await File.WriteAllBytesAsync(filePath, command.Content, ct);
 
         var fileUrl = $"/{UploadsSubPath}/{diskName}";

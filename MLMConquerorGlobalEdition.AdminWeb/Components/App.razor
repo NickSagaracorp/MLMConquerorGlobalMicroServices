@@ -83,17 +83,6 @@
     </script>
 
     <script>
-        // Set culture from cookie before Blazor circuit starts
-        (function() {
-            var cookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('.AspNetCore.Culture='));
-            if (cookie) {
-                var val = decodeURIComponent(cookie.split('=')[1]);
-                var m = val.match(/uic=([^|]+)/);
-                if (m) document.documentElement.lang = m[1];
-            }
-        })();
-    </script>
-    <script>
         (function () {
             // Sidebar accordion menu init
             function initMenu() {

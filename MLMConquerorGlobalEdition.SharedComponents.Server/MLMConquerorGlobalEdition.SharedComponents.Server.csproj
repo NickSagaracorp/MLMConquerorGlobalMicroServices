@@ -41,7 +41,7 @@
 
   <ItemGroup>
     <!-- TwoFactorPageData lee el ChallengeToken con JwtSecurityTokenHandler. -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
 
   <ItemGroup>

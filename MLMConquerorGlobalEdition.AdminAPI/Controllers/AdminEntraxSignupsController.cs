@@ -137,6 +137,29 @@ public class AdminEntraxSignupsController : ControllerBase
     /// qué contestó SignupAPI (código HTTP y desenlace), también si SignupAPI no respondió. El Bearer
     /// se reenvía en la petición y no se guarda.
     /// </summary>
+    /// <summary>
+    /// La URL absoluta del Re-check en SignupAPI: siempre sobre la dirección base configurada del
+    /// cliente, con el Id escapado como un único segmento. Si el resultado no queda en el mismo
+    /// esquema, host y puerto que esa base, no se sale.
+    /// </summary>
+    public static Uri DestinoDelRecheck(Uri? baseAddress, string paymentId)
+    {
+        if (baseAddress is null || !baseAddress.IsAbsoluteUri)
+            throw new InvalidOperationException("El cliente de SignupAPI no tiene dirección base.");
+        if (string.IsNullOrWhiteSpace(paymentId) || paymentId is "." or "..")
+            throw new InvalidOperationException("Id de pago no válido para el Re-check.");
+
+        var prefijo = new Uri(baseAddress, "api/v1/signups/entrax/");
+        var destino = new Uri(prefijo, $"{Uri.EscapeDataString(paymentId)}/recheck");
+
+        if (Uri.Compare(destino, baseAddress, UriComponents.SchemeAndServer,
+                UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0
+            || !destino.AbsolutePath.StartsWith(prefijo.AbsolutePath, StringComparison.Ordinal))
+            throw new InvalidOperationException("El Re-check saldría fuera de SignupAPI.");
+
+        return destino;
+    }
+
     [HttpPost("{id}/recheck")]
     public async Task<IActionResult> Recheck(string id, CancellationToken ct = default)
     {
@@ -151,8 +174,8 @@ public class AdminEntraxSignupsController : ControllerBase
         // La ruta se arma con el Id guardado, no con el de la URL, y va contra la direccion base fija del cliente de
         // SignupAPI: lo que escriba quien llama no decide a donde sale la peticion.
         var http = _httpFactory.CreateClient(SignupApiRegistration.HttpClientName);
-        using var request = new HttpRequestMessage(HttpMethod.Post,
-            $"api/v1/signups/entrax/{Uri.EscapeDataString(payment.Id)}/recheck");
+        var destino = DestinoDelRecheck(http.BaseAddress, payment.Id);
+        using var request = new HttpRequestMessage(HttpMethod.Post, destino);
 
         var bearer = Request.Headers.Authorization.ToString();
         if (!string.IsNullOrWhiteSpace(bearer) && AuthenticationHeaderValue.TryParse(bearer, out var parsed))

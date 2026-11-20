@@ -53,12 +53,34 @@
         "resolved": "2.8.2",
         "contentHash": "vm1tbfXhFmjFMUmS4M0J0ASXz3/U5XvXBa6DOQUL3fEz4Vt6YPhv+ESCarx6M6D+9kJkJYZKCNvJMas1+nVfmQ=="
       },
+      "AngleSharp": {
+        "type": "Transitive",
+        "resolved": "1.7.2",
+        "contentHash": "r1rb5Qo/0KPzmP0nbSiXPDVfh4Ctu0B+y1RyyUq73g4sgAmEW7q10RDyTq2ZsILwtO9O2LAvMrUles7eD4zz1g=="
+      },
+      "AngleSharp.Css": {
+        "type": "Transitive",
+        "resolved": "1.0.2",
+        "contentHash": "XeBxh0h/73+MWFsGfeMwiK7xbzAK3YeHFdUIrMH1P90amIrDFD/vUDIrPlF3CixqaMH5MRIUvT6Ux+2zvhJ3SA==",
+        "dependencies": {
+          "AngleSharp": "[1.5.0, 2.0.0)"
+        }
+      },
       "Castle.Core": {
         "type": "Transitive",
         "resolved": "5.1.1",
         "contentHash": "rpYtIczkzGpf+EkZgDr9CClTdemhsrwA/W5hMoPjLkRFnXzH44zDLoovXeKtmxb1ykXK9aJVODSpiJml8CTw2g==",
         "dependencies": {
           "System.Diagnostics.EventLog": "6.0.0"
+        }
+      },
+      "HtmlSanitizer": {
+        "type": "Transitive",
+        "resolved": "9.2.1039",
+        "contentHash": "PKxy1hYknAij8YlHCC2a9GSqzUd4bh3IvY+abJBvOH1FKcZpbyafEHtdFcXQBt12Y7hNPkNEOP6Qa7uKNSs/yA==",
+        "dependencies": {
+          "AngleSharp": "1.7.2",
+          "AngleSharp.Css": "1.0.2"
         }
       },
       "Microsoft.CodeCoverage": {
@@ -283,6 +305,7 @@
       "mlmconquerorglobaledition.sharedkernel": {
         "type": "Project",
         "dependencies": {
+          "HtmlSanitizer": "[9.2.1039, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )",
           "Microsoft.Extensions.Logging.Console": "[10.0.2, )"
         }

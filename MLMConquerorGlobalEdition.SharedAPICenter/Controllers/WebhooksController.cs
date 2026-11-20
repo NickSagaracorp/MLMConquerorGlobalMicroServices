@@ -1,8 +1,10 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedAPICenter.DTOs;
 using MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebhook;
 using MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessRefundWebhook;
+using MLMConquerorGlobalEdition.SharedAPICenter.Seguridad;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SharedAPICenter.Controllers;
@@ -10,18 +12,18 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Controllers;
 /// <summary>
 /// Receives inbound webhook events from payment providers.
 ///
-/// Endpoints are intentionally public (no [Authorize]) — providers post raw payloads
-/// without JWT tokens. Production hardening (HMAC signature validation per provider)
-/// should be added inside each handler or as a dedicated filter.
+/// La pasarela no tiene token nuestro: cada llamada se autentica con la firma HMAC-SHA256 del
+/// cuerpo con el secreto de esa pasarela (<see cref="FirmaWebhookHandler"/>,
+/// Webhooks:{provider}:Secreto). Pasarela sin secreto configurado = 401 para todos.
 /// <para>
-/// PRE-PRODUCTION BLOCKER: there is NO signature check yet, so anyone can post here. Until
-/// each provider's HMAC is verified, the handlers must not trust the payload: the refund notice only refunds an order or
-/// cancels a membership for a payment created by our own charge flow (never one created by this webhook), Captured
-/// before the notice, of that same order and member, and for an explicit full amount.
+/// Aun firmada, los manejadores no se fían del contenido: la devolución solo devuelve un pedido o
+/// cancela una membresía de un pago creado por nuestro propio flujo de cobro (nunca por este
+/// webhook), capturado antes del aviso, de ese mismo pedido y miembro, y por el importe completo.
 /// </para>
 /// </summary>
 [ApiController]
 [Route("api/v1/webhooks")]
+[Authorize(AuthenticationSchemes = FirmaWebhookHandler.Esquema)]
 public class WebhooksController : ControllerBase
 {
     private readonly IMediator _mediator;

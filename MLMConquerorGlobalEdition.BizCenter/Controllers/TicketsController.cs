@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Tickets.GetTicketCategories;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tickets.GetTickets;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tickets.UploadAttachment;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
@@ -114,13 +115,7 @@ public class TicketsController : ControllerBase
 
 internal static class TicketAttachmentLimits
 {
-    public const long MaxFileSizeBytes = 10_000_000; // 10 MB
+    public const long MaxFileSizeBytes = AdjuntoEnDisco.TamanoMaximoBytes;
 
-    public static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".gif", ".webp",
-        ".pdf",
-        ".doc", ".docx",
-        ".txt"
-    };
+    public static IReadOnlySet<string> AllowedExtensions => AdjuntoEnDisco.ExtensionesPermitidas;
 }
