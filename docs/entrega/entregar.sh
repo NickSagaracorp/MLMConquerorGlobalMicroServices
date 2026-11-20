@@ -8,8 +8,10 @@
 # Ejemplo (MWRLife):  bash docs/entrega/entregar.sh armar MWRLife mwrlife
 # El remoto tiene el pushurl anulado; aqui se usa su url real desde un clon propio.
 set -euo pipefail
-export MSYS_NO_PATHCONV=1
 RAIZ="$(git rev-parse --show-toplevel)"; DIR="$RAIZ/docs/entrega"
+# En Git Bash de Windows, git y dotnet son programas de Windows: las rutas que se les pasan van en
+# forma C:/... (cygpath -m). En Linux no hace falta.
+ruta() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else echo "$1"; fi; }
 SLN="MLMConquerorGlobalEdition.slnx"
 
 armar() {
@@ -18,13 +20,14 @@ armar() {
     || { echo "No existe el remoto $nombre" >&2; return 1; }
   local sha; sha=$(git -C "$RAIZ" rev-parse --verify "$commit^{commit}")
   local fecha; fecha=$(date +%F)
-  local base; base="$HOME/mlm-entregas/$(date +%Y%m%d-%H%M%S)"
+  local base; base="$(ruta "$HOME")/mlm-entregas/$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$base"
   echo "Entrega de ${sha:0:7} hacia $remoto ($rama) en $base"
 
   echo "1/6 Pruebas en el repositorio privado, sobre ese commit"
   git -C "$RAIZ" worktree add --detach "$base/fuente" "$sha" >/dev/null
   trap 'git -C "$RAIZ" worktree remove --force "$base/fuente" 2>/dev/null || true' RETURN
+  ls -d "$base"/fuente/*.Tests >/dev/null 2>&1 || { echo "No se encontraron proyectos de pruebas en $base/fuente." >&2; return 1; }
   for t in "$base"/fuente/*.Tests; do
     r=$(dotnet test "$t" -nologo -v q 2>&1 | grep -E "Passed!|Failed!" || true)
     echo "    $(basename "$t"): ${r:-sin resultado}"
