@@ -1,0 +1,9 @@
+# Archivos de terceros que pueden contener las palabras vigiladas sin delatar nada
+# (Remix Icon trae iconos con nombres de productos). Mismos patrones que no-viaja.txt.
+remixicon.css
+remixicon.eot
+remixicon.svg
+remixicon.ttf
+remixicon.woff
+remixicon.woff2
+remixicon.symbol.svg

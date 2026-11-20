@@ -1,0 +1,28 @@
+# Lo que NUNCA viaja al remoto del cliente. Un patron por linea, rutas relativas a la raiz:
+#   termina en /   -> carpeta (en la raiz, o en cualquier nivel si empieza con **/)
+#   sin /          -> nombre de archivo o carpeta en cualquier nivel (admite * y ?)
+#   con /          -> ruta exacta desde la raiz (admite * y ?)
+*.md
+*.Tests/
+docs/superpowers/
+docs/arquitectura/
+docs/presentations/
+docs/deployment/
+docs/marca/
+docs/entrega/
+docs/build_pdf.py
+docs/generar-pdfs.sh
+.claude/
+CLAUDE.md
+AGENTS.md
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
+deploy/
+Scripts/
+DeploymentScripts/
+Dockerfile
+.dockerignore
+.env.example
+fix_helpdesk_tables.sql
+Proceso ImportarData OldSystem/

@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+appsettings.*.json
+!appsettings.json
+**/wwwroot/uploads/
+**/wwwroot/certificates/
+.env
