@@ -50,6 +50,57 @@ public class DetrasDelBalanceadorTests
         red.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("10.20.5.6"));
     }
 
+    // EKS: cliente -> CloudFront -> balanceador interno -> pod. CloudFront entra al balanceador desde
+    // una IP de la VPC (VPC origin) y el balanceador la agrega; antes va la IP que agrego CloudFront.
+    [Fact]
+    public async Task ConCloudFront_DosSaltos_TomaLaIpQueAgregoCloudFront()
+    {
+        var ctx = await Pasar(Vpc, desde: "10.20.5.6", xff: "203.0.113.9, 10.20.7.8", proto: "https", saltos: 2);
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+        ctx.Request.Scheme.Should().Be("https");
+    }
+
+    [Fact]
+    public async Task ConCloudFront_LoQueEscribeElClienteNoCuenta()
+    {
+        // El cliente mando "X-Forwarded-For: 6.6.6.6"; CloudFront agrego su IP real y el balanceador la de CloudFront.
+        var ctx = await Pasar(Vpc, desde: "10.20.5.6", xff: "6.6.6.6, 203.0.113.9, 10.20.7.8", proto: "https", saltos: 2);
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+    }
+
+    // Docker: cliente -> Cloudflare -> cloudflared (red "borde") -> servicio.
+    private const string Borde = "172.30.0.0/24";
+
+    [Fact]
+    public async Task ConCloudflare_TomaLaIpQueAgregoCloudflare()
+    {
+        var ctx = await Pasar(Borde, desde: "172.30.0.2", xff: "6.6.6.6, 203.0.113.9", proto: "https");
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("203.0.113.9"));
+    }
+
+    [Fact]
+    public async Task DesdeLaRedInterna_NoSePuedeFalsificarLaIp()
+    {
+        var ctx = await Pasar(Borde, desde: "172.31.0.5", xff: "203.0.113.9", proto: "https");
+
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("172.31.0.5"));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("4")]
+    [InlineData("dos")]
+    public void SaltosFueraDeRango_NoArranca(string valor)
+    {
+        // Se valida al registrar: un valor malo detiene el arranque, no la primera peticion.
+        FluentActions.Invoking(() => new ServiceCollection()
+                .AddProxyForwardedHeaders(Config(new() { [ProxyHosting.ForwardLimitKey] = valor })))
+            .Should().Throw<InvalidOperationException>().WithMessage("*ForwardLimit*");
+    }
+
     [Fact]
     public void ConCarpetaDeLlaves_OtroProcesoLeeLoQueProtegioElPrimero()
     {
@@ -87,10 +138,11 @@ public class DetrasDelBalanceadorTests
             .CreateProtector("prueba");
     }
 
-    private static async Task<HttpContext> Pasar(string? red, string desde, string xff, string proto)
+    private static async Task<HttpContext> Pasar(string? red, string desde, string xff, string proto, int? saltos = null)
     {
         var valores = new Dictionary<string, string?>();
         if (red is not null) valores[ProxyHosting.KnownNetworkKey] = red;
+        if (saltos is not null) valores[ProxyHosting.ForwardLimitKey] = saltos.Value.ToString();
 
         var servicios = new ServiceCollection();
         servicios.AddProxyForwardedHeaders(Config(valores));

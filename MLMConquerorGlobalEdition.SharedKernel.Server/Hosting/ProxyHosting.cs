@@ -20,21 +20,35 @@ public static class ProxyHosting
     public const string KeysPathKey = "DataProtection:KeysPath";
 
     /// <summary>
+    /// Cuantos saltos de proxy de confianza se recorren en X-Forwarded-For. 1 = solo el balanceador
+    /// (o cloudflared en Docker); 2 = CloudFront delante del balanceador (EKS con VPC origin).
+    /// </summary>
+    public const string ForwardLimitKey = "ForwardedHeaders:ForwardLimit";
+
+    /// <summary>
     /// Toma la IP y el esquema del cliente de <c>X-Forwarded-For</c> y <c>X-Forwarded-Proto</c>,
     /// pero solo cuando la conexión viene de la red configurada en <see cref="KnownNetworkKey"/>.
     /// Sin esa clave solo se confía en el propio equipo (loopback), como en desarrollo: una
-    /// cabecera inventada por un cliente no cambia nada. Se usa un único salto (el del ALB),
-    /// así que la IP que queda es la que el balanceador añadió, no la que mandó el cliente.
+    /// cabecera inventada por un cliente no cambia nada. Se recorren tantos saltos como diga
+    /// <see cref="ForwardLimitKey"/> (1 por defecto: el del balanceador; 2 con CloudFront delante), así
+    /// que la IP que queda es la que agregó el primer proxy de confianza, no la que mandó el cliente.
     /// </summary>
     public static IServiceCollection AddProxyForwardedHeaders(
         this IServiceCollection services, IConfiguration configuration)
     {
         var cidr = configuration[KnownNetworkKey];
 
+        var textoSaltos = configuration[ForwardLimitKey];
+        var saltos = 1;
+        if (!string.IsNullOrWhiteSpace(textoSaltos)
+            && (!int.TryParse(textoSaltos, out saltos) || saltos is < 1 or > 3))
+            throw new InvalidOperationException(
+                $"{ForwardLimitKey} = '{textoSaltos}': tiene que ser 1, 2 o 3.");
+
         services.Configure<ForwardedHeadersOptions>(o =>
         {
             o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            o.ForwardLimit = 1;
+            o.ForwardLimit = saltos;
             o.KnownIPNetworks.Clear();
             o.KnownProxies.Clear();
 
