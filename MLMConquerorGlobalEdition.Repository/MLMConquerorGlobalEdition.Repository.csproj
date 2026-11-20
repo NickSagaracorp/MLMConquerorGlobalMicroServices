@@ -33,4 +33,9 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel.Server\MLMConquerorGlobalEdition.SharedKernel.Server.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- ResolveCertificate y ResolveRetiredCertificates: como se carga el certificado del anillo. -->
+    <InternalsVisibleTo Include="MLMConquerorGlobalEdition.Billing.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -36,6 +36,7 @@ public static class GatewayCredentialProtectionExtensions
     public const string CertificatePathKey       = "DataProtection:Certificate:Path";
     public const string CertificatePasswordKey   = "DataProtection:Certificate:Password";
     public const string CertificateThumbprintKey = "DataProtection:Certificate:Thumbprint";
+    public const string CertificateBase64Key     = "DataProtection:Certificate:Base64";
 
     public static IServiceCollection AddGatewayCredentialProtection(this IServiceCollection services)
     {
@@ -68,7 +69,7 @@ public static class GatewayCredentialProtectionExtensions
             .UnprotectKeysWithAnyCertificate(ResolveRetiredCertificates(config).Append(certificate).ToArray());
     }
 
-    private static X509Certificate2 ResolveCertificate(IConfiguration config, IHostEnvironment? env)
+    internal static X509Certificate2 ResolveCertificate(IConfiguration config, IHostEnvironment? env)
     {
         // Opción A: certificado del almacén de Windows, por thumbprint. Es la preferida en
         // producción porque la clave privada nunca toca el disco de la aplicación.
@@ -84,12 +85,18 @@ public static class GatewayCredentialProtectionExtensions
             return found;
         }
 
-        // Opción B: archivo PFX.
+        // Opción B: el PFX en base64. Así llega desde AWS Secrets Manager (secreto dp-gateway);
+        // gana sobre Path.
+        var base64 = config[CertificateBase64Key];
+        if (!string.IsNullOrWhiteSpace(base64))
+            return CargarPfxDesdeBase64(base64!, config[CertificatePasswordKey], CertificateBase64Key);
+
+        // Opción C: archivo PFX.
         var path = config[CertificatePathKey];
         if (string.IsNullOrWhiteSpace(path))
             throw new InvalidOperationException(
                 $"Gateway credential encryption needs a certificate. Set '{CertificateThumbprintKey}' " +
-                $"(Windows store) or '{CertificatePathKey}' (PFX file). Every host that touches gateway " +
+                $"(Windows store), '{CertificateBase64Key}' (PFX in base64) or '{CertificatePathKey}' (PFX file). Every host that touches gateway " +
                 "credentials — AdminAPI, Billing and BizCenter — must use the SAME certificate. " +
                 "See the internal KB article 'gateway-credential-encryption'.");
 
@@ -122,7 +129,7 @@ public static class GatewayCredentialProtectionExtensions
     /// Certificados retirados que aún deben poder DESENVOLVER llaves viejas durante una
     /// rotación. Se listan como DataProtection:Certificate:Retired:0:Path (+ :Password).
     /// </summary>
-    private static IEnumerable<X509Certificate2> ResolveRetiredCertificates(IConfiguration config)
+    internal static IEnumerable<X509Certificate2> ResolveRetiredCertificates(IConfiguration config)
     {
         foreach (var section in config.GetSection("DataProtection:Certificate:Retired").GetChildren())
         {
@@ -131,6 +138,13 @@ public static class GatewayCredentialProtectionExtensions
             {
                 var fromStore = FindByThumbprint(thumbprint!);
                 if (fromStore is not null) yield return fromStore;
+                continue;
+            }
+
+            var base64 = section["Base64"];
+            if (!string.IsNullOrWhiteSpace(base64))
+            {
+                yield return CargarPfxDesdeBase64(base64!, section["Password"], $"{section.Path}:Base64");
                 continue;
             }
 
@@ -144,6 +158,24 @@ public static class GatewayCredentialProtectionExtensions
                 resolved, section["Password"],
                 X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
         }
+    }
+
+    private static X509Certificate2 CargarPfxDesdeBase64(string base64, string? password, string clave)
+    {
+        byte[] bytes;
+        try { bytes = Convert.FromBase64String(base64); }
+        catch (FormatException ex)
+        {
+            throw new InvalidOperationException($"'{clave}' no es base64 válido: tiene que ser el PFX completo en base64.", ex);
+        }
+
+        var cert = X509CertificateLoader.LoadPkcs12(
+            bytes, password, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+
+        if (!cert.HasPrivateKey)
+            throw new InvalidOperationException($"El certificado de '{clave}' no trae la llave privada.");
+
+        return cert;
     }
 
     private static X509Certificate2? FindByThumbprint(string thumbprint)
