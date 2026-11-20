@@ -68,6 +68,17 @@ public class LectorDeSecretosAwsTests
     }
 
     [Fact]
+    public void SinCredencial_ComoLaDaElSdk37()
+    {
+        // Asi llega cuando no hay perfil ni metadatos de instancia: AmazonServiceException sin codigo.
+        var lector = ConCliente(c => Lanza(c, new AmazonServiceException(
+            "Unable to get IAM security credentials from EC2 Instance Metadata Service.")));
+        lector.Invoking(l => l.Leer(Nombre)).Should().Throw<SecretoNoDisponibleException>()
+            .Where(e => e.Motivo == MotivoSecretoNoDisponible.SinCredencial)
+            .WithMessage("*no tiene identidad de AWS*");
+    }
+
+    [Fact]
     public void SecretoBinario_EsFormatoInvalido()
     {
         var lector = ConCliente(c => c

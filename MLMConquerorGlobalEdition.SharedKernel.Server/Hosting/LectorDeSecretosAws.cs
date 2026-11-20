@@ -41,6 +41,12 @@ public sealed class LectorDeSecretosAws : ILectorDeSecretos, IDisposable
         {
             throw new SecretoNoDisponibleException(nombreCompleto, MotivoSecretoNoDisponible.SinPermiso, ex);
         }
+        catch (AmazonServiceException ex) when (string.IsNullOrEmpty(ex.ErrorCode) && (int)ex.StatusCode == 0)
+        {
+            // Sin codigo de error ni respuesta HTTP: el SDK no llego a llamar porque no consiguio
+            // credenciales (en el SDK 3.7 asi llega "Unable to get IAM security credentials...").
+            throw new SecretoNoDisponibleException(nombreCompleto, MotivoSecretoNoDisponible.SinCredencial, ex);
+        }
         catch (AmazonServiceException ex)
         {
             throw new SecretoNoDisponibleException(nombreCompleto, MotivoSecretoNoDisponible.Otro, ex);
