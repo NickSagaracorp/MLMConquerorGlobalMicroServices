@@ -157,8 +157,16 @@ while i < len(lines):
             i += 1
         i += 1
         # Un bloque mas alto que la pagina no cabe en ningun marco: se parte en trozos que si.
+        # Se cuentan lineas VISUALES: una linea larga se parte en varias al no caber en el ancho.
         per_page = min(40, max(10, int((CUERPO_ALTO - 24) // (CODE_PT * 1.37)) - 2))
-        chunks = [buf[k:k + per_page] for k in range(0, len(buf), per_page)] or [[]]
+        por_linea = max(20, int((doc.width - 16) // (CODE_PT * 0.6)))
+        chunks, actual, alto = [], [], 0
+        for l in buf:
+            v = max(1, -(-len(l) // por_linea))
+            if actual and alto + v > per_page:
+                chunks.append(actual); actual, alto = [], 0
+            actual.append(l); alto += v
+        chunks = chunks + [actual] if actual or not chunks else chunks
         fl.append(Spacer(1, 3))
         for chunk in chunks:
             body = "<br/>".join(
