@@ -75,6 +75,19 @@
           "Newtonsoft.Json": "13.0.2"
         }
       },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "3.7.501.1",
+        "contentHash": "VZR0LRAawpn5FQwXNPzhOO8DHhfffhBSvcSZT1d0ctcZ+kmsz3tzTArZnTQ9Haf/TNEqNLzKupHfjV2ndWAL4A=="
+      },
+      "AWSSDK.SecretsManager": {
+        "type": "Transitive",
+        "resolved": "3.7.504.43",
+        "contentHash": "vfp5mlD52kkrQxhdG7oSqEbAem3nEUqQ+9fPxMbuCZ9CanEEUxk3vqGizQ8mjWU6XHCLA1ZJbL7tbmwNYPu+aQ==",
+        "dependencies": {
+          "AWSSDK.Core": "[3.7.501.1, 4.0.0)"
+        }
+      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.50.0",
@@ -917,6 +930,7 @@
       "mlmconquerorglobaledition.sharedkernel.server": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SecretsManager": "[3.7.504.43, )",
           "FluentValidation": "[11.10.0, )",
           "MLMConquerorGlobalEdition.SharedKernel": "[1.0.0, )",
           "MediatR": "[12.4.1, )",
