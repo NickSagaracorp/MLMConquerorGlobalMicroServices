@@ -17,6 +17,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services;
 ///
 /// Configuration keys:
 ///   Firebase:CredentialsFilePath  — path to service-account JSON (optional; uses ADC if absent)
+///   Firebase:CredentialsJsonBase64 — JSON de la cuenta de servicio en base64 (gana sobre el archivo)
 ///   Firebase:ProjectId            — GCP project ID
 /// </summary>
 public class FirebasePushNotificationService : IPushNotificationService
@@ -37,10 +38,7 @@ public class FirebasePushNotificationService : IPushNotificationService
         {
             if (FirebaseApp.DefaultInstance is null)
             {
-                var credPath = configuration["Firebase:CredentialsFilePath"];
-                var credential = string.IsNullOrWhiteSpace(credPath)
-                    ? GoogleCredential.GetApplicationDefault()
-                    : GoogleCredential.FromFile(credPath);
+                var credential = FirebaseCredentialLoader.Load(configuration);
 
                 FirebaseApp.Create(new AppOptions { Credential = credential });
             }
