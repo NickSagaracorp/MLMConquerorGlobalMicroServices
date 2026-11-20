@@ -44,8 +44,12 @@ public static class RootAmbassadorSeeder
         var email     = configuredEmail ?? "root@yopmail.com";
         var firstName = cfg["FirstName"] ?? "Corporate";
         var lastName  = cfg["LastName"]  ?? "Root";
-        var password  = cfg["Password"]  ?? throw new InvalidOperationException(
-            "RootAmbassador:Password must be configured in appsettings.");
+        // La contrasena llega del secreto signupapi (RootAmbassador__Password); vacia es lo mismo
+        // que no configurada: nunca se siembra la cuenta raiz sin contrasena.
+        var password  = cfg["Password"];
+        if (string.IsNullOrWhiteSpace(password) || password.StartsWith("REPLACE_WITH_"))
+            throw new InvalidOperationException(
+                "RootAmbassador:Password no esta configurada (secreto signupapi o variable de entorno RootAmbassador__Password).");
 
         var now = DateTime.UtcNow;
 
