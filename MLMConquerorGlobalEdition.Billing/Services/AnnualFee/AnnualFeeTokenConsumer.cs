@@ -23,7 +23,7 @@ public interface IAnnualFeeTokenConsumer
 }
 
 /// <summary>
-/// Gasta un token de cuota (Plan K, K8). Igual que el canje en el alta (TokenRedemptionService): la
+/// Gasta un token de cuota. Igual que el canje en el alta (TokenRedemptionService): la
 /// instancia queda Used con el pedido, un asiento sin código registra el uso y el saldo agregado baja.
 /// Distribuir y transferir tokens toman el mismo candado del miembro, así que la instancia no cambia de
 /// dueño entre leerla y gastarla.

@@ -17,8 +17,6 @@
     Components.Forms, Components.Authorization y Authorization son los que una MAUI Blazor Hybrid
     carga por su cuenta a través de Microsoft.AspNetCore.Components.WebView.Maui. La frontera no
     está en el prefijo del nombre, está en si el ensamblado necesita un servidor web debajo.
-
-    La prueba SharedComponentsNoServerHostingTests (en BizCenter.Tests) vigila esa frontera.
   -->
   <ItemGroup>
     <!-- RenderTreeBuilder, EventCallback, ComponentBase: el motor de componentes. -->

@@ -11,9 +11,9 @@
 @using Syncfusion.Blazor.Data
 
 @*
-    Eventos del equipo (Plan J). Componente único: la ruta del API entra por parámetro. El equipo
+    Eventos del equipo. Componente único: la ruta del API entra por parámetro. El equipo
     lo decide el servidor con el token; aquí se elige el evento y si se ve solo a los inscritos.
-    Todavía no hay importación de inscripciones (corrección de Nick N5): la tabla sale vacía y un
+    Todavía no hay importación de inscripciones: la tabla sale vacía y un
     aviso lo explica hasta que el evento tenga alguna.
 *@
 
@@ -107,7 +107,7 @@
     private string           _eventId = string.Empty;
     private bool             _registeredOnly = true;
     private TotalsDto?       _totals;
-    // Plan Q (DQ7): «Todo el equipo» de mas de TeamGridLimits.FreeMaxRows va por estructura; el aviso comun lo explica.
+    // «Todo el equipo» de mas de TeamGridLimits.FreeMaxRows va por estructura; el aviso comun lo explica.
     private LargeTeamNotice? _aviso;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()

@@ -7,7 +7,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 /// <summary>Lo que cuesta la cuota y a qué producto se imputa.</summary>
 public sealed record AnnualFeePrice(decimal Amount, string ProductId);
 
-/// <summary>El plan de la cuota anual y su precio (Plan K, K2). Un solo sitio para Billing y el BizCenter.</summary>
+/// <summary>El plan de la cuota anual y su precio. Un solo sitio para Billing y el BizCenter.</summary>
 public static class AnnualFeePlanQueries
 {
     /// <summary>El plan marcado como de la cuota, activo, con sus productos. Null si no hay.</summary>

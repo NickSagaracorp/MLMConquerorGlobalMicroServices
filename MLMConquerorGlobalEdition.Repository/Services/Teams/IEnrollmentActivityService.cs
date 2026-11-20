@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
-/// <summary>Actividad por fechas del equipo de inscripción (Plan J, bloque 4).</summary>
+/// <summary>Actividad por fechas del equipo de inscripción.</summary>
 public interface IEnrollmentActivityService
 {
     Task<List<EnrollmentActivityColumnView>> GetColumnsAsync(CancellationToken ct = default);

@@ -9,7 +9,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 
 /// <summary>
-/// Stage 1 of the high-volume pipeline (BILLING-RULES §10.3).
+/// Stage 1 of the high-volume pipeline.
 ///
 /// Algorithm:
 /// 1. Query SubscriptionBillingStates due today (Status Active/Retrying/AwaitingAnniversaryRetry,
@@ -115,7 +115,7 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // Los estados de cuota anual solo entran con su cobro automático
                      // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
                      && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
@@ -279,7 +279,7 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // Los estados de cuota anual solo entran con su cobro automático
                      // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
                      && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)

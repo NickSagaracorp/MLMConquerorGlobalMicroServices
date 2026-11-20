@@ -11,7 +11,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 
 /// <summary>
-/// Stage 4 of the high-volume pipeline (BILLING-RULES §10.6).
+/// Stage 4 of the high-volume pipeline.
 /// See <see cref="IDownstreamTriggers"/> for the full contract.
 /// </summary>
 public class DownstreamTriggers : IDownstreamTriggers
@@ -73,7 +73,7 @@ public class DownstreamTriggers : IDownstreamTriggers
 
             foreach (var row in downlinePaths)
             {
-                // Plan Q (DQ5): solo los GenealogyUpline.EnrollmentLevels mas cercanos; el resto, el barrido nocturno.
+                // Solo los GenealogyUpline.EnrollmentLevels mas cercanos; el resto, el barrido nocturno.
                 var uplineIds = GenealogyUpline.Closest(row.HierarchyPath, row.MemberId);
                 foreach (var uplineId in uplineIds)
                     rankQueue.Add((row.MemberId, uplineId));

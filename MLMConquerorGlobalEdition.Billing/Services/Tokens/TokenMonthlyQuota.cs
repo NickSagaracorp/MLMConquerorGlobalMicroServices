@@ -27,7 +27,7 @@ public interface ITokenMonthlyQuota
 /// </para>
 /// <para>
 /// Lo emitido cuenta por OriginalOwnerMemberId: TransferTokenInstance cambia MemberId, y un tope que
-/// se libera regalando tokens no es un tope. Las filas Purchased sin compra (anteriores al Plan F) se
+/// se libera regalando tokens no es un tope. Las filas Purchased sin compra (anteriores a la compra de tokens) se
 /// siguen imputando por su CreationDate.
 /// </para>
 /// </remarks>

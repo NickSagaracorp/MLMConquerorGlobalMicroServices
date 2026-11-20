@@ -37,7 +37,7 @@
   <data name="Profile.NotOnFile" xml:space="preserve"><value>— არ არის შეყვანილი —</value></data>
   <data name="Profile.PageTitle" xml:space="preserve"><value>ჩემი პროფილი</value></data>
 
-  <!-- Common Labels — F1 additions -->
+  <!-- Common Labels — additions -->
   <data name="Common.MemberId" xml:space="preserve"><value>წევრის ID</value></data>
   <data name="Common.Email" xml:space="preserve"><value>ელფოსტა</value></data>
   <data name="Common.Phone" xml:space="preserve"><value>ტელეფონი</value></data>
@@ -57,7 +57,7 @@
   <data name="Common.Date" xml:space="preserve"><value>თარიღი</value></data>
   <data name="Common.NoDataAvailable" xml:space="preserve"><value>მონაცემები არ არის ხელმისაწვდომი.</value></data>
 
-  <!-- Header — F1 additions -->
+  <!-- Header — additions -->
   <data name="Header.SearchPlaceholder" xml:space="preserve"><value>მოძებნეთ აქ...</value></data>
   <data name="Header.Notifications" xml:space="preserve"><value>შეტყობინებები</value></data>
   <data name="Header.NoNotifications" xml:space="preserve"><value>ახალი შეტყობინებები არ არის.</value></data>
@@ -830,7 +830,7 @@
   <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>Admin Dashboard</value></data>
   <data name="Sidebar.MyTeam2" xml:space="preserve"><value>ჩემი გუნდი</value></data>
 
-  <!-- Tokens / Guest Passes (F4) -->
+  <!-- Tokens / Guest Passes -->
   <data name="GuestPasses.Title" xml:space="preserve"><value>სტუმრის ბილეთები</value></data>
   <data name="GuestPasses.Code" xml:space="preserve"><value>კოდი</value></data>
   <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>გადაცემული</value></data>
@@ -872,7 +872,7 @@
   <data name="Tokens.Clear" xml:space="preserve"><value>გასუფთავება</value></data>
   <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>სტუმრის ბილეთები</value></data>
 
-  <!-- Loyalty (F4) -->
+  <!-- Loyalty -->
   <data name="Loyalty.TotalPoints" xml:space="preserve"><value>სულ ქულა</value></data>
   <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>განბლოკილი ქულები</value></data>
   <data name="Loyalty.LockedPoints" xml:space="preserve"><value>დაბლოკილი ქულები</value></data>
@@ -887,7 +887,7 @@
   <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>განბლოკილი</value></data>
   <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>ხელით განბლოკვა</value></data>
 
-  <!-- Ranks (F4) -->
+  <!-- Ranks -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>რანგები ხელმისაწვდომია მხოლოდ ელჩებისთვის.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>მიმდინარე რანგი</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>პროგრესი შემდეგ რანგამდე</value></data>
@@ -897,7 +897,7 @@
   <data name="Ranks.ColRank" xml:space="preserve"><value>რანგი</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>სერტიფიკატი</value></data>
 
-  <!-- Marketing (F4) -->
+  <!-- Marketing -->
   <data name="Marketing.Title" xml:space="preserve"><value>მარკეტინგი</value></data>
   <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>დოკუმენტები ხელმისაწვდომი არ არის</value></data>
   <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>ამ მომენტში მარკეტინგული დოკუმენტები ხელმისაწვდომი არ არის.</value></data>
@@ -909,13 +909,13 @@
   <data name="Marketing.DownloadAria" xml:space="preserve"><value>{0}-ის ({1}) ჩამოტვირთვა</value></data>
   <data name="Marketing.DownloadFailed" xml:space="preserve"><value>ჩამოტვირთვის ბმულის გენერირება ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
 
-  <!-- PageTitle (F4) -->
+  <!-- PageTitle -->
   <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>ტოკენები და სტუმრის ბილეთები</value></data>
   <data name="PageTitle.Loyalty" xml:space="preserve"><value>ერთგულების ქულები</value></data>
   <data name="PageTitle.Ranks" xml:space="preserve"><value>რანგები</value></data>
   <data name="PageTitle.Marketing" xml:space="preserve"><value>მარკეტინგი</value></data>
 
-  <!-- F4 — additional keys -->
+  <!-- Additional keys -->
   <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>ვადა :</value></data>
   <data name="Tokens.PaginationAria" xml:space="preserve"><value>ტოკენების გვერდის ნავიგაცია</value></data>
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>სტუმრის ბილეთების გვერდის ნავიგაცია</value></data>
@@ -931,14 +931,14 @@
   <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>სერტიფიკატის ჩამოტვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>მარკეტინგული დოკუმენტების ტიპები</value></data>
 
-  <!-- F4 — Nav fallbacks (ka) -->
+  <!-- Nav fallbacks (ka) -->
   <data name="Nav.Tokens" xml:space="preserve"><value>ტოკენები</value></data>
   <data name="Nav.Ranks" xml:space="preserve"><value>რანგები</value></data>
   <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>ერთგულების ქულები</value></data>
   <data name="Nav.Dashboard" xml:space="preserve"><value>დაშბორდი</value></data>
   <data name="Common.Download" xml:space="preserve"><value>ჩამოტვირთვა</value></data>
 
-  <!-- Tickets — F5 -->
+  <!-- Tickets -->
   <data name="Tickets.FilterStatus" xml:space="preserve"><value>სტატუსი</value></data>
   <data name="Tickets.AllStatuses" xml:space="preserve"><value>ყველა სტატუსი</value></data>
   <data name="Tickets.StatusOpen" xml:space="preserve"><value>ღია</value></data>
@@ -969,7 +969,7 @@
   <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
   <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>ბილეთები</value></data>
 
-  <!-- Ticket Detail — F5 -->
+  <!-- Ticket Detail -->
   <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>კატეგორია</value></data>
   <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>პრიორიტეტი</value></data>
   <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>მინიჭებული</value></data>
@@ -1003,7 +1003,7 @@
   <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
   <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>ბილეთები</value></data>
 
-  <!-- Ticket Create — F5 -->
+  <!-- Ticket Create -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>ახალი ბილეთის შექმნა</value></data>
   <data name="TicketCreate.CloseAria" xml:space="preserve"><value>დიალოგის დახურვა</value></data>
   <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>თემა</value></data>
@@ -1030,7 +1030,7 @@
   <data name="TicketCreate.Submit" xml:space="preserve"><value>ბილეთის გაგზავნა</value></data>
   <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>ბილეთის შექმნა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
 
-  <!-- Login — F5 -->
+  <!-- Login -->
   <data name="Login.PosterAlt" xml:space="preserve"><value>ავტორიზაციის ილუსტრაცია</value></data>
   <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror-ის ლოგო</value></data>
   <data name="Login.WelcomeBack" xml:space="preserve"><value>კეთილი იყოს თქვენი დაბრუნება!</value></data>
@@ -1048,7 +1048,7 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>არ გაქვთ ანგარიში?</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>დაუკავშირდით ჩვენს მხარდაჭერის გუნდს</value></data>
 
-  <!-- Error page — F5 -->
+  <!-- Error page -->
   <data name="Error.Title" xml:space="preserve"><value>შეცდომა.</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>თქვენი მოთხოვნის დამუშავებისას მოხდა შეცდომა.</value></data>
   <data name="Error.RequestIdLabel" xml:space="preserve"><value>მოთხოვნის ID:</value></data>
@@ -1056,7 +1056,7 @@
   <data name="Error.DevModeIntro" xml:space="preserve"><value>&lt;strong&gt;Development&lt;/strong&gt; გარემოზე გადასვლა აჩვენებს უფრო დეტალურ ინფორმაციას მომხდარი შეცდომის შესახებ.</value></data>
   <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;Development გარემო არ უნდა იყოს ჩართული განთავსებულ აპლიკაციებში.&lt;/strong&gt; ამან შეიძლება გამოიწვიოს გამონაკლისებიდან მგრძნობიარე ინფორმაციის გამოჩენა საბოლოო მომხმარებლებისთვის. ლოკალური დებაგისთვის, ჩართეთ &lt;strong&gt;Development&lt;/strong&gt; გარემო — დააყენეთ &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; ცვლადი &lt;strong&gt;Development&lt;/strong&gt;-ად და გადატვირთეთ აპი.</value></data>
 
-  <!-- Not Found — F5 -->
+  <!-- Not Found -->
   <data name="NotFound.Title" xml:space="preserve"><value>გვერდი ვერ მოიძებნა</value></data>
   <data name="NotFound.Message" xml:space="preserve"><value>ვწუხვართ, ეს გვერდი არ არსებობს.</value></data>
   <data name="NotFound.GoToDashboard" xml:space="preserve"><value>დაშბორდზე გადასვლა</value></data>
@@ -1166,7 +1166,7 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>დააყენეთ თქვენი პაროლი</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>ამ ანგარიშს ჯერ არ აქვს პაროლი. აირჩიეთ ერთი ქვემოთ.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>პაროლის დაყენება</value></data>
-  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono -->
   <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>ამ ანგარიშს ტელეფონის ნომერი არ აქვს. ჯერ დაამატეთ.</value></data>
   <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>ეს დადასტურება აღარ არის მოქმედი. ხელახლა დაამატეთ თქვენი ნომერი ახალი კოდის მისაღებად.</value></data>
   <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>ეს მეთოდი ჯერ არ არის ხელმისაწვდომი ამ ანგარიშზე. ჯერ დააყენეთ და შემდეგ აირჩიეთ.</value></data>
@@ -1212,7 +1212,7 @@
   <data name="VerifyPhone.Title" xml:space="preserve"><value>დაადასტურეთ თქვენი ტელეფონის ნომერი</value></data>
   <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>ნომერი არასწორია? შეიყვანეთ სხვა</value></data>
 
-  <!-- PageTitle — F5 -->
+  <!-- PageTitle -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>ბილეთის დეტალი</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - შესვლა</value></data>

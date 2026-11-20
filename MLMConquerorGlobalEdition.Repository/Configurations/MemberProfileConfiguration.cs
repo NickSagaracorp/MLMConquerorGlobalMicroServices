@@ -6,11 +6,11 @@ namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile>
 {
-    /// <summary>Plan Q (DQ8): MemberProfiles.SearchName, «nombre apellido» sin tildes ni mayusculas.</summary>
+    /// <summary>MemberProfiles.SearchName, «nombre apellido» sin tildes ni mayusculas.</summary>
     public const string MemberSearchNameSql =
         "CAST(CONCAT([FirstName], N' ', [LastName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI";
 
-    /// <summary>Plan Q (DQ8): MemberProfiles.SearchNameReversed, «apellido nombre».</summary>
+    /// <summary>MemberProfiles.SearchNameReversed, «apellido nombre».</summary>
     public const string MemberSearchNameReversedSql =
         "CAST(CONCAT([LastName], N' ', [FirstName]) AS nvarchar(201)) COLLATE Latin1_General_100_CI_AI";
 
@@ -22,26 +22,26 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         builder.Property(x => x.MemberId).IsRequired().HasMaxLength(20);
         builder.HasIndex(x => x.MemberId).IsUnique();
 
-        // Plan J: el patrocinador mide como GenealogyTree.MemberId y DualTeamTree.MemberId (450), con
+        // El patrocinador mide como GenealogyTree.MemberId y DualTeamTree.MemberId (450), con
         // los que se une; en la solución del cliente hay ids de 50 caracteres. 450 es lo máximo que
         // admite índice: se indexa con la fecha de alta para los clientes personales y la actividad.
         builder.Property(x => x.SponsorMemberId).HasMaxLength(450);
         builder.HasIndex(x => new { x.SponsorMemberId, x.EnrollDate });
-        // Plan J: la actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto. Plan Q (DQ10): con
+        // La actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto. Con
         // el patrocinador, el tipo y el nivel de alta incluidos, Actividad agrupa sin ir a la tabla.
         builder.HasIndex(m => m.EnrollDate).HasDatabaseName("IX_MemberProfiles_EnrollDate")
             .IncludeProperties(m => new { m.SponsorMemberId, m.MemberType, m.SignupMembershipLevelId });
 
-        // Plan Q: los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
+        // Los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
         // global de MemberProfile anade IsDeleted = 0 a todas sus consultas, asi que el indice filtrado sirve.
         builder.HasIndex(new[] { nameof(MemberProfile.MemberId) }, "IX_MemberProfiles_Clientes")
             .HasFilter("[MemberType] = 1 AND [IsDeleted] = 0")
             .IncludeProperties(m => new { m.EnrollDate, m.SponsorMemberId });
 
-        // Plan J (N3): las filas que ya existen quedan sin la marca; nadie pasa a calificado solo.
+        // Las filas que ya existen quedan sin la marca; nadie pasa a calificado solo.
         builder.Property(x => x.KeepQualified).IsRequired().HasDefaultValue(false);
 
-        // Plan K (K7): encendida por defecto, también para las filas que ya existen. HasSentinel(true):
+        // Encendida por defecto, también para las filas que ya existen. HasSentinel(true):
         // EF solo omite la columna al insertar cuando vale true (y entonces la base pone su 1); un false
         // se manda siempre. Con el centinela por defecto (false) nunca se podría insertar un false.
         builder.Property(x => x.FeesFromBalance).IsRequired().HasDefaultValue(true).HasSentinel(true);
@@ -51,11 +51,10 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
 
         builder.Property(x => x.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(x => x.LastName).IsRequired().HasMaxLength(100);
-        // Plan Q (DQ8): nombre completo y nombre invertido, calculados con intercalacion sin tildes ni mayusculas, para buscar
-        // por el comienzo con un Index Seek (Full-Text no esta instalado). MemberNameSearch los usa. Revision del bloque 5
-        // (I5): NO persistidas. Anadir una persistida reescribe MemberProfiles entera con un candado Sch-M en una sola
+        // Nombre completo y nombre invertido, calculados con intercalacion sin tildes ni mayusculas, para buscar
+        // por el comienzo con un Index Seek (Full-Text no esta instalado). MemberNameSearch los usa. NO persistidas. Anadir una persistida reescribe MemberProfiles entera con un candado Sch-M en una sola
         // transaccion; una no persistida es solo metadatos y el indice guarda su valor (deterministica y precisa).
-        // I3: los indices filtran IsDeleted = 0 (las consultas llevan ese literal): sin el filtro, cada coincidencia iba a
+        // Los indices filtran IsDeleted = 0 (las consultas llevan ese literal): sin el filtro, cada coincidencia iba a
         // la tabla a mirar IsDeleted (4.757 lecturas frente a 24).
         builder.Property(m => m.SearchName).HasMaxLength(201)
             .HasComputedColumnSql(MemberSearchNameSql, stored: false);
@@ -83,8 +82,8 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
             .HasForeignKey<MemberProfile>("ActiveMembershipId")
             .IsRequired(false);
 
-        // Membership history — one-to-many. Plan Q (revision del bloque 2, M-4): sin cascada. Borrar un miembro borraba
-        // sus suscripciones en SQL, por debajo de EF y del interceptor de calificados y puntos (DQ13, DQ16). Nada borra
+        // Membership history — one-to-many. Sin cascada. Borrar un miembro borraba
+        // sus suscripciones en SQL, por debajo de EF y del interceptor de calificados y puntos. Nada borra
         // miembros hoy (las bajas son logicas); quien lo haga borra antes sus suscripciones por EF.
         builder.HasMany(x => x.MembershipHistory)
             .WithOne()

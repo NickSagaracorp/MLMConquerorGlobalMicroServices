@@ -15,21 +15,21 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 
 /// <summary>
-/// El cobro de la cuota anual (Plan K). Tres formas de pagar, cada una bajo el candado de fondos del
+/// El cobro de la cuota anual. Tres formas de pagar, cada una bajo el candado de fondos del
 /// miembro y con un AnnualFeePayment que ocupa el ciclo (UX_AnnualFeePayments_LivePerCycle):
 ///
 ///   • TOKEN: una transacción. Se gasta el token, se crea el pedido de 0, se completa el pago y avanza
-///     el estado. Siempre que haya uno (K6).
+///     el estado. Siempre que haya uno.
 ///   • COMISIONES: una transacción. Débito + PaymentHistory (FundAnnualFeeAsync) con el saldo GASTABLE
 ///     (sin lo reservado por un pago ni lo aún no pagable), pedido de 99 y estado.
-///     En automático, solo con la preferencia FeesFromBalance (K7).
+///     En automático, solo con la preferencia FeesFromBalance.
 ///   • EWALLET: dos fases, como la compra de tokens (archivo AnnualFeeChargeService.EWallet.cs).
 ///
 /// Bajo el candado se relee el estado y se comprueba que el ciclo no esté ya pagado, en curso o en
 /// revisión: un "Pagar ahora" y el motor no pueden cobrar el mismo ciclo. Un fallo sin fondos aplica la
-/// cadencia del plan; nunca toca la membresía (K12). Lo que el cobro automático escribe en el estado sin
-/// cobrar (exclusiones, sin fondos, bloqueos) va también bajo el candado y releyendo (revisión I-1), y
-/// cualquier excepción bajo el candado deshace y suelta lo añadido sin limpiar el contexto compartido (C-1).
+/// cadencia del plan; nunca toca la membresía. Lo que el cobro automático escribe en el estado sin
+/// cobrar (exclusiones, sin fondos, bloqueos) va también bajo el candado y releyendo, y
+/// cualquier excepción bajo el candado deshace y suelta lo añadido sin limpiar el contexto compartido.
 /// </summary>
 public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 {
@@ -66,14 +66,14 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         _logger      = logger;
     }
 
-    /// <summary>Se lee en cada llamada: apagarlo no exige reiniciar Billing (K13).</summary>
+    /// <summary>Se lee en cada llamada: apagarlo no exige reiniciar Billing.</summary>
     private bool AutoChargeEnabled => _config.GetValue(AnnualFeeRules.AutoChargeEnabledConfigKey, false);
 
     // ── Cobro automático ──────────────────────────────────────────────────────
 
     public async Task<Result<AnnualFeeChargeOutcome>> ChargeDueAsync(string billingStateId, bool force, CancellationToken ct = default)
     {
-        // Revisión I-3: también el cobro forzado (bill-now de soporte) exige el interruptor encendido.
+        // También el cobro forzado (bill-now de soporte) exige el interruptor encendido.
         if (!AutoChargeEnabled)
             return Skipped(AnnualFeeErrors.AutoChargeDisabled);
 
@@ -106,7 +106,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
         if (force && state.Status == RecurringBillingStatus.Stopped)
         {
-            // Como el procesador: forzar revive un estado parado. Bajo el candado y releyendo (I-1).
+            // Como el procesador: forzar revive un estado parado. Bajo el candado y releyendo.
             var revived = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true, s =>
             {
                 s.Status              = RecurringBillingStatus.Active;
@@ -122,10 +122,10 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         Settled settled;
         try
         {
-            // 1. Un token de cuota, si lo hay: siempre (K6).
+            // 1. Un token de cuota, si lo hay: siempre.
             settled = await SettleWithTokenAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
 
-            // 2. Comisiones y 3. eWallet, solo con la preferencia (K7).
+            // 2. Comisiones y 3. eWallet, solo con la preferencia.
             if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
                 settled = await SettleWithCommissionsAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
             if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
@@ -144,7 +144,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
             case SettleKind.Blocked:
             {
-                // Revisión M-1: bloqueado (pago en curso o en revisión, clave repetida…) se mira mañana. Si el
+                // Bloqueado (pago en curso o en revisión, clave repetida…) se mira mañana. Si el
                 // ciclo ya se movió (alguien lo pagó), no se escribe nada.
                 var postponed = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: false,
                     s => Postpone(s, settled.Code, now), ct);
@@ -152,7 +152,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
             }
         }
 
-        // Revisión I-2: un eWallet que no responde no es "sin fondos": se mira mañana sin gastar cadencia.
+        // Un eWallet que no responde no es "sin fondos": se mira mañana sin gastar cadencia.
         if (settled.Code == AnnualFeeErrors.EWalletUnavailable)
         {
             var postponed = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true,
@@ -179,7 +179,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
     private enum StateWrite { Written, Moved, Busy }
 
     /// <summary>
-    /// Revisión I-1: toda escritura del estado sin cobro va bajo el candado del miembro y releyendo. Si el
+    /// Toda escritura del estado sin cobro va bajo el candado del miembro y releyendo. Si el
     /// ciclo ya no es <paramref name="cycle"/> (alguien lo pagó o lo movió) o, con
     /// <paramref name="skipIfLivePayment"/>, hay un pago vivo para él, no se escribe nada. Un choque de
     /// concurrencia (RowVersion) se trata igual: se relee y no se escribe.
@@ -287,7 +287,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         }
         catch (Exception)
         {
-            // Revisión C-1: cualquier otra excepción bajo el candado (no un choque de índice, que se
+            // Cualquier otra excepción bajo el candado (no un choque de índice, que se
             // trata dentro) deshace, suelta lo añadido y relee lo tocado, y se relanza. El contexto
             // lo comparte el trabajador: su siguiente SaveChanges no puede guardar nada a medias.
             await AbortUnderGateAsync(tx, state.MemberId, before);
@@ -353,7 +353,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         }
         catch (Exception)
         {
-            // Revisión C-1: cualquier otra excepción bajo el candado (no un choque de índice, que se
+            // Cualquier otra excepción bajo el candado (no un choque de índice, que se
             // trata dentro) deshace, suelta lo añadido y relee lo tocado, y se relanza. El contexto
             // lo comparte el trabajador: su siguiente SaveChanges no puede guardar nada a medias.
             await AbortUnderGateAsync(tx, state.MemberId, before);
@@ -437,7 +437,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         foreach (var entry in _db.ChangeTracker.Entries().ToList())
         {
             if (!before.Contains(entry.Entity)) entry.State = EntityState.Detached;
-            // Revisión M-2: solo se releen los tipos que escribe el cobro de la cuota; lo demás que tenga
+            // Solo se releen los tipos que escribe el cobro de la cuota; lo demás que tenga
             // cargado quien llama (el trozo del trabajador, el lote) no lo tocó esta transacción.
             else if (entry.State != EntityState.Detached && TouchedTypes.Contains(entry.Metadata.ClrType))
                 await entry.ReloadAsync(CancellationToken.None);
@@ -456,7 +456,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
     /// <summary>
     /// Deshace la transacción del candado y olvida lo que se escribió dentro, sin que un fallo al olvidar
-    /// tape la excepción que se va a relanzar (revisión C-1).
+    /// tape la excepción que se va a relanzar.
     /// </summary>
     private async Task AbortUnderGateAsync(IDbContextTransaction tx, string memberId, HashSet<object> before)
     {
@@ -473,7 +473,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         }
     }
 
-    /// <summary>Deshace sin que un fallo al deshacer (conexión caída) tape lo demás (revisión M6).</summary>
+    /// <summary>Deshace sin que un fallo al deshacer (conexión caída) tape lo demás.</summary>
     private async Task SafeRollbackAsync(IDbContextTransaction tx, string memberId)
     {
         try { await tx.RollbackAsync(CancellationToken.None); }
@@ -487,7 +487,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
     /// <summary>
     /// Intento fallido: la cadencia del plan y, agotada, Stopped (MarkExpired). Ni pedido ni membresía. Bajo
-    /// el candado y releyendo (I-1): si el ciclo se pagó o se movió mientras tanto, no se gasta el reintento.
+    /// el candado y releyendo: si el ciclo se pagó o se movió mientras tanto, no se gasta el reintento.
     /// </summary>
     private async Task<Result<AnnualFeeChargeOutcome>> RecordNoFundsAsync(
         SubscriptionBillingState state, DateTime cycle, AnnualFeePrice price, MemberProfile member, CancellationToken ct)
@@ -516,7 +516,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         };
     }
 
-    /// <summary>Lo que se hace con el estado cuando una exclusión impide cobrar hoy (K5). No es un intento.</summary>
+    /// <summary>Lo que se hace con el estado cuando una exclusión impide cobrar hoy. No es un intento.</summary>
     private static void ApplyDecision(SubscriptionBillingState state, AnnualFeeDecision decision, DateTime now)
     {
         switch (decision.Kind)
@@ -560,8 +560,8 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
     // ── Piezas ────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Pedido de la cuota: SIN OrderDetails (K9: no suma puntos, no cuenta como pedido de membresía para
-    /// el nivel por la orden, no dispara comisiones) y SIN el bucle de unicidad de OrderNo (K20).
+    /// Pedido de la cuota: SIN OrderDetails (no suma puntos, no cuenta como pedido de membresía para
+    /// el nivel por la orden, no dispara comisiones) y SIN el bucle de unicidad de OrderNo.
     /// </summary>
     private Orders NewOrder(string memberId, decimal total, DateTime cycle, string actor, DateTime now)
     {
@@ -621,12 +621,12 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
     }
 
     /// <summary>
-    /// Cobrado el ciclo <paramref name="cycle"/> en <paramref name="paidAt"/>: el siguiente según K4
-    /// (revisado por Nick) y el ancla según la revisión M3: a tiempo se queda; tarde pasa a la fecha de pago.
+    /// Cobrado el ciclo <paramref name="cycle"/> en <paramref name="paidAt"/>: el siguiente
+    /// y el ancla: a tiempo se queda; tarde pasa a la fecha de pago.
     /// </summary>
     private static int AdvanceOnSuccess(SubscriptionBillingState state, DateTime cycle, DateTime paidAt, DateTime now, string actor)
     {
-        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        // El número de este intento en el ciclo (1 = el primero), como en los fallos.
         var attemptIndex = state.CurrentAttemptIndex + 1;
         var next = AnnualFeeSchedule.NextDueAfterPayment(cycle, paidAt, state.BillingAnchorDate);
         state.BillingAnchorDate         = AnnualFeeSchedule.AnchorAfterPayment(cycle, paidAt, state.BillingAnchorDate);

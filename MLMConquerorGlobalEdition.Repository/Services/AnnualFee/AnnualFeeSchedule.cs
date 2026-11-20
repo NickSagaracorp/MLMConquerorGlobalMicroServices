@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 
 /// <summary>
-/// El calendario de la cuota anual (Plan K). Puro: sin base ni reloj. Todas las fechas son de servidor
+/// El calendario de la cuota anual. Puro: sin base ni reloj. Todas las fechas son de servidor
 /// y se trabajan sin hora (.Date).
 /// </summary>
 public static class AnnualFeeSchedule
@@ -12,7 +12,7 @@ public static class AnnualFeeSchedule
     public static DateTime FirstAnniversary(DateTime enrollDate) => enrollDate.Date.AddYears(1);
 
     /// <summary>
-    /// Primer vencimiento al crear el estado (K3): el primer aniversario de la inscripción que no haya
+    /// Primer vencimiento al crear el estado: el primer aniversario de la inscripción que no haya
     /// pasado ya (hoy incluido). No se cobra hacia atrás: el estado nace el día que se despliega, no el
     /// día que se inscribió el miembro. AddYears desde la inscripción cada vez, para que un 29 de febrero
     /// caiga el 28 en los años no bisiestos sin arrastrar el 28 a los bisiestos.
@@ -28,10 +28,10 @@ public static class AnnualFeeSchedule
     }
 
     /// <summary>
-    /// El siguiente vencimiento después de pagar el ciclo <paramref name="cycleDue"/> (K4, revisado por
+    /// El siguiente vencimiento después de pagar el ciclo <paramref name="cycleDue"/> (regla revisada por
     /// Nick el 2026-10-17): pagado el día del vencimiento o antes, el siguiente aniversario del ancla
     /// (pagar antes no hace perder días); pagado después, un año desde el pago (sin gracia que conserve el
-    /// aniversario). A tiempo se calcula desde el ancla y no desde el vencimiento (revisión M3): así un
+    /// aniversario). A tiempo se calcula desde el ancla y no desde el vencimiento: así un
     /// 29 de febrero vuelve a ser 29 en los bisiestos en lugar de quedarse en 28 para siempre.
     /// </summary>
     /// <param name="anchor">BillingAnchorDate del estado: la inscripción o el último re-anclaje.</param>
@@ -49,7 +49,7 @@ public static class AnnualFeeSchedule
         return due.AddYears(1);
     }
 
-    /// <summary>El ancla tras pagar: la misma si se pagó a tiempo; la fecha de pago si se pagó tarde (K4).</summary>
+    /// <summary>El ancla tras pagar: la misma si se pagó a tiempo; la fecha de pago si se pagó tarde.</summary>
     public static DateTime AnchorAfterPayment(DateTime cycleDue, DateTime paidAt, DateTime anchor) =>
         paidAt.Date > cycleDue.Date ? paidAt.Date : anchor.Date;
 

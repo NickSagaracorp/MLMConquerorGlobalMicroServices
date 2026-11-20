@@ -76,8 +76,8 @@ public class DelayedFallbackChargeJob
 
         var result = await gateway.ChargeAsync(req, ct);
 
-        // Plan K (revisión C3): un "éxito" del stub no es dinero. Se registra como fallo, sin
-        // PaymentHistory. Pendiente para el Plan I (bloqueante antes de encender Billing:Recurring:CardEnabled):
+        // Un "éxito" del stub no es dinero. Se registra como fallo, sin
+        // PaymentHistory. Pendiente (bloqueante antes de encender Billing:Recurring:CardEnabled):
         // este trabajo no cierra el pedido ni avanza el estado ni la suscripción tras un cobro diferido.
         var simulated = result.IsSuccess
                         && Services.Tokens.CardChargeOutcomes.IsSimulated(result.Value?.GatewayTransactionId);

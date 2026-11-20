@@ -39,7 +39,7 @@ public class GetVisualizerChildrenHandler
         // Ownership check — parent must be the current user or somewhere in their subtree.
         if (request.ParentMemberId != currentMemberId)
         {
-            // Plan M: por el Node vigente del que mira; sin nodo no hay subárbol (falla cerrado).
+            // Por el Node vigente del que mira; sin nodo no hay subárbol (falla cerrado).
             var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(currentMemberId, ct);
             var isInSubtree = me is not null
                 && await _db.GenealogyTree.AsNoTracking()

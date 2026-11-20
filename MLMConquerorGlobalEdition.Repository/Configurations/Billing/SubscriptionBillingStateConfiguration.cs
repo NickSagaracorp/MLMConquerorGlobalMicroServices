@@ -12,7 +12,7 @@ public class SubscriptionBillingStateConfiguration : IEntityTypeConfiguration<Su
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.RowVersion).IsRowVersion();
-        // Plan K (K1): anulable. Los estados de cuota anual no tienen suscripción.
+        // Anulable. Los estados de cuota anual no tienen suscripción.
         builder.Property(x => x.MembershipSubscriptionId).HasMaxLength(100);
         builder.Property(x => x.Purpose).HasConversion<int>().HasDefaultValue(BillingStatePurpose.Membership);
         builder.ToTable(t => t.HasCheckConstraint(
@@ -29,7 +29,7 @@ public class SubscriptionBillingStateConfiguration : IEntityTypeConfiguration<Su
         builder.HasIndex(x => x.MemberId);
         builder.HasIndex(x => x.MembershipSubscriptionId).IsUnique().HasFilter("[MembershipSubscriptionId] IS NOT NULL");
 
-        // Plan K (K1): un solo estado de cuota anual por miembro. Incluye los borrados lógicos: quien da
+        // Un solo estado de cuota anual por miembro. Incluye los borrados lógicos: quien da
         // de alta estados los busca con IgnoreQueryFilters.
         builder.HasIndex(x => x.MemberId, "UX_SubscriptionBillingStates_AnnualFeeMember")
                .IsUnique()

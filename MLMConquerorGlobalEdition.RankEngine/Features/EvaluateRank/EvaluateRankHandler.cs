@@ -23,7 +23,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     private readonly IRankQualificationService _qualification;
     private readonly ICacheService _cache;
     /// <summary>
-    /// Plan P (revision I3): cuantos niveles de la linea de inscripcion reciben el aviso «alguien de tu equipo subio
+    /// Cuantos niveles de la linea de inscripcion reciben el aviso «alguien de tu equipo subio
     /// de rango». Con el binario a 8.000 niveles, avisar a cada ascendiente eran miles de trabajos por subida.
     /// </summary>
     public const int UplineNotificationLevels = GenealogyUpline.EnrollmentLevels;
@@ -231,7 +231,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     }
 
     /// <summary>
-    /// A quien se avisa de que alguien de su equipo subio de rango (un push por persona). Plan P (revision I3): antes
+    /// A quien se avisa de que alguien de su equipo subio de rango (un push por persona). Antes
     /// era cada ascendiente de los dos arboles, y tras la reparacion el binario tiene hasta 8.223 niveles: miles de
     /// trabajos por cada subida, multiplicados por el barrido nocturno. Ahora, acotado:
     /// <list type="bullet">
@@ -245,7 +245,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     {
         var genealogyNode = await _db.GenealogyTree
             .AsNoTracking()
-            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(memberId, ct); // nodo vigente
 
         var dualParent = await _db.DualTeamTree
             .AsNoTracking()
@@ -253,7 +253,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             .Select(d => d.ParentMemberId)
             .FirstOrDefaultAsync(ct);
 
-        // Plan Q (DQ5): la cota vive en GenealogyUpline (del patrocinador hacia arriba).
+        // La cota vive en GenealogyUpline (del patrocinador hacia arriba).
         var enrollmentLine = GenealogyUpline.Closest(genealogyNode?.HierarchyPath, memberId, UplineNotificationLevels);
 
         var result = enrollmentLine.ToList();

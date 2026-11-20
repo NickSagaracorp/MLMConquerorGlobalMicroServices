@@ -37,7 +37,7 @@
   <data name="Profile.NotOnFile" xml:space="preserve"><value>— 暂无记录 —</value></data>
   <data name="Profile.PageTitle" xml:space="preserve"><value>我的资料</value></data>
 
-  <!-- Common Labels — F1 additions -->
+  <!-- Common Labels — additions -->
   <data name="Common.MemberId" xml:space="preserve"><value>会员 ID</value></data>
   <data name="Common.Email" xml:space="preserve"><value>电子邮件</value></data>
   <data name="Common.Phone" xml:space="preserve"><value>电话</value></data>
@@ -57,7 +57,7 @@
   <data name="Common.Date" xml:space="preserve"><value>日期</value></data>
   <data name="Common.NoDataAvailable" xml:space="preserve"><value>暂无可用数据。</value></data>
 
-  <!-- Header — F1 additions -->
+  <!-- Header — additions -->
   <data name="Header.SearchPlaceholder" xml:space="preserve"><value>在此搜索...</value></data>
   <data name="Header.Notifications" xml:space="preserve"><value>通知</value></data>
   <data name="Header.NoNotifications" xml:space="preserve"><value>没有新通知。</value></data>
@@ -830,7 +830,7 @@
   <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>管理员仪表板</value></data>
   <data name="Sidebar.MyTeam2" xml:space="preserve"><value>我的团队</value></data>
 
-  <!-- Tokens / Guest Passes (F4) -->
+  <!-- Tokens / Guest Passes -->
   <data name="GuestPasses.Title" xml:space="preserve"><value>访客通行证</value></data>
   <data name="GuestPasses.Code" xml:space="preserve"><value>代码</value></data>
   <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>分发至</value></data>
@@ -872,7 +872,7 @@
   <data name="Tokens.Clear" xml:space="preserve"><value>清除</value></data>
   <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>访客通行证</value></data>
 
-  <!-- Loyalty (F4) -->
+  <!-- Loyalty -->
   <data name="Loyalty.TotalPoints" xml:space="preserve"><value>总积分</value></data>
   <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>已解锁积分</value></data>
   <data name="Loyalty.LockedPoints" xml:space="preserve"><value>已锁定积分</value></data>
@@ -887,7 +887,7 @@
   <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>已解锁</value></data>
   <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>手动解锁</value></data>
 
-  <!-- Ranks (F4) -->
+  <!-- Ranks -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>仅限大使使用等级。</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>当前等级</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>下一等级进度</value></data>
@@ -897,7 +897,7 @@
   <data name="Ranks.ColRank" xml:space="preserve"><value>等级</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>证书</value></data>
 
-  <!-- Marketing (F4) -->
+  <!-- Marketing -->
   <data name="Marketing.Title" xml:space="preserve"><value>营销</value></data>
   <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>无可用文档</value></data>
   <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>目前没有可用的营销文档。</value></data>
@@ -909,13 +909,13 @@
   <data name="Marketing.DownloadAria" xml:space="preserve"><value>下载 {0}（{1}）</value></data>
   <data name="Marketing.DownloadFailed" xml:space="preserve"><value>无法生成下载链接。请重试。</value></data>
 
-  <!-- PageTitle (F4) -->
+  <!-- PageTitle -->
   <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>令牌和访客通行证</value></data>
   <data name="PageTitle.Loyalty" xml:space="preserve"><value>忠诚度积分</value></data>
   <data name="PageTitle.Ranks" xml:space="preserve"><value>等级</value></data>
   <data name="PageTitle.Marketing" xml:space="preserve"><value>营销</value></data>
 
-  <!-- F4 — additional keys -->
+  <!-- Additional keys -->
   <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>有效期 :</value></data>
   <data name="Tokens.PaginationAria" xml:space="preserve"><value>令牌分页</value></data>
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>访客通行证分页</value></data>
@@ -931,14 +931,14 @@
   <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>无法下载证书，请重试。</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>营销文档类型</value></data>
 
-  <!-- F4 — Nav fallbacks (zh) -->
+  <!-- Nav fallbacks (zh) -->
   <data name="Nav.Tokens" xml:space="preserve"><value>令牌</value></data>
   <data name="Nav.Ranks" xml:space="preserve"><value>等级</value></data>
   <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>忠诚度积分</value></data>
   <data name="Nav.Dashboard" xml:space="preserve"><value>仪表板</value></data>
   <data name="Common.Download" xml:space="preserve"><value>下载</value></data>
 
-  <!-- Tickets — F5 -->
+  <!-- Tickets -->
   <data name="Tickets.FilterStatus" xml:space="preserve"><value>状态</value></data>
   <data name="Tickets.AllStatuses" xml:space="preserve"><value>所有状态</value></data>
   <data name="Tickets.StatusOpen" xml:space="preserve"><value>开放</value></data>
@@ -969,7 +969,7 @@
   <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>首页</value></data>
   <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>工单</value></data>
 
-  <!-- Ticket Detail — F5 -->
+  <!-- Ticket Detail -->
   <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>类别</value></data>
   <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>优先级</value></data>
   <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>分配给</value></data>
@@ -1003,7 +1003,7 @@
   <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>首页</value></data>
   <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>工单</value></data>
 
-  <!-- Ticket Create — F5 -->
+  <!-- Ticket Create -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>创建新工单</value></data>
   <data name="TicketCreate.CloseAria" xml:space="preserve"><value>关闭对话框</value></data>
   <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>主题</value></data>
@@ -1030,7 +1030,7 @@
   <data name="TicketCreate.Submit" xml:space="preserve"><value>提交工单</value></data>
   <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>创建工单失败。请重试。</value></data>
 
-  <!-- Login — F5 -->
+  <!-- Login -->
   <data name="Login.PosterAlt" xml:space="preserve"><value>登录插图</value></data>
   <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror 标志</value></data>
   <data name="Login.WelcomeBack" xml:space="preserve"><value>欢迎回来！</value></data>
@@ -1048,7 +1048,7 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>还没有账户？</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>联系我们的支持团队</value></data>
 
-  <!-- Error page — F5 -->
+  <!-- Error page -->
   <data name="Error.Title" xml:space="preserve"><value>错误。</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>处理您的请求时发生错误。</value></data>
   <data name="Error.RequestIdLabel" xml:space="preserve"><value>请求 ID：</value></data>
@@ -1056,7 +1056,7 @@
   <data name="Error.DevModeIntro" xml:space="preserve"><value>切换到 &lt;strong&gt;Development&lt;/strong&gt; 环境将显示有关所发生错误的更详细信息。</value></data>
   <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;不应在已部署的应用程序中启用 Development 环境。&lt;/strong&gt; 它可能向最终用户显示来自异常的敏感信息。要进行本地调试，请将 &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; 环境变量设置为 &lt;strong&gt;Development&lt;/strong&gt;，然后重新启动应用程序，以启用 &lt;strong&gt;Development&lt;/strong&gt; 环境。</value></data>
 
-  <!-- Not Found — F5 -->
+  <!-- Not Found -->
   <data name="NotFound.Title" xml:space="preserve"><value>未找到页面</value></data>
   <data name="NotFound.Message" xml:space="preserve"><value>抱歉，该页面不存在。</value></data>
   <data name="NotFound.GoToDashboard" xml:space="preserve"><value>前往仪表板</value></data>
@@ -1166,7 +1166,7 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>设置您的密码</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>此账户尚未设置密码，请在下面选择一个。</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>设置密码</value></data>
-  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono -->
   <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>此账户未登记电话号码。请先添加一个。</value></data>
   <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>此验证已失效。请重新添加您的电话号码以获取新验证码。</value></data>
   <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>该方式尚未在此账户上启用。请先完成设置，然后再选择。</value></data>
@@ -1212,7 +1212,7 @@
   <data name="VerifyPhone.Title" xml:space="preserve"><value>验证您的电话号码</value></data>
   <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>号码有误？请输入其他号码</value></data>
 
-  <!-- PageTitle — F5 -->
+  <!-- PageTitle -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>工单详情</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - 登录</value></data>

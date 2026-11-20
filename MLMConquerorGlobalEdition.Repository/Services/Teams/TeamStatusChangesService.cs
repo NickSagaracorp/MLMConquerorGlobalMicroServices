@@ -11,9 +11,9 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <inheritdoc />
 /// <remarks>
 /// En SQL: el UNION de los MemberId con cambios en el rango (los dos historiales, por su índice de
-/// ChangedAt), cruzado con el alcance por el nodo MÁS RECIENTE de cada miembro (R8) y proyectado a
+/// ChangedAt), cruzado con el alcance por el nodo MÁS RECIENTE de cada miembro y proyectado a
 /// columnas de MemberProfiles, con búsqueda, filtro, orden, cuenta y página. Por página: suscripción
-/// actual y su nivel por la orden (N2), últimas fechas, «Calificado» (IQualificationService, N3),
+/// actual y su nivel por la orden, últimas fechas, «Calificado» (IQualificationService),
 /// nombres y pierna.
 /// </remarks>
 public sealed class TeamStatusChangesService : ITeamStatusChangesService
@@ -56,7 +56,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
         var start = range.Start;
         var end   = range.End;
 
-        // Primero se reduce por fecha (J17): solo quien tiene un cambio registrado en el rango.
+        // Primero se reduce por fecha: solo quien tiene un cambio registrado en el rango.
         var changedIds = _db.MemberStatusHistories.AsNoTracking()
             .Where(h => h.ChangedAt >= start && h.ChangedAt < end)
             .Select(h => h.MemberId)
@@ -64,7 +64,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
                 .Where(h => h.ChangedAt >= start && h.ChangedAt < end)
                 .Select(h => h.MemberId));
 
-        // El nodo binario de quien mira: se pasa como parametro (revision, menor 7), no se guarda como estado.
+        // El nodo binario de quien mira: se pasa como parametro, no se guarda como estado.
         var dualViewer = scope == StatusChangesScope.DualTeam
             ? await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct)
             : null;
@@ -87,7 +87,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
 
     /// <summary>
     /// Inscripción y clientes: el prefijo es la ruta del nodo más reciente del que mira, y cada
-    /// miembro con cambios pertenece al equipo si SU nodo más reciente cuelga de ese prefijo (R8).
+    /// miembro con cambios pertenece al equipo si SU nodo más reciente cuelga de ese prefijo.
     /// </summary>
     private async Task<IQueryable<TeamStatusChangeView>?> EnrollmentQueryAsync(
         string memberId, IQueryable<string> changedIds, bool customersOnly, CancellationToken ct)
@@ -102,7 +102,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             let node = _db.GenealogyTree
                 .Where(g => g.MemberId == m.MemberId)
                 .OrderByDescending(g => g.CreationDate)
-                .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+                .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id
                 .Select(g => g.Node)
                 .FirstOrDefault()
             where node != null && node.IsDescendantOf(root)
@@ -119,7 +119,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
 
     /// <summary>
     /// Dual Team: los MemberId del rango se cruzan con el subarbol binario del miembro, que es el rango de su
-    /// clave compacta (Plan P, DualSubtree.Under). Antes se comparaba el prefijo de la ruta de texto fila a fila:
+    /// clave compacta (DualSubtree.Under). Antes se comparaba el prefijo de la ruta de texto fila a fila:
     /// no indexable y con error 8152 en rutas de mas de 4.000 caracteres.
     /// </summary>
     private IQueryable<TeamStatusChangeView>? DualTeamQuery(
@@ -155,11 +155,11 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             .GroupBy(s => s.MemberId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.StartDate).ThenByDescending(s => s.CreationDate).First());
 
-        // N2: el nivel lo da el producto de la orden de la suscripción actual.
+        // El nivel lo da el producto de la orden de la suscripción actual.
         var levelBySub = await _db.GetMembershipLevelIdsBySubscriptionAsync(current.Values.ToList(), ct);
         var levelNames = await _db.MembershipLevels.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
-        // N3: «Calificado» en un solo sitio.
+        // «Calificado» en un solo sitio.
         var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
         var accountLast = await _db.MemberStatusHistories.AsNoTracking()
@@ -231,7 +231,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
     }
 
     /// <summary>
-    /// Sin historial de la suscripción (R4: el historial empieza con el Bloque 5), la fecha de
+    /// Sin historial de la suscripción (el historial empieza con este reporte), la fecha de
     /// reserva es la propia del estado: HoldDate para OnHold y HoldByBilling, CancellationDate para
     /// Cancelled, EndDate para Expired y StartDate para el resto.
     /// </summary>
@@ -243,7 +243,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
         _                                                         => s.StartDate
     };
 
-    /// <summary>Solo se ordena y filtra en la base por columnas de la proyección ligera (R6).</summary>
+    /// <summary>Solo se ordena y filtra en la base por columnas de la proyección ligera.</summary>
     private static void Sanitize(GridDataRequest request)
     {
         request.Sorts   = request.Sorts.Where(s => DbFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)).ToList();

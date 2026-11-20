@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 /// <summary>
-/// Plan M (M9): LegPointMaintenance une por MemberId en cada colocación, el MERGE WITH (HOLDLOCK) de
+/// LegPointMaintenance une por MemberId en cada colocación, el MERGE WITH (HOLDLOCK) de
 /// ApplyMemberStatisticDeltasJob busca por MemberId (sin índice bloquea un rango de toda la tabla) y
 /// cada página de reportes hace Contains(ids). No es único: no cambia ningún escritor.
 /// </summary>

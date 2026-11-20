@@ -2,7 +2,7 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Services;
 
 /// <summary>
 /// Registro del cliente HTTP "BillingApi": AdminTokenPurchasesController reenvía a Billing confirmar,
-/// rechazar, reabrir y conciliar compras de tokens (Plan F) con el Bearer del administrador.
+/// rechazar, reabrir y conciliar compras de tokens con el Bearer del administrador.
 /// </summary>
 public static class BillingApiRegistration
 {

@@ -14,9 +14,7 @@
     compilarse dentro de una aplicación MAUI, y una MAUI no puede referenciar el framework
     compartido de ASP.NET Core. En el momento en que alguien meta aquí un HttpContext, esta
     biblioteca deja de servir a móvil y el trabajo de separarla se pierde.
-
-    Hay una prueba que lo vigila: ClientCoreNoAspNetCoreTests, en BizCenter.Tests. Si se rompe,
-    lo que hay que quitar es la dependencia, no la prueba.
+    Si esta regla se rompe, lo que hay que quitar es la dependencia.
 
     Lo que SÍ vale: el framework base (System.Net.Http, System.Net.Http.Json, System.Text.Json),
     las abstracciones de Microsoft.Extensions.* y el SharedKernel.

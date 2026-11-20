@@ -33,7 +33,7 @@ public abstract record DualTeamDestination
 /// <summary>Que hacer con los hijos de un nodo que se retira.</summary>
 public enum DualTeamChildrenOnRemoval
 {
-    /// <summary>No se retira si tiene hijos (SignupAPI, revision I7).</summary>
+    /// <summary>No se retira si tiene hijos (SignupAPI).</summary>
     Reject,
     /// <summary>Los hijos esperan bajo una raiz virtual del nodo retirado y vuelven con el (admin).</summary>
     Floating,
@@ -42,13 +42,13 @@ public enum DualTeamChildrenOnRemoval
 }
 
 /// <summary>
-/// Plan P: el unico sitio que construye nodos del binario y reescribe su posicion (ParentMemberId, Side) y sus
-/// claves (BinaryPath, Depth). Lo vigila EscritoresDelBinarioTests. Plan Q (Bloque 3): ya no escribe la ruta de texto.
+/// El unico sitio que construye nodos del binario y reescribe su posicion (ParentMemberId, Side) y sus
+/// claves (BinaryPath, Depth). Ya no escribe la ruta de texto.
 /// <list type="bullet">
 /// <item>Altas: <see cref="ChildAsync"/> y <see cref="RootAsync"/>; quien llama tiene el candado del hueco.</item>
 /// <item>Movimientos y retiradas: <see cref="MoveSubtreeAsync"/> y <see cref="RemoveAsync"/>; exigen
 /// <c>dual-tree</c> en exclusivo (DualTeamGate.EnterTreeExclusiveAsync) y lo comprueban. Las claves del
-/// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; las piernas, encolando el subarbol con signo (LegPointMaintenance.EnqueueSubtreeAsync, Plan Q); y se vacian las
+/// subarbol se calculan en C# (DualBinaryPath.Rebase) y se escriben de una vez; las piernas, encolando el subarbol con signo (LegPointMaintenance.EnqueueSubtreeAsync); y se vacian las
 /// colas de derrame que apuntaban al punto donde se engancha o se suelta el subarbol. Las demas no hace falta
 /// tocarlas: el motor valida la cola al leerla por la clave (sigue en la pierna, existe y tiene hueco) y la rehace
 /// si no (recorrer los 8.000 ascendientes para vaciar las suyas costaba casi un segundo por movimiento).</item>
@@ -123,7 +123,7 @@ public static class DualTeamNodes
                 break;
         }
 
-        // Revision C1: solo se resta de la linea vieja si el subarbol cuelga DE VERDAD de su padre, por la clave. Un
+        // Solo se resta de la linea vieja si el subarbol cuelga DE VERDAD de su padre, por la clave. Un
         // hijo flotante de una retirada del admin apunta a su padre por ParentMemberId, pero por la clave sigue bajo
         // la raiz virtual: si el padre acaba de recibir nodo, restar por adyacencia quitaba de la linea nueva lo que
         // despues se sumaba (neto 0, con piernas negativas por el camino).
@@ -165,18 +165,18 @@ public static class DualTeamNodes
             .Where(d => d.ParentMemberId == memberId).OrderBy(d => d.Side).ToListAsync(ct);
         if (children == DualTeamChildrenOnRemoval.Reject && hijos.Count > 0) return false;
 
-        // Plan Q: como en MoveSubtreeAsync, solo se resta si el nodo cuelga DE VERDAD de su padre, por la clave. Un hijo
+        // Como en MoveSubtreeAsync, solo se resta si el nodo cuelga DE VERDAD de su padre, por la clave. Un hijo
         // flotante (su padre retirado no tiene nodo) no esta en ninguna linea: antes, la subida no encontraba al padre y
         // no hacia nada; un -T encolado con arranque en el padre esperaria en la cola y, si el padre se volviera a
         // colocar antes del vaciado, restaria de su nodo nuevo lo que ya no cuelga de el.
         var (clave, _) = await KeyOfAsync(db, node, ct);
         if (await HangsFromParentByKeyAsync(db, node.ParentMemberId, clave, ct))
             await LegPointMaintenance.EnqueueSubtreeAsync(db, memberId, -1, now, by, ct);
-        // Plan Q (revision C1): los pendientes DE PIERNA con arranque en este nodo no estan en el -T que se acaba de
+        // Los pendientes DE PIERNA con arranque en este nodo no estan en el -T que se acaba de
         // encolar (sale de las piernas ya aplicadas). En el valor verdadero se habrian sumado y restado; aqui se
         // descartan. Si se dejaran, al volver a colocar al mismo miembro antes del vaciado subirian por su nodo nuevo, y su
         // equipo ya vuelve con su propio +T: contaria dos veces.
-        // Plan Q (DQ13): los PROPIOS son del miembro, no del nodo: se quedan, y lo ya aplicado de el (SelfQualified)
+        // Los PROPIOS son del miembro, no del nodo: se quedan, y lo ya aplicado de el (SelfQualified)
         // vuelve a la cola como propio. Si se le vuelve a colocar, su nodo nuevo (SelfQualified = 0) lo recibe al vaciar;
         // si no, espera.
         if (db.Database.IsRelational())
@@ -210,7 +210,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     }
 
     /// <summary>
-    /// Revision I1: tras dar nodo a <paramref name="memberId"/>, recuelga bajo el a los hijos que lo esperaban de una
+    /// Tras dar nodo a <paramref name="memberId"/>, recuelga bajo el a los hijos que lo esperaban de una
     /// retirada del admin (<paramref name="floating"/>, leidos con <see cref="FloatingChildrenAsync"/> ANTES de crear su
     /// nodo), cada uno por su lado y con su subarbol: claves y piernas (su volumen sube a la linea nueva).
     /// Exige dual-tree en exclusivo, asi que quien coloca a un miembro con flotantes toma el exclusivo desde el
@@ -310,7 +310,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
         }
         finally
         {
-            // Revision (menor 2): si la transaccion murio (un 1205), este DROP fallaria y taparia la excepcion original,
+            // Si la transaccion murio (un 1205), este DROP fallaria y taparia la excepcion original,
             // que es la que PlacementService reconoce para reintentar. Se borra solo si existe y su error se traga:
             // la tabla temporal muere con la sesion de todos modos.
             try
@@ -357,7 +357,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     {
         if (node.BinaryPath is not null) return (node.BinaryPath, node.Depth ?? DualBinaryPath.Depth(node.BinaryPath));
         if (db.Database.IsRelational())
-            throw new InvalidOperationException($"{node.MemberId} has no BinaryPath (backfill pending: Scripts/sql/plan-p/03-relleno-clave-binario.sql).");
+            throw new InvalidOperationException($"{node.MemberId} has no BinaryPath (backfill pending: the compact keys of existing nodes have not been filled in yet).");
 
         var cadena = new List<DualTeamEntity>();
         var actual = await db.DualTeamTree.FirstOrDefaultAsync(d => d.MemberId == node.MemberId, ct) ?? node;
@@ -385,7 +385,7 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.SelfQualified <> 0;", ct
     }
 
     /// <summary>
-    /// Riesgo P-R1: por encima de DualBinaryPath.WarnDepth (12.000) niveles queda poco margen hasta el limite de la
+    /// Por encima de DualBinaryPath.WarnDepth (12.000) niveles queda poco margen hasta el limite de la
     /// clave (13.567, donde la colocacion falla cerrada). Se avisa en el log de la aplicacion (el del contexto).
     /// </summary>
     private static void AvisarSiHondo(AppDbContext db, string memberId, int profundidad)

@@ -1,6 +1,6 @@
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
-/// <summary>Las tres vistas del reporte de cambios de estado (Plan J).</summary>
+/// <summary>Las tres vistas del reporte de cambios de estado.</summary>
 public enum StatusChangesScope
 {
     /// <summary>Equipo de inscripción (prefijo de genealogía).</summary>

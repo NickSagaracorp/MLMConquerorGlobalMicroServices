@@ -105,7 +105,7 @@ public class TeamController : ControllerBase
 
     /// <summary>POST /api/v1/bizcenter/team/enrollment/customers/grid?scope=personal|team</summary>
     /// <remarks>
-    /// Plan J: <c>scope=personal</c> lista solo los clientes que inscribió el miembro del token;
+    /// <c>scope=personal</c> lista solo los clientes que inscribió el miembro del token;
     /// cualquier otro valor, todo su equipo de inscripción. El contacto solo sale de los personales.
     /// </remarks>
     [HttpPost("enrollment/customers/grid")]

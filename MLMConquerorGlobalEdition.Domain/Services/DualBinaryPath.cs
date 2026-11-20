@@ -5,10 +5,10 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 namespace MLMConquerorGlobalEdition.Domain.Services;
 
 /// <summary>
-/// Plan P: clave compacta del binario. R (ordinal de raiz, 4 bytes big-endian) + 1 bit por nivel
+/// Clave compacta del binario. R (ordinal de raiz, 4 bytes big-endian) + 1 bit por nivel
 /// (izquierda 0, derecha 1) + bit terminador 1 + ceros hasta el byte. SQL Server ignora los ceros
 /// finales al comparar varbinary, asi que el orden es el de las fracciones binarias: inorden.
-/// Subarbol de X = (Lo, Hi) exclusivo; piernas = (Lo, X) y (X, Hi). Demostracion en el Plan P, Tarea 9.
+/// Subarbol de X = (Lo, Hi) exclusivo; piernas = (Lo, X) y (X, Hi).
 /// </summary>
 public static class DualBinaryPath
 {
@@ -98,9 +98,9 @@ public static class DualBinaryPath
     }
 
     /// <summary>
-    /// Plan Q: la clave del ascendiente de <paramref name="key"/> a profundidad <paramref name="depth"/> (0 = la raiz,
+    /// La clave del ascendiente de <paramref name="key"/> a profundidad <paramref name="depth"/> (0 = la raiz,
     /// Depth(key) = la propia clave): los bits de camino hasta ahi y el terminador. Es lo mismo que calcula
-    /// dbo.DualAncestorKeys en SQL; SqlServerAscendientesPorClaveTests exige que coincidan.
+    /// dbo.DualAncestorKeys en SQL; las dos versiones deben coincidir.
     /// </summary>
     public static byte[] Ancestor(ReadOnlySpan<byte> key, int depth)
     {
@@ -112,7 +112,7 @@ public static class DualBinaryPath
         return k;
     }
 
-    /// <summary>Plan Q: el lado por el que baja el camino de <paramref name="key"/> desde su ascendiente de profundidad <paramref name="depth"/>.</summary>
+    /// <summary>El lado por el que baja el camino de <paramref name="key"/> desde su ascendiente de profundidad <paramref name="depth"/>.</summary>
     public static TreeSide SideBelow(ReadOnlySpan<byte> key, int depth)
     {
         if (depth < 0 || depth >= Depth(key)) throw new ArgumentOutOfRangeException(nameof(depth));
@@ -120,7 +120,7 @@ public static class DualBinaryPath
     }
 
     /// <summary>
-    /// Revision del bloque 3: la profundidad del ascendiente comun mas hondo de <paramref name="a"/> y
+    /// La profundidad del ascendiente comun mas hondo de <paramref name="a"/> y
     /// <paramref name="b"/> (la mayor d con Ancestor(a, d) == Ancestor(b, d)); -1 si son de raices distintas.
     /// Compara byte a byte, sin construir claves intermedias.
     /// </summary>

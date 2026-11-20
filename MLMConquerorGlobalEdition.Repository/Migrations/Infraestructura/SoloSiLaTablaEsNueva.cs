@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore.Migrations.Operations;
 namespace MLMConquerorGlobalEdition.Repository.Migrations.Infraestructura;
 
 /// <summary>
-/// Plan Q (DQ11): una migracion que se genero contra una instantanea vacia (HelpdeskModule) vuelve a crear tablas que ya
-/// crearon las anteriores. En las bases reales se resolvio a mano con fix_helpdesk_tables.sql (solo las tablas nuevas). Aqui
+/// Una migracion que se genero contra una instantanea vacia (HelpdeskModule) vuelve a crear tablas que ya
+/// crearon las anteriores. En las bases reales se resolvio a mano (solo las tablas nuevas). Aqui
 /// se hace lo mismo de forma automatica: al empezar se guarda la lista de tablas que ya existen, y cada operacion marcada
 /// que toca una de ellas no se ejecuta. MigracionesSqlServerConGuardas pone la guarda.
 /// </summary>
 public static class SoloSiLaTablaEsNueva
 {
-    public const string Anotacion = "PlanQ:SoloSiLaTablaEsNueva";
-    public const string TablaDePrevias = "__PlanQ_TablasPrevias";
+    public const string Anotacion = "Migraciones:SoloSiLaTablaEsNueva";
+    public const string TablaDePrevias = "__TablasPreviasDeMigracion";
 
     public static void Empezar(MigrationBuilder mb) => mb.Sql($@"
 IF OBJECT_ID(N'dbo.{TablaDePrevias}') IS NOT NULL DROP TABLE dbo.{TablaDePrevias};

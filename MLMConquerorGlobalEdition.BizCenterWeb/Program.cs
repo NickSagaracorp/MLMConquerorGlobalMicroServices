@@ -159,7 +159,7 @@ builder.Services.AddStepUpClient(
 // AmbassadorSignupRequest no tiene, así que el patrocinador se perdía en silencio— y se ha borrado:
 // el alta solo se hace desde la aplicación de alta. Sin ella, este cliente no lo pedía nadie.
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 // Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
 builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.BizCenterWeb");

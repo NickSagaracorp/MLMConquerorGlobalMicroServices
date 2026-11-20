@@ -76,8 +76,7 @@ public sealed class JwtService : IJwtService
     /// TIENE QUE SER MAYOR QUE <see cref="AccessTokenExpiry"/> y esto no es una preferencia. El
     /// refresco solo se usa cuando el acceso ya caducó; si los dos duran lo mismo, el refresco
     /// caduca en el mismo instante en que empezaría a hacer falta y la sesión se muere SIEMPRE al
-    /// caducar el acceso, con renovación o sin ella. Lo fija
-    /// <c>VigenciasDeSesionTests.ElRefrescoDuraMasQueElAcceso</c> sobre los appsettings reales.
+    /// caducar el acceso, con renovación o sin ella.
     /// </remarks>
     public TimeSpan RefreshTokenExpiry => TimeSpan.FromMinutes(_config.GetValue("Jwt:RefreshTokenExpiryMinutes", 30));
 

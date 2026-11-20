@@ -6,7 +6,7 @@ namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
 /// Cada hora: pasa a conciliar los pagos de cuota que se quedaron Pending (el proceso murió entre el
-/// débito de i-Payout y su registro). Nunca los libera: el dinero pudo moverse (Plan K, K11).
+/// débito de i-Payout y su registro). Nunca los libera: el dinero pudo moverse.
 /// </summary>
 [Queue("billing")]
 public class AnnualFeeStalePendingJob

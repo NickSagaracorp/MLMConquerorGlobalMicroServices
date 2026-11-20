@@ -38,8 +38,8 @@ public sealed record PlacementAudit(string CreatedBy, string Action, string Reas
 /// give under its sponsor, and its accumulated volume rises to the new upline. A root with no sponsor (a
 /// system root) is never placed. A node that already has a parent is AlreadyPlaced.
 ///
-/// Concurrency (Plan P): every placement runs in a transaction. A leaf takes <c>dual-tree</c> shared
-/// BEFORE resolving the slot (review I1), then the slot, re-checks inside and retries if another writer got
+/// Concurrency: every placement runs in a transaction. A leaf takes <c>dual-tree</c> shared
+/// BEFORE resolving the slot, then the slot, re-checks inside and retries if another writer got
 /// there first; a provisional-root move takes <c>dual-tree</c> exclusive from the start (never an upgrade).
 /// UX_DualTeamTree_ParentMemberId_Side, IX_DualTeamTree_MemberId and UX_DualTeamTree_BinaryPath are the hard
 /// backstops (their violation also retries). Leg points and counts are maintained incrementally.
@@ -53,8 +53,8 @@ public interface IPlacementService
     Task<Result<PlacementOutcome>> PlaceAsync(string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct = default);
 
     /// <summary>
-    /// Plan P: places one by one through <see cref="PlaceAsync(string,string,CancellationToken)"/>, by enroll date
-    /// and with a pending sponsor before the members it sponsors (review I2), so a root is only created when the
+    /// Places one by one through <see cref="PlaceAsync(string,string,CancellationToken)"/>, by enroll date
+    /// and with a pending sponsor before the members it sponsors, so a root is only created when the
     /// sponsor is really not in the tree nor pending in the batch. Each member commits on its own.
     /// </summary>
     Task<Result<BulkPlacementOutcome>> PlaceBulkAsync(
@@ -134,19 +134,19 @@ public class PlacementService : IPlacementService
     private async Task<Result<PlacementOutcome>?> PlaceLeafAsync(
         string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct)
     {
-        // Revision I1: si el admin lo retiro, su equipo le espera flotando y vuelve con el; recolgarlo mueve subarboles,
+        // Si el admin lo retiro, su equipo le espera flotando y vuelve con el; recolgarlo mueve subarboles,
         // asi que entonces el arbol se toma en exclusivo desde el principio (nunca se sube de compartido a exclusivo).
         var flotantes = await DualTeamNodes.FloatingChildrenAsync(_db, memberId, ct);
         await using var scope = await PlacementScope.BeginAsync(_db, _log, ct);
         try
         {
-            // Revision I1: el arbol en compartido ANTES de resolver: ningun movimiento puede cambiarlo entre la
+            // El arbol en compartido ANTES de resolver: ningun movimiento puede cambiarlo entre la
             // resolucion y el candado del hueco.
             if (flotantes.Count > 0) await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
             else await DualTeamGate.EnterTreeSharedAsync(_db, ct);
             var target = await ResolveTargetAsync(sponsorMemberId, audit, scope, ct);
 
-            // Plan P: el candado es del HUECO destino. Dentro se vuelve a comprobar todo.
+            // El candado es del HUECO destino. Dentro se vuelve a comprobar todo.
             if (flotantes.Count == 0) await DualTeamGate.EnterSlotAsync(_db, target.Parent.MemberId, target.Side, ct);
             if (await _db.DualTeamTree.AnyAsync(d => d.MemberId == memberId, ct)
                 || await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == target.Parent.MemberId && d.Side == target.Side, ct)
@@ -159,7 +159,7 @@ public class PlacementService : IPlacementService
             await UpsertFrontierAsync(sponsorMemberId, target, memberId, node.Depth ?? 0, scope, ct);
             await _db.SaveChangesAsync(ct);
 
-            // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+            // Solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
             await LegPointMaintenance.EnqueueLeafAsync(_db, memberId, _clock.Now, audit.CreatedBy, ct);
             await DualTeamNodes.ReattachFloatingChildrenAsync(_db, memberId, flotantes, _clock.Now, audit.CreatedBy, ct);
 
@@ -214,7 +214,7 @@ public class PlacementService : IPlacementService
             scope.Track(_db.PlacementLogs.Add(NewLog(memberId, target.Parent.MemberId, target.Side, audit,
                 audit.Reason + " (provisional root moved with its team)")).Entity);
             // Su equipo suma de golpe en la linea nueva: se evalua el rango del padre nuevo (una fila, no una por
-            // ascendiente: revision I4).
+            // ascendiente).
             scope.Track(_db.RankEvaluationQueue.Add(new RankEvaluationQueue
             {
                 TriggerMemberId = memberId, EvaluateMemberId = target.Parent.MemberId,
@@ -306,7 +306,7 @@ public class PlacementService : IPlacementService
         bool deepHasLeft = false;
         if (hasLeft && hasRight)
         {
-            // Rule c — spill to the deepest open node on the preferred side. Plan P: siempre se resuelve
+            // Rule c — spill to the deepest open node on the preferred side. Siempre se resuelve
             // la cola y su lado libre sale de la BD.
             deep = await ResolveDeepestAsync(sponsorNode, preferred, ct);
             var deepId = deep.MemberId;
@@ -321,7 +321,7 @@ public class PlacementService : IPlacementService
     /// <summary>
     /// Deepest open node on the sponsor's preferred side. Reads the cached frontier first (O(1)) and accepts it
     /// only if it is still in that leg (by its key) with an open slot; otherwise one query over the leg's key
-    /// range (Plan P). The deepest node of a subtree is a leaf; ties by (CreationDate, Id), deterministic.
+    /// range. The deepest node of a subtree is a leaf; ties by (CreationDate, Id), deterministic.
     /// </summary>
     private async Task<DualTeamEntity> ResolveDeepestAsync(DualTeamEntity sponsor, TreeSide preferred, CancellationToken ct)
     {
@@ -358,8 +358,8 @@ public class PlacementService : IPlacementService
         PlacementScope scope, CancellationToken ct)
     {
         // The frontier tracks the deepest node on the preferred side. It advances when this placement extends
-        // the preferred-side chain: a spill, or the sponsor's preferred-side direct child (rule a/b). Revision:
-        // la fila de un patrocinador la escriben colocaciones a huecos distintos; su candado la serializa.
+        // the preferred-side chain: a spill, or the sponsor's preferred-side direct child (rule a/b).
+        // La fila de un patrocinador la escriben colocaciones a huecos distintos; su candado la serializa.
         var decision = new DualTeamPlacementRules.SlotDecision(target.Parent.MemberId, target.Side, target.IsSpill);
         if (!DualTeamPlacementRules.ExtendsPreferredSide(decision, sponsorMemberId, target.PreferredSide)) return;
 
@@ -410,7 +410,7 @@ public class PlacementService : IPlacementService
     // ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Plan P: cada miembro pasa por el mismo nucleo que PlaceAsync. Orden (revision I2): por fecha de alta y,
+    /// Cada miembro pasa por el mismo nucleo que PlaceAsync. Orden: por fecha de alta y,
     /// si el patrocinador de un miembro tambien esta en la tanda, primero el patrocinador. Asi solo se crea una
     /// raiz provisional cuando el patrocinador de verdad no esta en el binario ni pendiente en la tanda.
     /// </summary>

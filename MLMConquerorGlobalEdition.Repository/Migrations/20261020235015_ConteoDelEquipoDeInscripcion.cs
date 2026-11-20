@@ -8,7 +8,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
     public partial class ConteoDelEquipoDeInscripcion : Migration
     {
         /// <summary>
-        /// Plan Q, revision del bloque 5 (I1): indice estrecho de los nodos vivos por Node, para contar el equipo de
+        /// Indice estrecho de los nodos vivos por Node, para contar el equipo de
         /// inscripcion. Fuera de la transaccion de la migracion y ONLINE donde la edicion lo admite (EngineEdition 3:
         /// Enterprise, Developer, Evaluation; 5: Azure SQL; 8: Managed Instance), como BusquedaYNivelDeAlta. Si ya existe, no
         /// hace nada.

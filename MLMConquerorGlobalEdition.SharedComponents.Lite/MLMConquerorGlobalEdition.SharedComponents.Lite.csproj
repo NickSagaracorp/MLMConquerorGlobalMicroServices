@@ -13,7 +13,7 @@
     los portales (BizCenter y Admin, web y MAUI); un componente pasa aquí solo si el alta lo usa.
 
     Igual que SharedComponents, sin <FrameworkReference Include="Microsoft.AspNetCore.App" />: corre
-    en WebAssembly y en MAUI. Lo vigilan SignupsClientLigeroTests (Signups.Tests).
+    en WebAssembly y en MAUI.
   -->
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />

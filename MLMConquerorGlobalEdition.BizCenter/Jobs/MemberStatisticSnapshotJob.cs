@@ -15,11 +15,11 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 /// Responsibilities:
 ///   1. Refresh QualifiedSponsoredMembers in MemberStatisticEntity from live
 ///      MemberProfile data so the live counter never drifts.
-///      Plan Q (revision 2 del bloque 2, C2): ya NO reescribe EnrollmentPoints. Lo recalculaba con la suma
-///      de los pedidos completados de todo el equipo, activos o no, y deshacia cada noche DQ16 (los puntos
-///      cuentan solo con la membresia activa). Ahora lo mantienen exacto las colas (MembershipPointsDeltas,
-///      ApplyMemberStatisticDeltasJob) y, si hiciera falta recalcularlo, 05-realinear-puntos-por-membresia.sql
-///      lo hace por conjuntos. Recalcularlo aqui seria O(equipo) por miembro: inviable con 1.000.000.
+///      Ya NO reescribe EnrollmentPoints. Lo recalculaba con la suma
+///      de los pedidos completados de todo el equipo, activos o no, y deshacia cada noche la regla de que los puntos
+///      cuentan solo con la membresia activa. Ahora lo mantienen exacto las colas (MembershipPointsDeltas,
+///      ApplyMemberStatisticDeltasJob) y, si hiciera falta recalcularlo, se hace por conjuntos
+///      en una sola sentencia SQL. Recalcularlo aqui seria O(equipo) por miembro: inviable con 1.000.000.
 ///   2. Upsert a row into MemberStatisticHistory for the current calendar
 ///      month per member, mirroring the live MemberStatisticEntity values
 ///      and joining the L/R leg points from DualTeamTree. Running multiple
@@ -49,7 +49,7 @@ public class MemberStatisticSnapshotJob
 
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
-        // Plan Q (DQ1): las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
+        // Las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
         await LegPointMaintenance.DrainAsync(_db, ct: ct, lockTimeoutMs: 120_000);
 
         var now = _dateTime.Now;

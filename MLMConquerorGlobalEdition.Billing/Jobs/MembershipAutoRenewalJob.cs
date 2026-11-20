@@ -10,7 +10,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
-/// APAGADO (Plan K, decisión de Nick): ya no se programa. El único motor de renovación es
+/// APAGADO (decisión de Nick): ya no se programa. El único motor de renovación es
 /// RecurringBillingProcessor; con los dos, una suscripción podía cobrarse dos veces. Program.cs lo
 /// borra de Hangfire (RemoveIfExists("membership-auto-renewal")). Se conserva registrado por si hay que
 /// lanzarlo a mano en una emergencia, sabiendo que NO toma el candado de fondos ni es idempotente.

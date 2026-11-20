@@ -4,8 +4,8 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
 /// Una fila del reporte de cambios de estado: estado ACTUAL de la cuenta y de la membresía, con la
-/// fecha de su último cambio, y si está calificado ahora (IQualificationService, corrección de Nick
-/// N3; sin «Calificado desde»). Las columnas de MemberProfiles se buscan, filtran y ordenan en la
+/// fecha de su último cambio, y si está calificado ahora (IQualificationService, corrección de Nick;
+/// sin «Calificado desde»). Las columnas de MemberProfiles se buscan, filtran y ordenan en la
 /// base; el resto se rellena por página.
 /// </summary>
 public sealed class TeamStatusChangeView
@@ -17,7 +17,7 @@ public sealed class TeamStatusChangeView
     public string    AccountStatus             { get; set; } = string.Empty;
     public DateTime? AccountStatusChangedAt    { get; set; }
     public string    MembershipStatus          { get; set; } = "None";
-    /// <summary>Nivel más alto de los productos de la orden de la suscripción actual (N2).</summary>
+    /// <summary>Nivel más alto de los productos de la orden de la suscripción actual.</summary>
     public string?   MembershipLevelName       { get; set; }
     public DateTime? MembershipStatusChangedAt { get; set; }
     public bool      IsQualified               { get; set; }
@@ -31,7 +31,7 @@ public sealed class TeamStatusChangeView
     /// <summary>Ruta binaria, solo para calcular la pierna en el servidor. Nunca sale (se anula y no se serializa).</summary>
     [JsonIgnore]
     public string?   DualPath                  { get; set; }
-    /// <summary>Plan P: la clave compacta del nodo binario, solo dentro del servidor (para sacar la pierna).</summary>
+    /// <summary>La clave compacta del nodo binario, solo dentro del servidor (para sacar la pierna).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public byte[]?   DualKey                   { get; set; }
 }

@@ -90,7 +90,7 @@ public class ProcessScheduledCancellationsJob
             subscription.SubscriptionStatus = MembershipStatus.Cancelled;
             subscription.EndDate = now;
             subscription.IsAutoRenew = false;
-            // Revision de Q3 (M1): una retenida por el admin deja de estarlo; si no, reactivar la cuenta la contaria como
+            // Una retenida por el admin deja de estarlo; si no, reactivar la cuenta la contaria como
             // suya. Su cobro parado por retencion se vuelve a sellar como cancelado (StopForSubscriptionsAsync, abajo).
             subscription.HeldByAccountStatus = null;
             subscription.LastUpdateBy = "system";
@@ -115,7 +115,7 @@ public class ProcessScheduledCancellationsJob
                 });
             }
 
-            // Reverse stat propagation. Plan Q (DQ16): los puntos los resta MembershipPointsDeltas (interceptor) si la
+            // Reverse stat propagation. Los puntos los resta MembershipPointsDeltas (interceptor) si la
             // suscripcion pasa de Active a Cancelled; aqui solo el tamano del equipo y los patrocinados.
             if (!genealogyDict.TryGetValue(memberId, out var genealogyNode)) continue;
 
@@ -138,7 +138,7 @@ public class ProcessScheduledCancellationsJob
         if (statusHistories.Count > 0)
             await _db.MemberStatusHistories.AddRangeAsync(statusHistories, ct);
 
-        // Plan K (C2): el motor de renovación no debe volver a cobrar estas membresías.
+        // El motor de renovación no debe volver a cobrar estas membresías.
         await MembershipBillingStops.StopForSubscriptionsAsync(_db, due.Select(s => s.Id).ToList(),
             MembershipBillingStops.ReasonMembershipCancelled, now, "system", ct);
 

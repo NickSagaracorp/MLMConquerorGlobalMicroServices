@@ -10,27 +10,27 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan M (R8, M24): ninguna alteración trunca ni crea una clave sobre datos que no la cumplen.
+            // Ninguna alteración trunca ni crea una clave sobre datos que no la cumplen.
             // Si una comprobación falla, la migración se detiene ANTES de tocar nada.
             migrationBuilder.Sql(@"
 IF EXISTS (SELECT 1 FROM [Orders] WHERE DATALENGTH([OrderNo]) / 2 > 40)
-    THROW 51020, N'Orders.OrderNo tiene valores de mas de 40 caracteres (Plan M, Tarea 5).', 1;
+    THROW 51020, N'Orders.OrderNo tiene valores de mas de 40 caracteres.', 1;
 IF EXISTS (SELECT 1 FROM [Orders] WHERE [OrderNo] IS NOT NULL GROUP BY [OrderNo] HAVING COUNT(*) > 1)
-    THROW 51021, N'Orders.OrderNo tiene duplicados: ver Scripts/sql/plan-m/01-orderno-duplicados.sql y R15 del Plan M.', 1;
+    THROW 51021, N'Orders.OrderNo tiene duplicados: dejar un solo pedido por OrderNo antes de migrar.', 1;
 IF EXISTS (SELECT 1 FROM [Orders] WHERE DATALENGTH([MemberId]) / 2 > 20 OR DATALENGTH([MembershipSubscriptionId]) / 2 > 450)
-    THROW 51022, N'Orders.MemberId o MembershipSubscriptionId no caben (Plan M, Tarea 5).', 1;
+    THROW 51022, N'Orders.MemberId o MembershipSubscriptionId no caben.', 1;
 IF EXISTS (SELECT 1 FROM [OrderDetails] WHERE DATALENGTH([OrderId]) / 2 > 450 OR DATALENGTH([ProductId]) / 2 > 450)
-    THROW 51023, N'OrderDetails.OrderId o ProductId no caben (Plan M, Tarea 5).', 1;
+    THROW 51023, N'OrderDetails.OrderId o ProductId no caben.', 1;
 IF EXISTS (SELECT 1 FROM [OrderDetails] d WHERE NOT EXISTS (SELECT 1 FROM [Orders] o WHERE o.[Id] = d.[OrderId]))
     THROW 51024, N'OrderDetails tiene lineas sin pedido: no se puede crear FK_OrderDetails_Orders_OrderId.', 1;
 IF EXISTS (SELECT 1 FROM [PaymentHistories] WHERE DATALENGTH([OrderId]) / 2 > 450 OR DATALENGTH([MemberId]) / 2 > 100 OR DATALENGTH([GatewayTransactionId]) / 2 > 200)
-    THROW 51025, N'PaymentHistories.OrderId, MemberId o GatewayTransactionId no caben (Plan M, Tarea 5).', 1;
+    THROW 51025, N'PaymentHistories.OrderId, MemberId o GatewayTransactionId no caben.', 1;
 IF EXISTS (SELECT 1 FROM [MembershipSubscriptions] WHERE DATALENGTH([LastOrderId]) / 2 > 450)
-    THROW 51026, N'MembershipSubscriptions.LastOrderId no cabe (Plan M, Tarea 5).', 1;
+    THROW 51026, N'MembershipSubscriptions.LastOrderId no cabe.', 1;
 IF EXISTS (SELECT 1 FROM [MembershipSubscriptions] s WHERE s.[LastOrderId] IS NOT NULL AND NOT EXISTS (SELECT 1 FROM [Orders] o WHERE o.[Id] = s.[LastOrderId]))
     THROW 51027, N'MembershipSubscriptions.LastOrderId apunta a pedidos que no existen: no se puede crear la FK.', 1;
 IF EXISTS (SELECT 1 FROM [MemberStatistics] WHERE DATALENGTH([MemberId]) / 2 > 100)
-    THROW 51028, N'MemberStatistics.MemberId no cabe (Plan M, Tarea 5).', 1;");
+    THROW 51028, N'MemberStatistics.MemberId no cabe.', 1;");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_MembershipSubscriptions_Orders_LastOrderId1",
@@ -56,7 +56,7 @@ IF EXISTS (SELECT 1 FROM [MemberStatistics] WHERE DATALENGTH([MemberId]) / 2 > 1
                 name: "IX_MembershipSubscriptions_LastOrderId1",
                 table: "MembershipSubscriptions");
 
-            // Plan M: la base local no tenía este índice (deriva: lo crea MakeHierarchyPathUnboundedDropPathIndex,
+            // La base local no tenía este índice (deriva: lo crea MakeHierarchyPathUnboundedDropPathIndex,
             // pero alguien lo borró a mano). Se suelta solo si existe y se recrea más abajo con INCLUDE.
             migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_DualTeamTree_ParentMemberId] ON [DualTeamTree];");
 

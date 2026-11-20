@@ -19,7 +19,7 @@ public interface IBillingClient
     Task<BillingResult<TokenPurchaseResultDto>> CancelTokenPurchaseAsync(
         string purchaseId, string bearerToken, CancellationToken ct = default);
 
-    /// <summary>"Pagar ahora" la cuota anual (Plan K). El permiso de step-up ya lo validó y quemó el filtro.</summary>
+    /// <summary>"Pagar ahora" la cuota anual. El permiso de step-up ya lo validó y quemó el filtro.</summary>
     Task<BillingResult<AnnualFeePaymentResultDto>> PayAnnualFeeAsync(
         PayAnnualFeeRequest request, string bearerToken, string? stepUpGrant, CancellationToken ct = default);
 }

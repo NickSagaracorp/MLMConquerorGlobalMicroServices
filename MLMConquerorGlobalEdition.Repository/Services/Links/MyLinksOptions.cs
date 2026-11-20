@@ -2,7 +2,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Links;
 
 /// <summary>
 /// Plantillas de "Mis enlaces" (sección <c>MyLinks</c> del appsettings del BizCenter). Viven en
-/// configuración y no en GlobalParameters a propósito (Plan J, J1): un enlace lo reparten todos los
+/// configuración y no en GlobalParameters a propósito: un enlace lo reparten todos los
 /// miembros, así que cambiarlo pasa por revisión de código y por <see cref="MyLinksOptionsGuard"/>.
 ///
 /// Ojo con los appsettings por entorno: .NET fusiona las listas POR ÍNDICE, no las sustituye. Un

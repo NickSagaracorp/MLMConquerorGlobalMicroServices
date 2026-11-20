@@ -12,6 +12,6 @@ public class TokenTypeDto
     public bool IsActive { get; set; }
     public TokenCategory Category { get; set; }
 
-    /// <summary>Se vende en el BizCenter (Plan F, D1).</summary>
+    /// <summary>Se vende en el BizCenter.</summary>
     public bool IsPurchasable { get; set; }
 }

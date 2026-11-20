@@ -5,9 +5,9 @@ using MLMConquerorGlobalEdition.Repository.Queries;
 namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 
 /// <summary>
-/// Plan M: añade OPTION (RECOMPILE) a las consultas que llevan <see cref="GenealogySubtree.RecompileTag"/>
+/// Añade OPTION (RECOMPILE) a las consultas que llevan <see cref="GenealogySubtree.RecompileTag"/>
 /// (todas las que pasan por GenealogySubtree.Under) y <see cref="DualSubtree.RecompileTag"/> (el rango de la
-/// clave compacta del binario, Plan P). El mismo SQL del equipo sirve a un equipo de 30
+/// clave compacta del binario). El mismo SQL del equipo sirve a un equipo de 30
 /// personas y a uno de 119.400: con el plan en caché del pequeño (bucles anidados), el grande tardaba
 /// 3–6 s; compilado para su rango, 73 ms. Recompilar cuesta milisegundos; un plan equivocado, segundos.
 /// Va en AppDbContext.OnConfiguring, como los demás interceptores, para que ningún anfitrión lo olvide.

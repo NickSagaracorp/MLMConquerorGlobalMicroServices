@@ -46,7 +46,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
     /// <summary>
     /// El estado y su plan no coinciden: un estado de membresía en el plan de la cuota, o uno de cuota en
-    /// otro plan. No se cobra nada; hay que mirarlo a mano (Plan K, K2).
+    /// otro plan. No se cobra nada; hay que mirarlo a mano.
     /// </summary>
     public const string AnnualFeeStateMismatchCode = "ANNUAL_FEE_STATE_MISMATCH";
 
@@ -59,7 +59,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     /// <summary>Otra suscripción reemplazó a la del estado (subida o bajada): el estado se para sin cobrar.</summary>
     public const string ReasonMembershipReplaced = MembershipBillingStops.ReasonMembershipReplaced;
 
-    /// <summary>La suscripción del estado está borrada o no existe: el estado se para (revisión M-9).</summary>
+    /// <summary>La suscripción del estado está borrada o no existe: el estado se para.</summary>
     public const string ReasonSubscriptionMissing = MembershipBillingStops.ReasonSubscriptionMissing;
 
     public RecurringBillingProcessor(
@@ -108,7 +108,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         var plan = state.Plan!;
 
-        // Plan K (K1, K2): un estado de cuota anual lo cobra AnnualFeeChargeService. Mismo motor
+        // Un estado de cuota anual lo cobra AnnualFeeChargeService. Mismo motor
         // (planificador, trabajadores, barrido) y otro cobro: no hay suscripción que renovar. Va antes de
         // la comprobación de Stopped porque el servicio de la cuota la hace a su manera (y revive si se fuerza).
         if (state.Purpose == BillingStatePurpose.AnnualFee || plan.IsAnnualFeePlan)
@@ -125,17 +125,17 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             });
         }
 
-        // Plan K (revisión, C2): una membresía cancelada, con la cancelación cumplida o gratuita no se
+        // Una membresía cancelada, con la cancelación cumplida o gratuita no se
         // cobra, tampoco forzado. Se para el estado sin pedido ni intento y sin tocar la membresía (si no,
         // el tope de días sin cobrar le pondría HoldByBilling o Expired encima de la cancelación).
         var subscriptionToCheck = await _db.MembershipSubscriptions.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == state.MembershipSubscriptionId && !s.IsDeleted, ct);
-        // Revisión M-9: sin suscripción (borrada o inexistente) no hay nada que renovar; se para con su
+        // Sin suscripción (borrada o inexistente) no hay nada que renovar; se para con su
         // motivo en vez de fallar SUBSCRIPTION_NOT_FOUND en cada pasada.
         var notBillable = subscriptionToCheck is null
             ? MembershipBillingStops.ReasonSubscriptionMissing
             : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now)
-              // Plan Q (tercera revisión del bloque 2, C-a): la reemplazada por una subida o bajada no se cobra.
+              // La reemplazada por una subida o bajada no se cobra.
               ?? (await MembershipBillingStops.IsReplacedAsync(_db, subscriptionToCheck, ct)
                   ? MembershipBillingStops.ReasonMembershipReplaced : null);
         if (notBillable is not null)
@@ -152,7 +152,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             });
         }
 
-        // Revision de Q3 (I3): la cuenta terminada o suspendida no se cobra, tampoco forzado (como la cuota anual). Si no,
+        // La cuenta terminada o suspendida no se cobra, tampoco forzado (como la cuota anual). Si no,
         // una HoldByBilling o una caducada se cobraba y LiftTerminalMembershipStatusAsync la volvia a Active en una cuenta
         // cerrada. Terminada: el estado se para para siempre. Suspendida: se pospone sin tocar el estado (ni se revive).
         var accountStatus = await _db.MemberProfiles.AsNoTracking()
@@ -185,7 +185,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             state.NextAttemptDate     = now.Date;
         }
 
-        // 3. Check StopAfterUnbilledDays BEFORE processing (§5 — pre-attempt stop check)
+        // 3. Check StopAfterUnbilledDays BEFORE processing
         if (plan.StopAfterUnbilledDays.HasValue && !forceBillNow)
         {
             var referenceDate  = MembershipBillingStops.UnbilledSince(state);
@@ -235,10 +235,10 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // 5. Create the renewal Order (Processing)
         var order = await CreateRenewalOrderAsync(state, subscription, productId, amountDue, now, ct);
 
-        // 6. Commission-balance first? Bajo el candado de fondos del miembro (Plan K, K18): sin candado,
+        // 6. Commission-balance first? Bajo el candado de fondos del miembro: sin candado,
         //    un pago (PayoutOrchestrator) o una compra de tokens podía gastar las mismas comisiones a la
         //    vez. El saldo se lee DENTRO del candado y es el GASTABLE (GetSpendableAsync, aprobado por
-        //    Nick, K18/R7): sin las comisiones reservadas por un pago en curso ni las aún no pagables.
+        //    Nick): sin las comisiones reservadas por un pago en curso ni las aún no pagables.
         if (plan.PayFromCommissionBalanceFirst)
         {
             var funded = await TryCommissionFundedAsync(
@@ -273,7 +273,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // lo comparte quien llama (el trabajador guarda su trozo al final).
         var before = _db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
 
-        // Espera del candado (revisión M6): SqlServerMemberFundsGate espera hasta 15 s. En el trabajador va
+        // Espera del candado: SqlServerMemberFundsGate espera hasta 15 s. En el trabajador va
         // en serie, así que un miembro ocupado retrasa su trozo como mucho 15 s. Es aceptable: el candado
         // solo lo toman a la vez un pago, una compra de tokens o la cuota de ESE miembro, que de madrugada
         // es raro; y lo ocupado no se pierde, se reintenta en la siguiente pasada (MEMBER_FUNDS_BUSY).
@@ -288,7 +288,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                 "Renovación {StateId} de {MemberId}: el candado de fondos está ocupado; se reintenta en la siguiente pasada.",
                 state.Id, state.MemberId);
             // Sin el token de la llamada: el pedido ya está creado y tiene que quedar cancelado aunque
-            // se esté cancelando la pasada (revisión M6).
+            // se esté cancelando la pasada.
             await CancelOrderAsync(order, now, CancellationToken.None);
             return Result<RecurringBillingProcessorResult>.Failure(MemberFundsBusyCode,
                 $"Funds of member {state.MemberId} are busy; the renewal will be retried on the next pass.");
@@ -341,7 +341,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     }
 
     /// <summary>
-    /// Deshace sin que un fallo al deshacer (conexión caída) tape lo demás (revisión M6). Si la
+    /// Deshace sin que un fallo al deshacer (conexión caída) tape lo demás. Si la
     /// conexión se cayó, SQL Server ya deshizo la transacción al cerrar la sesión; se registra y sigue.
     /// </summary>
     private async Task SafeRollbackAsync(IDbContextTransaction tx, SubscriptionBillingState state)
@@ -367,7 +367,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         {
             if (!before.Contains(entry.Entity))
                 entry.State = EntityState.Detached;
-            // Revisión M-2: solo los tipos que escribe la renovación con comisiones.
+            // Solo los tipos que escribe la renovación con comisiones.
             else if (RenewalTouchedTypes.Contains(entry.Metadata.ClrType))
                 await entry.ReloadAsync(CancellationToken.None);
         }
@@ -460,7 +460,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         var fund = fundResult.Value!;
 
         // Advance state on success
-        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        // El número de este intento en el ciclo (1 = el primero), como en los fallos.
         var attemptIndex = state.CurrentAttemptIndex + 1;
         _scheduler.Advance(state, plan, succeeded: true, attemptDate: now);
         state.LastUpdateDate = now;
@@ -517,12 +517,12 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         DateTime now,
         CancellationToken ct)
     {
-        // Plan K (revisión I1): con la tarjeta apagada (por defecto, mientras el gateway sea un stub) ni
+        // Con la tarjeta apagada (por defecto, mientras el gateway sea un stub) ni
         // se llama al gateway: sin PaymentHistory simulado. Es un fallo normal: intento Failed y cadencia.
         if (!RecurringCardSwitch.IsEnabled(_configuration))
             return await RecordCardFailureAsync(state, plan, order, productId, amountDue, now,
                 RecurringCardSwitch.CardDisabledCode,
-                "Recurring card billing is disabled until the card gateway is real (Plan I).", ct);
+                "Recurring card billing is disabled until the card gateway is real.", ct);
 
         // Determine cardholder country
         var memberProfile = await _db.MemberProfiles
@@ -607,10 +607,10 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             });
         }
 
-        // Plan K (regla de Nick: nunca se cobra con el stub; revisión I1). Con la tarjeta encendida por
+        // Regla de Nick: nunca se cobra con el stub. Con la tarjeta encendida por
         // error, el gateway de Spreedly devuelve un "éxito" simulado. Eso no es dinero: es un fallo normal
         // (intento Failed y cadencia), sin renovar. El PaymentHistory que el orquestador ya escribió queda
-        // (es suyo): §13 da la consulta para encontrarlos.
+        // (es suyo): hay que localizarlos aparte.
         if (CardChargeOutcomes.IsSimulated(outcome.GatewayTransactionId))
         {
             _logger.LogCritical(
@@ -627,7 +627,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         order.LastUpdateDate = now;
         order.LastUpdateBy   = Actor;
 
-        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        // El número de este intento en el ciclo (1 = el primero), como en los fallos.
         var attemptIndex = state.CurrentAttemptIndex + 1;
         _scheduler.Advance(state, plan, succeeded: true, attemptDate: now);
         state.LastUpdateDate = now;
@@ -803,9 +803,9 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     }
 
     /// <summary>
-    /// Plan Q (revision 2 del bloque 2, I5): reactiva la suscripcion DEL ESTADO que se acaba de cobrar. Antes tomaba
+    /// Reactiva la suscripcion DEL ESTADO que se acaba de cobrar. Antes tomaba
     /// cualquiera del miembro retenida o caducada, sin orden: tras una subida podia reactivar la vieja caducada. Y nunca una
-    /// reemplazada (tercera revision, C-a).
+    /// reemplazada.
     /// </summary>
     private async Task LiftTerminalMembershipStatusAsync(string membershipSubscriptionId, DateTime now, CancellationToken ct)
     {
@@ -817,7 +817,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             .FirstOrDefaultAsync(ct);
 
         if (subscription is null) return;
-        // Plan Q (tercera revisión del bloque 2, C-a): nunca reactiva una reemplazada (dos activas, los puntos dos veces).
+        // Nunca reactiva una reemplazada (dos activas, los puntos dos veces).
         if (await MembershipBillingStops.IsReplacedAsync(_db, subscription, ct))
         {
             _logger.LogWarning("Suscripción {SubscriptionId} reemplazada por una subida o bajada: no se reactiva.",

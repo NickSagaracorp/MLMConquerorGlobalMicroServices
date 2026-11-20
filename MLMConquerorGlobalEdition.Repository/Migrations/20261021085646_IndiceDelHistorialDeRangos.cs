@@ -8,7 +8,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
     public partial class IndiceDelHistorialDeRangos : Migration
     {
         /// <summary>
-        /// Plan Q (visualizador del admin). MemberId pasa de nvarchar(max) a nvarchar(450) solo si sigue en max: antes se
+        /// MemberId pasa de nvarchar(max) a nvarchar(450) solo si sigue en max: antes se
         /// comprueba que todo cabe (mejor fallar el despliegue que truncar, como HistorialDeEstados) y se quitan las
         /// estadisticas automaticas de la columna (_WA_Sys_..., SQL Server las vuelve a crear); cualquier otro objeto que
         /// dependa de la columna (un indice o una estadistica creada a mano) para la migracion con un mensaje en vez de
@@ -23,7 +23,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.MemberRankHistories') AND name = N'MemberId' AND max_length = -1)
 BEGIN
     IF EXISTS (SELECT 1 FROM [MemberRankHistories] WHERE DATALENGTH([MemberId]) / 2 > 450)
-        THROW 51004, N'MemberRankHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan Q, IndiceDelHistorialDeRangos).', 1;
+        THROW 51004, N'MemberRankHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar.', 1;
 
     IF EXISTS (SELECT 1 FROM sys.index_columns ic JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
                WHERE ic.object_id = OBJECT_ID(N'dbo.MemberRankHistories') AND c.name = N'MemberId')
@@ -33,7 +33,7 @@ BEGIN
                   WHERE s.object_id = OBJECT_ID(N'dbo.MemberRankHistories') AND c.name = N'MemberId'
                     AND s.auto_created = 0
                     AND NOT EXISTS (SELECT 1 FROM sys.indexes i WHERE i.object_id = s.object_id AND i.index_id = s.stats_id))
-        THROW 51005, N'MemberRankHistories.MemberId tiene un indice o una estadistica creada a mano: quitarlos antes de migrar (Plan Q, IndiceDelHistorialDeRangos).', 1;
+        THROW 51005, N'MemberRankHistories.MemberId tiene un indice o una estadistica creada a mano: quitarlos antes de migrar.', 1;
 
     DECLARE @estadisticas nvarchar(max) = N'';
     SELECT @estadisticas += N'DROP STATISTICS [dbo].[MemberRankHistories].' + QUOTENAME(s.name) + N'; '

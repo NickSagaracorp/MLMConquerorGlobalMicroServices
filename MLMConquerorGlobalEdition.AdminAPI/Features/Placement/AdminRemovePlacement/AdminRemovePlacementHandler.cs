@@ -12,7 +12,7 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminRemovePlace
 /// Admin removes a placement without time-window or opportunity restrictions. The descendants stay linked to
 /// the removed member (ParentMemberId) and wait under a floating root of their own; when the member is placed
 /// again (AdminPlaceMember) the whole subtree comes back with it. Ghost points are NOT transferred.
-/// Plan P: arbol en exclusivo; DualTeamNodes resta el subarbol de la linea ascendente de forma incremental (C2),
+/// Arbol en exclusivo; DualTeamNodes resta el subarbol de la linea ascendente de forma incremental,
 /// reescribe la clave y la ruta de los descendientes por el rango de la clave (C1) y borra el nodo.
 /// </summary>
 public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementCommand, Result<string>>

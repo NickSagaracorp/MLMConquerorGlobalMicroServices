@@ -73,8 +73,8 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // Plan P: una retirada reescribe el arbol: arbol en exclusivo (espera a las colocaciones en curso y
-            // las detiene). DualTeamNodes resta el subarbol de la linea ascendente de forma incremental (C2: el
+            // Una retirada reescribe el arbol: arbol en exclusivo (espera a las colocaciones en curso y
+            // las detiene). DualTeamNodes resta el subarbol de la linea ascendente de forma incremental (el
             // recalculo por ruta era O(profundidad x N) con el arbol bloqueado), deja a cada hijo como raiz
             // provisional con su equipo y borra el nodo.
             await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);

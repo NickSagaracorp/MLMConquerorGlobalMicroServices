@@ -199,10 +199,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Plan P: un ordinal por raiz del binario (los 4 primeros bytes de DualTeamEntity.BinaryPath).
+        // Un ordinal por raiz del binario (los 4 primeros bytes de DualTeamEntity.BinaryPath).
         modelBuilder.HasSequence<int>("DualTeamRootOrdinal").StartsAt(1);
 
-        // Plan M (R11): fuera de SQL Server (InMemory en las pruebas) no hay hierarchyid; Node se guarda
+        // Fuera de SQL Server (InMemory en las pruebas) no hay hierarchyid; Node se guarda
         // como su texto ("/1/2/") y IsDescendantOf/GetAncestor se evalúan en memoria con la misma semántica.
         if (!Database.IsSqlServer())
             modelBuilder.Entity<GenealogyEntity>().Property(g => g.Node)
@@ -213,8 +213,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     {
         // SecurityFactorsInterceptor va aquí y no en el registro de cada anfitrión por la misma
         // razón que existe: un anfitrión que se olvidara de añadirlo cambiaría factores sin sellar.
-        // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
-        // sin dejar historial. QualifiedTeamCountsInterceptor (Plan Q), por lo mismo: un anfitrión sin
+        // StatusHistoryInterceptor, por lo mismo: un anfitrión sin él cambiaría estados
+        // sin dejar historial. QualifiedTeamCountsInterceptor, por lo mismo: un anfitrión sin
         // él cambiaría estados sin mover los calificados.
         //
         // QualifiedTeamCountsInterceptor tiene que ser el ULTIMO interceptor de guardado (los que un anfitrión pasa en sus
@@ -226,18 +226,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         optionsBuilder.AddInterceptors(
             new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor(),
             new QualifiedTeamCountsInterceptor(),
-            // Plan M: OPTION (RECOMPILE) en las consultas del equipo (GenealogySubtree.Under).
+            // OPTION (RECOMPILE) en las consultas del equipo (GenealogySubtree.Under).
             new RecompileTaggedQueriesInterceptor());
 
-        // Plan M (M21): GenealogyTree.Node es hierarchyid. Se activa aquí por la misma razón: un
+        // GenealogyTree.Node es hierarchyid. Se activa aquí por la misma razón: un
         // anfitrión (o la fábrica de diseño, o un ayudante de pruebas) que lo olvidara fallaría al
-        // construir el modelo. SqlServerOptionsExtension es API interna; lo vigila
-        // NodoDeGenealogiaModeloTests.
+        // construir el modelo. SqlServerOptionsExtension es API interna: si una actualizacion de EF
+        // la cambia, este bloque deja de compilar.
 #pragma warning disable EF1001
         if (optionsBuilder.Options.FindExtension<SqlServerOptionsExtension>() is not null)
         {
             new SqlServerDbContextOptionsBuilder(optionsBuilder).UseHierarchyId();
-            // Plan Q (DQ11): guardas para HelpdeskModule en una base vacia; con cualquier otra migracion es el de siempre.
+            // Guardas para HelpdeskModule en una base vacia; con cualquier otra migracion es el de siempre.
             optionsBuilder.ReplaceService<IMigrationsSqlGenerator, MigracionesSqlServerConGuardas>();
         }
 #pragma warning restore EF1001

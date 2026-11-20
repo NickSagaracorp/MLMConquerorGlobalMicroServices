@@ -1,8 +1,8 @@
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// ¿Pagó el miembro su anualidad en curso? Rama (b) de «Calificado» (Plan J, corrección de Nick N3).
-/// La implementa <c>Repository.Services.AnnualFee.BillingStateAnnualFeeStatus</c> (Plan K): la anualidad
+/// ¿Pagó el miembro su anualidad en curso? Rama (b) de «Calificado» (corrección de Nick).
+/// La implementa <c>Repository.Services.AnnualFee.BillingStateAnnualFeeStatus</c>: la anualidad
 /// cuenta como pagada si el estado de cuota anual del miembro está al día.
 /// </summary>
 public interface IAnnualFeeStatus

@@ -68,7 +68,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     {
         request.Sorts   = request.Sorts.Where(s => MyTeamDbFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)).ToList();
         request.Filters = request.Filters.Where(f => MyTeamDbFields.Contains(f.Field, StringComparer.OrdinalIgnoreCase)).ToList();
-        // Plan Q (DQ7): sin orden pedido, por estructura (Node), en BuildMyTeamQueryable; ya no se anade EnrollDate desc.
+        // Sin orden pedido, por estructura (Node), en BuildMyTeamQueryable; ya no se anade EnrollDate desc.
     }
 
     // ─── My Team ───────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(memberId, ct); // nodo vigente
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId);
@@ -93,8 +93,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (from.HasValue) query = query.Where(v => v.EnrollDate >= from.Value);
         if (to.HasValue)   query = query.Where(v => v.EnrollDate <= to.Value);
 
-        // Plan Q (DQ14): sin busqueda ni fechas, el total son los nodos vivos del equipo sin el que mira (revision del
-        // bloque 5, I1: lo que se lista; EnrollmentTeamSize solo cuenta activados), por el indice estrecho; con filtros se
+        // Sin busqueda ni fechas, el total son los nodos vivos del equipo sin el que mira (lo que se lista; EnrollmentTeamSize solo cuenta activados), por el indice estrecho; con filtros se
         // cuenta el resultado.
         var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
         var total = sinFiltros
@@ -123,18 +122,18 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, GridDataRequest request, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(memberId, ct); // nodo vigente
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         SanitizeGridRequest(request);
-        // Plan Q (DQ7): el limite lo decide el tamano guardado (MemberStatistics, diferido por la cola de deltas; basta para
-        // un limite). No es el total de la rejilla (revision del bloque 5, I1).
+        // El limite lo decide el tamano guardado (MemberStatistics, diferido por la cola de deltas; basta para
+        // un limite). No es el total de la rejilla.
         var limitado = TeamGridLimits.Limit(request, await TeamGridLimits.EnrollmentTeamSizeAsync(_db, memberId, ct));
 
         string? prefijo = null;
         if (limitado && !string.IsNullOrWhiteSpace(request.Search))
         {
-            prefijo = request.Search;   // DQ8: por prefijo con indice; la rejilla no vuelve a buscar por subcadena
+            prefijo = request.Search;   // Por prefijo con indice; la rejilla no vuelve a buscar por subcadena
             request.Search = null;
         }
         var byStructure = request.Sorts.Count == 0;
@@ -142,8 +141,8 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         PagedResult<EnrollmentMyTeamMemberView> result;
         if (byStructure && sinFiltros)
         {
-            // Plan Q (Tarea 26): sin busqueda, filtros ni orden pedido, la pagina se toma del arbol (GenealogySubtree.PageUnder)
-            // y solo despues se unen sus 20 perfiles. El total son los nodos vivos del equipo (I1).
+            // Sin busqueda, filtros ni orden pedido, la pagina se toma del arbol (GenealogySubtree.PageUnder)
+            // y solo despues se unen sus 20 perfiles. El total son los nodos vivos del equipo.
             var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
             var items = await BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId,
                                                    structurePage: ((page - 1) * pageSize, pageSize)).ToListAsync(ct);
@@ -155,7 +154,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         else
         {
             var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId, byStructure, prefixTerm: prefijo);
-            // Plan Q (DQ14): sin busqueda ni filtros, el total son los nodos vivos (I1), sin contar la union; con busqueda o
+            // Sin busqueda ni filtros, el total son los nodos vivos, sin contar la union; con busqueda o
             // filtros se cuenta el resultado.
             result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct,
                                                    unfilteredTotal: sinFiltros ? await TeamRowsAsync(myNode.Node, ct) : null);
@@ -166,7 +165,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     }
 
     /// <summary>
-    /// Revision del bloque 5 (I1): las filas de Mi equipo sin filtros, los nodos vivos del equipo menos el del que mira (su
+    /// Las filas de Mi equipo sin filtros, los nodos vivos del equipo menos el del que mira (su
     /// nodo es la raiz del rango). Es exactamente lo que lista la rejilla: la union con los perfiles es externa.
     /// </summary>
     private async Task<int> TeamRowsAsync(HierarchyId root, CancellationToken ct) =>
@@ -186,24 +185,24 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         IQueryable<GenealogyEntity> equipo;
         if (structurePage is { } pagina)
         {
-            // Plan Q (Tarea 26): la pagina por estructura sale del arbol antes de unir los perfiles (componente comun con los
+            // La pagina por estructura sale del arbol antes de unir los perfiles (componente comun con los
             // eventos del equipo); el orden de fuera es el de esas pocas filas.
             equipo = _db.GenealogyTree.AsNoTracking().PageUnder(root, pagina.Skip, pagina.Take, excludeMemberId: memberId);
         }
         else
         {
-            // Plan Q (DQ8): con el limite, solo los nodos cuyo miembro empieza por el termino (nombre completo o id), con el
-            // componente de busqueda comun a los dos arboles (revision del bloque 5, I2).
+            // Con el limite, solo los nodos cuyo miembro empieza por el termino (nombre completo o id), con el
+            // componente de busqueda comun a los dos arboles.
             equipo = (prefixTerm is null
                     ? _db.GenealogyTree.CurrentUnder(root)
                     : _db.SearchUnder(root, prefixTerm, MemberNameSearch.GridCandidatesPerBranch))
                 .AsNoTracking().Where(g => g.MemberId != memberId);
-            // Plan Q (DQ7): con busqueda o filtros, el orden por estructura va sobre el nodo, antes del join y de la
+            // Con busqueda o filtros, el orden por estructura va sobre el nodo, antes del join y de la
             // proyeccion (la vista no lleva Node).
             if (byStructure) equipo = equipo.OrderBy(g => g.Node);
         }
 
-        // Revision del bloque 5 (I1, minor a): union externa. Un nodo vivo cuyo perfil falta o esta borrado sale con su id
+        // Union externa. Un nodo vivo cuyo perfil falta o esta borrado sale con su id
         // (como hacia Actividad), asi la rejilla lista los nodos vivos, que es el total, y ninguna pagina sale corta.
         var filas =
             from g in equipo
@@ -237,7 +236,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (rows.Count == 0) return;
         var ids = rows.Select(r => r.MemberId).ToList();
 
-        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        // «Calificado» con la regla de Nick, no «la suscripción está activa».
         var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
         var subscriptions = await _db.MembershipSubscriptions.AsNoTracking()
@@ -247,7 +246,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
-        // Plan Q: el rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
+        // El rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
         var currentRankMap  = await _db.GetCurrentRanksAsync(ids, ct);
         var lifetimeRankMap = await _db.GetLifetimeRanksAsync(ids, ct);
 
@@ -452,7 +451,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string branchMemberId, CancellationToken ct = default)
     {
         var branchNode = await _db.GenealogyTree.AsNoTracking()
-            .CurrentOfAsync(branchMemberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(branchMemberId, ct); // nodo vigente
         if (branchNode?.Node is null) return null;
 
         var branchProfile = await _db.MemberProfiles.AsNoTracking()
@@ -509,7 +508,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var statsMap = stats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
 
-        // «Calificado» con la regla de Nick (Plan J, N3), solo para los embajadores que se listan.
+        // «Calificado» con la regla de Nick, solo para los embajadores que se listan.
         var qualified = await _qualification.AreQualifiedAsync(
             profiles.Where(p => p.MemberType == MemberType.Ambassador).Select(p => p.MemberId).ToList(), ct);
 
@@ -601,13 +600,13 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// <summary>
     /// Server-side grid read over the viewer's customers — DB-side search/filter/sort/count/page on
     /// a light projection, page-only enrichment. <paramref name="scope"/> chooses personal customers
-    /// or the whole enrollment downline (Plan J).
+    /// or the whole enrollment downline.
     /// </summary>
     public async Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
         string memberId, GridDataRequest request, CustomerScope scope, CancellationToken ct = default)
     {
         var myNode = await MyGenealogyNodeAsync(memberId, ct);
-        // Plan M: el alcance Equipo necesita el Node del que mira; Personales no.
+        // El alcance Equipo necesita el Node del que mira; Personales no.
         if (myNode is null || (scope == CustomerScope.Team && myNode.Node is null)) return new PagedResult<EnrollmentCustomerView>();
 
         if (!request.Sorts.Any(s => CustomerSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
@@ -620,7 +619,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         return result;
     }
 
-    /// <summary>The viewer's most recent genealogy node: a member can have two (see e4af288, R8).</summary>
+    /// <summary>The viewer's most recent genealogy node: a member can have two.</summary>
     private Task<GenealogyEntity?> MyGenealogyNodeAsync(string memberId, CancellationToken ct) =>
         _db.GenealogyTree.AsNoTracking().CurrentOfAsync(memberId, ct);
 
@@ -628,7 +627,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// Light DB projection of the viewer's external-member customers. Email and phone are nulled
     /// IN THE PROJECTION (a SQL CASE) for customers the viewer did not enroll, so the grid's search
     /// and column filters run on the redacted value and cannot reveal that a non-personal customer
-    /// with a given e-mail exists (Plan J, J8). Enriched columns are filled per page by
+    /// with a given e-mail exists. Enriched columns are filled per page by
     /// <see cref="EnrichCustomerPageAsync"/>.
     /// </summary>
     private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(
@@ -654,8 +653,8 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 };
         }
 
-        // Plan Q: se parte de los clientes (IX_MemberProfiles_Clientes, pocos) y se comprueba que su nodo cae en el rango
-        // del que mira. Con un nodo vivo por miembro (Tarea 21), Under es el equipo vigente: sin antijoin. Antes se partia
+        // Se parte de los clientes (IX_MemberProfiles_Clientes, pocos) y se comprueba que su nodo cae en el rango
+        // del que mira. Con un nodo vivo por miembro, Under es el equipo vigente: sin antijoin. Antes se partia
         // del rango del equipo entero (un millon de filas) para quedarse con los clientes. Los llamadores no llegan aqui
         // sin Node en el alcance Equipo.
         return
@@ -689,7 +688,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .OrderByDescending(s => s.StartDate).ToListAsync(ct);
         var subMap = subs.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
-        // Plan J, corrección N2: el nivel lo da el producto de la orden de la suscripción actual
+        // El nivel lo da el producto de la orden de la suscripción actual
         // (el más alto), no el MembershipLevelId de la suscripción, que solo es la reserva.
         var levelBySub = await _db.GetMembershipLevelIdsBySubscriptionAsync(subMap.Values.ToList(), ct);
         var levelNames = await _db.MembershipLevels.AsNoTracking()
@@ -724,7 +723,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     public async Task<EnrollmentVisualizerStatsView> GetVisualizerStatsAsync(
         string memberId, CancellationToken ct = default)
     {
-        // Plan M: el equipo por el Node vigente del miembro (seek en IX_GenealogyTree_Node).
+        // El equipo por el Node vigente del miembro (seek en IX_GenealogyTree_Node).
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
         if (me is null) return new EnrollmentVisualizerStatsView();
 

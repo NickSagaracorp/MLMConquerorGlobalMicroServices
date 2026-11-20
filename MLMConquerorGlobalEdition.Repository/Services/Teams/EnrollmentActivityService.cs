@@ -10,10 +10,10 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <inheritdoc />
 /// <remarks>
-/// Plan Q: una sola consulta agrupada y paginada en SQL. Las altas del rango (3 meses hacia atrás como mucho, N4) cuyo
-/// patrocinador cuelga del Node del que mira (él incluido; un nodo vivo por miembro, DQ9) se agrupan por patrocinador,
-/// con el tipo y el nivel de alta guardado de cada inscrito (MemberProfiles.SignupMembershipLevelId, regla N2 del Plan J,
-/// <see cref="SignupMembershipLevel"/>). Búsqueda, orden y página también en SQL.
+/// Una sola consulta agrupada y paginada en SQL. Las altas del rango (3 meses hacia atrás como mucho) cuyo
+/// patrocinador cuelga del Node del que mira (él incluido; un nodo vivo por miembro) se agrupan por patrocinador,
+/// con el tipo y el nivel de alta guardado de cada inscrito (MemberProfiles.SignupMembershipLevelId,
+/// <see cref="SignupMembershipLevel"/>: el producto más alto de su primer pedido). Búsqueda, orden y página también en SQL.
 /// </remarks>
 public sealed class EnrollmentActivityService : IEnrollmentActivityService
 {
@@ -51,11 +51,11 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
         if (!ReportDateRange.TryCreateForActivity(from, to, _clock.Now, out var range, out var error))
             return Result<PagedResult<EnrollmentActivityRowView>>.Failure(error!, "Invalid date range.");
 
-        // El nodo más reciente del que mira: un miembro puede tener dos (R8).
+        // El nodo más reciente del que mira: un miembro puede tener dos.
         var me = await _db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == memberId)
             .OrderByDescending(g => g.CreationDate)
-            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id
             .Select(g => new { g.Node, g.Level })
             .FirstOrDefaultAsync(ct);
         if (me?.Node is null) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
@@ -64,9 +64,8 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
         var end    = range.End;
         var root   = me.Node;
 
-        // Plan Q: las altas del rango cuyo patrocinador cuelga del que mira, agrupadas por patrocinador EN SQL. El nodo del
-        // patrocinador es unico (UX_GenealogyTree_MemberId_Vivo); el nivel de alta viene guardado (SignupMembershipLevelId,
-        // regla N2). Antes: TOP 1 correlacionado con IsDescendantOf por alta, los pedidos de los inscritos por lista de ids
+        // Las altas del rango cuyo patrocinador cuelga del que mira, agrupadas por patrocinador EN SQL. El nodo del
+        // patrocinador es unico (UX_GenealogyTree_MemberId_Vivo); el nivel de alta viene guardado (SignupMembershipLevelId). Antes: TOP 1 correlacionado con IsDescendantOf por alta, los pedidos de los inscritos por lista de ids
         // y el pivote en memoria (mas de 30 s con 1.000.000).
         var porPatrocinador =
             from m in _db.MemberProfiles.AsNoTracking()
@@ -88,8 +87,8 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
                                               && x.SignupMembershipLevelId != 3 && x.SignupMembershipLevelId != 4))
             };
 
-        // Revision del bloque 5 (minor a): union externa; un patrocinador cuyo perfil falta o esta borrado sale con su id
-        // como nombre, como antes del Plan Q (names.GetValueOrDefault(id, id)).
+        // Union externa; un patrocinador cuyo perfil falta o esta borrado sale con su id
+        // como nombre, como antes de la consulta agrupada (names.GetValueOrDefault(id, id)).
         var query =
             from a in porPatrocinador
             join p0 in _db.MemberProfiles.AsNoTracking() on a.MemberId equals p0.MemberId into perfiles
@@ -112,7 +111,7 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
 
         if (request.Sorts.Count == 0)
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentActivityRowView.Ambassadors), Direction = "desc" });
-        // Revision del bloque 5 (I8): MemberId desempata al final, para que el OFFSET de cada pagina sea estable.
+        // MemberId desempata al final, para que el OFFSET de cada pagina sea estable.
         if (!request.Sorts.Any(o => string.Equals(o.Field, nameof(EnrollmentActivityRowView.MemberId), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentActivityRowView.MemberId), Direction = "asc" });
 

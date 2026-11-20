@@ -43,7 +43,7 @@ public static class TokenPurchaseRules
     /// <summary>
     /// ¿Se acepta tarjeta? Apagado por defecto: el gateway de Spreedly es todavía un stub que devuelve
     /// un éxito simulado, y encenderlo emitiría tokens sin cobrar. Se enciende solo cuando el cobro con
-    /// tarjeta sea real (bloqueante de producción, ver el plan F).
+    /// tarjeta sea real (bloqueante de producción).
     /// </summary>
     public const string CardEnabledConfigKey = "Billing:TokenPurchase:CardEnabled";
 

@@ -30,7 +30,7 @@ public class CalculatePresidentialBonusHandler
     public async Task<Result<CalculationResultResponse>> Handle(
         CalculatePresidentialBonusCommand command, CancellationToken ct)
     {
-        // Plan Q (DQ1): las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
+        // Las piernas son diferidas; lo que se paga se calcula con la cola vacia. Espera hasta 2 min a un movimiento.
         await LegPointMaintenance.DrainAsync(_db, ct: ct, lockTimeoutMs: 120_000);
 
         var now        = _dateTime.Now;

@@ -999,7 +999,7 @@
   <!-- Sidebar additions used as breadcrumbs -->
   <data name="Sidebar.MyTeam2" xml:space="preserve"><value>My Team</value></data>
 
-  <!-- Tokens / Guest Passes (F4) -->
+  <!-- Tokens / Guest Passes -->
   <data name="GuestPasses.Title" xml:space="preserve"><value>Guest Passes</value></data>
   <data name="GuestPasses.Code" xml:space="preserve"><value>Code</value></data>
   <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>Distributed To</value></data>
@@ -1041,7 +1041,7 @@
   <data name="Tokens.Clear" xml:space="preserve"><value>Clear</value></data>
   <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>Guest Passes</value></data>
 
-  <!-- Loyalty (F4) -->
+  <!-- Loyalty -->
   <data name="Loyalty.TotalPoints" xml:space="preserve"><value>Total Points</value></data>
   <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>Unlocked Points</value></data>
   <data name="Loyalty.LockedPoints" xml:space="preserve"><value>Locked Points</value></data>
@@ -1056,7 +1056,7 @@
   <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>Unlocked</value></data>
   <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>Manual Unlock</value></data>
 
-  <!-- Ranks (F4) -->
+  <!-- Ranks -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>Ranks are only available for Ambassadors.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>Current Rank</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>Progress to Next Rank</value></data>
@@ -1066,7 +1066,7 @@
   <data name="Ranks.ColRank" xml:space="preserve"><value>Rank</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>Certificate</value></data>
 
-  <!-- Marketing (F4) -->
+  <!-- Marketing -->
   <data name="Marketing.Title" xml:space="preserve"><value>Marketing</value></data>
   <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>No documents available</value></data>
   <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>There are no marketing documents available at this time.</value></data>
@@ -1078,13 +1078,13 @@
   <data name="Marketing.DownloadAria" xml:space="preserve"><value>Download {0} in {1}</value></data>
   <data name="Marketing.DownloadFailed" xml:space="preserve"><value>Could not generate download link. Please try again.</value></data>
 
-  <!-- PageTitle (F4) -->
+  <!-- PageTitle -->
   <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>Tokens &amp; Guest Passes</value></data>
   <data name="PageTitle.Loyalty" xml:space="preserve"><value>Loyalty Points</value></data>
   <data name="PageTitle.Ranks" xml:space="preserve"><value>Ranks</value></data>
   <data name="PageTitle.Marketing" xml:space="preserve"><value>Marketing</value></data>
 
-  <!-- F4 — additional keys -->
+  <!-- Additional keys -->
   <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>EXP :</value></data>
   <data name="Tokens.PaginationAria" xml:space="preserve"><value>Tokens pagination</value></data>
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>Guest passes pagination</value></data>
@@ -1100,7 +1100,7 @@
   <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>The certificate could not be downloaded. Please try again.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>Marketing document types</value></data>
 
-  <!-- Tickets — F5 -->
+  <!-- Tickets -->
   <data name="Tickets.FilterStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Tickets.AllStatuses" xml:space="preserve"><value>All Statuses</value></data>
   <data name="Tickets.StatusOpen" xml:space="preserve"><value>Open</value></data>
@@ -1131,7 +1131,7 @@
   <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
   <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>Tickets</value></data>
 
-  <!-- Ticket Detail — F5 -->
+  <!-- Ticket Detail -->
   <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>Category</value></data>
   <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>Priority</value></data>
   <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>Assigned To</value></data>
@@ -1171,7 +1171,7 @@
   <data name="TicketDetail.AttachmentHelp" xml:space="preserve"><value>Maximum 10 MB. Allowed: images, PDF, DOC, TXT.</value></data>
   <data name="TicketDetail.NoAttachments" xml:space="preserve"><value>No attachments yet.</value></data>
 
-  <!-- Ticket Create — F5 -->
+  <!-- Ticket Create -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>Create New Ticket</value></data>
   <data name="TicketCreate.CloseAria" xml:space="preserve"><value>Close dialog</value></data>
   <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>Subject</value></data>
@@ -1198,7 +1198,7 @@
   <data name="TicketCreate.Submit" xml:space="preserve"><value>Submit Ticket</value></data>
   <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>Failed to create ticket. Please try again.</value></data>
 
-  <!-- Login — F5 -->
+  <!-- Login -->
   <data name="Login.PosterAlt" xml:space="preserve"><value>Login illustration</value></data>
   <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror logo</value></data>
   <data name="Login.WelcomeBack" xml:space="preserve"><value>Welcome Back!</value></data>
@@ -1218,7 +1218,7 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>Don't have an account?</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>Contact our support team</value></data>
 
-  <!-- Error page — F5 -->
+  <!-- Error page -->
   <data name="Error.Title" xml:space="preserve"><value>Error.</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>An error occurred while processing your request.</value></data>
   <data name="Error.RequestIdLabel" xml:space="preserve"><value>Request ID:</value></data>
@@ -1226,7 +1226,7 @@
   <data name="Error.DevModeIntro" xml:space="preserve"><value>Swapping to &lt;strong&gt;Development&lt;/strong&gt; environment will display more detailed information about the error that occurred.</value></data>
   <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;The Development environment shouldn't be enabled for deployed applications.&lt;/strong&gt; It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the &lt;strong&gt;Development&lt;/strong&gt; environment by setting the &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; environment variable to &lt;strong&gt;Development&lt;/strong&gt; and restarting the app.</value></data>
 
-  <!-- Not Found — F5 -->
+  <!-- Not Found -->
   <data name="NotFound.Title" xml:space="preserve"><value>Page Not Found</value></data>
   <data name="NotFound.Message" xml:space="preserve"><value>Sorry, that page does not exist.</value></data>
   <data name="NotFound.GoToDashboard" xml:space="preserve"><value>Go to Dashboard</value></data>
@@ -1338,7 +1338,7 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>Set Your Password</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>This account doesn't have a password yet. Choose one below.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>SET PASSWORD</value></data>
-  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono -->
   <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>We couldn't find a phone number on this account. Add one first.</value></data>
   <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>This verification is no longer valid. Add your phone number again to get a new code.</value></data>
   <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>That method isn't available on this account yet. Set it up first, then choose it.</value></data>
@@ -1384,7 +1384,7 @@
   <data name="VerifyPhone.Title" xml:space="preserve"><value>Verify your phone number</value></data>
   <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>Wrong number? Enter a different one</value></data>
 
-  <!-- PageTitle — F5 -->
+  <!-- PageTitle -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket Detail</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - Log In</value></data>

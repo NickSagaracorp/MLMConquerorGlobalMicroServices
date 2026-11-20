@@ -51,7 +51,7 @@ public class ProcessRankQueueJob
         if (entries.Count == 0)
             return;
 
-        // Plan Q (Q-R1): la evaluacion lee las piernas del binario (RankQualificationService). Se vacia antes, acotado a
+        // La evaluacion lee las piernas del binario (RankQualificationService). Se vacia antes, acotado a
         // 5 tandas para no retrasar la cola de rango. Si el arbol esta ocupado por un movimiento, se evalua con lo
         // aplicado: el vaciado de cada minuto y la siguiente pasada lo ponen al dia.
         try
@@ -64,7 +64,7 @@ public class ProcessRankQueueJob
         }
         catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == -2)
         {
-            // Revision del bloque 2 (I-4): una tanda que agota el tiempo del comando se deshace entera (los deltas vuelven a
+            // Una tanda que agota el tiempo del comando se deshace entera (los deltas vuelven a
             // la cola); como con el arbol ocupado, se evalua con lo aplicado y el vaciado de cada minuto lo pone al dia.
             _logger.LogWarning(ex, "{Job}: piernas sin vaciar, el vaciado agoto su tiempo; se evalua con lo aplicado.", JobSource);
         }

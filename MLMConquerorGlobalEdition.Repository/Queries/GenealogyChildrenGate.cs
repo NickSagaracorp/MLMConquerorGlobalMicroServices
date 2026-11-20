@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Plan M (revisión I3): serializa las altas bajo un mismo patrocinador, para que dos no calculen el
+/// Serializa las altas bajo un mismo patrocinador, para que dos no calculen el
 /// mismo Node con <see cref="GenealogyNodes.NextChildAsync"/>. Mismo patrón que MemberFundsGate:
 /// sp_getapplock con dueño Transaction sobre <c>genealogy-children:{patrocinador}</c>; el candado se
 /// suelta al confirmar o deshacer. Las altas de patrocinadores distintos no se esperan. El índice
@@ -17,7 +17,7 @@ namespace MLMConquerorGlobalEdition.Repository.Queries;
 /// alta tendrá que ir entera dentro de Database.CreateExecutionStrategy().ExecuteAsync (el bucle del
 /// alta ya reconstruye todo en cada intento). Se comprueba aquí para que falle con un mensaje claro.
 /// Fuera de SQL Server (InMemory en las pruebas) no hay candado: devuelve null. Con una transacción ya
-/// abierta por quien llama, el candado se toma dentro de ella y también devuelve null (revisión M-d).
+/// abierta por quien llama, el candado se toma dentro de ella y también devuelve null.
 /// </remarks>
 public static class GenealogyChildrenGate
 {

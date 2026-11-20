@@ -38,7 +38,7 @@ public class NetworkController : ControllerBase
         if (root is null)
             return NotFound(ApiResponse<object>.Fail("NODE_NOT_FOUND", $"Member '{memberId}' not found in dual team tree."));
 
-        // Plan P (revision I5): solo los niveles pedidos, bajando por ParentMemberId (un seek por nivel, como
+        // Solo los niveles pedidos, bajando por ParentMemberId (un seek por nivel, como
         // mucho 2^6 nodos), nunca el subarbol entero. Los conteos de pierna son columnas mantenidas
         // (LeftLegCount/RightLegCount), no un recuento en memoria.
         var allNodes = new List<MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity> { root };
@@ -60,7 +60,7 @@ public class NetworkController : ControllerBase
             .Select(p => new { p.MemberId, FullName = p.FirstName + " " + p.LastName })
             .ToDictionaryAsync(p => p.MemberId, p => p.FullName, ct);
 
-        // Rango vigente (Plan Q: MemberRankQueries, una busqueda por miembro y la lista en un solo parametro)
+        // Rango vigente (MemberRankQueries, una busqueda por miembro y la lista en un solo parametro)
         var latestRanks = await _db.GetCurrentRanksAsync(memberIds, ct);
 
         // Build tree recursively up to depth

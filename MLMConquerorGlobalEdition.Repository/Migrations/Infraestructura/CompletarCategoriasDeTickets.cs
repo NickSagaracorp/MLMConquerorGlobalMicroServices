@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MLMConquerorGlobalEdition.Repository.Migrations.Infraestructura;
 
 /// <summary>
-/// Plan Q (DQ11, Bloque 6): InitialCreate crea TicketCategories con 7 columnas y HelpdeskModule la vuelve a crear con 13.
+/// InitialCreate crea TicketCategories con 7 columnas y HelpdeskModule la vuelve a crear con 13.
 /// Como la tabla ya existia, SoloSiLaTablaEsNueva salta su CREATE TABLE, sus indices y sus claves ajenas, y la primera
-/// migracion que inserta categorias (SeedItInfrastructureKbArticle) falla con 207. En las bases reales la completo
-/// fix_helpdesk_tables.sql (seccion 7) con ALTER TABLE: aqui se hace lo mismo, con los mismos tipos, solo si la tabla era
+/// migracion que inserta categorias (SeedItInfrastructureKbArticle) falla con 207. En las bases reales se completo
+/// a mano con ALTER TABLE: aqui se hace lo mismo, con los mismos tipos, solo si la tabla era
 /// previa a HelpdeskModule y solo lo que falte. Cada sentencia va en EXEC para que el lote compile sin las columnas.
 /// </summary>
 public static class CompletarCategoriasDeTickets

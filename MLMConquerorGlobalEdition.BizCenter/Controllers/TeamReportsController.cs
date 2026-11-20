@@ -10,7 +10,7 @@ using IDateTimeProvider   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ID
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
 /// <summary>
-/// Reportes del equipo del Plan J (actividad por fechas y cambios de estado).
+/// Reportes del equipo (actividad por fechas y cambios de estado).
 /// Ninguna ruta lleva sujeto: el miembro sale SIEMPRE del token (ICurrentUserService.MemberId) y
 /// el alcance lo pone el servicio (prefijo de genealogía o del árbol binario). Comparte el prefijo
 /// de ruta con <see cref="TeamController"/> sin pisar ninguna de sus rutas.

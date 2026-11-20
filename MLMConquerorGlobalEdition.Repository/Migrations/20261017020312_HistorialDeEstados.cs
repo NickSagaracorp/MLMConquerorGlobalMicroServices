@@ -11,11 +11,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan J (R2): no estrechar la columna si algún valor no cabe; mejor fallar el despliegue
+            // No estrechar la columna si algún valor no cabe; mejor fallar el despliegue
             // que truncar. DATALENGTH y no LEN: LEN no cuenta los espacios finales.
             migrationBuilder.Sql(@"
 IF EXISTS (SELECT 1 FROM [MemberStatusHistories] WHERE DATALENGTH([MemberId]) / 2 > 450)
-    THROW 51003, N'MemberStatusHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan J, Tarea 27).', 1;");
+    THROW 51003, N'MemberStatusHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar.', 1;");
 
             migrationBuilder.AlterColumn<string>(
                 name: "MemberId",

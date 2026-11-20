@@ -28,7 +28,7 @@ public interface ICryptoDepositAlertNotifier
 /// error un cambio que sí ocurrió (la pantalla diría "falló" y alguien lo repetiría). Cada destinatario
 /// va por separado para que un buzón que rebota no deje sin aviso a los demás.
 ///
-/// Mientras el panel admin no tenga step-up (riesgo R8 del Plan F), este aviso es el único freno a
+/// Mientras el panel admin no tenga step-up, este aviso es el único freno a
 /// que una cuenta Admin comprometida desvíe los depósitos sin que nadie se entere: por eso va a
 /// todos los SuperAdmin y no solo a quien hizo el cambio.
 /// </remarks>

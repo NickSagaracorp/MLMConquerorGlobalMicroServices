@@ -16,7 +16,7 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Membership.Commands.Upgra
 ///
 /// NO COBRA NADA: cierra la suscripción actual y abre la nueva. Por eso va detrás de
 /// <c>Membership:UpgradeEnabled</c> (<see cref="MembershipUpgrades"/>), apagado por defecto y si falta:
-/// apagado responde UPGRADE_DISABLED antes de leer nada y no cambia nada. Lo enciende el Plan G cuando la
+/// apagado responde UPGRADE_DISABLED antes de leer nada y no cambia nada. Se encendera cuando la
 /// subida cobre la diferencia.
 /// </summary>
 public class UpgradeMembershipHandler : IRequestHandler<UpgradeMembershipCommand, Result<bool>>
@@ -44,7 +44,7 @@ public class UpgradeMembershipHandler : IRequestHandler<UpgradeMembershipCommand
         if (!MembershipUpgrades.IsEnabled(_configuration))
             return Result<bool>.Failure(UpgradeDisabledCode, "Membership upgrades are not available right now.");
 
-        // Plan Q (seguimiento de la tercera revision del bloque 2): el candado de puntos del miembro (MemberPointsLocks) se
+        // El candado de puntos del miembro (MemberPointsLocks) se
         // toma ANTES de leer su suscripcion activa. Leida antes, dos cambios de nivel a la vez caducaban la misma y cada uno
         // abria una nueva: dos activas. Con el, el segundo espera y lee lo que confirmo el primero (otra activa, o ninguna).
         // El guardado lo reutiliza (no lo vuelve a pedir) y lo suelta al confirmar; si no se llega a guardar, el finally.
@@ -102,7 +102,7 @@ public class UpgradeMembershipHandler : IRequestHandler<UpgradeMembershipCommand
         };
 
         await _db.MembershipSubscriptions.AddAsync(newSub, ct);
-        // Plan Q (tercera revisión del bloque 2, C-a): la vieja deja de cobrarse en el mismo guardado.
+        // La vieja deja de cobrarse en el mismo guardado.
         await MembershipBillingStops.StopForReplacedAsync(_db, currentSub.Id, now, command.MemberId, ct);
         await _db.SaveChangesAsync(ct);
 

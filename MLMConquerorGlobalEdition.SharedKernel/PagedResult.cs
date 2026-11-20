@@ -11,7 +11,7 @@ public class PagedResult<T>
     public bool HasPreviousPage => Page > 1;
 
     /// <summary>
-    /// Plan Q (DQ7): el equipo supero TeamGridLimits.FreeMaxRows, asi que el orden es por estructura y la busqueda por
+    /// El equipo supero TeamGridLimits.FreeMaxRows, asi que el orden es por estructura y la busqueda por
     /// prefijo. La rejilla lo avisa.
     /// </summary>
     public bool Limited { get; set; }

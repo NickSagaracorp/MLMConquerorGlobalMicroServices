@@ -82,7 +82,7 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
-// «Calificado» (Plan J, N3): un solo servicio. La anualidad no existe todavía (Plan K).
+// «Calificado»: un solo servicio. La anualidad no existe todavía.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IAnnualFeeStatus,
                             MLMConquerorGlobalEdition.Repository.Services.AnnualFee.BillingStateAnnualFeeStatus>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.AnnualFee.IAnnualFeeOverviewService,
@@ -121,8 +121,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports
                             MLMConquerorGlobalEdition.Repository.Services.Reports.MemberCountrySnapshotWriter>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 
-// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
-// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
+// El recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance.
 
 // ── Billing routing + high-volume planner (preview endpoint) ─────────────
 // Note: Billing services bind to the sibling `MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider`
@@ -327,7 +327,7 @@ builder.Services.AddHttpClient("HealthCheck")
 builder.Services.AddSignupApiClient(builder.Configuration, builder.Environment);
 
 // Billing confirma, rechaza o reabre las compras de tokens en cripto y cierra las que quedaron a
-// conciliar (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. Sin
+// conciliar; AdminTokenPurchasesController le reenvía el Bearer del administrador. Sin
 // desactivar la validación del certificado. Fuera de Development
 // exige Services:BillingBaseUrl (no está en el appsettings.json base): ver BillingApiRegistration.
 builder.Services.AddBillingApiClient(builder.Configuration, builder.Environment);
@@ -357,7 +357,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 
 var app = builder.Build();

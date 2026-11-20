@@ -8,7 +8,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 
 /// <summary>
-/// Stage 3 of the high-volume pipeline (BILLING-RULES §10.5).
+/// Stage 3 of the high-volume pipeline.
 /// See <see cref="IUplineAggregator"/> for the full contract.
 /// </summary>
 public class UplineAggregator : IUplineAggregator
@@ -52,7 +52,7 @@ public class UplineAggregator : IUplineAggregator
         _logger.LogInformation(
             "UplineAggregator: {Count} Queued events for batch {BatchId}.", queuedEvents.Count, batchId);
 
-        // Plan Q (DQ16, reglas de Nick): una renovacion no cambia los puntos de nadie, y los que si cambian (alta, cancelacion,
+        // Una renovacion no cambia los puntos de nadie, y los que si cambian (alta, cancelacion,
         // retencion, reactivacion, cambio de nivel) los encola MembershipPointsDeltas desde el interceptor de suscripciones:
         // al binario por la cola de piernas y a la linea de patrocinio por MemberStatisticDeltas. Este agregador sumaba
         // DualTeamPoints por la linea de INSCRIPCION (el arbol equivocado; el vaciado de piernas lo pisaba) y

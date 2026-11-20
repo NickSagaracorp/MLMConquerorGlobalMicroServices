@@ -4,7 +4,7 @@
 @inject HttpClient Http
 
 @*
-    Compras de tokens que necesitan a una persona (Plan F). Arriba, las pagadas en cripto: los cuatro
+    Compras de tokens que necesitan a una persona. Arriba, las pagadas en cripto: los cuatro
     roles de aprobación las confirman (emite) o las rechazan (libera el cupo). Debajo, las cripto que
     CADUCARON sin confirmar: si la transferencia llega tarde, los mismos roles las reabren y confirman
     con el id de la transacción (Billing vuelve a mirar el cupo de su mes). Las canceladas por el
@@ -276,7 +276,7 @@
     // Mismo conjunto que AdminTokenPurchasesController y Billing para conciliar.
     private const string TreasuryRoles = "SuperAdmin,Admin,BillingManager";
 
-    // Los importes de la compra son USD (D16): no dependen de la cultura del servidor.
+    // Los importes de la compra son USD: no dependen de la cultura del servidor.
     private static readonly System.Globalization.CultureInfo Usd = System.Globalization.CultureInfo.GetCultureInfo("en-US");
 
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }

@@ -14,7 +14,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
-/// Altas pagadas en rublos por SBP con Entrax (Plan H): las que esperan pago, las que quedaron a
+/// Altas pagadas en rublos por SBP con Entrax: las que esperan pago, las que quedaron a
 /// revisar (pagos que no cuadran o dobles cobros, con dinero en juego) y las recientes.
 ///
 /// Re-check NO liquida aquí: reenvía a SignupAPI, que es quien activa el alta por el camino único

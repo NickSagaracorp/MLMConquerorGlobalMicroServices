@@ -85,7 +85,7 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         string memberId;
         string orderId;
         GenealogyEntity? sponsorNode = null;
-        // Plan M (revisión M-d): el candado del patrocinador ocupado y el patrocinador sin Node se devuelven
+        // El candado del patrocinador ocupado y el patrocinador sin Node se devuelven
         // como un Result con código (409 / 503 en el controlador), no como un INTERNAL_ERROR.
         try
         {
@@ -164,12 +164,12 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         {
             sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
+                .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente
         }
 
-        // Plan M: el Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).
+        // El Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).
         // Si el nodo vigente del patrocinador no tiene Node, NextChildAsync lanza: el alta no crea un nodo
-        // invisible (revisión I4). El candado del patrocinador (revisión I3) abarca el cálculo y el
+        // invisible. El candado del patrocinador abarca el cálculo y el
         // SaveChanges: dos altas a la vez bajo el mismo patrocinador no calculan el mismo Node.
         await using var childrenTx = await GenealogyChildrenGate.EnterAsync(_db, sponsorNode?.MemberId, ct);
         var genealogyNodeId = await GenealogyNodes.NextChildAsync(_db, sponsorNode?.MemberId, ct);
@@ -193,11 +193,11 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
 
-        // Queue rank re-evaluation for the sponsor's genealogy upline (Plan Q: hasta 10 niveles)
+        // Queue rank re-evaluation for the sponsor's genealogy upline (hasta 10 niveles)
         if (sponsorNode is not null)
         {
-            // Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
-            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob, fase 2).
+            // La linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
+            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob).
             var uplineIds = GenealogyUpline.Closest(sponsorNode.HierarchyPath, null);
 
             foreach (var uplineId in uplineIds)
@@ -219,7 +219,7 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
                 await childrenTx.CommitAsync(ct);
             break; // saved cleanly
         }
-        // Plan M (R5): dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;
+        // Dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;
         // el índice único rechaza a la segunda, que reintenta con el siguiente ordinal.
         catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)
                                             || GenealogyNodes.IsDuplicateLiveMember(ex)) && idAttempt < 5)
@@ -235,11 +235,11 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             return Result<SignupResponse>.Failure(genealogyError.Code, genealogyError.Message);
         }
 
-        // Notify the sponsor's enrollment upline (Plan Q: hasta 10 niveles)
+        // Notify the sponsor's enrollment upline (hasta 10 niveles)
         if (sponsorNode is not null)
         {
-            // Plan Q (DQ5): la linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
-            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob, fase 2).
+            // La linea de patrocinio hasta GenealogyUpline.EnrollmentLevels, del mas cercano al mas lejano;
+            // mas alla evalua el barrido nocturno (RankEvaluationSweepJob).
             var uplineIds = GenealogyUpline.Closest(sponsorNode.HierarchyPath, null);
 
             foreach (var uplineId in uplineIds)

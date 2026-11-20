@@ -18,7 +18,7 @@ namespace MLMConquerorGlobalEdition.Billing.Jobs;
 /// 2. Find all states with Status ∈ {Active, Retrying, AwaitingAnniversaryRetry}
 ///    and NextAttemptDate &lt;= today, and invoke the processor for each.
 ///    States already covered by a RecurringBillingBatchShard for today are skipped
-///    to avoid double-processing with the high-volume pipeline (§10.7 skip guard).
+///    to avoid double-processing with the high-volume pipeline.
 /// Idempotent: the per-state NextAttemptDate prevents re-processing within a day.
 /// </summary>
 [Queue("billing")]
@@ -74,7 +74,7 @@ public class RecurringBillingSweepJob
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // Los estados de cuota anual solo entran con su cobro automático
                      // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
                      && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .Select(s => new { s.Id, s.ShardKey })
@@ -125,7 +125,7 @@ public class RecurringBillingSweepJob
                 failed++;
                 _logger.LogError(ex,
                     "RecurringBillingSweepJob: unhandled exception processing state {StateId}.", stateId);
-                // Plan K (C-1): lo que el caso dejó sin guardar no se cuela en el siguiente.
+                // Lo que el caso dejó sin guardar no se cuela en el siguiente.
                 await PendingChanges.DiscardAsync(_db, _logger);
             }
         }
@@ -150,7 +150,7 @@ public class RecurringBillingSweepJob
             where sub.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
                && !sub.IsDeleted
                && plan.IsActive
-               && !plan.IsAnnualFeePlan   // Plan K (K2): la cuota anual es por miembro, no por suscripción
+               && !plan.IsAnnualFeePlan   // La cuota anual es por miembro, no por suscripción
                && !_db.SubscriptionBillingStates.Any(s => s.MembershipSubscriptionId == sub.Id)
             select sub
         ).ToListAsync(ct);

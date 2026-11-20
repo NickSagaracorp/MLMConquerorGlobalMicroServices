@@ -10,7 +10,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan Q (Tarea 13): falla cerrada si algun modulo (vista, funcion, procedimiento o desencadenador) aun lee
+            // Falla cerrada si algun modulo (vista, funcion, procedimiento o desencadenador) aun lee
             // DualTeamTree.HierarchyPath. Los candidatos se filtran por texto y cada uno se confirma con
             // sys.dm_sql_referenced_entities (un modulo que lea GenealogyTree.HierarchyPath y nombre DualTeamTree no
             // cuenta). Si un candidato no se puede analizar, la funcion falla y la migracion se detiene: revisarlo a mano.
@@ -29,7 +29,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM sys.dm_sql_referenced_entities(@modulo, N'OBJECT') r
                WHERE r.referenced_entity_name = N'DualTeamTree' AND r.referenced_minor_name = N'HierarchyPath')
     BEGIN
-        DECLARE @msg nvarchar(600) = CONCAT(N'El objeto ', @modulo, N' aun lee DualTeamTree.HierarchyPath (Plan Q, Tarea 13).');
+        DECLARE @msg nvarchar(600) = CONCAT(N'El objeto ', @modulo, N' aun lee DualTeamTree.HierarchyPath.');
         THROW 51100, @msg, 1;
     END
     FETCH NEXT FROM candidatos INTO @modulo;
@@ -45,7 +45,7 @@ DEALLOCATE candidatos;");
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // La columna vuelve vacia. Volver atras de verdad es restaurar la copia del despliegue (Q-R10).
+            // La columna vuelve vacia. Volver atras de verdad es restaurar la copia del despliegue.
             migrationBuilder.AddColumn<string>(
                 name: "HierarchyPath",
                 table: "DualTeamTree",

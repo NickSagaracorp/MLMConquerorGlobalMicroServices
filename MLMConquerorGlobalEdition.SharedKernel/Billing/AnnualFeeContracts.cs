@@ -1,7 +1,7 @@
 namespace MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 /// <summary>
-/// Reglas de la cuota anual del Biz Center (Plan K). Las aplican Billing (para cobrar) y el BizCenter
+/// Reglas de la cuota anual del Biz Center. Las aplican Billing (para cobrar) y el BizCenter
 /// (para enseñar si se puede pagar); viven aquí para que no diverjan.
 /// </summary>
 public static class AnnualFeeRules
@@ -13,24 +13,24 @@ public static class AnnualFeeRules
     public const int AnnualFeeTokenTypeId = 10;
 
     /// <summary>
-    /// Los tokens que pagan la cuota, en orden de preferencia (K8). No el 24 "Legacy Biz Center Fee"
+    /// Los tokens que pagan la cuota, en orden de preferencia. No el 24 "Legacy Biz Center Fee"
     /// (no otorga producto) ni el 103 (token del plan que emite el camino de Travel Advantage).
     /// </summary>
     public static readonly IReadOnlyList<int> FeeTokenTypeIds = [AnnualBizCenterTokenTypeId, AnnualFeeTokenTypeId];
 
-    /// <summary>"Pagar ahora" vale desde estos días antes del vencimiento (K14).</summary>
+    /// <summary>"Pagar ahora" vale desde estos días antes del vencimiento.</summary>
     public const int PayAheadDays = 30;
 
-    /// <summary>"Cobrada hace poco": el último cobro fue hace menos de estos meses (K5).</summary>
+    /// <summary>"Cobrada hace poco": el último cobro fue hace menos de estos meses.</summary>
     public const int RecentlyBilledMonths = 11;
 
     /// <summary>
-    /// ¿Cobra el motor la cuota en el aniversario? Apagado por defecto (K13); también el cobro forzado de
-    /// soporte lo exige (revisión I-3). "Pagar ahora" no depende de él. Se lee en cada llamada.
+    /// ¿Cobra el motor la cuota en el aniversario? Apagado por defecto; también el cobro forzado de
+    /// soporte lo exige. "Pagar ahora" no depende de él. Se lee en cada llamada.
     /// </summary>
     public const string AutoChargeEnabledConfigKey = "Billing:AnnualFee:AutoChargeEnabled";
 
-    /// <summary>Minutos que un pago de cuota puede seguir Pending antes de pasar a conciliar (K11).</summary>
+    /// <summary>Minutos que un pago de cuota puede seguir Pending antes de pasar a conciliar.</summary>
     public const string StalePendingMinutesConfigKey = "Billing:AnnualFee:StalePendingMinutes";
 
     public const int DefaultStalePendingMinutes = 30;
@@ -47,18 +47,18 @@ public static class AnnualFeeRules
 
     /// <summary>
     /// ¿Programa Billing el alta diaria de estados de cuota? Apagado por defecto: el trabajo se registra
-    /// con Cron.Never() y solo corre si alguien lo lanza a mano desde Hangfire (Plan K, Tarea 8).
+    /// con Cron.Never() y solo corre si alguien lo lanza a mano desde Hangfire.
     /// </summary>
     public const string EnrollmentJobEnabledConfigKey = "Billing:AnnualFee:EnrollmentJobEnabled";
 
-    /// <summary>Estados de cuota que el trabajo de alta crea por guardado (K3).</summary>
+    /// <summary>Estados de cuota que el trabajo de alta crea por guardado.</summary>
     public const int EnrollmentBatchSize = 1000;
 
     /// <summary>Tope de lotes por ejecución del trabajo de alta: 500.000 estados.</summary>
     public const int EnrollmentMaxBatchesPerRun = 500;
 }
 
-/// <summary>Con qué se paga la cuota. Sin tarjeta hasta el Plan I. Coinciden con el enum de dominio.</summary>
+/// <summary>Con qué se paga la cuota. Sin tarjeta por ahora. Coinciden con el enum de dominio.</summary>
 public static class AnnualFeeMethods
 {
     public const string Token             = "Token";
@@ -109,7 +109,7 @@ public static class AnnualFeeErrors
     public const string StateNotFound                 = "ANNUAL_FEE_STATE_NOT_FOUND";
     public const string AccountNotActive              = "ANNUAL_FEE_ACCOUNT_NOT_ACTIVE";
 
-    /// <summary>La membresía vigente está en HoldByBilling: no hay cuota que cobrar (Nick, 2026-10-17).</summary>
+    /// <summary>La membresía vigente está en HoldByBilling: no hay cuota que cobrar.</summary>
     public const string MembershipOnHold              = "ANNUAL_FEE_MEMBERSHIP_ON_HOLD";
     public const string Waived                        = "ANNUAL_FEE_WAIVED";
     public const string NotDue                        = "ANNUAL_FEE_NOT_DUE";
@@ -128,7 +128,7 @@ public static class AnnualFeeErrors
 
     /// <summary>
     /// Conciliado como cobrado cuando el ciclo ya lo había pagado otra vía: el pago queda completado (el
-    /// dinero salió) pero el estado no se mueve. Posible doble cobro: hay que mirarlo (revisión M-3).
+    /// dinero salió) pero el estado no se mueve. Posible doble cobro: hay que mirarlo.
     /// </summary>
     public const string ReconciledCycleAlreadyAdvanced = "ANNUAL_FEE_RECONCILED_CYCLE_ALREADY_ADVANCED";
     public const string InsufficientCommissionBalance = TokenPurchaseErrors.InsufficientCommissionBalance;

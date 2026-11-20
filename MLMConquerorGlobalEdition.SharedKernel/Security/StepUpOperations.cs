@@ -18,7 +18,7 @@ public static class StepUpOperations
     public const string TokenPurchaseFromBalance = "member.tokens.purchase-from-balance";
 
     /// <summary>
-    /// Pagar la cuota anual con lo que ya es del miembro: comisiones, eWallet o un token de cuota (Plan K).
+    /// Pagar la cuota anual con lo que ya es del miembro: comisiones, eWallet o un token de cuota.
     /// El token también: es dinero ya pagado y una sesión robada podría gastarlo.
     /// </summary>
     public const string AnnualFeeFromBalance = "member.annual-fee.pay-from-balance";

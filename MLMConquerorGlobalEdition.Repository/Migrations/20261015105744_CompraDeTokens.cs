@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     /// <summary>
-    /// Compra de tokens (Plan F): TokenPurchases, TokenType.IsPurchasable, TokenTransaction.TokenPurchaseId
+    /// Compra de tokens: TokenPurchases, TokenType.IsPurchasable, TokenTransaction.TokenPurchaseId
     /// y CryptoPaymentConfirmation.Purpose.
     /// </summary>
     /// <remarks>
@@ -117,7 +117,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 table: "TokenPurchases",
                 column: "Status");
 
-            // Valor inicial de IsPurchasable (Plan F, decisión D1). Nada en los datos distingue las
+            // Valor inicial de IsPurchasable. Nada en los datos distingue las
             // variantes promocionales salvo el nombre, así que se usa UNA vez para inicializar; desde
             // aquí manda la columna, que el admin cambia en Token Types. Upgrade (Category = 2) no
             // otorga productos y no se vende de todas formas.

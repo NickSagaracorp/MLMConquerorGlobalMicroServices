@@ -44,7 +44,7 @@ public class AdminCryptoSignupsController : ControllerBase
     {
         var rows = await (
             from c in _db.CryptoPaymentConfirmations.AsNoTracking()
-            // Solo altas: las compras de tokens en cripto las confirma Billing (Plan F).
+            // Solo altas: las compras de tokens en cripto las confirma Billing.
             where c.Status == CryptoPaymentConfirmationStatus.AwaitingPayment && c.Purpose == CryptoPaymentPurpose.Signup
             join m in _db.MemberProfiles.AsNoTracking() on c.MemberId equals m.MemberId
             join o in _db.Orders.AsNoTracking() on c.OrderId equals o.Id

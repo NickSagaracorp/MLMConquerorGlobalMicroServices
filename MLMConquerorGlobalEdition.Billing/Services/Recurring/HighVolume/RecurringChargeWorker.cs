@@ -10,7 +10,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 
 /// <summary>
-/// Stage 2 of the high-volume pipeline (BILLING-RULES §10.4).
+/// Stage 2 of the high-volume pipeline.
 /// See <see cref="IRecurringChargeWorker"/> for the full contract.
 /// </summary>
 public class RecurringChargeWorker : IRecurringChargeWorker
@@ -122,7 +122,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // Los estados de cuota anual solo entran con su cobro automático
                      // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
                      && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
@@ -173,7 +173,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
                         {
-                            // Plan K (revisión final, M-d): el cobro YA está hecho y no se deshace. Lo que falta son
+                            // El cobro YA está hecho y no se deshace. Lo que falta son
                             // los puntos y los disparadores de comisión: aviso propio para emitirlos a mano.
                             _logger.LogCritical(ex,
                                 "RecurringChargeWorker: estado {StateId} de {MemberId} COBRADO (pedido {OrderId}) pero los eventos " +
@@ -218,7 +218,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                     "RecurringChargeWorker: unhandled exception processing state {StateId}.",
                     stateRef.Id);
                 processed++;
-                // Plan K (C-1): lo que el caso dejó sin guardar no se cuela en el siguiente ni en el cierre.
+                // Lo que el caso dejó sin guardar no se cuela en el siguiente ni en el cierre.
                 await PendingChanges.DiscardAsync(_db, _logger);
             }
         }
@@ -260,7 +260,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         DateTime now,
         CancellationToken ct)
     {
-        // Plan K: un estado de cuota anual no tiene suscripción. La cuota no aporta puntos ni dispara
+        // Un estado de cuota anual no tiene suscripción. La cuota no aporta puntos ni dispara
         // Fast Start ni Boost (su producto es CorporateFee).
         if (subscriptionId is null) return;
 
@@ -322,7 +322,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         DateTime now,
         CancellationToken ct)
     {
-        // Plan K: sin suscripción no hay puntos que retirar (un fallo de la cuota no toca la membresía).
+        // Sin suscripción no hay puntos que retirar (un fallo de la cuota no toca la membresía).
         if (subscriptionId is null) return;
 
         // Only emit if state transitioned to Stopped as part of this failure

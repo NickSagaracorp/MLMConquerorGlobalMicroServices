@@ -338,7 +338,7 @@ public static class RecurringBillingSeeder
         var existing = await db.RecurringBillingPlans.FirstOrDefaultAsync(p => p.Name == LifestylePlanName);
         if (existing is not null)
         {
-            // Plan K (K2): es el plan de la cuota anual. La migración CuotaAnual ya lo marca; esto cubre
+            // Es el plan de la cuota anual. La migración CuotaAnual ya lo marca; esto cubre
             // una base que se siembre sin haber pasado por ella.
             if (!existing.IsAnnualFeePlan && !await db.RecurringBillingPlans.AnyAsync(p => p.IsAnnualFeePlan))
             {
@@ -367,7 +367,7 @@ public static class RecurringBillingSeeder
             TokenTypeId               = lifestyleTokenId,
             FixedAmountOverride       = null,  // use Product.AnnualPrice
             IsActive                  = true,
-            IsAnnualFeePlan           = true,  // Plan K: el plan de la cuota anual del Biz Center
+            IsAnnualFeePlan           = true,  // El plan de la cuota anual del Biz Center
             CreatedBy                 = Actor,
             CreationDate              = now
         };

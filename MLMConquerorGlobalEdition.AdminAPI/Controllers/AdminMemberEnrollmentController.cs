@@ -90,7 +90,7 @@ public class AdminMemberEnrollmentController : ControllerBase
         [FromQuery] string? scope = null,
         CancellationToken ct = default)
     {
-        // Plan J: scope=personal|team, como en el BizCenter; aquí el miembro es el de la ruta.
+        // Scope=personal|team, como en el BizCenter; aquí el miembro es el de la ruta.
         var result = await _service.GetCustomersGridAsync(memberId, request, CustomerScopes.Parse(scope), ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }

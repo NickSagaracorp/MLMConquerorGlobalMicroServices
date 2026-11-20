@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.Repository.Queries;
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
 
 /// <summary>
-/// Plan M (revisión M-d): cómo llegan al cliente las dos formas en que el árbol de inscripción frena un
+/// Cómo llegan al cliente las dos formas en que el árbol de inscripción frena un
 /// alta. Las excepciones las lanzan GenealogyChildrenGate y GenealogyNodes; el alta las traduce aquí a un
 /// Result con código, y el controlador a 409 (reintentar) o 503 (no se pudo completar), en vez del
 /// INTERNAL_ERROR genérico de ErrorHandlingBehavior.

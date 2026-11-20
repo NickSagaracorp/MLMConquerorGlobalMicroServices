@@ -7,7 +7,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
-/// La cuota anual de un miembro en su perfil del Admin (Plan K, K21). Solo lectura: pagar y cambiar la
+/// La cuota anual de un miembro en su perfil del Admin. Solo lectura: pagar y cambiar la
 /// preferencia son cosas del miembro. Mismos roles que AdminMemberProfileController.
 /// </summary>
 [ApiController]

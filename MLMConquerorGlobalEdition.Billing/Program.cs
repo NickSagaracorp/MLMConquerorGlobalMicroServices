@@ -77,7 +77,7 @@ builder.Services.AddScoped<IGatewayService>(sp => sp.GetRequiredService<EWalletG
 builder.Services.AddScoped<IGatewayResolver, GatewayResolver>();
 
 // ── Card gateway — Spreedly universal proxy ───────────────────────────────
-// Per BILLING-RULES §3, all processor-specific stub classes are collapsed into a
+// All processor-specific stub classes are collapsed into a
 // single SpreedlyCardGatewayService. The routing engine selects the downstream
 // processor; SpreedlyCardGatewayService looks up the per-processor Spreedly
 // gateway token from ApiCredential and calls Spreedly's purchase endpoint.
@@ -99,7 +99,7 @@ builder.Services.AddScoped<ICommissionBalanceService, CommissionBalanceService>(
 builder.Services.AddScoped<IRecurringBillingEnrollmentService, RecurringBillingEnrollmentService>();
 builder.Services.AddScoped<IRecurringBillingProcessor, RecurringBillingProcessor>();
 
-// ── High-volume pipeline services (§10) ──────────────────────────────────
+// ── High-volume pipeline services ──────────────────────────────────
 builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
 builder.Services.AddScoped<IRecurringChargeWorker, RecurringChargeWorker>();
 builder.Services.AddScoped<IUplineAggregator, UplineAggregator>();
@@ -120,13 +120,13 @@ builder.Services.AddNotifications(builder.Configuration);
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();
 
-// ── Compra de tokens (Plan F) ─────────────────────────────────────────────
+// ── Compra de tokens ─────────────────────────────────────────────
 // Después de AddPayoutServices: usa su IEWalletClient y el candado de fondos por miembro
 // (sp_getapplock, compartido con los pagos), que con varias instancias de Billing sigue
 // serializando el dinero del mismo miembro.
 builder.Services.AddTokenPurchaseServices();
 
-// ── Cuota anual del Biz Center (Plan K) ──────────────────────────────────
+// ── Cuota anual del Biz Center ──────────────────────────────────
 builder.Services.AddAnnualFeeServices();
 
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
@@ -268,7 +268,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 
 var app = builder.Build();
@@ -305,14 +305,14 @@ app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");
 
-// Plan K (decision de Nick): un solo motor de renovacion, RecurringBillingProcessor (planificador +
+// Un solo motor de renovacion, RecurringBillingProcessor (planificador +
 // trabajadores + barrido). MembershipAutoRenewalJob renovaba por su cuenta TODA suscripcion activa con
 // StartDate <= hoy - 30, sin candado ni idempotencia: con los dos, doble cobro. RemoveIfExists lo borra
 // tambien de la base de Hangfire si un despliegue anterior lo dejo programado (quitar solo el
 // AddOrUpdate lo dejaria vivo alli). La clase sigue registrada, como CommissionPayoutJob.
 RecurringJob.RemoveIfExists("membership-auto-renewal");
 
-// Alta de los estados de cuota anual que falten (Plan K, K3). APAGADA por defecto: sin
+// Alta de los estados de cuota anual que falten. APAGADA por defecto: sin
 // Billing:AnnualFee:EnrollmentJobEnabled = true se registra con Cron.Never(), asi que no corre al
 // arrancar ni de madrugada, pero sale en el panel de Hangfire para lanzarla a mano. Encendida, diaria
 // a las 4:30 UTC, antes del planificador de las 5:00 UTC. El cron va en UTC como los demas trabajos
@@ -325,7 +325,7 @@ RecurringJob.AddOrUpdate<AnnualFeeStateEnrollmentJob>(
         : Cron.Never(),
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-// Pagos de cuota anual que se quedaron Pending: a conciliar, nunca liberados (Plan K, K11). No mueve
+// Pagos de cuota anual que se quedaron Pending: a conciliar, nunca liberados. No mueve
 // dinero: solo cambia Pending a NeedsReconciliation para que tesorería lo mire.
 RecurringJob.AddOrUpdate<AnnualFeeStalePendingJob>(
     "annual-fee-stale-pending",
@@ -375,7 +375,7 @@ RecurringJob.AddOrUpdate<DeferredPayoutAccountJob>(
     "*/15 * * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-// Caduca las compras de tokens en cripto que nadie confirmó (Plan F, D18) y libera su cupo.
+// Caduca las compras de tokens en cripto que nadie confirmó y libera su cupo.
 RecurringJob.AddOrUpdate<TokenPurchaseCryptoExpiryJob>(
     "token-purchase-crypto-expiry",
     job => job.ExecuteAsync(CancellationToken.None),

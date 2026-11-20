@@ -45,7 +45,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
                 throw new UnplacementWindowExpiredException();
         }
 
-        // Plan P: el borrado va en una transaccion con el arbol en exclusivo: espera a las colocaciones en curso
+        // El borrado va en una transaccion con el arbol en exclusivo: espera a las colocaciones en curso
         // (una colocacion bajo este nodo dejaria un hijo colgando de un nodo borrado) y vuelve a leer el nodo.
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
@@ -63,7 +63,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
             return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
         }
 
-        // Revision I7: la baja del propio miembro no deja huerfanos. Con equipo debajo se rechaza (la retirada con
+        // La baja del propio miembro no deja huerfanos. Con equipo debajo se rechaza (la retirada con
         // equipo es del BizCenter o del admin, que saben que hacer con los hijos). DualTeamNodes resta el nodo de
         // las piernas de su linea ascendente (antes no se restaba) y lo borra.
         if (!await DualTeamNodes.RemoveAsync(_db, command.MemberId, DualTeamChildrenOnRemoval.Reject, now, command.RequestedByMemberId, ct))

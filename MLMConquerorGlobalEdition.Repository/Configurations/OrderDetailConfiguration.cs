@@ -4,7 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
-/// <summary>Plan M (M6): toda unión es o.Id == od.OrderId y después od.ProductId == p.Id.</summary>
+/// <summary>Toda unión es o.Id == od.OrderId y después od.ProductId == p.Id.</summary>
 public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
 {
     public void Configure(EntityTypeBuilder<OrderDetail> builder)

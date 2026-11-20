@@ -71,7 +71,7 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
 
             await ReverseUplineStatsAsync(command.MemberId, now, ct);
 
-            // Plan K (C2): el motor de renovación no debe volver a cobrar esta membresía.
+            // El motor de renovación no debe volver a cobrar esta membresía.
             await MembershipBillingStops.StopForSubscriptionsAsync(_db, new[] { subscription.Id },
                 MembershipBillingStops.ReasonMembershipCancelled, now, command.MemberId, ct);
 
@@ -115,7 +115,7 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
 
     /// <summary>
     /// Resta el miembro del tamano del equipo de su linea de patrocinio y, al patrocinador directo, un patrocinado
-    /// calificado. Plan Q (DQ16): los PUNTOS ya no se tocan aqui; al pasar la suscripcion de Active a Cancelled,
+    /// calificado. Los PUNTOS ya no se tocan aqui; al pasar la suscripcion de Active a Cancelled,
     /// MembershipPointsDeltas (interceptor) resta lo que aportaba de PersonalPoints, de EnrollmentPoints del propio y de
     /// su linea y de las piernas del binario (antes solo se restaba de la linea de patrocinio, con topes en 0).
     /// </summary>
@@ -125,7 +125,7 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
         // Member's genealogy node — provides the full ancestor chain via HierarchyPath
         var memberNode = await _db.GenealogyTree
             .AsNoTracking()
-            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(memberId, ct); // nodo vigente
 
         if (memberNode is null) return;
 

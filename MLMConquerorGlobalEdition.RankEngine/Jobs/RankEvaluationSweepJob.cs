@@ -43,7 +43,7 @@ public class RankEvaluationSweepJob
     {
         _logger.LogInformation("{Job}: starting at {Now}.", JobSource, DateTime.UtcNow);
 
-        // Plan Q (Q-R1, revision del bloque 2 I-4): la evaluacion lee las piernas del binario (RankQualificationService).
+        // La evaluacion lee las piernas del binario (RankQualificationService).
         // El barrido evalua a todos los embajadores: vacia la cola ENTERA antes, con la misma espera de candado que las
         // comisiones. Si no puede (arbol ocupado mas de 120 s), falla y Hangfire lo reintenta: evaluar con piernas
         // atrasadas podria dejar sin ascenso a quien ya lo tiene.

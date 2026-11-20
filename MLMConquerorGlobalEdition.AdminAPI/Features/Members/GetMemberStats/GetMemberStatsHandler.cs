@@ -37,7 +37,7 @@ public class GetMemberStatsHandler : IRequestHandler<GetMemberStatsQuery, Result
             if (cached is not null) return Result<MemberStatsDto>.Success(cached);
         }
 
-        // IDateTimeProvider per CLAUDE.md — never DateTime.UtcNow directly.
+        // IDateTimeProvider: la hora sale siempre del proveedor, nunca de DateTime.UtcNow directo.
         var now           = _dateTime.Now;
         var windowStart   = now.AddHours(-24);
 

@@ -117,7 +117,7 @@ public class GetAvailableNodesHandler
                     IsLeftAvailable  = !leftOccupied,
                     IsRightAvailable = !rightOccupied,
                     ParentMemberId   = node?.ParentMemberId,
-                    // Plan P: la profundidad mantenida por la clave (antes, contando '/' de la ruta, mas el 1 de la raiz).
+                    // La profundidad mantenida por la clave (antes, contando '/' de la ruta, mas el 1 de la raiz).
                     Depth            = node != null ? (node.Depth ?? 0) + 1 : 0
                 };
             })
@@ -141,13 +141,13 @@ public class GetAvailableNodesHandler
     {
         var sponsorGenNode = await _db.GenealogyTree
             .AsNoTracking()
-            .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
+            .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente
 
         if (sponsorGenNode?.Node is null)
             return new List<string> { sponsorMemberId };
         var sponsorRoot = sponsorGenNode.Node;
 
-        // All descendants in enrollment tree by Node (Plan M)
+        // All descendants in enrollment tree by Node
         var descendants = await _db.GenealogyTree
             .AsNoTracking()
             .CurrentUnder(sponsorRoot)

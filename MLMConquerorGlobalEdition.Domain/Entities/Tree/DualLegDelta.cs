@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 namespace MLMConquerorGlobalEdition.Domain.Entities.Tree;
 
 /// <summary>
-/// Plan Q (P-R9): un cambio pendiente de las piernas del binario. Se suma a la pierna <see cref="Side"/> de
+/// Un cambio pendiente de las piernas del binario. Se suma a la pierna <see cref="Side"/> de
 /// <see cref="StartMemberId"/> y, por el lado por el que se baja, a cada ascendiente que ese nodo tenga CUANDO SE APLICA.
 /// Lo escribe y lo aplica LegPointMaintenance; ApplyDualLegDeltasJob vacia la cola y la borra.
 /// </summary>
@@ -14,16 +14,16 @@ public class DualLegDelta
     public TreeSide Side { get; set; }
     public decimal Points { get; set; }
     public int NodeCount { get; set; }
-    /// <summary>Plan Q (DQ13): cambio de suscripciones activas.</summary>
+    /// <summary>Cambio de suscripciones activas.</summary>
     public int QualifiedCount { get; set; }
     /// <summary>
-    /// Plan Q (DQ13): el cambio es DEL PROPIO StartMemberId (una suscripcion suya se activo o dejo de estarlo): va a su
+    /// El cambio es DEL PROPIO StartMemberId (una suscripcion suya se activo o dejo de estarlo): va a su
     /// SelfQualified y a las piernas de sus ascendientes, no a una pierna suya; Side no se usa. Sin nodo vivo, espera en la
     /// cola a que lo tenga. Lo escribe solo QualifiedTeamDeltas (y la retirada, con lo ya aplicado).
     /// </summary>
     public bool OwnChange { get; set; }
     /// <summary>
-    /// Revision del bloque 2 (M-3): tandas de un solo arranque que fallaron con este delta. Al llegar a
+    /// Tandas de un solo arranque que fallaron con este delta. Al llegar a
     /// LegPointMaintenance.MaxAttempts el delta pasa a DualLegDeltaDeadLetters y deja de bloquear la cola.
     /// </summary>
     public int Attempts { get; set; }

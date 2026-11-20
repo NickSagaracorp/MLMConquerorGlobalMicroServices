@@ -14,7 +14,6 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminPlaceMember
 /// <summary>
 /// Admin placement bypasses time and opportunity restrictions but still enforces
 /// structural rules: no circular reference, no third leg, no auto-superiority.
-/// Plan P:
 /// <list type="bullet">
 /// <item>Un miembro sin nodo entra como hoja (arbol en compartido y su hueco). Si tiene hijos esperando de una
 /// retirada del admin (flotantes), vuelven con el: entonces es un movimiento.</item>
@@ -78,7 +77,7 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // Plan P (I1): el candado antes de comprobar nada; un movimiento, el arbol en exclusivo desde el
+            // El candado antes de comprobar nada; un movimiento, el arbol en exclusivo desde el
             // principio (sin pasar de compartido a exclusivo).
             if (esMovimiento)
                 await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
@@ -130,7 +129,7 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
                 var nuevo = await DualTeamNodes.ChildAsync(_db, targetParent, command.MemberToPlaceId, side, now, _currentUser.UserId, ct);
                 _db.DualTeamTree.Add(nuevo);
                 await _db.SaveChangesAsync(ct);
-                // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+                // Solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
                 await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberToPlaceId, now, _currentUser.UserId, ct);
                 _db.Entry(nuevo).State = EntityState.Detached;
 

@@ -12,11 +12,11 @@
 @using Syncfusion.Blazor.Data
 
 @*
-    Cambios de estado (Plan J). UN componente para las tres vistas: lo que cambia entre ellas
+    Cambios de estado. UN componente para las tres vistas: lo que cambia entre ellas
     (qué endpoint, migas, columna de pierna) sale del parámetro Scope. Estado actual y fecha del
     último cambio; «Calificado» es el valor actual (IQualificationService, sin «desde cuándo»).
-    Las columnas enriquecidas no se ordenan ni se filtran en el servidor (R6). El rango sigue la
-    regla común de 366 días (J12); el límite de 3 meses es solo de Actividad.
+    Las columnas enriquecidas no se ordenan ni se filtran en el servidor. El rango sigue la
+    regla común de 366 días; el límite de 3 meses es solo de Actividad.
 *@
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@Breadcrumb" /> }

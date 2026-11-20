@@ -15,14 +15,14 @@ using IDateTimeProvider = MLMConquerorGlobalEdition.BizCenter.Services.IDateTime
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Placement.PlaceMember;
 
 /// <summary>
-/// Colocacion manual desde el BizCenter (el patrocinador elige padre y lado). Plan P:
+/// Colocacion manual desde el BizCenter (el patrocinador elige padre y lado):
 /// <list type="bullet">
 /// <item>Un miembro sin nodo entra como hoja: arbol en compartido, candado del hueco, comprobacion dentro.</item>
-/// <item>Una raiz provisional (tiene nodo y no tiene padre; decision de Nick) se coloca con todo su equipo:
+/// <item>Una raiz provisional (tiene nodo y no tiene padre; decision de negocio) se coloca con todo su equipo:
 /// el subarbol se mueve sin cambiar de forma y su volumen acumulado sube a la linea nueva.</item>
 /// <item>Un nodo ya colocado se mueve con sus reglas de siempre (sin downline propio en su subarbol).</item>
 /// <item>Los movimientos toman el arbol en exclusivo desde el principio y van por DualTeamNodes (clave, ruta,
-/// piernas incrementales y colas). Ningun filtro por HierarchyPath (C1).</item>
+/// piernas incrementales y colas). Ningun filtro por HierarchyPath.</item>
 /// </list>
 /// </summary>
 public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<PlaceMemberResult>>
@@ -113,7 +113,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 "No se puede mover a este ambassador porque ya tiene downline propio " +
                 "en la estructura Dual Team.");
 
-        // Revision I1: un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el.
+        // Un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el.
         var flotantes = tipo == Tipo.Hoja
             ? await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberToPlaceId, ct)
             : new List<DualTeamEntity>();
@@ -121,7 +121,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // Plan P: el candado antes de comprobar nada (I1). Una hoja: arbol en compartido y su hueco. Un
+            // El candado va antes de comprobar nada. Una hoja: arbol en compartido y su hueco. Un
             // movimiento (o una hoja con flotantes que recolgar): arbol en exclusivo desde el principio.
             if (tipo == Tipo.Hoja && flotantes.Count == 0)
             {
@@ -160,7 +160,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 await tx.RollbackAsync(ct);
                 return Circular();
             }
-            // Revision (menor 5): con el arbol en exclusivo se repite: entre la comprobacion de fuera y el candado pudo
+            // Con el arbol en exclusivo se repite: entre la comprobacion de fuera y el candado pudo
             // colocarse debajo alguno de sus patrocinados.
             if (tipo == Tipo.Movimiento && await HasOwnEnrolledDownlineAsync(nodoAhora!, ct))
             {
@@ -174,7 +174,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 var nuevo = await DualTeamNodes.ChildAsync(_db, targetParent, command.MemberToPlaceId, side, now, _currentUser.UserId, ct);
                 _db.DualTeamTree.Add(nuevo);
                 await _db.SaveChangesAsync(ct);
-                // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+                // Solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
                 await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberToPlaceId, now, _currentUser.UserId, ct);
                 _db.Entry(nuevo).State = EntityState.Detached;
                 await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberToPlaceId, flotantes, now, _currentUser.UserId, ct);
@@ -260,7 +260,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
     }
 
     /// <summary>
-    /// ¿Tiene en su subarbol binario a alguno de sus propios patrocinados? Plan P: el subarbol es el rango de su
+    /// ¿Tiene en su subarbol binario a alguno de sus propios patrocinados? El subarbol es el rango de su
     /// clave (DualSubtree.Under) unido a sus patrocinados, en una consulta; antes, prefijo de la ruta.
     /// </summary>
     private Task<bool> HasOwnEnrolledDownlineAsync(DualTeamEntity node, CancellationToken ct) =>

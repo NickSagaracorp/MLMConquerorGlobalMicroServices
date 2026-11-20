@@ -11,7 +11,7 @@ using MLMConquerorGlobalEdition.Repository.Queries;
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// Plan Q (DQ16, reglas de Nick): los puntos del producto de un miembro cuentan en TODA su linea ascendente (las piernas
+/// Reglas de Nick: los puntos del producto de un miembro cuentan en TODA su linea ascendente (las piernas
 /// del binario y los EnrollmentPoints de la linea de patrocinio, el propio incluido) SOLO mientras su membresia esta
 /// activa:
 /// <list type="bullet">
@@ -21,41 +21,41 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <item>una renovacion no cambia nada, salvo que cambie el producto o el nivel (subida o bajada): entonces se aplica la
 /// diferencia (puntos nuevos - puntos viejos).</item>
 /// </list>
-/// Es el UNICO sitio que lo traduce, desde QualifiedTeamCountsInterceptor en cada guardado (como los calificados, DQ13):
+/// Es el UNICO sitio que lo traduce, desde QualifiedTeamCountsInterceptor en cada guardado (como los calificados):
 /// <list type="number">
 /// <item>Cada suscripcion guarda lo que aporta mientras esta activa (<see cref="MembershipSubscription.DualTeamContribution"/>
 /// = <see cref="MembershipSubscription.EnrollmentContribution"/>; 0 fuera de Active):
 ///   <list type="bullet">
 ///   <item>al entrar en Active: los puntos de calificacion de los productos de su ultimo pedido (como los sumaba el alta)
 ///   o, sin pedido, los del producto de su nivel (el mayor si hay varios);</item>
-///   <item>al cambiar de nivel sin pedido nuevo (revision 2 del bloque 2, I3 e I4): lo que aportaba MENOS los puntos de su
+///   <item>al cambiar de nivel sin pedido nuevo: lo que aportaba MENOS los puntos de su
 ///   nivel viejo MAS los del nuevo (conserva los productos extra del pedido en la misma base). En una subida o bajada la
 ///   vieja caduca y nace otra activa sin pedido en el mismo guardado: la nueva parte de lo que aportaba la vieja. Con
 ///   pedido nuevo, los puntos de ese pedido.</item>
 ///   </list></item>
-/// <item>ABSOLUTO por miembro tocado (revision 2 del bloque 2, C1): para cada miembro con una suscripcion que cambia de
+/// <item>ABSOLUTO por miembro tocado: para cada miembro con una suscripcion que cambia de
 /// estado, de nivel o de miembro (o que nace o se borra), sus PersonalPoints pasan a ser la suma de lo que aportan sus
-/// suscripciones activas tras el guardado, y la diferencia con lo que tenia es el cambio neto. Un miembro de antes de
-/// DQ16 con puntos y sin aporte guardado (retenido, pendiente con los puntos que sembraba el alta antiguo) no cuenta dos
+/// suscripciones activas tras el guardado, y la diferencia con lo que tenia es el cambio neto. Un miembro anterior a
+/// esta regla, con puntos y sin aporte guardado (retenido, pendiente con los puntos que sembraba el alta antiguo) no cuenta dos
 /// veces al reactivarse: queda corregido en su primer cambio. Una renovacion sin cambio de nivel no toca a nadie.</item>
-/// <item>Bajo un candado por miembro (<see cref="MemberPointsLocks"/>, tercera revision del bloque 2, I-a) y con lecturas
+/// <item>Bajo un candado por miembro (<see cref="MemberPointsLocks"/>) y con lecturas
 /// de la base (no de lo seguido, que puede ser viejo), PersonalPoints pasa a ser el objetivo en el mismo guardado; los
-/// EnrollmentPoints del propio NO se escriben aqui (I-b): le llegan como una fila mas de MemberStatisticDeltas, igual que a
+/// EnrollmentPoints del propio NO se escriben aqui: le llegan como una fila mas de MemberStatisticDeltas, igual que a
 /// sus ascendientes, porque un valor absoluto pisaba el MERGE relativo de ApplyMemberStatisticDeltasJob. PersonalPoints ya incluye los propios de
 /// puntos pendientes en la cola (se suman aqui al encolarlos), asi que el cambio neto es objetivo - PersonalPoints: las
 /// piernas acaban en PersonalPoints al vaciar (lo aplicado, PersonalPoints - pendientes, mas lo pendiente), igual que la
 /// hoja de <see cref="LegPointMaintenance.EnqueueLeafAsync"/>.</item>
 /// <item>Y sube como delta: un propio con puntos en DualLegDeltas (O(1); llega a las piernas de sus ascendientes del
 /// binario al vaciar, y espera si no esta colocado) y UNA fila de MemberStatisticDeltas para su linea de patrocinio, el
-/// propio incluido (Plan Q, Bloque 4, Q-R34; antes una por ascendiente): Scope = SponsorLine sobre el propio si tiene nodo
+/// propio incluido (antes una por ascendiente): Scope = SponsorLine sobre el propio si tiene nodo
 /// de inscripcion; si no, una suya (Scope = Member) y una SponsorLine sobre el primer patrocinador de su cadena que lo
 /// tenga. ApplyMemberStatisticDeltasJob la expande en SQL y encola rango solo hasta GenealogyUpline.EnrollmentLevels. Un
 /// PersonalPoints escrito a mano que no este en las piernas descuadra las piernas en el primer cambio del miembro:
-/// 05-realinear-puntos-por-membresia.sql deja la base entera en la regla.</item>
+/// el realineo de puntos por membresia deja la base entera en la regla.</item>
 /// </list>
 /// Idempotente: un guardado que falla y se reintenta no aplica dos veces (lo ya ajustado en este contexto se recuerda
-/// hasta que el guardado se confirma). Todas sus lecturas son asincronas (revision 2 del bloque 2) y todas sus esperas
-/// llevan ConfigureAwait(false) (tercera revision): el SaveChanges sincrono las espera con GetAwaiter().GetResult() y, en
+/// hasta que el guardado se confirma). Todas sus lecturas son asincronas y todas sus esperas
+/// llevan ConfigureAwait(false): el SaveChanges sincrono las espera con GetAwaiter().GetResult() y, en
 /// un contexto de sincronizacion de un hilo, una espera que volviera a el se interbloquearia.
 /// </summary>
 public static class MembershipPointsDeltas
@@ -108,7 +108,7 @@ public static class MembershipPointsDeltas
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
         if (entradas.Count == 0 && !Ajustado.TryGetValue(context, out _)) return;
 
-        // Tercera revision del bloque 2 (I-a): candado por miembro (los de antes y despues de cada suscripcion que cambia y
+        // Candado por miembro (los de antes y despues de cada suscripcion que cambia y
         // los ya ajustados en un guardado que fallo) y, ya con el, los valores de la base de esas suscripciones.
         if (context.Database.IsRelational())
         {
@@ -183,9 +183,9 @@ public static class MembershipPointsDeltas
         }
 
         // 2. El objetivo de cada miembro tocado: la suma de lo que aportan sus suscripciones activas tras el guardado. Las que
-        //    se anaden, cambian o borran en este guardado con sus valores (refrescados con la base, I-a); las demas, como
+        //    se anaden, cambian o borran en este guardado con sus valores (refrescados con la base); las demas, como
         //    estan en la base (una seguida sin cambios puede ser vieja). Cuenta las activas borradas logicamente, como los
-        //    calificados (Q-R21) y 05-realinear-puntos-por-membresia.sql.
+        //    calificados y el realineo de puntos por membresia.
         var objetivo = tocados.ToDictionary(m => m, _ => 0, StringComparer.Ordinal);
         if (tocados.Count > 0)
         {
@@ -205,7 +205,7 @@ public static class MembershipPointsDeltas
         }
 
         // 3. PersonalPoints pasa a ser el objetivo y el cambio neto es objetivo - PersonalPoints LEIDO DE LA BASE bajo el
-        //    candado (I-a: una fila seguida puede ser vieja). Los EnrollmentPoints del propio ya no se escriben aqui (I-b):
+        //    candado (una fila seguida puede ser vieja). Los EnrollmentPoints del propio ya no se escriben aqui:
         //    un valor absoluto desde una lectura vieja pisaba el MERGE relativo de ApplyMemberStatisticDeltasJob; el propio
         //    recibe su cambio como una fila mas de MemberStatisticDeltas (paso 4). Idempotente: un reintento vuelve a partir
         //    de la base; lo ajustado en una fila nueva (sin guardar) se recuerda para descontarlo.
@@ -237,7 +237,7 @@ public static class MembershipPointsDeltas
             }
 
         // 4. El neto sube como delta: al binario (un propio con puntos) y a la linea de patrocinio, el propio incluido, con
-        //    UNA fila (Plan Q, Bloque 4, Q-R34): ApplyMemberStatisticDeltasJob la expande por los ascendientes en SQL.
+        //    UNA fila: ApplyMemberStatisticDeltasJob la expande por los ascendientes en SQL.
         var yaBinario = context.ChangeTracker.Entries<DualLegDelta>()
             .Where(e => e.State == EntityState.Added && e.Entity.OwnChange && e.Entity.CreatedBy == Actor)
             .GroupBy(e => e.Entity.StartMemberId, StringComparer.Ordinal)
@@ -344,7 +344,7 @@ public static class MembershipPointsDeltas
 
     /// <summary>
     /// La fila de estadisticas del miembro (la primera por Id en la base, seguida o leida y seguida) y sus PersonalPoints EN LA
-    /// BASE (I-a). Sin fila en la base, la nueva seguida si la hay (su valor menos lo que este calculo le ajusto) o ninguna.
+    /// BASE. Sin fila en la base, la nueva seguida si la hay (su valor menos lo que este calculo le ajusto) o ninguna.
     /// </summary>
     private static async Task<(MemberStatisticEntity? Fila, int Base)> FilaDeAsync(
         DbContext context, string memberId, Dictionary<MemberStatisticEntity, int> ajustado, CancellationToken ct)
@@ -365,10 +365,10 @@ public static class MembershipPointsDeltas
     }
 
     /// <summary>
-    /// Plan Q (Bloque 4, Q-R34): las filas de estadisticas de un cambio de <paramref name="puntos"/> en la linea de
+    /// Las filas de estadisticas de un cambio de <paramref name="puntos"/> en la linea de
     /// patrocinio de <paramref name="memberId"/>, el incluido. Con nodo de inscripcion propio (seguido o en la base), una
     /// sola: SponsorLine sobre el. Sin el (un alta que se activa antes de tenerlo), una suya (Member) y una SponsorLine sobre
-    /// el primer patrocinador de su cadena que tenga nodo (tercera revision del bloque 2, con guarda de ciclos); si nadie lo
+    /// el primer patrocinador de su cadena que tenga nodo (con guarda de ciclos); si nadie lo
     /// tiene, solo la suya. QualifiedSponsoredMembersDelta y EnrollmentTeamSizeDelta van a 0: los pone el alta.
     /// </summary>
     private static async Task<List<MemberStatisticDelta>> FilasDeLineaAsync(
@@ -380,7 +380,7 @@ public static class MembershipPointsDeltas
             IsApplied = false, CreatedBy = Actor, CreationDate = now
         };
 
-        // Revision del bloque 4: «tiene nodo» es que su nodo vigente tenga Node (GenealogySubtree.CurrentNodeAsync), lo
+        // «tiene nodo» es que su nodo vigente tenga Node (GenealogySubtree.CurrentNodeAsync), lo
         // mismo que mira el trabajo al expandir. Antes bastaba una ruta de texto: un vigente sin Node dejaba una SponsorLine
         // que el trabajo no podia expandir (los puntos se perdian) o que acreditaba un nodo vivo mas viejo.
         if (await context.CurrentNodeAsync(memberId, ct).ConfigureAwait(false) is not null)

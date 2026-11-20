@@ -11,25 +11,25 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan K. Guardas antes de tocar nada: mejor fallar el despliegue que dejar datos que
+            // Guardas antes de tocar nada: mejor fallar el despliegue que dejar datos que
             // contradicen el modelo o truncar. (1) El índice único filtrado de IsAnnualFeePlan fallaría con un
             // mensaje oscuro si hubiera dos planes con ese nombre. (2) Un estado por suscripción en el
             // plan anual quedaría como estado de membresía en el plan de la cuota: la cuota se cobraría
-            // dos veces (K2). En local no hay ninguno de los dos casos.
+            // dos veces. En local no hay ninguno de los dos casos.
             migrationBuilder.Sql(@"
 IF (SELECT COUNT(*) FROM [RecurringBillingPlans] WHERE [Name] = N'Lifestyle Ambassador (Annual)') > 1
-    THROW 51010, N'Hay mas de un plan Lifestyle Ambassador (Annual): dejar uno antes de migrar (Plan K, Tarea 5).', 1;
+    THROW 51010, N'Hay mas de un plan Lifestyle Ambassador (Annual): dejar uno antes de migrar.', 1;
 IF EXISTS (SELECT 1 FROM [SubscriptionBillingStates] s
            JOIN [RecurringBillingPlans] p ON p.[Id] = s.[RecurringBillingPlanId]
            WHERE p.[Name] = N'Lifestyle Ambassador (Annual)')
-    THROW 51011, N'Hay estados de facturacion por suscripcion en el plan anual: revisarlos antes de migrar (Plan K, Tarea 5).', 1;
+    THROW 51011, N'Hay estados de facturacion por suscripcion en el plan anual: revisarlos antes de migrar.', 1;
 -- Anti-truncado: la columna se vuelve anulable manteniendo nvarchar(100). Si en esta base fuera mas
 -- ancha (alguien la amplio a mano), el ALTER la estrecharia: mejor parar.
 IF COL_LENGTH(N'SubscriptionBillingStates', N'MembershipSubscriptionId') = -1
    OR COL_LENGTH(N'SubscriptionBillingStates', N'MembershipSubscriptionId') > 200
-    THROW 51012, N'SubscriptionBillingStates.MembershipSubscriptionId es mas ancha que nvarchar(100): revisar antes de migrar (Plan K, Tarea 5).', 1;
+    THROW 51012, N'SubscriptionBillingStates.MembershipSubscriptionId es mas ancha que nvarchar(100): revisar antes de migrar.', 1;
 IF EXISTS (SELECT 1 FROM [SubscriptionBillingStates] WHERE LEN([MembershipSubscriptionId]) > 100)
-    THROW 51013, N'Hay MembershipSubscriptionId de mas de 100 caracteres: se truncarian (Plan K, Tarea 5).', 1;");
+    THROW 51013, N'Hay MembershipSubscriptionId de mas de 100 caracteres: se truncarian.', 1;");
 
             migrationBuilder.DropIndex(
                 name: "IX_SubscriptionBillingStates_MembershipSubscriptionId",
@@ -60,7 +60,7 @@ IF EXISTS (SELECT 1 FROM [SubscriptionBillingStates] WHERE LEN([MembershipSubscr
                 nullable: false,
                 defaultValue: false);
 
-            // El plan que ya existe es el de la cuota (K2). Es nuestro catálogo, no un dato del legado.
+            // El plan que ya existe es el de la cuota. Es nuestro catálogo, no un dato del legado.
             migrationBuilder.Sql(
                 "UPDATE [RecurringBillingPlans] SET [IsAnnualFeePlan] = 1 WHERE [Name] = N'Lifestyle Ambassador (Annual)';");
 

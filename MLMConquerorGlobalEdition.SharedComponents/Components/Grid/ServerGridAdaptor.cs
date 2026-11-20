@@ -90,7 +90,7 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     [Parameter] public Func<Task<string?>>? AccessTokenProvider { get; set; }
 
     /// <summary>
-    /// Opcional (Plan J). Si se pasa, una respuesta que no es 2xx NO lanza: se entrega el
+    /// Opcional. Si se pasa, una respuesta que no es 2xx NO lanza: se entrega el
     /// <c>errorCode</c> del cuerpo (o null si no lo trae) y la lectura devuelve una página vacía,
     /// para que el anfitrión explique el rechazo (p. ej. un rango de fechas no admitido). Sin él, el
     /// adaptador falla como siempre.
@@ -98,7 +98,7 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     [Parameter] public Func<string?, Task>? OnServerError { get; set; }
 
     /// <summary>
-    /// Opcional (Plan Q). Se llama tras cada lectura con <c>true</c> si el servidor limito el orden y la busqueda por el
+    /// Opcional. Se llama tras cada lectura con <c>true</c> si el servidor limito el orden y la busqueda por el
     /// tamano del equipo (TeamGridLimits), para que el anfitrion lo explique.
     /// </summary>
     [Parameter] public Func<bool, Task>? OnLimited { get; set; }

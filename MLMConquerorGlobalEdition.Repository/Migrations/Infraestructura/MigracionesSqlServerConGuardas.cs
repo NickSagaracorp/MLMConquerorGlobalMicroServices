@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore.Update;
 namespace MLMConquerorGlobalEdition.Repository.Migrations.Infraestructura;
 
 /// <summary>
-/// Plan Q (DQ11): el generador de SQL Server de siempre, salvo para las operaciones marcadas con
+/// El generador de SQL Server de siempre, salvo para las operaciones marcadas con
 /// SoloSiLaTablaEsNueva.Anotacion: cada comando suyo se envuelve en
-/// IF NOT EXISTS (tabla en __PlanQ_TablasPrevias) EXEC(N'…'). EXEC aplaza la compilacion: un INSERT o un indice sobre
+/// IF NOT EXISTS (tabla en __TablasPreviasDeMigracion) EXEC(N'…'). EXEC aplaza la compilacion: un INSERT o un indice sobre
 /// columnas que la tabla vieja no tiene no rompe el lote aunque no se ejecute.
 ///
-/// Ademas, solo en el script idempotente (migrate-rds.sql), cada migrationBuilder.Sql va en EXEC(N'…'), como EF ya hace
+/// Ademas, solo en el script idempotente de migraciones, cada migrationBuilder.Sql va en EXEC(N'…'), como EF ya hace
 /// con sus UpdateData e InsertData. El script mete cada sentencia en IF NOT EXISTS (historial) BEGIN … END y compila la
 /// migracion entera en un lote: sin EXEC, un CREATE FUNCTION no es la primera sentencia del lote (156 y 319) y un UPDATE
 /// sobre una columna que la misma migracion acaba de anadir no compila (207) y tira el lote. Con MigrateAsync no cambia

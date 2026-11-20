@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// Plan Q (tercera revision del bloque 2, I-a): serializa por miembro los guardados que cambian sus puntos de membresia
-/// (DQ16). <see cref="MembershipPointsDeltas"/> calcula el cambio neto ANTES de que EF abra su transaccion; sin candado, dos
+/// Serializa por miembro los guardados que cambian sus puntos de membresia.
+/// <see cref="MembershipPointsDeltas"/> calcula el cambio neto ANTES de que EF abra su transaccion; sin candado, dos
 /// guardados del mismo miembro leian lo mismo (dos activaciones se veian inactivas, dos cancelaciones restaban dos veces).
 /// <para>
 /// Un sp_getapplock exclusivo por miembro, en orden ordinal (sin interbloqueos entre guardados), y despues lecturas frescas.

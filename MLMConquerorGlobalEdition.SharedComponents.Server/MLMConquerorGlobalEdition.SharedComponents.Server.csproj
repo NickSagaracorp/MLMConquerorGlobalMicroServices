@@ -30,9 +30,7 @@
     SharedComponents, porque móvil también los necesita. Antes de añadir un archivo a este
     proyecto, comprobar que de verdad depende del alojamiento web; si no depende, su sitio es
     SharedComponents.
-
-    La prueba SharedComponentsNoServerHostingTests (en BizCenter.Tests) vigila que esa frontera no
-    se cruce de vuelta.
+    Esa frontera no debe cruzarse de vuelta.
   -->
 
   <!-- HttpContext, IHttpContextAccessor, IResult, Results, IEndpointRouteBuilder, CookieOptions:

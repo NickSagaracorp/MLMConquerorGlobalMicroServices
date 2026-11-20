@@ -8,9 +8,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
     public partial class BusquedaYNivelDeAlta : Migration
     {
         /// <summary>
-        /// Plan Q, revision del bloque 5 (I5). Las columnas de busqueda son calculadas NO persistidas: anadirlas es solo
+        /// Las columnas de busqueda son calculadas NO persistidas: anadirlas es solo
         /// metadatos (una persistida reescribia MemberProfiles entera con un candado Sch-M en una sola transaccion). Sus
-        /// indices guardan el valor (la expresion es deterministica y precisa) y filtran IsDeleted = 0 (I3). Los indices se
+        /// indices guardan el valor (la expresion es deterministica y precisa) y filtran IsDeleted = 0. Los indices se
         /// crean fuera de la transaccion de la migracion, cada uno en la suya, y ONLINE donde la edicion lo admite
         /// (Enterprise o Developer, Azure SQL, Managed Instance; en las demas, sin ONLINE). IX_MemberProfiles_EnrollDate se
         /// rehace con DROP_EXISTING: no queda un momento sin indice. Cada paso comprueba si ya esta hecho, asi que una

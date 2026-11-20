@@ -16,13 +16,12 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessRefundWebhoo
 /// - Loads PaymentHistory by GatewayTransactionId. Not found: failure, so the provider receives a non-2xx and retries.
 /// - Already Refunded (a repeated notice): success without changes.
 /// - Sets TransactionStatus = Refunded on the PaymentHistory record.
-/// - Revision de Q3 (C1, M2): the endpoint is public and UNSIGNED (no provider HMAC yet: a pre-production blocker, see the
-///   Plan Q document). Anyone can post a payment.success that creates a Captured PaymentHistory for any order, and then a
+/// - The endpoint is public and UNSIGNED (no provider HMAC yet: a pre-production blocker). Anyone can post a payment.success that creates a Captured PaymentHistory for any order, and then a
 ///   refund for it. So the notice touches an order only through <see cref="RefundedMembershipOrders.IsOwnCapturedPaymentOf"/>:
 ///   the payment was created by our own charge flow (not by the webhook), was Captured before this notice, points to that
 ///   order (the payload OrderId is ignored) and the order (not deleted) belongs to the payment's member. Only then the
 ///   order becomes Refunded.
-/// - Plan Q (Q3): on top of that, a FULL refund or chargeback (explicit amount &gt; 0 and &gt;= the payment; 0 or missing is
+/// - On top of that, a FULL refund or chargeback (explicit amount &gt; 0 and &gt;= the payment; 0 or missing is
 ///   not full) of the current order of a membership cancels it (RefundedMembershipOrders, shared with the admin refund)
 ///   and stops its recurring billing.
 /// </summary>
@@ -53,7 +52,7 @@ public class ProcessRefundWebhookHandler : IRequestHandler<ProcessRefundWebhookC
                 "PAYMENT_NOT_FOUND",
                 $"No payment record found for transaction '{payload.TransactionId}'.");
 
-        // Revision de Q3 (M8): la pasarela repite avisos; el repetido no cambia nada.
+        // La pasarela repite avisos; el repetido no cambia nada.
         if (payment.TransactionStatus == PaymentHistoryTransactionStatus.Refunded)
             return Result<bool>.Success(true);
 
@@ -66,7 +65,7 @@ public class ProcessRefundWebhookHandler : IRequestHandler<ProcessRefundWebhookC
         payment.LastUpdateDate    = now;
         payment.LastUpdateBy      = actor;
 
-        // Revision de Q3 (C1, M2): solo el pedido del propio pago, si el pago es nuestro y estaba cobrado. Sin firma de la
+        // Solo el pedido del propio pago, si el pago es nuestro y estaba cobrado. Sin firma de la
         // pasarela (pendiente antes de produccion), un aviso no puede decidir sobre un pedido ajeno.
         Orders? order = null;
         if (!string.IsNullOrWhiteSpace(payment.OrderId))
@@ -84,7 +83,7 @@ public class ProcessRefundWebhookHandler : IRequestHandler<ProcessRefundWebhookC
             }
         }
 
-        // Plan Q (Q3, decidido por Nick): una devolucion o un contracargo TOTAL del pedido vigente de la membresia la
+        // Una devolucion o un contracargo TOTAL del pedido vigente de la membresia la
         // cancela (el interceptor resta sus puntos del miembro y de su linea), con el mismo codigo que la devolucion desde
         // el admin. Un aviso parcial, sin importe o sobre un pedido que no pasa la guarda de arriba no la toca. Bajo el
         // candado de puntos del miembro, como en el admin.

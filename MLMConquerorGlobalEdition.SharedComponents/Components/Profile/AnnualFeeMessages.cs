@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Security;
 namespace MLMConquerorGlobalEdition.SharedComponents.Components.Profile;
 
 /// <summary>
-/// Qué texto enseña la tarjeta de la cuota para cada código de error (Plan K) y si un fallo deja el
+/// Qué texto enseña la tarjeta de la cuota para cada código de error y si un fallo deja el
 /// intento pendiente (misma clave al repetir). Nunca se enseña el texto crudo del servidor.
 /// </summary>
 public static class AnnualFeeMessages

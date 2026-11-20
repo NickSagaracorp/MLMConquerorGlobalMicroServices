@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.General;
 namespace MLMConquerorGlobalEdition.Domain.Entities.Membership;
 
 /// <summary>
-/// Un cambio de estado de una suscripción (Plan J, J13). Hermana de MemberStatusHistory, que es
+/// Un cambio de estado de una suscripción. Hermana de MemberStatusHistory, que es
 /// el estado de la CUENTA: aquí va el de la MEMBRESÍA. La escribe StatusHistoryInterceptor al
 /// guardar; nadie la escribe a mano.
 /// </summary>

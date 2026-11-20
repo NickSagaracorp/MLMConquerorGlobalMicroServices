@@ -84,7 +84,7 @@ public class GetPendingPlacementsHandler
             dualNodes.TryGetValue(member.MemberId, out var node);
             logByMember.TryGetValue(member.MemberId, out var log);
 
-            // Plan P (decision de Nick): una raiz provisional (nodo sin padre) sigue pendiente de colocar.
+            // Decision de negocio: una raiz provisional (nodo sin padre) sigue pendiente de colocar.
             var isPlaced            = node != null && node.ParentMemberId != null;
             var opportunitiesUsed   = log?.UnplacementCount ?? 0;
             var firstPlacedAt       = log?.FirstPlacementDate;

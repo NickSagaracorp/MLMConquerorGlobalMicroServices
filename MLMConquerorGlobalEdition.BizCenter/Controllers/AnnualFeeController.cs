@@ -11,7 +11,7 @@ using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurren
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
 /// <summary>
-/// La cuota anual del miembro que llama (Plan K). El miembro sale del token: no hay sujeto en la URL ni
+/// La cuota anual del miembro que llama. El miembro sale del token: no hay sujeto en la URL ni
 /// en el cuerpo. El resumen y la preferencia se resuelven aquí; el pago lo hace Billing, al que se
 /// reenvía el JWT y el permiso de step-up.
 /// </summary>
@@ -37,8 +37,8 @@ public class AnnualFeeController : ControllerBase
         Ok(ApiResponse<AnnualFeeOverviewDto>.Ok(await _overview.GetAsync(_currentUser.MemberId, ct)));
 
     /// <summary>
-    /// PUT /api/v1/bizcenter/billing/annual-fee/preference — pagar las cuotas con el saldo (K7). Sin
-    /// step-up (K15); nunca suplantando (la suplantación de solo lectura ya la corta el middleware).
+    /// PUT /api/v1/bizcenter/billing/annual-fee/preference — pagar las cuotas con el saldo. Sin
+    /// step-up; nunca suplantando (la suplantación de solo lectura ya la corta el middleware).
     /// </summary>
     [HttpPut("preference")]
     public async Task<IActionResult> SetPreference([FromBody] AnnualFeePreferenceRequest request, CancellationToken ct)
@@ -57,7 +57,7 @@ public class AnnualFeeController : ControllerBase
     /// <summary>
     /// POST /api/v1/bizcenter/billing/annual-fee/pay — "Pagar ahora" con token, comisiones o eWallet.
     /// El filtro de step-up valida y quema el permiso antes de llegar aquí; se reenvía a Billing en
-    /// X-Step-Up-Token, que lo valida y quema con su propia marca. Tarjeta: 400, hasta el Plan I.
+    /// X-Step-Up-Token, que lo valida y quema con su propia marca. Tarjeta: 400, por ahora.
     /// </summary>
     [HttpPost("pay")]
     [RequiresStepUp(StepUpOperations.AnnualFeeFromBalance)]

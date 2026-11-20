@@ -137,7 +137,7 @@ public class TokensController : ControllerBase
         return Ok(ApiResponse<TransferTokenInstanceResponse>.Ok(result.Value!, "Token transferred successfully."));
     }
 
-    // ─── Compra de tokens (Plan F) ──────────────────────────────────────────
+    // ─── Compra de tokens ──────────────────────────────────────────
     // El dinero lo resuelve Billing con el JWT del miembro: aquí no se calcula precio, cupo ni saldo,
     // y la petición no lleva MemberId. El estado y el código de Billing llegan tal cual a la pantalla.
 

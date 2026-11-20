@@ -1,8 +1,8 @@
 @* Resultado de confirmar el correo: éxito, enlace caducado o enlace inválido.
 
    La llamada que confirma el correo ya se hizo antes de llegar aquí —la página que monta
-   este componente es quien lee userId y token de la query string, con la forma que fijó la
-   Tarea 1 ({base}/auth/confirm-email?userId=…&token=…), y quien decide el resultado. Este
+   este componente es quien lee userId y token de la query string, con la forma que fijó el flujo de confirmación
+   ({base}/auth/confirm-email?userId=…&token=…), y quien decide el resultado. Este
    componente solo lo enseña. En los dos casos de fallo ofrece reenviar la confirmación, sin
    distinguir mucho entre "caducado" e "inválido" en el texto: para quien lo lee, en ambos
    casos el siguiente paso es el mismo, pedir uno nuevo. *@

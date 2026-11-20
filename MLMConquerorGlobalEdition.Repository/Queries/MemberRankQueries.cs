@@ -20,7 +20,7 @@ public sealed class MemberRankSince
 }
 
 /// <summary>
-/// Plan Q (visualizador del admin): el unico sitio que decide cual es el rango vigente de un miembro (la fila de su
+/// El unico sitio que decide cual es el rango vigente de un miembro (la fila de su
 /// historial con el AchievedAt mas reciente) y cual su rango maximo (la de mayor SortOrder). Antes, siete sitios lo
 /// repetian: unos con GroupBy(...).First() en SQL (dos recorridos de la tabla, ROW_NUMBER y una cola de trabajo, sin
 /// indice y con MemberId nvarchar(max)) y otros trayendo el historial entero a memoria.

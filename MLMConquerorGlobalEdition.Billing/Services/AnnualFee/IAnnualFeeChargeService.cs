@@ -21,18 +21,18 @@ public sealed record AnnualFeeChargeOutcome(
 /// <summary>Quién paga (siempre del token), con qué identidad queda el rastro y qué pide.</summary>
 public sealed record AnnualFeePayNowInput(string MemberId, string Actor, MLMConquerorGlobalEdition.SharedKernel.Billing.PayAnnualFeeRequest Request);
 
-/// <summary>El cobro de la cuota anual del Biz Center (Plan K).</summary>
+/// <summary>El cobro de la cuota anual del Biz Center.</summary>
 public interface IAnnualFeeChargeService
 {
     /// <summary>
     /// El cobro automático de un estado de cuota anual. Lo llama RecurringBillingProcessor cuando le
     /// llega un estado con Purpose = AnnualFee. <paramref name="force"/>: el bill-now de soporte, que
-    /// cobra aunque no venza pero también exige Billing:AnnualFee:AutoChargeEnabled (revisión I-3) y respeta
+    /// cobra aunque no venza pero también exige Billing:AnnualFee:AutoChargeEnabled y respeta
     /// las exclusiones.
     /// </summary>
     Task<Result<AnnualFeeChargeOutcome>> ChargeDueAsync(string billingStateId, bool force, CancellationToken ct = default);
 
-    /// <summary>"Pagar ahora" del miembro del token (K14). Misma clave = mismo resultado (K10).</summary>
+    /// <summary>"Pagar ahora" del miembro del token. Misma clave = mismo resultado.</summary>
     Task<Result<MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeePaymentResultDto>> PayNowAsync(
         AnnualFeePayNowInput input, CancellationToken ct = default);
 
@@ -42,7 +42,7 @@ public interface IAnnualFeeChargeService
     /// </summary>
     Task<bool> HasPaymentAsync(string memberId, string? idempotencyKey, CancellationToken ct = default);
 
-    /// <summary>Tesorería cierra un pago a conciliar tras mirar i-Payout (K11).</summary>
+    /// <summary>Tesorería cierra un pago a conciliar tras mirar i-Payout.</summary>
     Task<Result<MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeePaymentResultDto>> ReconcileAsync(
         string paymentId, MLMConquerorGlobalEdition.SharedKernel.Billing.ReconcileAnnualFeePaymentRequest request,
         string actor, CancellationToken ct = default);

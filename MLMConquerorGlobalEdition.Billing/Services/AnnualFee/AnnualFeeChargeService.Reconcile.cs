@@ -6,7 +6,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 
-/// <summary>Conciliación y barrido de los pagos de cuota dudosos (Plan K, K11).</summary>
+/// <summary>Conciliación y barrido de los pagos de cuota dudosos.</summary>
 public sealed partial class AnnualFeeChargeService
 {
     public async Task<Result<AnnualFeePaymentResultDto>> ReconcileAsync(
@@ -19,7 +19,7 @@ public sealed partial class AnnualFeeChargeService
         if (memberId is null)
             return PayFail(AnnualFeeErrors.PaymentNotFound, "Annual-fee payment not found.");
 
-        // Revisión M-4: topes antes de tocar nada.
+        // Topes antes de tocar nada.
         var reference = string.IsNullOrWhiteSpace(request.GatewayReference) ? null : request.GatewayReference.Trim();
         if (reference is { Length: > AnnualFeeRules.GatewayReferenceMaxLength })
             return PayFail(AnnualFeeErrors.GatewayReferenceTooLong,
@@ -67,7 +67,7 @@ public sealed partial class AnnualFeeChargeService
                     }
                     else
                     {
-                        // Revisión M-3: el ciclo ya lo pagó otra vía mientras este débito estaba en revisión.
+                        // El ciclo ya lo pagó otra vía mientras este débito estaba en revisión.
                         // El dinero salió (se completa), el estado no se mueve, y es un posible doble cobro.
                         warning = AnnualFeeErrors.ReconciledCycleAlreadyAdvanced;
                         _logger.LogCritical(
@@ -82,7 +82,7 @@ public sealed partial class AnnualFeeChargeService
                     Cancel(order, actor, now);
                 }
 
-                // Revisión M-7: auditoría explícita de la conciliación. Va delante en las notas para que, si
+                // Auditoría explícita de la conciliación. Va delante en las notas para que, si
                 // hay que recortar (500), se pierda lo más antiguo y no quién, cuándo, con qué referencia y qué
                 // resultado. Quién y cuándo quedan también en LastUpdateBy y LastUpdateDate del pago.
                 var audit = $"[reconciled {now:yyyy-MM-dd HH:mm} by {actor}: {(request.Charged ? "charged" : "not charged")}" +
@@ -100,7 +100,7 @@ public sealed partial class AnnualFeeChargeService
             }
             catch (Exception)
             {
-                // Revisión C-1: nada a medias en el contexto; se relanza.
+                // Nada a medias en el contexto; se relanza.
                 await AbortUnderGateAsync(tx, memberId, before);
                 throw;
             }

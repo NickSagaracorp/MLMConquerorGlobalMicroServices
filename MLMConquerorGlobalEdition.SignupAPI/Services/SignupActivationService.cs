@@ -49,12 +49,12 @@ public class SignupActivationService : ISignupActivationService
         member.Status         = MemberAccountStatus.Active;
         member.LastUpdateDate = now;
         member.LastUpdateBy   = actorEmail;
-        // Plan Q (DQ10): el nivel de alta guardado (regla N2), por si la eleccion de productos no lo dejo puesto.
+        // El nivel de alta guardado, por si la eleccion de productos no lo dejo puesto.
         await SignupMembershipLevel.RefreshAsync(_db, member, ct);
 
         // El mes de membresía arranca cuando el dinero está cobrado, no cuando se rellenó el
         // formulario. En la vía de cripto eso puede ser días después.
-        // Plan Q (DQ16): los puntos que aporta la suscripcion activa salen de su ultimo pedido, que es el del alta.
+        // Los puntos que aporta la suscripcion activa salen de su ultimo pedido, que es el del alta.
         subscription.LastOrderId      ??= order.Id;
         subscription.SubscriptionStatus = MembershipStatus.Active;
         subscription.StartDate          = now;
@@ -67,14 +67,14 @@ public class SignupActivationService : ISignupActivationService
         {
             var sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .CurrentOfAsync(member.SponsorMemberId, ct); // nodo vigente (Plan M, M2)
+                .CurrentOfAsync(member.SponsorMemberId, ct); // nodo vigente
 
             if (sponsorNode is not null)
             {
-                // Plan Q (Bloque 4): UNA fila por alta. ApplyMemberStatisticDeltasJob la expande en SQL por los
+                // UNA fila por alta. ApplyMemberStatisticDeltasJob la expande en SQL por los
                 // ascendientes del Node del patrocinador (el mismo delta que antes, en cada uno; los patrocinados solo
                 // en el). Antes, una fila por ascendiente en esta transaccion: 29,4 millones de filas con 1.000.000 de
-                // altas (Plan P, Bloque D). Los puntos (DQ16) los encola MembershipPointsDeltas al pasar la suscripcion a
+                // altas. Los puntos los encola MembershipPointsDeltas al pasar la suscripcion a
                 // Active (el propio incluido); aqui solo el tamano del equipo y los patrocinados.
                 await _db.MemberStatisticDeltas.AddAsync(new MemberStatisticDelta
                 {

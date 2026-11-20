@@ -22,7 +22,7 @@ public class GetAllTeamMembersHandler : IRequestHandler<GetAllTeamMembersQuery, 
     public async Task<Result<PagedResult<TeamMemberDto>>> Handle(GetAllTeamMembersQuery request, CancellationToken ct)
     {
         var memberId = _currentUser.MemberId;
-        // Plan M: el equipo por el Node vigente del miembro; sin nodo, el equipo sale vacío.
+        // El equipo por el Node vigente del miembro; sin nodo, el equipo sale vacío.
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         // JOIN the genealogy subtree to profiles and page at the DB — instead of loading ALL
