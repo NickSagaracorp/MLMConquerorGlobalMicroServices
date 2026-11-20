@@ -35,6 +35,9 @@ using MLMConquerorGlobalEdition.Notifications;
 using MLMConquerorGlobalEdition.Repository.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secretos de AWS Secrets Manager (lista SecretosAws:Secretos de este servicio). Va antes que
+// cualquier cosa que lea la configuracion: si falta uno, el servicio no arranca.
+builder.Configuration.AddSecretosDeAws();
 
 builder.Logging.AddPiiMaskingConsole();
 

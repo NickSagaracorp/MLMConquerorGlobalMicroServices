@@ -5,6 +5,9 @@ using MLMConquerorGlobalEdition.Signups.Middleware;
 using MLMConquerorGlobalEdition.Signups.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secretos de AWS Secrets Manager (lista SecretosAws:Secretos de este servicio). Va antes que
+// cualquier cosa que lea la configuracion: si falta uno, el servicio no arranca.
+builder.Configuration.AddSecretosDeAws();
 
 // Blazor — Auto render mode (starts as Server, transitions to WASM after download)
 builder.Services.AddRazorComponents()

@@ -12,6 +12,9 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secretos de AWS Secrets Manager (lista SecretosAws:Secretos de este servicio). Va antes que
+// cualquier cosa que lea la configuracion: si falta uno, el servicio no arranca.
+builder.Configuration.AddSecretosDeAws();
 
 // Localization — the 9 supported cultures, mapped from app codes by LanguageCodeMapper.
 var supportedCultures = LanguageCodeMapper.SupportedCultureNames.ToArray();

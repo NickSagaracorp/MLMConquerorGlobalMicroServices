@@ -22,6 +22,9 @@ using CacheService = MLMConquerorGlobalEdition.SharedKernel.Server.Services.Cach
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secretos de AWS Secrets Manager (lista SecretosAws:Secretos de este servicio). Va antes que
+// cualquier cosa que lea la configuracion: si falta uno, el servicio no arranca.
+builder.Configuration.AddSecretosDeAws();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(

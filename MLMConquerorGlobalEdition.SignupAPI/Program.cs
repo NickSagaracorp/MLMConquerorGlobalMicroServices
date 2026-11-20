@@ -37,6 +37,9 @@ using MLMConquerorGlobalEdition.Repository.Services.Entrax;
 using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secretos de AWS Secrets Manager (lista SecretosAws:Secretos de este servicio). Va antes que
+// cualquier cosa que lea la configuracion: si falta uno, el servicio no arranca.
+builder.Configuration.AddSecretosDeAws();
 
 builder.Logging.AddPiiMaskingConsole();
 
