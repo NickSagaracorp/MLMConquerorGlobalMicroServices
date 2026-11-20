@@ -1,0 +1,6 @@
+# Llaves de la autoridad certificadora y de los servicios: nunca al repositorio.
+ca/
+certificados/
+*.key
+*.pem
+.politica-local.json
