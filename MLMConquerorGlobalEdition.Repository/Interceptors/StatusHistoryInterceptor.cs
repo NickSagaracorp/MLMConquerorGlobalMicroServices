@@ -7,7 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 
 /// <summary>
-/// Escribe el historial de estados al guardar (Plan J, J14): cada cambio de
+/// Escribe el historial de estados al guardar: cada cambio de
 /// <see cref="MemberProfile.Status"/> va a MemberStatusHistories y cada alta o cambio de
 /// <see cref="MembershipSubscription.SubscriptionStatus"/> a MembershipStatusHistories.
 /// </summary>
@@ -28,10 +28,10 @@ namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 /// valor cambió); si no, quien tocó la fila la última vez no es quien cambia ahora el estado y el
 /// autor es <see cref="SystemActor"/>. En un alta, el autor es <c>CreatedBy</c>.
 ///
-/// NO VE ExecuteUpdate NI SQL CRUDO: lo vigila EstadosSinInterceptorTests.
+/// NO VE ExecuteUpdate NI SQL CRUDO: quien cambie estados debe guardar por EF.
 ///
 /// HORA: DateTime.Now, hora de servidor, como AuditInterceptor; el interceptor se crea en
-/// AppDbContext.OnConfiguring, sin contenedor (J25).
+/// AppDbContext.OnConfiguring, sin contenedor.
 /// </remarks>
 public sealed class StatusHistoryInterceptor : SaveChangesInterceptor
 {

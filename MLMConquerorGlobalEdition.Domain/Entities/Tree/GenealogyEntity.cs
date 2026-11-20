@@ -12,9 +12,9 @@ public class GenealogyEntity : AuditChangesStringKey, ITreeNode
     public int Level { get; set; }
 
     /// <summary>
-    /// Posición en el árbol de inscripción (hierarchyid, Plan M). El equipo de un miembro es
+    /// Posición en el árbol de inscripción (hierarchyid). El equipo de un miembro es
     /// Node.IsDescendantOf(su Node). Lo escribe GenealogyNodes.NextChildAsync; nulo solo mientras dura
-    /// el relleno inicial (Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql).
+    /// el relleno inicial de los nodos existentes.
     /// </summary>
     public HierarchyId? Node { get; set; }
 }

@@ -204,7 +204,7 @@ public class AdminMemberCommissionsController : ControllerBase
 
         int[] eligibleLevelIds = [3, 4];
         var hierarchyFilter    = $"/{memberId}/";
-        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
+        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Equipo por Node
 
         var rawEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()

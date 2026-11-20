@@ -6,13 +6,13 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
 
 @*
-    Historial de residuales diarios (Plan J). Lee {ApiBaseUrl}/commissions/dual-residual/daily,
+    Historial de residuales diarios. Lee {ApiBaseUrl}/commissions/dual-residual/daily,
     que sirve DailyResidualEarnings: en el BizCenter con el miembro del token y en el Admin con el
     de la ruta. Año por defecto y años disponibles los da el servidor (hora de servidor).
 
     "Paid" en DailyResidualEarnings NO es dinero pagado: solo dice que la fila se consolidó en un
     crédito de comisión (CommissionEarnings), que puede seguir pendiente de pago o haberse gastado
-    en una renovación o en tokens. Por eso se rotula "Consolidado" (Plan J, J27).
+    en una renovación o en tokens. Por eso se rotula "Consolidado".
 *@
 
 <div class="card bg-white border-0 rounded-3 mb-4 daily-residuals">

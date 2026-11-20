@@ -14,7 +14,7 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Controllers;
 /// without JWT tokens. Production hardening (HMAC signature validation per provider)
 /// should be added inside each handler or as a dedicated filter.
 /// <para>
-/// PRE-PRODUCTION BLOCKER (Plan Q, revision de Q3, C1): there is NO signature check yet, so anyone can post here. Until
+/// PRE-PRODUCTION BLOCKER: there is NO signature check yet, so anyone can post here. Until
 /// each provider's HMAC is verified, the handlers must not trust the payload: the refund notice only refunds an order or
 /// cancels a membership for a payment created by our own charge flow (never one created by this webhook), Captured
 /// before the notice, of that same order and member, and for an explicit full amount.

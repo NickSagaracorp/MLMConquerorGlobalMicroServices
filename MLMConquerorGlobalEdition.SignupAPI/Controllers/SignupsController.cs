@@ -77,7 +77,7 @@ public class SignupsController : ControllerBase
     }
 
     /// <summary>
-    /// Respuesta de un alta fallida. Plan M (revisión M-d): candado del patrocinador ocupado, 409 (reintentar);
+    /// Respuesta de un alta fallida. Candado del patrocinador ocupado, 409 (reintentar);
     /// patrocinador sin Node, 503 (el alta no se pudo completar); el resto, 400 como siempre.
     /// </summary>
     private IActionResult SignupFailure(Result<SignupResponse> result)
@@ -93,7 +93,7 @@ public class SignupsController : ControllerBase
 
     /// <summary>
     /// IP publica del cliente. Detras del balanceador la resuelve UseForwardedHeaders (ProxyHosting),
-    /// que solo acepta el salto del ALB. Antes se tomaba la PRIMERA entrada de X-Forwarded-For,
+    /// que solo acepta el salto del balanceador. Antes se tomaba la PRIMERA entrada de X-Forwarded-For,
     /// que es la que escribe el propio cliente: cualquiera podia inventarse la IP y saltarse el
     /// control de altas duplicadas por IP.
     /// </summary>

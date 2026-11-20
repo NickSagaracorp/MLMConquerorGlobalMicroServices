@@ -15,7 +15,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 /// Auto-places ambassadors who have not received a manual placement
 /// and whose 30-day placement window has elapsed.
 ///
-/// Logic (placement-rules.md §5):
+/// Logic:
 ///   5.2.a  Sponsor has no children          → place on LEFT
 ///   5.2.b  Sponsor has only left child      → place on RIGHT
 ///   5.2.c  Sponsor has both children        → place on deepest available node
@@ -57,7 +57,7 @@ public class AutoPlacementJob
         // Members whose placement window has expired and are still unplaced
         var windowCutoff = now.AddDays(-PlacementWindowDays);
 
-        // Plan P: los pendientes salen de un unico sitio (PendingPlacements): sin nodo, o raiz provisional con
+        // Los pendientes salen de un unico sitio (PendingPlacements): sin nodo, o raiz provisional con
         // equipo cuyo patrocinador ya esta en el binario (mismo plazo y mismas reglas), por fecha de alta.
         var unplaced = await PendingPlacements.Query(db, ignoreWindow ? null : windowCutoff).ToListAsync();
 
@@ -68,7 +68,7 @@ public class AutoPlacementJob
         }
 
         // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe.
-        // Plan P: PlaceBulkAsync coloca de uno en uno bajo el candado del hueco (DualTeamGate), con su
+        // PlaceBulkAsync coloca de uno en uno bajo el candado del hueco (DualTeamGate), con su
         // transaccion y su subida de puntos por miembro; ya no guarda estado en memoria entre miembros.
         var pairs = unplaced.Select(m => (m.MemberId, m.SponsorMemberId)).ToList();
         var result = await placement.PlaceBulkAsync(pairs);

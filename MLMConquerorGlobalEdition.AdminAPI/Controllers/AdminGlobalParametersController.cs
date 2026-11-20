@@ -26,7 +26,7 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 /// <see cref="GlobalParameter"/> solo guarda el último cambio, así que cada alta y cada edición deja
 /// además una fila en <c>AuditTracking</c> con el valor viejo y el nuevo, en la misma transacción
 /// que el cambio. El de una dirección de depósito avisa por correo a todos los SuperAdmin activos
-/// (riesgo R8 y decisión de cierre 2 del Plan F): un fallo del correo se registra y no deshace nada.
+/// (mientras el panel no tenga step-up): un fallo del correo se registra y no deshace nada.
 /// </remarks>
 [ApiController]
 [Route("api/v1/admin/global-parameters")]

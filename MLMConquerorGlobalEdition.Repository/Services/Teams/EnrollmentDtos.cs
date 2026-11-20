@@ -91,7 +91,7 @@ public class EnrollmentCustomerView
 {
     public string   MemberId         { get; set; } = string.Empty;
     public string   FullName         { get; set; } = string.Empty;
-    /// <summary>Solo de los clientes personales del que mira (Plan J); null para el resto del equipo.</summary>
+    /// <summary>Solo de los clientes personales del que mira; null para el resto del equipo.</summary>
     public string?  Email            { get; set; }
     /// <summary>Igual que <see cref="Email"/>.</summary>
     public string?  Phone            { get; set; }

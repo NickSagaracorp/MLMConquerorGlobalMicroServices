@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
-/// <summary>Reporte de cambios de estado del equipo (Plan J, bloque 5).</summary>
+/// <summary>Reporte de cambios de estado del equipo.</summary>
 public interface ITeamStatusChangesService
 {
     /// <summary>

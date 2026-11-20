@@ -1102,7 +1102,7 @@ function arrow(slide, x, y, w, color) {
     y += 0.36;
   });
 
-  s.addText("Code wins  ·  this deck second  ·  spec docs in /docs/superpowers/specs/ for history & rationale.", {
+  s.addText("Code wins  ·  this deck second.", {
     x: 1.0, y: H - 0.85, w: 12, h: 0.4,
     fontFace: BODY_FONT, fontSize: 12, italic: true, color: ICE, margin: 0
   });

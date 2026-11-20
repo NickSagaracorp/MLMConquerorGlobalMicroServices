@@ -6,7 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Repository.Services.Billing;
 
 /// <summary>
-/// Plan Q (Q3, decidido por Nick: «si la cuenta se suspende, termina o inactiva desde admin tambien afecta los puntos»):
+/// Decidido por Nick («si la cuenta se suspende, termina o inactiva desde admin tambien afecta los puntos»):
 /// lo que el cambio de estado de la cuenta desde el admin hace con sus membresias. El interceptor (MembershipPointsDeltas)
 /// resta los puntos al salir de Active y los suma al volver.
 /// <list type="bullet">
@@ -45,7 +45,7 @@ public static class AccountStatusMemberships
     public static async Task<int> CancelForTerminationAsync(
         AppDbContext db, string memberId, DateTime now, string actor, CancellationToken ct = default)
     {
-        // Revision de Q3 (I3): tambien la retenida por el cobro (HoldByBilling) y la caducada sin reemplazo, que el motor
+        // Tambien la retenida por el cobro (HoldByBilling) y la caducada sin reemplazo, que el motor
         // podia cobrar y reactivar en una cuenta terminada. La caducada reemplazada por una subida o bajada ya no se cobra
         // ni se reactiva: se queda como esta.
         var candidatas = await db.MembershipSubscriptions

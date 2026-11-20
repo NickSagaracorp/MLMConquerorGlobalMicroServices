@@ -6,11 +6,11 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Plan Q (DQ8): busqueda de miembros por el comienzo del nombre completo («nombre apellido» o «apellido nombre») o del
+/// Busqueda de miembros por el comienzo del nombre completo («nombre apellido» o «apellido nombre») o del
 /// id, sin tildes ni mayusculas, con indice. No es prefijo de cada palabra: «luci» no encuentra «Ana Lucia Gomez». Full-Text
 /// no esta instalado (FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') = 0).
 /// <para>
-/// Revision del bloque 5 (C1, I2): es el componente unico de los dos arboles. <see cref="MatchingIdsSql"/> da los MemberId
+/// Es el componente unico de los dos arboles. <see cref="MatchingIdsSql"/> da los MemberId
 /// que casan como UNION de una rama por indice, cada una con TOP: el coste depende del tope, no de cuantos miembros haya ni
 /// de cuantos casen («a» casaba con los 119.000 perfiles locales y la union buscaba el nodo de cada uno: 973 ms y 3,9 s de
 /// CPU). La rama del id solo corre cuando el termino pasa del prefijo comun de los ids (<see cref="SearchesId"/>): «a»,

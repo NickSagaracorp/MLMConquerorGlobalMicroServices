@@ -1005,8 +1005,7 @@ const TOTAL = 16;
     ["Rank evaluation + certificate","RankEngine/"],
     ["Stat snapshot job",            "Repository/Jobs/MemberStatisticSnapshotJob.cs"],
     ["Admin commissions API",        "AdminAPI/Controllers/AdminCommissions*.cs"],
-    ["Admin commissions UI",         "AdminWeb/Components/Pages/AdminCommissions*.razor"],
-    ["Companion docs",               "docs/billing/BILLING-RULES.md · docs/superpowers/specs/"]
+    ["Admin commissions UI",         "AdminWeb/Components/Pages/AdminCommissions*.razor"]
   ];
 
   let y = 2.4;
@@ -1022,7 +1021,7 @@ const TOTAL = 16;
     y += 0.36;
   });
 
-  s.addText("Code wins  ·  this deck second  ·  spec docs in /docs/superpowers/specs/ for history & rationale.", {
+  s.addText("Code wins  ·  this deck second.", {
     x: 1.0, y: H - 0.85, w: 12, h: 0.4,
     fontFace: BODY_FONT, fontSize: 12, italic: true, color: ICE, margin: 0
   });

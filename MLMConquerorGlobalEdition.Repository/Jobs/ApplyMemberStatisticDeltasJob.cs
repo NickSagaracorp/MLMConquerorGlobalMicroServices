@@ -36,14 +36,14 @@ namespace MLMConquerorGlobalEdition.Repository.Jobs;
 /// schedulers. Execution still happens only on the SignupAPI server because the
 /// recurring job is enqueued onto the <c>signups</c> queue, which only it listens on.
 ///
-/// Plan Q (Bloque 4): una fila puede ser de un miembro (Scope = Member, las anteriores al Plan Q) o de una linea entera
+/// Una fila puede ser de un miembro (Scope = Member, las anteriores a las filas de linea) o de una linea entera
 /// (Scope = SponsorLine: MemberId es el patrocinador y el delta se aplica a el y a cada ascendiente de su Node, con
 /// QualifiedSponsoredMembersDelta solo a el). En SQL Server cada tanda es un comando por conjuntos en una transaccion;
 /// la cola de rango se llena solo hasta GenealogyUpline.EnrollmentLevels de distancia del patrocinador.
-/// Tarea 19b (DQ13): Scope = AncestorsOf (MemberId es quien cambio) aplica EnrollmentQualifiedTeamMembersDelta a cada
+/// Scope = AncestorsOf (MemberId es quien cambio) aplica EnrollmentQualifiedTeamMembersDelta a cada
 /// ascendiente de su Node (distancia 1 en adelante), no a el, y no encola evaluaciones de rango. Cada tanda toma el candado
-/// de la cola (member-statistic-deltas) con el que 04-calificados-de-inscripcion.sql la excluye mientras recalcula.
-/// Revision del bloque 4: el Node de partida es el del nodo vivo vigente (GenealogySubtree.CurrentNodeAsync, lo mismo que
+/// de la cola (member-statistic-deltas) con el que el recalculo completo de calificados la excluye mientras corre.
+/// El Node de partida es el del nodo vivo vigente (GenealogySubtree.CurrentNodeAsync, lo mismo que
 /// mira quien encola); una SponsorLine que solo lleva calificados (la de quien no tiene nodo, sobre su patrocinador) no
 /// encola rango.
 /// </summary>
@@ -54,7 +54,7 @@ public class ApplyMemberStatisticDeltasJob
     /// drained (see ExecuteAsync), so this just bounds the per-transaction size.</summary>
     public const int BatchSize = 5000;
 
-    /// <summary>Plan Q (revision C2): reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
+    /// <summary>Reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
     public const int MaxDeadlockRetries = 3;
 
     private readonly AppDbContext      _db;
@@ -99,7 +99,7 @@ public class ApplyMemberStatisticDeltasJob
     /// <summary>
     /// Una tanda en SQL Server: un comando, una transaccion (la de quien llama si ya hay una, en pruebas). El MERGE, la
     /// cola de rango y la marca IsApplied se confirman juntos: o se aplica la tanda entera o los deltas siguen pendientes
-    /// (revision C2: sin transaccion, una caida entre el MERGE y la marca volvia a aplicar el MERGE).
+    /// (sin transaccion, una caida entre el MERGE y la marca volvia a aplicar el MERGE).
     /// </summary>
     private async Task<int> ApplyBatchSqlServerAsync(CancellationToken ct)
     {
@@ -135,7 +135,7 @@ public class ApplyMemberStatisticDeltasJob
     }
 
     /// <summary>
-    /// Revision del bloque 4: una fila de linea (SponsorLine o AncestorsOf) cuyo miembro no tiene nodo vigente con Node se
+    /// Una fila de linea (SponsorLine o AncestorsOf) cuyo miembro no tiene nodo vigente con Node se
     /// marca aplicada sin acreditar a nadie y se avisa con cuantas y sus Id (las 100 primeras). Desde que al encolar se mira
     /// lo mismo (GenealogySubtree.CurrentNodeAsync), solo pasa si el nodo cambia entre encolar y aplicar; la fila sigue en
     /// MemberStatisticDeltas para volver a encolarla a mano. No se deja pendiente: cada tanda la volveria a tomar sin fin.
@@ -158,7 +158,7 @@ public class ApplyMemberStatisticDeltasJob
             && (d.EnrollmentPointsDelta != 0 || d.EnrollmentTeamSizeDelta != 0 || d.QualifiedSponsoredMembersDelta != 0));
 
     /// <summary>
-    /// Una tanda en InMemory (pruebas), con la semantica de la de SQL Server (revision del bloque 4): la linea sale del Node
+    /// Una tanda en InMemory (pruebas), con la semantica de la de SQL Server: la linea sale del Node
     /// del nodo vivo vigente, se saltan las posiciones sin nodo vivo y la cota de rango es la misma.
     /// </summary>
     private async Task<int> ApplyBatchInMemoryAsync(CancellationToken ct)
@@ -167,7 +167,7 @@ public class ApplyMemberStatisticDeltasJob
         if (batch.Count == 0) return 0;
         var now = _dateTime.Now;
 
-        // Revision del bloque 4: como en SQL Server, la linea sale del Node del nodo vivo vigente (sin Node no hay linea y
+        // Como en SQL Server, la linea sale del Node del nodo vivo vigente (sin Node no hay linea y
         // se avisa) y sube por las posiciones de sus ascendientes; una posicion sin nodo vivo se salta y no cuenta en la
         // Distancia. Los nodos vivos con Node se leen una vez por tanda (solo pruebas).
         Dictionary<string, string>? vivosPorNode = null;
@@ -268,7 +268,7 @@ CREATE TABLE #lote (Id bigint PRIMARY KEY, MemberId nvarchar(100) COLLATE DATABA
                     P int NOT NULL, T int NOT NULL, Q int NOT NULL, QQ int NOT NULL,
                     CreatedBy nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL, Node hierarchyid NULL,
                     Propio bit NOT NULL);
--- Revision del bloque 4: el Node de partida de una fila de linea es el de su nodo vivo VIGENTE (el mas reciente, como
+-- El Node de partida de una fila de linea es el de su nodo vivo VIGENTE (el mas reciente, como
 -- GenealogySubtree.CurrentOfAsync y CurrentNodeAsync al encolar); si ese no tiene Node, no hay linea. Antes se tomaba el
 -- mas reciente CON Node: un vigente sin Node acreditaba una posicion vieja.
 INSERT INTO #lote (Id, MemberId, Scope, P, T, Q, QQ, CreatedBy, Node, Propio)
@@ -296,7 +296,7 @@ CROSS APPLY (
     UNION ALL
     SELECT v.MemberId, v.Distancia
     FROM (
-        -- Revision del bloque 4: la Distancia cuenta solo ascendientes vivos (un nodo borrado en medio no ocupa un puesto
+        -- La Distancia cuenta solo ascendientes vivos (un nodo borrado en medio no ocupa un puesto
         -- de la cota de rango); el propio es el 0. Antes era la de la posicion en el arbol.
         SELECT a.MemberId, CAST(ROW_NUMBER() OVER (ORDER BY an.Distancia) - 1 AS int) AS Distancia
         FROM dbo.GenealogyAncestors(l.Node) an
@@ -331,8 +331,8 @@ WHEN NOT MATCHED THEN INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, 
         CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth, CurrentYearIncomeGrowth, CreationDate, CreatedBy)
     VALUES (s.MemberId, 0, 0, 0, s.T, 0, s.P, s.Q, 0, s.QQ, 0, 0, 0, 0, 0, 0, 0, @now, s.CreatedBy);
 
--- Evaluacion de rango inmediata acotada (DQ5), y nunca por filas solo de calificados (Rango = 0): el rango no lee los
--- calificados del equipo. La cota son 10 por encima de quien cambio (revision del bloque 4, Q1): en un alta, la fila va
+-- Evaluacion de rango inmediata acotada, y nunca por filas solo de calificados (Rango = 0): el rango no lee los
+-- calificados del equipo. La cota son 10 por encima de quien cambio: en un alta, la fila va
 -- sobre el patrocinador (Distancia < @niveles: el y sus 9, los 10 por encima del nuevo); en una fila propia (SourceMemberId
 -- = MemberId: los puntos de una activacion, cancelacion, retencion o reactivacion), el propio y sus @niveles ascendientes.
 INSERT INTO RankEvaluationQueue (TriggerMemberId, EvaluateMemberId, TriggerEvent, TriggerDate, IsProcessed, ProcessedAt,

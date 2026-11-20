@@ -7,12 +7,12 @@
 @inject IViewContextService ViewContext
 
 @*
-    Cuota anual del Biz Center (Plan K, K21). Componente unificado: lo monta el perfil en el BizCenter y
+    Cuota anual del Biz Center. Componente unificado: lo monta el perfil en el BizCenter y
     en el Admin; la ruta base la pone quien lo monta (ProfileApiPaths.ProfileBase) y en el Admin va en
     solo lectura. Suplantando también es de solo lectura (el servidor lo rechaza igualmente).
 
     PAGAR. Siempre con step-up (StepUpDialog + StepUpHttp): token, comisiones o eWallet. Sin tarjeta
-    hasta el Plan I. Un intento que acaba sin saber si entró (Billing no contestó, en curso, en revisión)
+    por ahora. Un intento que acaba sin saber si entró (Billing no contestó, en curso, en revisión)
     se guarda tal cual y el botón lo repite EXACTAMENTE, con la misma clave: Billing devuelve lo que ya
     hizo y no cobra dos veces. Un fallo definitivo libera el intento y el siguiente lleva otra clave.
 *@

@@ -106,8 +106,8 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Qualifying team points: cap each branch at 50% of total (weaker leg × 2)
         var qualifyingTeam = Math.Min(leftPoints, rightPoints) * 2;
 
-        // Plan Q (DQ13): los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas, Tarea 19b): O(1),
-        // diferidos como el resto de contadores (Q-R1). Antes, el rango del Node unido a las activas: O(equipo).
+        // Los calificados de inscripcion los guarda MemberStatistics (cola de estadisticas): O(1),
+        // diferidos como el resto de contadores. Antes, el rango del Node unido a las activas: O(equipo).
         var enrollmentQualifiedCount = await _db.MemberStatistics.AsNoTracking()
             .Where(s => s.MemberId == memberId).OrderBy(s => s.Id)
             .Select(s => s.EnrollmentQualifiedTeamMembers).FirstOrDefaultAsync(ct);
@@ -116,8 +116,8 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         var enrollmentTeamPoints = await _enrollment.GetRawEnrollmentTeamPointsAsync(memberId, ct);
         var personalCustomerPoints = await _personal.GetPersonalCustomerPointsAsync(memberId, ct);
 
-        // Plan Q (DQ13): los calificados del binario son contadores de pierna que mantiene la cola (Tarea 8b): O(1), con el
-        // mismo atraso que los puntos de pierna (Q-R1). Antes, el rango de la clave unido a las activas: O(equipo).
+        // Los calificados del binario son contadores de pierna que mantiene la cola: O(1), con el
+        // mismo atraso que los puntos de pierna. Antes, el rango de la clave unido a las activas: O(equipo).
         var placementQualifiedCount = dualNode is null ? 0 : dualNode.LeftLegQualified + dualNode.RightLegQualified;
 
         // Direct sponsored members

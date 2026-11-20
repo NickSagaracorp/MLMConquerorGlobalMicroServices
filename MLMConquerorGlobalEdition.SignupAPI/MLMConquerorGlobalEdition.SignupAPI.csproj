@@ -28,7 +28,7 @@
       Los cinco servicios que solo verifican no llevan esto: la llave publica no es secreta y
       sigue en appsettings.json.
 
-      Como se configura una maquina nueva: docs/deployment/llaves-jwt-en-desarrollo.md
+      En una maquina nueva las llaves privadas se guardan en los user-secrets de este proyecto (UserSecretsId, abajo).
     -->
     <UserSecretsId>mlmconqueror-jwt-signers</UserSecretsId>
   </PropertyGroup>

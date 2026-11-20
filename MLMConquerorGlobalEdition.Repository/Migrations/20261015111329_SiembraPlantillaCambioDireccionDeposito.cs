@@ -10,7 +10,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
     /// (NotificationEvents.CryptoDepositAddressChanged): el aviso a cada SuperAdmin activo cuando alguien
     /// crea o cambia una dirección de depósito cripto en Parámetros globales. Sin la fila, SesEmailService
     /// lanza al buscar la plantilla; CryptoDepositAlertNotifier lo registra y el cambio sigue, pero nadie
-    /// se enteraría de que los depósitos de los miembros van ahora a otra cartera (riesgo R8 del Plan F).
+    /// se enteraría de que los depósitos de los miembros van ahora a otra cartera.
     ///
     /// Solo correo, y solo en/es, como el resto de plantillas de seguridad: el transporte respalda a
     /// "en" para los demás idiomas.
@@ -21,8 +21,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
     /// </summary>
     public partial class SiembraPlantillaCambioDireccionDeposito : Migration
     {
-        // 9014 (plantilla) y 9014/9015 (localizaciones) quedan reservados para TOKEN_PURCHASE_RECEIPT
-        // (Plan F, tarea 8), que se siembra después; este es el siguiente bloque libre tras ese.
+        // 9014 (plantilla) y 9014/9015 (localizaciones) quedan reservados para TOKEN_PURCHASE_RECEIPT,
+        // que se siembra después; este es el siguiente bloque libre tras ese.
         private const int EmailTemplateId       = 9016;
         private const int EmailLocalizationEnId = 9016;
         private const int EmailLocalizationEsId = 9017;

@@ -13,7 +13,7 @@ namespace MLMConquerorGlobalEdition.Repository.Queries;
 public sealed record DualPathStep(string MemberId, TreeSide Side);
 
 /// <summary>
-/// Plan Q: el camino de cada nodo por debajo de <c>root</c> (sin root, con el nodo), de arriba abajo, por la clave
+/// El camino de cada nodo por debajo de <c>root</c> (sin root, con el nodo), de arriba abajo, por la clave
 /// compacta (dbo.DualPathKeys y UX_DualTeamTree_BinaryPath). Sustituye a trocear HierarchyPath. En InMemory se sube
 /// por ParentMemberId. La pierna de root en la que esta un nodo es el Side del primer paso.
 /// </summary>
@@ -21,7 +21,7 @@ public static class DualAncestors
 {
     private sealed record Fila(string NodeId, int Depth, string MemberId, int Side);
 
-    // Revision del bloque 3: solo los ascendientes DISTINTOS de los nodos pedidos por debajo de la raiz. Los nodos van
+    // Solo los ascendientes DISTINTOS de los nodos pedidos por debajo de la raiz. Los nodos van
     // en el orden de la clave y cada uno pide sus ascendientes desde @desde o desde el ultimo que comparte con el
     // anterior (dbo.DualPathKeys con su @desde), asi que ningun ascendiente se calcula, se busca ni se devuelve dos
     // veces: 100 hallazgos a 8.500 niveles en una misma pierna son unas 8.500 filas, no 850.000. Cada fila va con el
@@ -32,7 +32,7 @@ SELECT j.id AS NodeId, a.Depth, d.MemberId, d.Side
 FROM OPENJSON(@pedidos) WITH (id nvarchar(450) '$.id', desde int '$.d') j
 JOIN DualTeamTree n ON n.MemberId = j.id COLLATE DATABASE_DEFAULT AND n.IsDeleted = 0 AND n.BinaryPath IS NOT NULL
 CROSS APPLY dbo.DualPathKeys(n.BinaryPath, 0, j.desde) a
-JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (lectura: la clave a la izquierda, EscritoresDelBinarioTests)
+JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (lectura: la clave a la izquierda)
 
     private sealed record Pedido(string Id, int D, int Comun);
 
@@ -76,7 +76,7 @@ JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (
             return caminos;
         }
 
-        // Revision del bloque 3: un ciclo de padres no cuelga la subida (visitados) y un nodo que no esta debajo de la
+        // Un ciclo de padres no cuelga la subida (visitados) y un nodo que no esta debajo de la
         // raiz da un camino vacio, no el camino hasta otra raiz.
         foreach (var node in nodes)
         {
@@ -100,14 +100,14 @@ JOIN DualTeamTree d ON a.AncestorKey = d.BinaryPath AND d.IsDeleted = 0";   // (
     }
 
     /// <summary>
-    /// Revision del bloque 3: la profundidad de un nodo bajo su raiz. La clave manda (es lo que ordena el arbol); sin
+    /// La profundidad de un nodo bajo su raiz. La clave manda (es lo que ordena el arbol); sin
     /// clave, la columna Depth; sin ninguna de las dos, 0.
     /// </summary>
     public static int DepthOf(DualTeamEntity node) =>
         node.BinaryPath is { } k ? DualBinaryPath.Depth(k) : node.Depth ?? 0;
 
     /// <summary>
-    /// Revision del bloque 3: la profundidad de <paramref name="node"/> por debajo de <paramref name="root"/>. Si los dos
+    /// La profundidad de <paramref name="node"/> por debajo de <paramref name="root"/>. Si los dos
     /// tienen clave (o Depth), la diferencia; si no, la longitud del camino.
     /// </summary>
     public static int RelativeDepth(DualTeamEntity root, DualTeamEntity node, int pathCount) =>

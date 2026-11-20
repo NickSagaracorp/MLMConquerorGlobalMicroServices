@@ -32,9 +32,9 @@ namespace MLMConquerorGlobalEdition.BizCenter.Services;
 /// inscribiste—. Cada ruta se cierra contra el árbol que ella misma recorre; usar el otro dejaría
 /// pasar exactamente a quien la pantalla no enseña.
 ///
-/// LA CONTENCIÓN SE MIRA, en el binario, POR LA CLAVE COMPACTA <c>BinaryPath</c> (Plan P: el descendiente cae en
+/// LA CONTENCIÓN SE MIRA, en el binario, POR LA CLAVE COMPACTA <c>BinaryPath</c> (el descendiente cae en
 /// el rango de su ancestro, <c>DualBinaryPath.Contains</c>, lo mismo que usa <c>DualSubtree</c>), y en el de
-/// patrocinio por <c>Node</c> (Plan M). Ya no por el prefijo de <c>HierarchyPath</c>, que falla con rutas de más de
+/// patrocinio por <c>Node</c>. Ya no por el prefijo de <c>HierarchyPath</c>, que falla con rutas de más de
 /// 4.000 caracteres. Solo sin claves (InMemory, pruebas de lógica) se sube por la cadena de padres.
 ///
 /// FALLA CERRADO en todos los caminos: sin identidad de miembro, con un identificador vacío, o si
@@ -80,9 +80,9 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerNodoBinarioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            // Plan P: por la clave compacta. El objetivo esta en mi red si su clave cae en el rango de la mia
+            // Por la clave compacta. El objetivo esta en mi red si su clave cae en el rango de la mia
             // (DualBinaryPath.Contains); antes se comparaba el prefijo de la ruta de texto.
-            // El nodo mas reciente de cada uno (R8: no uno antiguo que quedara en mi red).
+            // El nodo mas reciente de cada uno (no uno antiguo que quedara en mi red).
             var mio = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == propio)
                 .OrderByDescending(d => d.CreationDate).ThenByDescending(d => d.Id).FirstOrDefaultAsync(ct);
             var suyo = await _db.DualTeamTree.AsNoTracking().Where(d => d.MemberId == objetivo)
@@ -105,8 +105,8 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            // Plan M (revisión M6): por Node, como el resto de lecturas del árbol de patrocinio. El nodo
-            // vigente del que mira (R8); sin Node no hay red que abrir (falla cerrado).
+            // Por Node, como el resto de lecturas del árbol de patrocinio. El nodo
+            // vigente del que mira; sin Node no hay red que abrir (falla cerrado).
             var raiz = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(propio, ct);
             if (raiz is null) return false;
 

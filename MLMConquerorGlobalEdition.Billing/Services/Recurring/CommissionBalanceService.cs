@@ -252,7 +252,7 @@ public class CommissionBalanceService : ICommissionBalanceService
         });
     }
 
-    // ── Compra de tokens (Plan F) ─────────────────────────────────────────────
+    // ── Compra de tokens ─────────────────────────────────────────────
 
     public async Task<decimal> GetSpendableAsync(string memberId, CancellationToken ct = default)
     {
@@ -293,7 +293,7 @@ public class CommissionBalanceService : ICommissionBalanceService
             : Result<string>.Failure(debit.ErrorCode!, debit.Error!);
     }
 
-    // ── Cuota anual (Plan K) ──────────────────────────────────────────────────
+    // ── Cuota anual ──────────────────────────────────────────────────
 
     public Task<Result<CommissionDebit>> FundAnnualFeeAsync(
         string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default) =>

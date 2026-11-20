@@ -33,7 +33,7 @@ public static class GridQueryableExtensions
         source = source.ApplyFilters(request.Filters);
 
         // Count AFTER filtering but BEFORE paging — this is the total matching set
-        // the grid pager reports, so paging reflects the filtered universe. Plan P (Plan B del conteo): sin busqueda
+        // the grid pager reports, so paging reflects the filtered universe. Sin busqueda
         // ni filtros, quien llama puede dar el total que ya conoce (p. ej. los contadores de pierna del binario) y no
         // se cuenta un rango de un millon de filas.
         var total = unfiltered && unfilteredTotal is { } conocido ? conocido : await source.CountAsync(ct);
@@ -93,7 +93,7 @@ public static class GridQueryableExtensions
 
     /// <summary>
     /// La pagina (desde 1) y su tamano tal como los aplica <see cref="ToGridResultAsync{T}"/>: para quien pagina por su
-    /// cuenta antes de proyectar (Plan Q: Mi equipo por estructura pagina el arbol y despues une los perfiles).
+    /// cuenta antes de proyectar (Mi equipo por estructura pagina el arbol y despues une los perfiles).
     /// </summary>
     public static (int Page, int PageSize) ResolvePage(GridDataRequest request, int maxPageSize = DefaultMaxPageSize) =>
         (Math.Max(1, request.Page), Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, maxPageSize));

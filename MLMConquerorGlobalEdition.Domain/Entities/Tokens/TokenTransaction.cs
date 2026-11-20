@@ -55,7 +55,7 @@ public class TokenTransaction : AuditChangesLongKey
     public string? UsedOnOrderId { get; set; }
 
     /// <summary>
-    /// La compra que emitió esta instancia (Plan F). Null para las emitidas por alta, renovación o
+    /// La compra que emitió esta instancia. Null para las emitidas por alta, renovación o
     /// administración. Permite devolver los mismos códigos cuando una compra se repite con su clave.
     /// </summary>
     public string? TokenPurchaseId { get; set; }

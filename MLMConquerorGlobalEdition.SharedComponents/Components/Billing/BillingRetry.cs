@@ -6,7 +6,7 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Components.Billing;
 
 /// <summary>
 /// La parte común de "¿se repite el intento con la MISMA clave?" para los pagos que pasan por Billing
-/// (compra de tokens y cuota anual; revisión final del Plan K, M-c). Cada pantalla añade sus propios
+/// (compra de tokens y cuota anual). Cada pantalla añade sus propios
 /// códigos de "en curso"; aquí está lo que vale para todas: el permiso de step-up rechazado (no se
 /// ejecutó nada y la repetición, con un código nuevo, debe ser el mismo pago) y un 5xx cuyo resultado no
 /// se conoce.

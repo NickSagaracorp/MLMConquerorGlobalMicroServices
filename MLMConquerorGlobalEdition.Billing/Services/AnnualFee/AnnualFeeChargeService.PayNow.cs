@@ -10,7 +10,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 
 /// <summary>
-/// "Pagar ahora" (Plan K, K14). El miembro sale del token (lo pone el controlador). La pantalla manda una
+/// "Pagar ahora". El miembro sale del token (lo pone el controlador). La pantalla manda una
 /// clave por intento: la misma clave devuelve el mismo pago (o el mismo fallo) sin mover dinero otra vez.
 /// Un intento que no llegó a crear el pago (sin token, sin saldo) no ocupa la clave: se puede repetir.
 /// </summary>
@@ -19,7 +19,7 @@ public sealed partial class AnnualFeeChargeService
     public Task<bool> HasPaymentAsync(string memberId, string? idempotencyKey, CancellationToken ct = default) =>
         string.IsNullOrWhiteSpace(memberId) || string.IsNullOrWhiteSpace(idempotencyKey)
             ? Task.FromResult(false)
-            // Revisión M-6: con los borrados lógicos, como el índice único de la clave.
+            // Con los borrados lógicos, como el índice único de la clave.
             : _db.AnnualFeePayments.IgnoreQueryFilters().AsNoTracking()
                  .AnyAsync(p => p.MemberId == memberId && p.IdempotencyKey == idempotencyKey, ct);
 
@@ -27,7 +27,7 @@ public sealed partial class AnnualFeeChargeService
     {
         var req = input.Request;
 
-        // Solo por nombre y sin tarjeta: la tarjeta queda para el Plan I y nunca se cobra con el stub.
+        // Solo por nombre y sin tarjeta: la tarjeta queda para cuando el gateway sea real y nunca se cobra con el stub.
         var methodName = AnnualFeeMethods.Normalize(req.Method);
         if (methodName is null)
             return PayFail(AnnualFeeErrors.MethodNotSupported, "This payment method is not available for the annual fee.");
@@ -97,7 +97,7 @@ public sealed partial class AnnualFeeChargeService
     private async Task<Result<AnnualFeePaymentResultDto>?> ReplayAsync(
         string memberId, string key, AnnualFeePaymentMethod method, CancellationToken ct)
     {
-        // Revisión M-6: con los borrados lógicos, como el índice único de la clave. Una clave de un pago
+        // Con los borrados lógicos, como el índice único de la clave. Una clave de un pago
         // borrado está usada: no se puede reutilizar ni devolver lo que ya no existe.
         var existing = await _db.AnnualFeePayments.IgnoreQueryFilters().AsNoTracking()
             .FirstOrDefaultAsync(p => p.MemberId == memberId && p.IdempotencyKey == key, ct);

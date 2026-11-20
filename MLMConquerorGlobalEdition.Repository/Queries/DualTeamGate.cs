@@ -5,14 +5,14 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Plan P: serializa las escrituras del binario (DualTeamTree).
+/// Serializa las escrituras del binario (DualTeamTree).
 /// <list type="bullet">
 /// <item>Una colocacion toma <c>dual-tree</c> en compartido y <c>dual-slot:{padre}:{lado}</c> en exclusivo.</item>
 /// <item>Un movimiento o una retirada de subarbol toma <c>dual-tree</c> en exclusivo: espera a que terminen
 /// las colocaciones y las detiene mientras reescribe rutas.</item>
 /// </list>
 /// El orden es siempre arbol, despues hueco y por ultimo la cola del patrocinador
-/// (<c>dual-frontier:{patrocinador}</c>), asi que no se interbloquean entre si. Revision I1: el arbol se toma
+/// (<c>dual-frontier:{patrocinador}</c>), asi que no se interbloquean entre si. El arbol se toma
 /// en compartido al abrir la transaccion, ANTES de resolver el destino, para que ningun movimiento cambie el
 /// arbol entre la resolucion y el candado del hueco. Nunca se pasa de compartido a exclusivo en la misma
 /// transaccion: quien va a mover un subarbol toma el exclusivo desde el principio. Dueno Transaction: los
@@ -28,7 +28,7 @@ public static class DualTeamGate
     public static string SlotResource(string parentMemberId, TreeSide side) => $"dual-slot:{parentMemberId}:{(int)side}";
     public static string FrontierResource(string sponsorMemberId) => $"dual-frontier:{sponsorMemberId}";
 
-    /// <summary>El arbol en compartido: lo primero de toda colocacion, antes de resolver el destino (I1).</summary>
+    /// <summary>El arbol en compartido: lo primero de toda colocacion, antes de resolver el destino.</summary>
     public static async Task EnterTreeSharedAsync(AppDbContext db, CancellationToken ct = default,
         int lockTimeoutMs = DefaultLockTimeoutMs)
     {
@@ -66,7 +66,7 @@ public static class DualTeamGate
     public const string LegDrainResource = "dual-leg-deltas";
 
     /// <summary>
-    /// Plan Q: el vaciado de la cola de piernas. "dual-tree" compartido (ningun movimiento a la vez: DQ2) y
+    /// El vaciado de la cola de piernas. "dual-tree" compartido (ningun movimiento a la vez) y
     /// "dual-leg-deltas" exclusivo (un solo vaciador: el trabajo o una comision que vacia antes de leer).
     /// </summary>
     public static async Task EnterLegDrainAsync(AppDbContext db, CancellationToken ct = default,

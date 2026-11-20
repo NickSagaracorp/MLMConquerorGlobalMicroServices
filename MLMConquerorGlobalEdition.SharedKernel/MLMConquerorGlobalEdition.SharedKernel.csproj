@@ -21,9 +21,8 @@
     este proyecto y no al revés. Ahí están ErrorHandlingBehavior, ValidationBehavior,
     CacheService y GatewayCredentialProtector, que es lo que se sacó de aquí.
 
-    Hay una prueba que lo vigila: ClientCoreNoAspNetCoreTests, en BizCenter.Tests. Recorre el
-    cierre transitivo de referencias de ClientCore, así que si alguien vuelve a meter ASP.NET
-    Core aquí, se pone roja. Si se rompe, lo que hay que quitar es la dependencia, no la prueba.
+    Este proyecto no puede referenciar ASP.NET Core, ni directa ni transitivamente: si alguien
+    lo vuelve a meter aquí, lo que hay que quitar es la dependencia.
 
     Lo que SÍ vale: el framework base (System.*) y los paquetes Microsoft.Extensions.*, que
     corren igual en un anfitrión web y en MAUI.

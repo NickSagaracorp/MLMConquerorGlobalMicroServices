@@ -12,7 +12,7 @@ public sealed class PendingPlacement
 }
 
 /// <summary>
-/// Plan P (decision de Nick, 2026-10-18): quien esta pendiente de colocar, en un unico sitio para todos los que
+/// Decision de Nick (2026-10-18): quien esta pendiente de colocar, en un unico sitio para todos los que
 /// colocan en tanda (AutoPlacementJob, RunAutoPlacement y DevSeed place-bulk/force-place-all):
 /// <list type="bullet">
 /// <item>un miembro con patrocinador y sin nodo en el binario; o</item>
@@ -20,7 +20,7 @@ public sealed class PendingPlacement
 /// que un miembro sin nodo, con el mismo plazo y las mismas reglas: al colocarla sube con todo su equipo.</item>
 /// </list>
 /// Las raices del sistema (sin patrocinador) no estan nunca pendientes. Orden: por fecha de alta, para que un
-/// patrocinador pendiente se coloque antes que sus patrocinados (revision I2).
+/// patrocinador pendiente se coloque antes que sus patrocinados.
 /// </summary>
 public static class PendingPlacements
 {

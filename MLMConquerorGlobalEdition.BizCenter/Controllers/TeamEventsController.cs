@@ -9,7 +9,7 @@ using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurren
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
 /// <summary>
-/// Eventos corporativos y las inscripciones del equipo del que llama (Plan J). El sujeto de la ruta
+/// Eventos corporativos y las inscripciones del equipo del que llama. El sujeto de la ruta
 /// es el EVENTO, nunca un miembro: el equipo sale del token.
 /// </summary>
 [ApiController]

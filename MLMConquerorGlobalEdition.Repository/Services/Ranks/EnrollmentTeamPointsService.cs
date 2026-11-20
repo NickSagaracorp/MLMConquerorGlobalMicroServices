@@ -62,16 +62,16 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
 
     public async Task<int?> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default)
     {
-        // Plan M (revisión C1): sin nodo vigente con Node no hay dato. Quien persiste el resultado
+        // Sin nodo vigente con Node no hay dato. Quien persiste el resultado
         // (MemberStatisticSnapshotJob) lo omite y lo registra; nunca escribe un 0 inventado.
         var root = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
         if (root is null)
             return null;
 
-        // Plan Q (DQ16; revision 2 del bloque 2, C2): EnrollmentPoints = lo que aportan las suscripciones ACTIVAS del
-        // propio y de todo su equipo, sobre los nodos VIGENTES del subarbol (Plan M, I5: un miembro con dos nodos cuenta
+        // EnrollmentPoints = lo que aportan las suscripciones ACTIVAS del
+        // propio y de todo su equipo, sobre los nodos VIGENTES del subarbol (un miembro con dos nodos cuenta
         // una vez). Antes sumaba los pedidos completados de todos, activos o no. Es la misma definicion que mantienen las
-        // colas y que recalcula 05-realinear-puntos-por-membresia.sql; nada la llama a diario (la instantanea nocturna ya
+        // colas y que recalcula el realineo de puntos por membresia; nada la llama a diario (la instantanea nocturna ya
         // no reescribe EnrollmentPoints): sirve para comprobar un miembro.
         return await (
             from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)

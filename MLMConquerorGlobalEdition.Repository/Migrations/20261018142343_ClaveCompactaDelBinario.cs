@@ -48,8 +48,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 filter: "[IsDeleted] = 0 AND [BinaryPath] IS NOT NULL")
                 .Annotation("SqlServer:Include", new[] { "MemberId", "Depth", "ParentMemberId", "Side" });
 
-            // Plan P: la clave del hijo a partir de la del padre, el mismo algoritmo que DualBinaryPath.Child.
-            // La usan el relleno (Scripts/sql/plan-p) y DualTeamNodes al mover o retirar subarboles.
+            // La clave del hijo a partir de la del padre, el mismo algoritmo que DualBinaryPath.Child.
+            // La usan el relleno de claves de los nodos existentes y DualTeamNodes al mover o retirar subarboles.
             migrationBuilder.Sql(@"
 CREATE OR ALTER FUNCTION dbo.DualChildKey(@p varbinary(1700), @depth int, @side int)
 RETURNS TABLE AS RETURN

@@ -7,21 +7,21 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Lectura del equipo de inscripción por GenealogyTree.Node (Plan M, M16). Sustituye a
-/// HierarchyPath.StartsWith(TreePrefix.Of(...)), que recorría la tabla entera. SinPrefijoEnInscripcionTests
-/// vigila que nadie vuelva a filtrar el árbol de inscripción por la ruta.
+/// Lectura del equipo de inscripción por GenealogyTree.Node. Sustituye a
+/// HierarchyPath.StartsWith(TreePrefix.Of(...)), que recorría la tabla entera. Nadie debe volver a filtrar
+/// el árbol de inscripción por la ruta.
 /// </summary>
 public static class GenealogySubtree
 {
     /// <summary>
     /// Etiqueta (comentario SQL) de las consultas del equipo: RecompileTaggedQueriesInterceptor les añade
-    /// OPTION (RECOMPILE), porque el plan bueno depende del tamaño del equipo (Plan M).
+    /// OPTION (RECOMPILE), porque el plan bueno depende del tamaño del equipo.
     /// </summary>
     public const string RecompileTag = "GenealogySubtree.Under: recompilar por tamano de equipo";
 
     /// <summary>
-    /// El nodo vigente del miembro: el más reciente (R8 del Plan J), con desempate por Id (revisión M3).
-    /// Null si no está en el árbol. Es el único sitio que elige el nodo de un miembro (revisión M2): un
+    /// El nodo vigente del miembro: el más reciente, con desempate por Id.
+    /// Null si no está en el árbol. Es el único sitio que elige el nodo de un miembro: un
     /// FirstOrDefault sin orden podía devolver el obsoleto.
     /// </summary>
     public static Task<GenealogyEntity?> CurrentOfAsync(
@@ -41,7 +41,7 @@ public static class GenealogySubtree
             .FirstOrDefaultAsync(ct);
 
     /// <summary>
-    /// Plan Q (revision del bloque 4): el Node del nodo vigente del miembro (<see cref="CurrentOfAsync"/>) contando lo que
+    /// El Node del nodo vigente del miembro (<see cref="CurrentOfAsync"/>) contando lo que
     /// <paramref name="context"/> va a guardar: un nodo nuevo seguido gana (es el mas reciente); el vigente de la base, con
     /// sus valores seguidos si se esta cambiando; null si el vigente no tiene Node o se borra. Es la definicion unica de
     /// «tiene nodo de inscripcion» al encolar (MembershipPointsDeltas, QualifiedTeamDeltas) y la misma que aplica
@@ -67,7 +67,7 @@ public static class GenealogySubtree
     }
 
     /// <summary>
-    /// Plan Q (revision del bloque 4): el primer patrocinador de la cadena de <paramref name="memberId"/> (sin el) cuyo nodo
+    /// El primer patrocinador de la cadena de <paramref name="memberId"/> (sin el) cuyo nodo
     /// vigente tiene Node (<see cref="CurrentNodeAsync"/>), con guarda de ciclos; null si nadie lo tiene. Es donde va la
     /// linea de quien aun no tiene nodo: quedara en el equipo de ese patrocinador.
     /// </summary>
@@ -95,14 +95,13 @@ public static class GenealogySubtree
     /// <para>
     /// No se escribe IsDescendantOf: EF lo manda como IsDescendantOf(@p) = CAST(1 AS bit), que con
     /// parámetro no se convierte en seek, y con él en el filtro SQL Server estima una fila para cualquier
-    /// subárbol y elige bucles con búsquedas por clave. Medido en el Plan M con el equipo de 119.400
+    /// subárbol y elige bucles con búsquedas por clave. Medido con el equipo de 119.400
     /// personas: 9 s con IsDescendantOf, 46 ms con el rango.
     /// </para>
     /// <para>
     /// El rango es exacto porque los ordinales son enteros: solo los crean GenealogyNodes.NextChildAsync
-    /// (el siguiente al último hermano) y el relleno (02-relleno-nodo-genealogia.sql), y ninguno pone un
-    /// nodo ENTRE dos hermanos (el «/1.1/» que daría GetDescendant(a, b)). Lo vigila
-    /// SqlServerNodoDeGenealogiaTests. Cualquier consulta del equipo sobre GenealogyTree pasa por aquí.
+    /// (el siguiente al último hermano) y el relleno de los Node existentes, y ninguno pone un
+    /// nodo ENTRE dos hermanos (el «/1.1/» que daría GetDescendant(a, b)). Cualquier consulta del equipo sobre GenealogyTree pasa por aquí.
     /// </para>
     /// </summary>
     public static IQueryable<GenealogyEntity> Under(this IQueryable<GenealogyEntity> tree, HierarchyId? root)
@@ -120,8 +119,8 @@ public static class GenealogySubtree
     }
 
     /// <summary>
-    /// Plan Q, revision del bloque 5 (I1): cuantos nodos vivos cuelgan de <paramref name="root"/>, el incluido. Es lo que
-    /// listan Mi equipo (menos el que mira) y los eventos del equipo (un nodo vivo por miembro, DQ9), tambien los
+    /// Cuantos nodos vivos cuelgan de <paramref name="root"/>, el incluido. Es lo que
+    /// listan Mi equipo (menos el que mira) y los eventos del equipo (un nodo vivo por miembro), tambien los
     /// pendientes; MemberStatistics.EnrollmentTeamSize solo cuenta activados y no sirve de total. Cuenta el rango por el
     /// indice estrecho IX_GenealogyTree_Node_Vivo, con la pista: por si solo el optimizador elegia IX_GenealogyTree_Node
     /// (1.910 paginas frente a 1.640 con 119.000 en local). 0 si root es null.
@@ -145,7 +144,7 @@ public static class GenealogySubtree
     }
 
     /// <summary>
-    /// Plan Q (Tarea 26), revision del bloque 5 (I4): una pagina del equipo de <paramref name="root"/> en el orden del arbol
+    /// Una pagina del equipo de <paramref name="root"/> en el orden del arbol
     /// (Node), tomada del recorrido de IX_GenealogyTree_Node (cubriente) ANTES de unir con nada; quien llama une esas pocas
     /// filas con sus perfiles y vuelve a ordenarlas por Node. Con el OFFSET sobre la union, el optimizador unia el rango
     /// entero con los perfiles y lo ordenaba. <paramref name="excludeMemberId"/>: el que mira, si no cuenta como fila.
@@ -155,7 +154,7 @@ public static class GenealogySubtree
     {
         var equipo = tree.Under(root);
         if (excludeMemberId is not null) equipo = equipo.Where(g => g.MemberId != excludeMemberId);
-        // Plan Q (Bloque 7): la pagina se toma del indice solo con el Id (IX_GenealogyTree_Node cubre Node, MemberId,
+        // La pagina se toma del indice solo con el Id (IX_GenealogyTree_Node cubre Node, MemberId,
         // IsDeleted y el Id) y despues se leen esas filas. Pidiendo las columnas que el indice no cubre (ParentMemberId,
         // CreationDate de Mi equipo), con 550.000 el optimizador recorria la tabla entera y ordenaba el rango (12 s de CPU).
         var pagina = equipo.OrderBy(g => g.Node).Skip(skip).Take(take).Select(g => g.Id);
@@ -163,7 +162,7 @@ public static class GenealogySubtree
     }
 
     /// <summary>
-    /// Plan Q (DQ8, revision del bloque 5 I2): los nodos vivos bajo <paramref name="root"/> (el incluido) cuyo miembro casa
+    /// Los nodos vivos bajo <paramref name="root"/> (el incluido) cuyo miembro casa
     /// con <paramref name="term"/> por el comienzo del nombre completo o del id. Es la forma de los equipos grandes de
     /// DualSubtree.SearchUnder: de los perfiles que casan (MemberNameSearch.MatchingIdsSql, con tope por rama) a su nodo vivo
     /// (UX_GenealogyTree_MemberId_Vivo), comprobando el rango de Node. Mi equipo solo la usa por encima de
@@ -202,7 +201,7 @@ WHERE {rango}", todos.ToArray());
     }
 
     /// <summary>
-    /// Los nodos vigentes que cuelgan de <paramref name="root"/>, el incluido. Plan Q: con UX_GenealogyTree_MemberId_Vivo
+    /// Los nodos vigentes que cuelgan de <paramref name="root"/>, el incluido. Con UX_GenealogyTree_MemberId_Vivo
     /// cada miembro tiene un solo nodo vivo, asi que el vigente es el unico y basta el rango (<see cref="Under"/>). Se
     /// mantiene el nombre: es lo que usan Mi equipo, clientes, eventos, puntos y comisiones.
     /// </summary>

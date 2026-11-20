@@ -91,7 +91,7 @@ public class RankDefinitionsController : ControllerBase
             .OrderBy(r => r.SortOrder)
             .ToListAsync(ct);
 
-        // Rango vigente de cada miembro (Plan Q: MemberRankQueries), solo las dos columnas que se usan
+        // Rango vigente de cada miembro (MemberRankQueries), solo las dos columnas que se usan
         var latestRanks = await _db.CurrentRankRows()
             .Select(r => new { r.MemberId, r.RankDefinitionId })
             .ToListAsync(ct);

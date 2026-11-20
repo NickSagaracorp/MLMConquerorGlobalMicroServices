@@ -1,6 +1,6 @@
 namespace MLMConquerorGlobalEdition.BizCenter.Services;
 
-/// <summary>Registro del cliente HTTP con el que el BizCenter llama a Billing (compra de tokens, Plan F).</summary>
+/// <summary>Registro del cliente HTTP con el que el BizCenter llama a Billing (compra de tokens).</summary>
 public static class BillingClientRegistration
 {
     public const string BaseUrlKey             = "Services:BillingBaseUrl";

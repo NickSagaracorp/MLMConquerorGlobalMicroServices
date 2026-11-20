@@ -6,7 +6,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 
-/// <summary>La tarjeta de la cuota anual: lo que se enseña y la preferencia (Plan K, K21).</summary>
+/// <summary>La tarjeta de la cuota anual: lo que se enseña y la preferencia.</summary>
 public interface IAnnualFeeOverviewService
 {
     Task<AnnualFeeOverviewDto> GetAsync(string memberId, CancellationToken ct = default);
@@ -37,7 +37,7 @@ public sealed class AnnualFeeOverviewService : IAnnualFeeOverviewService
     {
         var now    = _clock.Now;
         var member = await _db.MemberProfiles.AsNoTracking().FirstOrDefaultAsync(m => m.MemberId == memberId, ct);
-        // Con la membresía vigente en HoldByBilling (R5) o cancelada (M-8): las mismas reglas que Billing.
+        // Con la membresía vigente en HoldByBilling o cancelada: las mismas reglas que Billing.
         var facts  = await AnnualFeeMemberQueries.FactsAsync(_db, memberId, now, ct);
         if (!facts.Exists || facts.MemberType != MemberType.Ambassador)
             return new AnnualFeeOverviewDto();
@@ -91,7 +91,7 @@ public sealed class AnnualFeeOverviewService : IAnnualFeeOverviewService
     public async Task<bool> SetFeesFromBalanceAsync(string memberId, bool value, string actor, CancellationToken ct = default)
     {
         var member = await _db.MemberProfiles
-            // Revisión final (M-e): explícito aunque haya filtro global, por si alguien lee sin filtros.
+            // Explícito aunque haya filtro global, por si alguien lee sin filtros.
             .FirstOrDefaultAsync(m => m.MemberId == memberId && m.MemberType == MemberType.Ambassador && !m.IsDeleted, ct);
         if (member is null) return false;
 

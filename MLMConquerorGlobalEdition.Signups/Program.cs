@@ -52,7 +52,7 @@ builder.Services.AddHttpClient("SignupsInternal", client =>
 // Los portales y sus direcciones salen de configuración: cambian de un entorno a otro.
 builder.Services.AddPortalSessionBounce(builder.Configuration);
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 // Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
 builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.Signups");

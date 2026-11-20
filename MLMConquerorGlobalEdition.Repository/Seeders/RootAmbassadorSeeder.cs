@@ -77,7 +77,7 @@ public static class RootAmbassadorSeeder
             LastUpdateDate = now
         };
 
-        // Plan P: la raiz la construye DualTeamNodes (clave compacta con ordinal propio).
+        // La raiz la construye DualTeamNodes (clave compacta con ordinal propio).
         var dualTeam = await DualTeamNodes.RootAsync(db, RootMemberCode, now, "SYSTEM");
 
         var topLevel = await db.MembershipLevels

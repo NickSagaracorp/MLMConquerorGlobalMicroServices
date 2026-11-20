@@ -99,8 +99,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 });
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 
-// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
-// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
+// El recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance.
 
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
@@ -110,7 +110,7 @@ builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
 builder.Services.AddScoped<ISignupActivationService, SignupActivationService>();
 // La transición atómica del pedido de alta a Completed (un pedido se activa una sola vez).
 builder.Services.AddScoped<ISignupOrderClaim, SignupOrderClaim>();
-// Direcciones de depósito cripto configuradas en el admin: el alta las muestra (Plan F).
+// Direcciones de depósito cripto configuradas en el admin: el alta las muestra.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader,
                            MLMConquerorGlobalEdition.Repository.Services.Crypto.CryptoDepositAddressReader>();
 builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
@@ -121,7 +121,7 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.I
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
-// Entrax: rublos por SBP en el alta (Plan H). La guarda tumba el arranque fuera de Development si
+// Entrax: rublos por SBP en el alta. La guarda tumba el arranque fuera de Development si
 // está encendido sin KeyId, Secret o CallbackUrl https, si hay credenciales a medias o si UseFake
 // está puesto; en Development solo avisa. El fake (UseFake) es un singleton en memoria que se paga
 // con /api/v1/dev/entrax/….
@@ -379,7 +379,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 // Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
 builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.SignupAPI");
@@ -464,7 +464,7 @@ RecurringJob.AddOrUpdate<ContestPointsSweepJob>(
     "*/10 * * * *",                    // every 10 minutes
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
 
-// Entrax (Plan H): liquida los pagos del alta que ni el callback ni la pantalla liquidaron, y mira
+// Entrax: liquida los pagos del alta que ni el callback ni la pantalla liquidaron, y mira
 // los QR caducados hace poco por si se pagaron tarde. Corre aunque Entrax esté apagado.
 RecurringJob.AddOrUpdate<EntraxSignupSweepJob>(
     EntraxSignupSweepJob.RecurringJobId,

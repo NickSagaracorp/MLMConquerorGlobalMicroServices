@@ -1,8 +1,8 @@
 namespace MLMConquerorGlobalEdition.Domain.Services;
 
 /// <summary>
-/// Plan Q (DQ5): la linea de inscripcion que recibe avisos y evaluaciones de rango inmediatas, acotada. La misma cota que I3
-/// del Plan P (avisos de rango). Mas alla, la fase 2 de RankEvaluationSweepJob evalua a todos cada noche.
+/// La linea de inscripcion que recibe avisos y evaluaciones de rango inmediatas, acotada. La misma cota
+/// que los avisos de rango. Mas alla, la fase 2 de RankEvaluationSweepJob evalua a todos cada noche.
 /// </summary>
 public static class GenealogyUpline
 {

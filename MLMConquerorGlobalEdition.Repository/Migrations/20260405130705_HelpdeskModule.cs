@@ -10,8 +10,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     /// <summary>
     /// Se genero contra una instantanea vacia: vuelve a crear tablas que ya existian (AspNetRoles, AspNetUsers, Tickets y
-    /// todas las de InitialCreate). En las bases reales no se ejecuto; fix_helpdesk_tables.sql creo solo las tablas nuevas.
-    /// Plan Q, Bloque 6 (DQ11, docs/superpowers/plans/2026-10-19-plan-q-escala-binario-y-reportes.md): en una base vacia
+    /// todas las de InitialCreate). En las bases reales no se ejecuto; se crearon a mano solo las tablas nuevas.
+    /// En una base vacia
     /// se reproduce lo mismo, las operaciones sobre una tabla que ya existia antes de esta migracion no se ejecutan
     /// (SoloSiLaTablaEsNueva y MigracionesSqlServerConGuardas). Una base que ya la tiene en su historial no la repite.
     /// </summary>

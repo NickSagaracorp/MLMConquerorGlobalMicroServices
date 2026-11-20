@@ -4,10 +4,10 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// Rango de fechas de los reportes del equipo. Los dos extremos son días inclusivos y se convierten
 /// a [desde, hasta + 1 día).
 ///
-/// Dos reglas (Plan J):
+/// Dos reglas:
 /// <list type="bullet">
-///   <item><b>Común</b> (J12, la de <i>Cambios de estado</i>): como mucho <see cref="MaxDays"/> días.</item>
-///   <item><b>Actividad por fechas</b> (corrección de Nick N4): además, el inicio no puede ser anterior
+///   <item><b>Común</b> (la de <i>Cambios de estado</i>): como mucho <see cref="MaxDays"/> días.</item>
+///   <item><b>Actividad por fechas</b> (corrección de Nick): además, el inicio no puede ser anterior
 ///   a hoy menos <see cref="ActivityLookbackMonths"/> meses y el fin no puede ser posterior a hoy.
 ///   «Hoy» es la hora del SERVIDOR, que pasa quien llama.</item>
 /// </list>

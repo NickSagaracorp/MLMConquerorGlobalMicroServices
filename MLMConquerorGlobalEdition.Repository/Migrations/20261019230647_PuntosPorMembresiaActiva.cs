@@ -10,11 +10,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan Q (DQ16): cada suscripcion activa guarda lo que aporta (DualTeamContribution = EnrollmentContribution);
+            // Cada suscripcion activa guarda lo que aporta (DualTeamContribution = EnrollmentContribution);
             // salir de Active resta lo guardado. Se rellena SIN cambiar ningun punto: la activa de mayor nivel de cada
             // miembro aporta sus PersonalPoints actuales (lo que ya esta en las piernas y en EnrollmentPoints) y las demas,
             // 0. Los miembros con puntos y sin suscripcion activa (o activos sin puntos) no se tocan: realinearlos cambia lo
-            // que se paga y lo decide Nick (Q3).
+            // que se paga y lo decide Nick.
             migrationBuilder.Sql(@"
 UPDATE MembershipSubscriptions SET DualTeamContribution = 0, EnrollmentContribution = 0
 WHERE DualTeamContribution <> 0 OR EnrollmentContribution <> 0;

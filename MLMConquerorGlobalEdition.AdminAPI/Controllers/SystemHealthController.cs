@@ -35,7 +35,7 @@ public class SystemHealthController : ControllerBase
     {
         // AdminAPI self-check (local DB)
         var adminDbUp = await _db.Database.CanConnectAsync(ct);
-        // Plan Q (revision 2 del bloque 2, I1): deltas de pierna apartados de la cola (Q-R30). Debe ser 0; si no, las
+        // Deltas de pierna apartados de la cola. Debe ser 0; si no, las
         // piernas de sus ascendientes van sin ellos hasta reponerlos y el servicio queda degradado.
         var apartados = adminDbUp ? await LegPointMaintenance.DeadLetterCountAsync(_db, ct) : 0;
         var adminStatus = new ServiceHealthResult

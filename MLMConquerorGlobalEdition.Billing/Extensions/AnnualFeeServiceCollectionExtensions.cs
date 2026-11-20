@@ -6,8 +6,8 @@ namespace MLMConquerorGlobalEdition.Billing.Extensions;
 public static class AnnualFeeServiceCollectionExtensions
 {
     /// <summary>
-    /// Registra la cuota anual (Plan K). Va en un método para que la prueba de DI ejercite este mismo
-    /// registro (AnnualFeeDiTests). Supone lo que Program.cs registra antes: el reloj de Billing,
+    /// Registra la cuota anual. Va en un método para que una prueba de DI pueda ejercitar este mismo
+    /// registro. Supone lo que Program.cs registra antes: el reloj de Billing,
     /// AddPayoutServices (el candado de fondos), AddTokenPurchaseServices (los fondos eWallet),
     /// ICommissionBalanceService e IRecurringBillingScheduler.
     /// </summary>

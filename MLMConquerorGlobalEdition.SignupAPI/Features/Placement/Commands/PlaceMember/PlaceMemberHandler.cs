@@ -16,15 +16,14 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.PlaceM
 
 /// <summary>
 /// El miembro elige el lado y se le coloca en el hueco menos profundo de ese lado bajo el nodo pedido.
-/// Plan P:
 /// <list type="bullet">
 /// <item>Busqueda, candado del hueco, nueva comprobacion e insercion en una transaccion; el arbol se toma en
-/// compartido ANTES de buscar (I1) y se reintenta si otro escritor ocupa el hueco elegido.</item>
+/// compartido ANTES de buscar y se reintenta si otro escritor ocupa el hueco elegido.</item>
 /// <item>Una raiz provisional (tiene nodo, no tiene padre) se coloca con todo su equipo; el arbol en exclusivo
 /// desde el principio. Una raiz del sistema no se coloca; un nodo con padre ya esta colocado.</item>
-/// <item>El nodo pedido tiene que estar en la red de patrocinio de su patrocinador (I8), como en el BizCenter.</item>
-/// <item>Sin tope de 1.500 de la ruta (I3): el limite real es el de la clave compacta (13.567 niveles).</item>
-/// <item>Piernas incrementales (C2) y una sola evaluacion de rango y un solo aviso a la linea (I4): con 8.000
+/// <item>El nodo pedido tiene que estar en la red de patrocinio de su patrocinador, como en el BizCenter.</item>
+/// <item>Sin tope de 1.500 de la ruta: el limite real es el de la clave compacta (13.567 niveles).</item>
+/// <item>Piernas incrementales y una sola evaluacion de rango y un solo aviso a la linea: con 8.000
 /// ascendientes no se encola ni se avisa a cada uno.</item>
 /// </list>
 /// </summary>
@@ -66,7 +65,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
         if (command.PlaceUnderMemberId == command.MemberId)
             return Result<bool>.Failure("AUTO_SUPERIORITY", "A member cannot be placed under itself.");
 
-        // I8: no se cuelga a nadie bajo cualquier nodo. El nodo pedido es el patrocinador o alguien de su red de
+        // No se cuelga a nadie bajo cualquier nodo. El nodo pedido es el patrocinador o alguien de su red de
         // patrocinio (lo mismo que ofrece GetAvailableNodes en el BizCenter). El personal queda fuera de la regla.
         if (!command.ByStaff && !await IsInSponsorNetworkAsync(member.SponsorMemberId, command.PlaceUnderMemberId, ct))
             return Result<bool>.Failure("PLACEMENT_TARGET_NOT_ALLOWED",
@@ -81,7 +80,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
 
         var side = Enum.Parse<TreeSide>(command.Side);
 
-        // Revision I1: un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el; recolgarlo
+        // Un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el; recolgarlo
         // mueve subarboles, asi que entonces el arbol se toma en exclusivo desde el principio.
         var flotantes = esRaizProvisional ? new List<DualTeamEntity>() : await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberId, ct);
         var exclusivo = esRaizProvisional || flotantes.Count > 0;
@@ -144,7 +143,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                     var node = await DualTeamNodes.ChildAsync(_db, slot, command.MemberId, side, now, command.MemberId, ct);
                     nuevos.Add(_db.DualTeamTree.Add(node).Entity);
                     await _db.SaveChangesAsync(ct);
-                    // Plan Q (P-R9): solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
+                    // Solo se encola; ApplyDualLegDeltasJob sube los puntos y contadores por la linea.
                     await LegPointMaintenance.EnqueueLeafAsync(_db, command.MemberId, now, command.MemberId, ct);
                     await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberId, flotantes, now, command.MemberId, ct);
                 }
@@ -161,7 +160,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                     CreatedBy           = command.MemberId
                 }).Entity);
 
-                // I4: una sola evaluacion de rango, la del padre directo (antes, una fila por ascendiente).
+                // Una sola evaluacion de rango, la del padre directo (antes, una fila por ascendiente).
                 nuevos.Add(_db.RankEvaluationQueue.Add(new RankEvaluationQueue
                 {
                     TriggerMemberId  = command.MemberId,
@@ -228,7 +227,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
     /// <summary>
     /// El hueco menos profundo del lado pedido bajo <paramref name="root"/> (regla del producto: el miembro elige el
     /// lado). Por adyacencia (ParentMemberId), nivel a nivel, y se detiene en el primer nivel con hueco; dentro de un
-    /// nivel, por (CreationDate, Id). Sin filtro por ruta y sin tope de longitud (I3).
+    /// nivel, por (CreationDate, Id). Sin filtro por ruta y sin tope de longitud.
     /// </summary>
     private async Task<DualTeamEntity?> FindFirstEmptySlotAsync(DualTeamEntity root, TreeSide requiredSide, CancellationToken ct)
     {

@@ -10,12 +10,12 @@ namespace MLMConquerorGlobalEdition.Billing.Extensions;
 public static class TokenPurchaseServiceCollectionExtensions
 {
     /// <summary>
-    /// Registra la compra de tokens (Plan F): precio, cupo, emisor, fondos eWallet, recibos, comprobación
+    /// Registra la compra de tokens: precio, cupo, emisor, fondos eWallet, recibos, comprobación
     /// de step-up, direcciones de depósito cripto, el servicio de compra y sus dos trabajos: la caducidad
     /// de la cripto sin pagar y el barrido de las Pending olvidadas.
     /// </summary>
     /// <remarks>
-    /// Va en un método y no suelto en Program.cs para que la prueba de DI ejercite este mismo registro.
+    /// Va en un método y no suelto en Program.cs para que una prueba de DI pueda ejercitar este mismo registro.
     /// Supone lo que Program.cs ya registra antes: el reloj de Billing, la caché, las notificaciones,
     /// el ruteo de tarjeta, ICommissionBalanceService y AddPayoutServices, que aporta IEWalletClient y
     /// el candado de fondos (IMemberFundsGate), compartido con los pagos.

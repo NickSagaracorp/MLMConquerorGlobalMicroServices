@@ -28,12 +28,12 @@ public interface IEnrollmentTeamPointsService
         string memberId, RankRequirement requirement, CancellationToken ct = default);
 
     /// <summary>
-    /// Recalculo de un miembro (Plan Q, DQ16): sobre el subarbol vigente (el propio incluido), la suma de
+    /// Recalculo de un miembro: sobre el subarbol vigente (el propio incluido), la suma de
     /// <c>EnrollmentContribution</c> de las suscripciones activas. Las colas lo mantienen; esto es para comprobar.
     /// Returns the correct value for <see cref="MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity.EnrollmentPoints"/>
     /// which is defined as own points + every downline member's points.
     /// </summary>
-    /// <remarks>Plan M (revisión C1): null si el miembro no tiene nodo vigente con Node. Sin Node no hay
+    /// <remarks>Null si el miembro no tiene nodo vigente con Node. Sin Node no hay
     /// equipo que sumar; devolver 0 haría que quien lo persiste borrara los puntos de equipo.</remarks>
     Task<int?> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default);
 }

@@ -10,7 +10,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.Billing.Controllers;
 
-/// <summary>Cuota anual del Biz Center (Plan K). Lo llama el BizCenter reenviando el JWT del miembro.</summary>
+/// <summary>Cuota anual del Biz Center. Lo llama el BizCenter reenviando el JWT del miembro.</summary>
 /// <remarks>
 /// QUIEN PAGA ES EL DEL TOKEN: el contrato no lleva MemberId. El personal (sin memberId) no paga por nadie;
 /// una suplantación tampoco, sea o no de solo lectura. Todo pago de la cuota es con lo que ya es del

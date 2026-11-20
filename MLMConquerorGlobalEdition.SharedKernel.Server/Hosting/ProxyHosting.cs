@@ -9,7 +9,7 @@ namespace MLMConquerorGlobalEdition.SharedKernel.Server.Hosting;
 
 /// <summary>
 /// Lo que necesita un servicio para correr detrás del balanceador (ALB) y con varias réplicas.
-/// Lo usan los once hosts; ver docs/deployment/despliegue-aws-eks.md, Fase 0.
+/// Lo usan los once hosts.
 /// </summary>
 public static class ProxyHosting
 {

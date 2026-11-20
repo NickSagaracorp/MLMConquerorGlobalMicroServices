@@ -11,11 +11,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Plan M: NodeNullKey copia el Id como nvarchar(100). Un Id más largo se truncaría y dos filas sin
+            // NodeNullKey copia el Id como nvarchar(100). Un Id más largo se truncaría y dos filas sin
             // Node podrían chocar en el índice único: la migración se detiene antes de tocar nada.
             migrationBuilder.Sql(@"
 IF EXISTS (SELECT 1 FROM [GenealogyTree] WHERE DATALENGTH([Id]) / 2 > 100)
-    THROW 51033, N'GenealogyTree.Id tiene valores de mas de 100 caracteres: no caben en NodeNullKey (Plan M, Tarea 9).', 1;");
+    THROW 51033, N'GenealogyTree.Id tiene valores de mas de 100 caracteres: no caben en NodeNullKey.', 1;");
 
             // Revisión M-h: como el de DualTeamTree en PedidosAcotadosEIndices, se suelta solo si existe (una base
             // con deriva podría no tenerlo) y se recrea más abajo con INCLUDE (Node).

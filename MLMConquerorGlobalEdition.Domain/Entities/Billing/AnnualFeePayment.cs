@@ -4,7 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 namespace MLMConquerorGlobalEdition.Domain.Entities.Billing;
 
 /// <summary>
-/// Un cobro de la cuota anual (Plan K, K10). Es a la vez la IDEMPOTENCIA de "Pagar ahora" ((MemberId,
+/// Un cobro de la cuota anual. Es a la vez la IDEMPOTENCIA de "Pagar ahora" ((MemberId,
 /// IdempotencyKey) único) y la garantía contra el doble cobro: (SubscriptionBillingStateId,
 /// CycleDueDate) es único entre los pagos vivos (Pending, Completed, NeedsReconciliation). Su Id es
 /// también la referencia del débito en i-Payout.

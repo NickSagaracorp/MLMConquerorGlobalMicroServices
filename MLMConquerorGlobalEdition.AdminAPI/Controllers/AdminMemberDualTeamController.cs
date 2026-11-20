@@ -81,7 +81,7 @@ public class AdminMemberDualTeamController : ControllerBase
         [FromQuery] string? search   = null,
         CancellationToken ct = default)
     {
-        // 1. Plan P: el subarbol binario es el rango de la clave compacta del nodo (DualSubtree.Under)
+        // 1. El subarbol binario es el rango de la clave compacta del nodo (DualSubtree.Under)
         var rootNode = await _db.DualTeamTree.AsNoTracking()
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
 
@@ -150,7 +150,7 @@ public class AdminMemberDualTeamController : ControllerBase
             .Where(l => levelIds.Contains(l.Id))
             .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
-        // 7. Ranks (latest per member) — Plan Q: MemberRankQueries
+        // 7. Ranks (latest per member) — MemberRankQueries
         var rankMap = await _db.GetCurrentRanksAsync(pageIds, ct);
 
         // 8. All rank definitions (for next rank calc)
@@ -403,7 +403,7 @@ public class AdminMemberDualTeamController : ControllerBase
         // → 32s / 500 for a top-rank member). Now: one JOIN over the subtree + NOT EXISTS for
         // "not placed", a cap, and a single batched floating-children count.
         take = Math.Clamp(take, 1, 500);
-        // Plan M: el equipo de inscripción por el Node vigente del miembro (seek), no por un LIKE sobre la ruta.
+        // El equipo de inscripción por el Node vigente del miembro (seek), no por un LIKE sobre la ruta.
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         var q =

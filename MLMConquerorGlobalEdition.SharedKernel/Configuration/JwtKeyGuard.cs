@@ -36,7 +36,7 @@ public static class JwtKeyGuard
     /// <summary>Tamaño mínimo aceptado, en bits. Por debajo de esto RSA es factorizable.</summary>
     private const int MinimumKeySizeBits = 2048;
 
-    private const string TemplateHint = "Plantilla: docs/deployment/jwt-keys.template.json.";
+    private const string TemplateHint = "Las llaves van en base64 (DER) en la configuración del entorno.";
 
     /// <summary>
     /// Devuelve la llave privada, en su base64 canónico, si es utilizable; si no, lanza con un

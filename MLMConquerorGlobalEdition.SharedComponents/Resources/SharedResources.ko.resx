@@ -906,7 +906,7 @@
   <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>관리자 대시보드</value></data>
   <data name="Sidebar.MyTeam2" xml:space="preserve"><value>내 팀</value></data>
 
-  <!-- Tokens / Guest Passes (F4) -->
+  <!-- Tokens / Guest Passes -->
   <data name="GuestPasses.Title" xml:space="preserve"><value>게스트 패스</value></data>
   <data name="GuestPasses.Code" xml:space="preserve"><value>코드</value></data>
   <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>배포 대상</value></data>
@@ -948,7 +948,7 @@
   <data name="Tokens.Clear" xml:space="preserve"><value>지우기</value></data>
   <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>게스트 패스</value></data>
 
-  <!-- Loyalty (F4) -->
+  <!-- Loyalty -->
   <data name="Loyalty.TotalPoints" xml:space="preserve"><value>총 포인트</value></data>
   <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>잠금 해제된 포인트</value></data>
   <data name="Loyalty.LockedPoints" xml:space="preserve"><value>잠긴 포인트</value></data>
@@ -963,7 +963,7 @@
   <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>잠금 해제</value></data>
   <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>수동 잠금 해제</value></data>
 
-  <!-- Ranks (F4) -->
+  <!-- Ranks -->
   <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>랭크는 앰배서더만 사용할 수 있습니다.</value></data>
   <data name="Ranks.CurrentRank" xml:space="preserve"><value>현재 랭크</value></data>
   <data name="Ranks.ProgressTitle" xml:space="preserve"><value>다음 랭크까지 진행률</value></data>
@@ -973,7 +973,7 @@
   <data name="Ranks.ColRank" xml:space="preserve"><value>랭크</value></data>
   <data name="Ranks.ColCertificate" xml:space="preserve"><value>인증서</value></data>
 
-  <!-- Marketing (F4) -->
+  <!-- Marketing -->
   <data name="Marketing.Title" xml:space="preserve"><value>마케팅</value></data>
   <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>사용 가능한 문서 없음</value></data>
   <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>현재 사용 가능한 마케팅 문서가 없습니다.</value></data>
@@ -985,13 +985,13 @@
   <data name="Marketing.DownloadAria" xml:space="preserve"><value>{1}로 {0} 다운로드</value></data>
   <data name="Marketing.DownloadFailed" xml:space="preserve"><value>다운로드 링크를 생성할 수 없습니다. 다시 시도해 주세요.</value></data>
 
-  <!-- PageTitle (F4) -->
+  <!-- PageTitle -->
   <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>토큰 및 게스트 패스</value></data>
   <data name="PageTitle.Loyalty" xml:space="preserve"><value>적립 포인트</value></data>
   <data name="PageTitle.Ranks" xml:space="preserve"><value>직급</value></data>
   <data name="PageTitle.Marketing" xml:space="preserve"><value>마케팅</value></data>
 
-  <!-- F4 — additional keys -->
+  <!-- Additional keys -->
   <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>유효기간 :</value></data>
   <data name="Tokens.PaginationAria" xml:space="preserve"><value>토큰 페이지 매김</value></data>
   <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>게스트 패스 페이지 매김</value></data>
@@ -1007,7 +1007,7 @@
   <data name="Ranks.CertificateDownloadFailed" xml:space="preserve"><value>인증서를 다운로드할 수 없습니다. 다시 시도해 주세요.</value></data>
   <data name="Marketing.TabsAria" xml:space="preserve"><value>마케팅 문서 유형</value></data>
 
-  <!-- Tickets — F5 -->
+  <!-- Tickets -->
   <data name="Tickets.FilterStatus" xml:space="preserve"><value>상태</value></data>
   <data name="Tickets.AllStatuses" xml:space="preserve"><value>모든 상태</value></data>
   <data name="Tickets.StatusOpen" xml:space="preserve"><value>열림</value></data>
@@ -1038,7 +1038,7 @@
   <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>홈</value></data>
   <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>티켓</value></data>
 
-  <!-- Ticket Detail — F5 -->
+  <!-- Ticket Detail -->
   <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>카테고리</value></data>
   <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>우선순위</value></data>
   <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>담당자</value></data>
@@ -1072,7 +1072,7 @@
   <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>홈</value></data>
   <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>티켓</value></data>
 
-  <!-- Ticket Create — F5 -->
+  <!-- Ticket Create -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>새 티켓 생성</value></data>
   <data name="TicketCreate.CloseAria" xml:space="preserve"><value>대화 상자 닫기</value></data>
   <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>제목</value></data>
@@ -1099,7 +1099,7 @@
   <data name="TicketCreate.Submit" xml:space="preserve"><value>티켓 제출</value></data>
   <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>티켓 생성에 실패했습니다. 다시 시도하세요.</value></data>
 
-  <!-- Login — F5 -->
+  <!-- Login -->
   <data name="Login.PosterAlt" xml:space="preserve"><value>로그인 일러스트</value></data>
   <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror 로고</value></data>
   <data name="Login.WelcomeBack" xml:space="preserve"><value>다시 오신 것을 환영합니다!</value></data>
@@ -1117,7 +1117,7 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>계정이 없으신가요?</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>지원팀에 문의하기</value></data>
 
-  <!-- Error page — F5 -->
+  <!-- Error page -->
   <data name="Error.Title" xml:space="preserve"><value>오류.</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>요청을 처리하는 동안 오류가 발생했습니다.</value></data>
   <data name="Error.RequestIdLabel" xml:space="preserve"><value>요청 ID:</value></data>
@@ -1125,7 +1125,7 @@
   <data name="Error.DevModeIntro" xml:space="preserve"><value>&lt;strong&gt;Development&lt;/strong&gt; 환경으로 전환하면 발생한 오류에 대한 더 자세한 정보가 표시됩니다.</value></data>
   <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;Development 환경은 배포된 애플리케이션에서 활성화하지 마세요.&lt;/strong&gt; 예외에서 민감한 정보가 최종 사용자에게 노출될 수 있습니다. 로컬 디버깅의 경우, &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; 환경 변수를 &lt;strong&gt;Development&lt;/strong&gt;로 설정한 후 앱을 다시 시작하여 &lt;strong&gt;Development&lt;/strong&gt; 환경을 활성화하세요.</value></data>
 
-  <!-- Not Found — F5 -->
+  <!-- Not Found -->
   <data name="NotFound.Title" xml:space="preserve"><value>페이지를 찾을 수 없습니다</value></data>
   <data name="NotFound.Message" xml:space="preserve"><value>죄송합니다. 해당 페이지가 존재하지 않습니다.</value></data>
   <data name="NotFound.GoToDashboard" xml:space="preserve"><value>대시보드로 이동</value></data>
@@ -1235,7 +1235,7 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>비밀번호 설정</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>이 계정에는 아직 비밀번호가 없습니다. 아래에서 비밀번호를 선택하세요.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>비밀번호 설정</value></data>
-  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono -->
   <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>이 계정에는 등록된 전화번호가 없습니다. 먼저 추가하세요.</value></data>
   <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>이 인증은 더 이상 유효하지 않습니다. 전화번호를 다시 추가하여 새 코드를 받으세요.</value></data>
   <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>이 방법은 아직 이 계정에서 사용할 수 없습니다. 먼저 설정한 다음 선택하세요.</value></data>
@@ -1281,7 +1281,7 @@
   <data name="VerifyPhone.Title" xml:space="preserve"><value>전화번호 인증</value></data>
   <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>번호가 잘못되었나요? 다른 번호를 입력하세요</value></data>
 
-  <!-- PageTitle — F5 -->
+  <!-- PageTitle -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>지원 티켓</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>티켓 상세</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - 로그인</value></data>

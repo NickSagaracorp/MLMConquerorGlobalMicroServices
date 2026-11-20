@@ -5,9 +5,9 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 /// <summary>
-/// Plan M (M7). Sin FK: el webhook de pagos guarda filas con OrderId/MemberId vacíos si la pasarela no
+/// Sin FK: el webhook de pagos guarda filas con OrderId/MemberId vacíos si la pasarela no
 /// los manda, y una FK lo haría fallar en bucle. El índice ÚNICO por (GatewayName, GatewayTransactionId)
-/// está propuesto y pendiente de Nick (R7).
+/// está propuesto y pendiente de Nick.
 /// </summary>
 public class PaymentHistoryConfiguration : IEntityTypeConfiguration<PaymentHistory>
 {

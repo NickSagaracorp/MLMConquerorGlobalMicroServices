@@ -144,7 +144,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 
 var app = builder.Build();

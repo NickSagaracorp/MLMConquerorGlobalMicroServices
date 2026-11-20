@@ -4,15 +4,15 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Plan Q (DQ10): el unico sitio que calcula y guarda MemberProfiles.SignupMembershipLevelId. Regla N2 del Plan J: el
+/// El unico sitio que calcula y guarda MemberProfiles.SignupMembershipLevelId. Es el
 /// primer pedido del miembro con productos de membresia (por OrderDate, CreationDate e Id), su nivel mas alto (la regla de
 /// <see cref="OrderMembershipLevelQueries"/>); no se filtra por estado del pedido. Lo llaman la eleccion de productos del
-/// alta y la activacion; 02-nivel-de-alta.sql rellena el pasado.
+/// alta y la activacion; el relleno de los miembros anteriores usa la misma regla.
 /// </summary>
 public static class SignupMembershipLevel
 {
     public static Task<int?> ComputeAsync(AppDbContext db, string memberId, CancellationToken ct = default) =>
-        // Revision del bloque 5 (I6): el orden va en SQL y termina en o.Id, como 02-nivel-de-alta.sql: dos pedidos con la
+        // El orden va en SQL y termina en o.Id, como el relleno de los miembros anteriores: dos pedidos con la
         // misma fecha de pedido y de creacion se desempatan igual en los dos sitios (la misma intercalacion de la base).
         (from o in db.Orders.AsNoTracking()
          where o.MemberId == memberId

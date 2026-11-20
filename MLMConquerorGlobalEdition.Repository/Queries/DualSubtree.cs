@@ -9,9 +9,8 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
 /// <summary>
-/// Plan P: el equipo binario de un nodo es el rango (Lo, Hi) de UX_DualTeamTree_BinaryPath (DualBinaryPath):
-/// un Index Seek, sin recorrer la tabla ni bajar nivel a nivel. Sustituye a la CTE con tope de 20.000 del
-/// Plan M y a los filtros por prefijo de HierarchyPath (que ademas fallan con el error 8152 cuando la ruta pasa
+/// El equipo binario de un nodo es el rango (Lo, Hi) de UX_DualTeamTree_BinaryPath (DualBinaryPath):
+/// un Index Seek, sin recorrer la tabla ni bajar nivel a nivel. Sustituye a la CTE con tope de 20.000 y a los filtros por prefijo de HierarchyPath (que ademas fallan con el error 8152 cuando la ruta pasa
 /// de 4.000 caracteres: tras la reparacion, casi todos los nodos). Las consultas llevan <see cref="RecompileTag"/>:
 /// el tamano del rango va de 1 a cientos de miles, y RecompileTaggedQueriesInterceptor les anade OPTION (RECOMPILE).
 /// Fuera de SQL Server (InMemory, pruebas de logica) el mismo conjunto sale de bajar por ParentMemberId.
@@ -33,11 +32,11 @@ public static class DualSubtree
     }
 
     /// <summary>
-    /// Plan Q (DQ8): los nodos bajo <paramref name="node"/> (el no) cuyo miembro casa con <paramref name="term"/> por el
-    /// comienzo del nombre completo o del id (MemberNameSearch). Revision del bloque 5 (C1), dos formas segun el tamano del
+    /// Los nodos bajo <paramref name="node"/> (el no) cuyo miembro casa con <paramref name="term"/> por el
+    /// comienzo del nombre completo o del id (MemberNameSearch), con dos formas segun el tamano del
     /// equipo (los contadores de pierna):
     /// <list type="bullet">
-    /// <item>Hasta MemberNameSearch.RangeSearchMaxTeam (5.000), desde el rango del equipo (como antes de DQ8) con el prefijo
+    /// <item>Hasta MemberNameSearch.RangeSearchMaxTeam (5.000), desde el rango del equipo (como cuando no habia indice de nombres) con el prefijo
     /// sobre sus perfiles: el coste es el del equipo, que es pequeno, y casa cualquier termino (tambien «amb», con todos los
     /// ids), sin topes.</item>
     /// <item>Por encima, desde los perfiles que casan (MemberNameSearch.MatchingIdsSql, con <paramref name="candidatesPerBranch"/>
@@ -76,7 +75,7 @@ WHERE d.BinaryPath > @lo AND d.BinaryPath < @hi AND d.MemberId <> @self",
     }
 
     /// <summary>
-    /// Plan Q (Tarea 28): una pagina de los descendientes de <paramref name="node"/> (el no) en el orden de la clave, la
+    /// Una pagina de los descendientes de <paramref name="node"/> (el no) en el orden de la clave, la
     /// estructura del arbol. La pagina se toma del indice cubriente UX_DualTeamTree_BinaryPath (solo MemberId) y despues se
     /// leen esos pocos nodos; con el OFFSET sobre el equipo unido a los perfiles se ordenaba el rango entero (1,9 s la
     /// pagina 1.000 con 119.000 en local). Quien llama vuelve a ordenar las filas de la pagina por la clave. En InMemory,
@@ -101,7 +100,7 @@ JOIN DualTeamTree d ON d.MemberId = p.MemberId AND d.IsDeleted = 0",
     }
 
     /// <summary>
-    /// Plan Q: solo los MemberId de los descendientes de <paramref name="node"/>, leidos por el indice cubriente
+    /// Solo los MemberId de los descendientes de <paramref name="node"/>, leidos por el indice cubriente
     /// UX_DualTeamTree_BinaryPath (con la pista: con SELECT * el optimizador elegia a veces una interseccion paralela
     /// de tres indices, de 400 a 1.660 ms con 119.000; asi, unos 200 ms sin carga). Para contar o unir con otra tabla.
     /// </summary>
@@ -153,7 +152,7 @@ JOIN DualTeamTree d ON d.MemberId = p.MemberId AND d.IsDeleted = 0",
 
     private static byte[] Key(DualTeamEntity n) =>
         n.BinaryPath ?? throw new InvalidOperationException(
-            $"{n.MemberId} has no BinaryPath (backfill pending: Scripts/sql/plan-p/03-relleno-clave-binario.sql).");
+            $"{n.MemberId} has no BinaryPath (backfill pending: the compact keys of existing nodes have not been filled in yet).");
 
     private static List<string> DescendantIdsInMemory(AppDbContext db, string rootId, TreeSide? side)
     {

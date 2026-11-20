@@ -20,9 +20,9 @@ public interface IAnnualFeeStateEnrollment
 }
 
 /// <summary>
-/// Da de alta los estados de cuota anual (Plan K, K3): uno por Ambassador no borrado y no Terminated,
+/// Da de alta los estados de cuota anual: uno por Ambassador no borrado y no Terminated,
 /// en el plan marcado IsAnnualFeePlan, con el primer aniversario de la inscripción que no haya pasado.
-/// También a quien tiene la membresía en HoldByBilling: no se le cobra mientras siga así (K5, decisión
+/// También a quien tiene la membresía en HoldByBilling: no se le cobra mientras siga así (decisión
 /// de Nick), pero el estado queda listo para cuando salga de la espera.
 /// No migra nada del legado. UX_SubscriptionBillingStates_AnnualFeeMember impide duplicar aunque dos
 /// instancias corran a la vez.
@@ -79,7 +79,7 @@ public sealed class AnnualFeeStateEnrollment : IAnnualFeeStateEnrollment
             }
             catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
             {
-                // Revisión M1: el lote entero no se pierde por una fila. Se suelta lo añadido (solo lo
+                // El lote entero no se pierde por una fila. Se suelta lo añadido (solo lo
                 // nuestro: no se limpia el contexto) y se reintenta de uno en uno; la que vuelva a fallar
                 // (otra instancia la creó, o un dato que la base rechaza) se registra y se salta.
                 Detach(states);
@@ -138,7 +138,7 @@ public sealed class AnnualFeeStateEnrollment : IAnnualFeeStateEnrollment
         }
         catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
         {
-            // Revisión I4: solo se suelta lo que añadimos (el contexto puede ser compartido). Si otra
+            // Solo se suelta lo que añadimos (el contexto puede ser compartido). Si otra
             // petición lo creó a la vez, la fila está y se usa la suya; si no hay fila, el fallo era otro
             // y se relanza: no se traga.
             Detach(new[] { state });

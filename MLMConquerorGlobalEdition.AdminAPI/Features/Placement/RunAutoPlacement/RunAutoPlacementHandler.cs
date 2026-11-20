@@ -9,10 +9,10 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.RunAutoPlacement
 
 /// <summary>
 /// Admin-triggered auto-placement run. Idempotent: only processes members not yet in the dual tree.
-/// Plan P: delega en el motor unico (<see cref="IPlacementService"/>), que coloca de uno en uno bajo el
+/// Delega en el motor unico (<see cref="IPlacementService"/>), que coloca de uno en uno bajo el
 /// candado del hueco. La version anterior tenia su propia regla (BFS por anchura), leia con AsNoTracking
 /// dentro del bucle y guardaba una sola vez al final, asi que dos patrocinados del mismo patrocinador
-/// caian en el mismo lado (diagnostico-huecos-binario.md §2).
+/// caian en el mismo lado.
 /// </summary>
 public class RunAutoPlacementHandler : IRequestHandler<RunAutoPlacementCommand, Result<RunAutoPlacementResult>>
 {

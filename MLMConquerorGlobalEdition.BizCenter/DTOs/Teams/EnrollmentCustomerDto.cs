@@ -4,7 +4,7 @@ public class EnrollmentCustomerDto
 {
     public string    MemberId         { get; set; } = string.Empty;
     public string    FullName         { get; set; } = string.Empty;
-    /// <summary>Solo de los clientes personales del que mira (Plan J); null para el resto.</summary>
+    /// <summary>Solo de los clientes personales del que mira; null para el resto.</summary>
     public string?   Email            { get; set; }
     public string?   Phone            { get; set; }
     public string    Country          { get; set; } = string.Empty;

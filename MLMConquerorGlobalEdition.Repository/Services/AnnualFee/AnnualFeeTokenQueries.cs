@@ -6,7 +6,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 
 /// <summary>
-/// Los tokens que pueden pagar la cuota de un miembro (Plan K, K8). La usan el BizCenter (para enseñar
+/// Los tokens que pueden pagar la cuota de un miembro. La usan el BizCenter (para enseñar
 /// cuántos tiene) y Billing (para gastar uno), así que los dos ven lo mismo.
 /// </summary>
 public static class AnnualFeeTokenQueries

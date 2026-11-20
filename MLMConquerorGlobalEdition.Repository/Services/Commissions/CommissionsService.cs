@@ -26,7 +26,7 @@ public class CommissionsService : ICommissionsService
     private readonly AppDbContext      _db;
     private readonly IDateTimeProvider _clock;
 
-    /// <param name="clock">Hora de servidor (Plan J): el "ahora" de todo el servicio sale de aquí.</param>
+    /// <param name="clock">Hora de servidor: el "ahora" de todo el servicio sale de aquí.</param>
     public CommissionsService(AppDbContext db, IDateTimeProvider clock)
     {
         _db    = db;
@@ -300,7 +300,7 @@ public class CommissionsService : ICommissionsService
         if (months <= 0) months = 6;
         months = Math.Min(months, 24);
 
-        // Plan J: el gráfico lee DailyResidualEarnings, que es lo que escribe el motor de residuales.
+        // El gráfico lee DailyResidualEarnings, que es lo que escribe el motor de residuales.
         // CommissionEarnings de la categoría 3 mezcla débitos negativos y consolidaciones.
         // Ancla en el día 1 del mes en curso según la hora del SERVIDOR; la ventana va hacia atrás
         // para que el último punto sea siempre el mes en curso, aunque no haya actividad.
@@ -531,7 +531,7 @@ public class CommissionsService : ICommissionsService
     public async Task<BoostBonusMemberSummaryView> GetBoostBonusMemberSummaryAsync(
         string memberId, CancellationToken ct = default)
     {
-        // Downline member IDs from enrollment tree (direct and indirect), by the member's current Node (Plan M)
+        // Downline member IDs from enrollment tree (direct and indirect), by the member's current Node
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
         if (me is null)
             return new BoostBonusMemberSummaryView();
@@ -593,7 +593,7 @@ public class CommissionsService : ICommissionsService
         // New Elite/Turbo Active enrollments in downline this week
         int[] eligibleLevelIds = [3, 4];
         var hierarchyFilter    = $"/{memberId}/";
-        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M
+        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         var downlineEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
@@ -735,7 +735,7 @@ public class CommissionsService : ICommissionsService
         // Active downline subscriptions, fetched by JOINING the genealogy subtree to
         // subscriptions in ONE query — not by loading all ~120k downline ids and re-querying
         // with Contains(allIds) (which built a huge IN list and scanned twice).
-        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Equipo por Node
 
         var activeSubs = await (
             from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)
@@ -776,7 +776,7 @@ public class CommissionsService : ICommissionsService
     {
         _ = from; _ = to; // BizCenter handler does not filter by date — params kept for API parity
 
-        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Equipo por Node
 
         // Car-bonus contribution comes only from downline members with an ACTIVE qualifying
         // subscription — JOIN the genealogy subtree straight to those subscriptions (+ profile)
@@ -818,7 +818,7 @@ public class CommissionsService : ICommissionsService
     public async Task<CarBonusBranchView> GetCarBonusBranchAsync(
         string branchMemberId, CancellationToken ct = default)
     {
-        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(branchMemberId, ct); // Plan M: la rama por Node
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(branchMemberId, ct); // La rama por Node
 
         // Contributing members in the branch (the ambassador + downline WITH an active
         // subscription) via a single JOIN — not "load all subtree ids then Contains(allIds) ×3".

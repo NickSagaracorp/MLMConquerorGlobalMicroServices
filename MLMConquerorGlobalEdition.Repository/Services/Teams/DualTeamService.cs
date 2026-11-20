@@ -74,7 +74,7 @@ public class DualTeamService : IDualTeamService
         if (from.HasValue) q = q.Where(r => r.EnrollDate >= from.Value);
         if (to.HasValue)   q = q.Where(r => r.EnrollDate <= to.Value);
 
-        // Plan Q (DQ14): sin busqueda ni fechas el total es el de los contadores de pierna; con filtros se cuenta.
+        // Sin busqueda ni fechas el total es el de los contadores de pierna; con filtros se cuenta.
         var sinFiltros = string.IsNullOrWhiteSpace(search) && !from.HasValue && !to.HasValue;
         var total = sinFiltros ? myNode.LeftLegCount + myNode.RightLegCount : await q.CountAsync(ct);
         var rows  = await q.OrderByDescending(r => r.EnrollDate)
@@ -103,7 +103,7 @@ public class DualTeamService : IDualTeamService
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<DualTeamMyTeamMemberView>();
 
-        // Plan Q (DQ7): el tamano sale de los contadores de pierna (diferidos hasta 1 minuto, Q-R1; basta para un limite).
+        // El tamano sale de los contadores de pierna (diferidos hasta 1 minuto; basta para un limite).
         var tamano   = myNode.LeftLegCount + myNode.RightLegCount;
         var limitado = TeamGridLimits.Limit(request, tamano);
 
@@ -115,7 +115,7 @@ public class DualTeamService : IDualTeamService
         int? totalSinFiltros = tamano;
         if (limitado && !string.IsNullOrWhiteSpace(request.Search))
         {
-            // Plan Q (DQ8): por encima del limite, por el comienzo del nombre o del id, con indice (SearchUnder). El
+            // Por encima del limite, por el comienzo del nombre o del id, con indice (SearchUnder). El
             // termino sale de la peticion (la rejilla no lo vuelve a aplicar por subcadena) y el total se cuenta.
             filas = Project(DualSubtree.SearchUnder(_db, myNode, request.Search, MemberNameSearch.GridCandidatesPerBranch).AsNoTracking());
             request.Search  = null;
@@ -129,7 +129,7 @@ public class DualTeamService : IDualTeamService
         if (!ordenPedido && totalSinFiltros is not null
             && string.IsNullOrWhiteSpace(request.Search) && request.Filters.Count == 0)
         {
-            // Plan Q (Tarea 28): sin busqueda, filtros ni orden pedido, la pagina sale de la clave y despues se unen sus
+            // Sin busqueda, filtros ni orden pedido, la pagina sale de la clave y despues se unen sus
             // perfiles (DualSubtree.PageUnder); el total, de los contadores de pierna.
             var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
             var rows = await ByStructure(Project(DualSubtree.PageUnder(_db, myNode, (page - 1) * pageSize, pageSize).AsNoTracking()))
@@ -139,7 +139,7 @@ public class DualTeamService : IDualTeamService
         else
         {
             if (!ordenPedido) filas = ByStructure(filas);
-            // Plan P (Plan B): sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
+            // Sin busqueda ni filtros el total es el equipo entero, el de los contadores de pierna.
             paged = await filas.ToGridResultAsync(request, DualRowSearchableFields, ct: ct, unfilteredTotal: totalSinFiltros);
         }
 
@@ -151,7 +151,7 @@ public class DualTeamService : IDualTeamService
     }
 
     /// <summary>
-    /// Plan Q (DQ7): el orden por estructura. En SQL Server, la clave (el orden del indice UX_DualTeamTree_BinaryPath);
+    /// El orden por estructura. En SQL Server, la clave (el orden del indice UX_DualTeamTree_BinaryPath);
     /// en InMemory, donde un byte[] no se puede ordenar, profundidad e id.
     /// </summary>
     private IQueryable<DualMyTeamRow> ByStructure(IQueryable<DualMyTeamRow> filas) =>
@@ -160,7 +160,7 @@ public class DualTeamService : IDualTeamService
             : filas.OrderBy(r => r.Depth).ThenBy(r => r.MemberId);
 
     /// <summary>Light, fully DB-translatable row: profile columns + the node's compact key and depth
-    /// (Plan P: Leg sale de comparar claves y Level de Depth; la ruta de texto no se carga). Property names that the grid searches/sorts on
+    /// (Leg sale de comparar claves y Level de Depth; la ruta de texto no se carga). Property names that the grid searches/sorts on
     /// match <see cref="DualTeamMyTeamMemberView"/>; non-projected names are ignored by the grid.</summary>
     private sealed class DualMyTeamRow
     {
@@ -180,7 +180,7 @@ public class DualTeamService : IDualTeamService
     }
 
     /// <summary>
-    /// Plan P: el equipo es el rango de la clave compacta del nodo (DualSubtree.Under): un Index Seek para
+    /// El equipo es el rango de la clave compacta del nodo (DualSubtree.Under): un Index Seek para
     /// cualquier tamano de equipo. Sustituye a la CTE con tope de 20.000 y a la caida al prefijo de la ruta, que
     /// recorria la tabla y fallaba (error 8152) con rutas de mas de 4.000 caracteres.
     /// </summary>
@@ -188,7 +188,7 @@ public class DualTeamService : IDualTeamService
         Project(DualSubtree.Under(_db, myNode).AsNoTracking());
 
     /// <summary>
-    /// Las filas de Mi equipo para <paramref name="nodes"/>. Revision del bloque 5 (minor a): union externa con los perfiles;
+    /// Las filas de Mi equipo para <paramref name="nodes"/>. Union externa con los perfiles;
     /// un nodo vivo cuyo perfil falta o esta borrado sale con su id. Asi la pagina tomada de la clave (PageUnder) no sale
     /// corta y las filas son los nodos, que es lo que cuentan los contadores de pierna (el total).
     /// </summary>
@@ -224,10 +224,10 @@ public class DualTeamService : IDualTeamService
 
         var ids       = rows.Select(r => r.MemberId).ToList();
 
-        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        // «Calificado» con la regla de Nick, no «la suscripción está activa».
         var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
-        // Plan P: la pierna de un descendiente sale de su clave (inorden: la pierna izquierda va antes que el
+        // La pierna de un descendiente sale de su clave (inorden: la pierna izquierda va antes que el
         // nodo) y el nivel, de Depth. En InMemory (sin claves) se baja por adyacencia.
         var legs = await LegsOfAsync(myNode, rows.Select(r => (r.MemberId, r.BinaryPath)).ToList(), ct);
 
@@ -238,7 +238,7 @@ public class DualTeamService : IDualTeamService
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
-        // Plan Q: el rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
+        // El rango vigente y el maximo, de MemberRankQueries (sin traer el historial entero).
         var currentRankMap  = await _db.GetCurrentRanksAsync(ids, ct);
         var lifetimeRankMap = await _db.GetLifetimeRanksAsync(ids, ct);
 
@@ -367,7 +367,7 @@ public class DualTeamService : IDualTeamService
         var rootNode = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == rootMemberId, ct);
         if (rootNode is null) return new();
 
-        // Plan Q (DQ8): por el comienzo del nombre completo o del id, con indice; los mas cercanos primero.
+        // Por el comienzo del nombre completo o del id, con indice; los mas cercanos primero.
         var matches = await (
             from d in DualSubtree.SearchUnder(_db, rootNode, term, MemberNameSearch.ViewerCandidatesPerBranch).AsNoTracking()
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
@@ -376,7 +376,7 @@ public class DualTeamService : IDualTeamService
         ).Take(take).ToListAsync(ct);
         if (matches.Count == 0) return new();
 
-        // Plan Q: los caminos bajo la raiz salen de la clave, todos en una consulta (DualAncestors).
+        // Los caminos bajo la raiz salen de la clave, todos en una consulta (DualAncestors).
         var caminos = await DualAncestors.PathsBelowAsync(_db, rootNode, matches.Select(mt => mt.Node).ToList(), ct);
         var names = await PathNamesAsync(caminos.Values.SelectMany(c => c).Select(p => p.MemberId).Distinct().ToList(), ct);
 
@@ -387,7 +387,7 @@ public class DualTeamService : IDualTeamService
             {
                 MemberId = mt.Node.MemberId,
                 FullName = $"{mt.FirstName} {mt.LastName}".Trim(),
-                // Revision del bloque 3: la pierna y la profundidad salen de las claves cuando las hay (el camino solo de respaldo).
+                // La pierna y la profundidad salen de las claves cuando las hay (el camino solo de respaldo).
                 Leg      = rootNode.BinaryPath is not null && mt.Node.BinaryPath is not null
                     ? DualSubtree.LegOf(rootNode, mt.Node.BinaryPath).ToString()
                     : camino.Count > 0 ? camino[0].Side.ToString() : string.Empty,
@@ -408,13 +408,13 @@ public class DualTeamService : IDualTeamService
         var rootNode = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == rootMemberId, ct);
         if (rootNode is null) return null;
 
-        // Plan P: el mas profundo de la pierna, por el rango de la clave y Depth.
+        // El mas profundo de la pierna, por el rango de la clave y Depth.
         var deepest = await DualSubtree.Leg(_db, rootNode, side).AsNoTracking()
             .OrderByDescending(d => d.Depth).ThenBy(d => d.CreationDate).ThenBy(d => d.Id)
             .FirstOrDefaultAsync(ct);
         if (deepest is null) return null;
 
-        // Plan Q: el camino sale de la clave (DualAncestors), no de trocear la ruta.
+        // El camino sale de la clave (DualAncestors), no de trocear la ruta.
         var camino = (await DualAncestors.PathsBelowAsync(_db, rootNode, new[] { deepest }, ct))
             .GetValueOrDefault(deepest.MemberId) ?? new List<DualPathStep>();
         var names = await PathNamesAsync(camino.Select(p => p.MemberId).ToList(), ct);
@@ -432,7 +432,7 @@ public class DualTeamService : IDualTeamService
         };
     }
 
-    /// <summary>Plan Q: los nombres de los ids de los caminos, en una consulta con un solo parametro (OPENJSON).</summary>
+    /// <summary>Los nombres de los ids de los caminos, en una consulta con un solo parametro (OPENJSON).</summary>
     private Task<Dictionary<string, string>> PathNamesAsync(List<string> ids, CancellationToken ct) =>
         _db.MemberProfiles.AsNoTracking()
             .Where(p => EF.Parameter(ids).Contains(p.MemberId))

@@ -27,7 +27,7 @@
       es justo lo que mete un sistema dentro del alcance de PCI DSS.
 
       SharedKernel se puede referenciar desde WebAssembly porque tiene prohibido ASP.NET Core por
-      contrato (lo vigila ClientCoreNoAspNetCoreTests). Es la misma razón por la que sirve a las
+      contrato. Es la misma razón por la que sirve a las
       MAUI que vienen después.
     -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
@@ -35,7 +35,7 @@
       Componentes unificados que usa el alta (CryptoDepositPicker): se escriben una vez y sirven a
       cualquier portal. La librería LIGERA, no SharedComponents: todo lo referenciado aquí se descarga
       en el navegador de quien se da de alta, y SharedComponents arrastra Syncfusion y los
-      componentes de los portales. Lo vigila SignupsClientLigeroTests (Signups.Tests).
+      componentes de los portales.
     -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents.Lite\MLMConquerorGlobalEdition.SharedComponents.Lite.csproj" />
   </ItemGroup>

@@ -8,15 +8,14 @@ using MLMConquerorGlobalEdition.Repository.Queries;
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// Plan Q (DQ13): el UNICO sitio que traduce un cambio de MembershipSubscription.SubscriptionStatus hacia o desde Active
+/// El UNICO sitio que traduce un cambio de MembershipSubscription.SubscriptionStatus hacia o desde Active
 /// en deltas de los contadores de calificados del equipo. Lo llama QualifiedTeamCountsInterceptor en cada guardado, asi
 /// que lo recorren todos los escritores por EF (alta, activacion, cancelacion, facturacion, subida y bajada de nivel,
-/// admin y semillas) sin llamarlo a mano. ExecuteUpdate y el SQL crudo no pasan por aqui: lo vigilan
-/// EstadosSinInterceptorTests y EscritoresDeSuscripcionesTests.
-/// Cuenta SUSCRIPCIONES activas (no miembros) y no mira IsDeleted, como el recuento al vuelo al que sustituye (Q-R21).
-/// Por cada cambio neto de un miembro encola un delta propio de la cola de piernas (los calificados del binario, Tarea 8b)
-/// y una fila de la cola de estadisticas (los de inscripcion, Tarea 19b): AncestorsOf sobre el si tiene nodo
-/// (ApplyMemberStatisticDeltasJob la aplica a cada ascendiente de su Node, no a el) o, sin nodo (revision del bloque 4),
+/// admin y semillas) sin llamarlo a mano. ExecuteUpdate y el SQL crudo no pasan por aqui: quien cambie estados de suscripciones debe guardar por EF.
+/// Cuenta SUSCRIPCIONES activas (no miembros) y no mira IsDeleted, como el recuento al vuelo al que sustituye.
+/// Por cada cambio neto de un miembro encola un delta propio de la cola de piernas (los calificados del binario)
+/// y una fila de la cola de estadisticas (los de inscripcion): AncestorsOf sobre el si tiene nodo
+/// (ApplyMemberStatisticDeltasJob la aplica a cada ascendiente de su Node, no a el) o, sin nodo,
 /// SponsorLine sobre el primer patrocinador de su cadena con nodo. Ninguna de las dos encola evaluaciones de rango.
 /// </summary>
 public static class QualifiedTeamDeltas
@@ -58,7 +57,7 @@ public static class QualifiedTeamDeltas
     /// Anade al contexto, en el mismo guardado, lo que falte para que los deltas pendientes de este guardado (el propio de
     /// la cola de piernas y la fila de linea de la de estadisticas) sumen el cambio neto de cada miembro. Idempotente: un
     /// guardado que falla y se reintenta no duplica; cada cola lleva su cuenta.
-    /// Revision del bloque 4: con nodo de inscripcion (su nodo vigente tiene Node, GenealogySubtree.CurrentNodeAsync), una
+    /// Con nodo de inscripcion (su nodo vigente tiene Node, GenealogySubtree.CurrentNodeAsync), una
     /// fila AncestorsOf sobre el; sin el, una SponsorLine sobre el primer patrocinador de su cadena con nodo (el incluido:
     /// el miembro quedara en su equipo), como los puntos; si nadie lo tiene, ninguna.
     /// </summary>

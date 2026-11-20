@@ -344,7 +344,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
                 .SumAsync(ct);
 
-            // Plan Q (DQ16, reglas de Nick): los puntos del producto cuentan solo mientras la membresia esta
+            // Los puntos del producto cuentan solo mientras la membresia esta
             // activa. La fila nace a 0 y, al activarse la suscripcion, MembershipPointsDeltas (interceptor) suma los
             // puntos del producto a PersonalPoints, a EnrollmentPoints del propio y de su linea de patrocinio y a las
             // piernas del binario. Antes se sembraban aqui los puntos del pedido, tambien en altas aun sin pagar.

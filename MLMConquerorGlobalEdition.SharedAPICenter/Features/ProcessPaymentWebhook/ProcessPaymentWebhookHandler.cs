@@ -19,7 +19,7 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebho
 ///   its Status is advanced to Completed.
 /// - "payment.failed"  → TransactionStatus = Failed.
 /// - If no PaymentHistory exists yet, a new record is created with the correct status.
-/// - Revision de Q3 (C1): what this webhook creates carries the author <see cref="RefundedMembershipOrders.WebhookActor"/>
+/// - What this webhook creates carries the author <see cref="RefundedMembershipOrders.WebhookActor"/>
 ///   ("webhook:{provider}"); without a provider signature (pre-production blocker) a refund notice never trusts it to
 ///   refund an order or cancel a membership.
 /// </summary>
@@ -48,7 +48,7 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
                 "WEBHOOK_UNKNOWN_EVENT",
                 $"Unknown payment event '{payload.Event}'.");
 
-        // Plan M (R16, revisión M7): las columnas de PaymentHistories están acotadas. Un campo que no cabe
+        // Las columnas de PaymentHistories están acotadas. Un campo que no cabe
         // fallaría al guardar con un 500, que las pasarelas reintentan. Se rechaza aquí con un 400: la
         // mayoría no reintenta un 4xx, aunque alguna sí lo hace; en ese caso cada reintento recibe el mismo
         // 400 sin tocar la base.

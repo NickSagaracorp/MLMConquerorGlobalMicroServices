@@ -93,12 +93,12 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
         // ── Routing path decision ──────────────────────────────────────────
         if (RecurringRoutedCountries.Contains(cardholderCountry))
         {
-            // Plan K (revisión I2): la tarjeta es un stub hasta el Plan I. Con el interruptor apagado (por
+            // La tarjeta es un stub hasta que el gateway sea real. Con el interruptor apagado (por
             // defecto) no se crea pedido ni se llama al gateway: nada de renovaciones con dinero inventado.
             if (!MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringCardSwitch.IsEnabled(_configuration))
                 return Result<ChargeResponse>.Failure(
                     MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringCardSwitch.CardDisabledCode,
-                    "Card renewals are disabled until the card gateway is real (Plan I).");
+                    "Card renewals are disabled until the card gateway is real.");
 
             return await HandleWithRoutingEngineAsync(
                 req, subscription, renewalPrice, cardholderCountry, now, ct);

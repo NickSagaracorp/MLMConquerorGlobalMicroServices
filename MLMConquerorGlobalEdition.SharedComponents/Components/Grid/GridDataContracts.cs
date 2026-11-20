@@ -51,7 +51,7 @@ public sealed class GridPagedResult<T>
     public int Page { get; set; }
     public int PageSize { get; set; }
     public int TotalPages { get; set; }
-    /// <summary>Plan Q (DQ7): el servidor limito orden y busqueda por el tamano del equipo (TeamGridLimits).</summary>
+    /// <summary>El servidor limito orden y busqueda por el tamano del equipo (TeamGridLimits).</summary>
     public bool Limited { get; set; }
 }
 

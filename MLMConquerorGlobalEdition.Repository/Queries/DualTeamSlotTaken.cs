@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MLMConquerorGlobalEdition.Repository.Queries;
 
-/// <summary>Plan P: reconoce la violacion del indice unico de hueco del binario (la red de DualTeamGate).</summary>
+/// <summary>Reconoce la violacion del indice unico de hueco del binario (la red de DualTeamGate).</summary>
 public static class DualTeamSlotTaken
 {
     public const string IndexName = "UX_DualTeamTree_ParentMemberId_Side";

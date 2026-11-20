@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
-/// Crea los estados de cuota anual que falten (Plan K, K3). Se registra APAGADO (Cron.Never) salvo que
+/// Crea los estados de cuota anual que falten. Se registra APAGADO (Cron.Never) salvo que
 /// Billing:AnnualFee:EnrollmentJobEnabled sea true; entonces, diario a las 4:30 UTC, antes del
 /// planificador (5:00). Tras el primer despliegue se lanza a mano desde el panel de Hangfire ("Trigger now").
 /// </summary>

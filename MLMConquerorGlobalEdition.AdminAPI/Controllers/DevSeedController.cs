@@ -18,7 +18,7 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
 /// Development-only endpoints (seeding and data fixes).
-/// Plan P (decision de Nick, 2026-10-18): fuera de Development no responde (<see cref="DevelopmentOnlyAttribute"/>,
+/// Fuera de Development no responde (<see cref="DevelopmentOnlyAttribute"/>,
 /// un solo filtro en vez de una comprobacion por accion) y, tambien en Development, exige SuperAdmin. La unica
 /// accion anonima es el arranque del primer superadmin, que se cierra en cuanto existe uno.
 /// </summary>
@@ -62,7 +62,7 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<BulkPlacementOutcome>>> PlaceBulk(
         [FromBody] PlaceBulkRequest? request, CancellationToken ct)
     {
-        // Plan P: los mismos pendientes que AutoPlacementJob (PendingPlacements), sin plazo y por fecha de alta.
+        // Los mismos pendientes que AutoPlacementJob (PendingPlacements), sin plazo y por fecha de alta.
         var query = PendingPlacements.Query(_db);
 
         if (request?.SponsorIds is { Count: > 0 } sponsors)
@@ -167,7 +167,7 @@ public class DevSeedController : ControllerBase
 
     /// <summary>
     /// POST /api/v1/dev/seed-superadmin — creates roles + SuperAdmin user.
-    /// Plan P: anonimo solo mientras no exista ningun SuperAdmin, desde loopback y solo para crear un usuario nuevo
+    /// Anonimo solo mientras no exista ningun SuperAdmin, desde loopback y solo para crear un usuario nuevo
     /// (BootstrapFirstSuperAdminAsync); despues, solo un SuperAdmin puede usarlo (401 sin sesion, 403 con otro rol).
     /// </summary>
     [HttpPost("seed-superadmin")]
@@ -292,7 +292,7 @@ public class DevSeedController : ControllerBase
         var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
             return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", string.Join(", ", result.Errors.Select(e => e.Description))));
-        // Revision (menor 6): nunca se confirma un usuario sin rol. Si no se le puede dar, se deshace todo.
+        // Nunca se confirma un usuario sin rol. Si no se le puede dar, se deshace todo.
         var rol = await _userManager.AddToRoleAsync(user, "SuperAdmin");
         if (!rol.Succeeded)
         {

@@ -6,15 +6,15 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <summary>
-/// «Calificado» en un único sitio (Plan J, corrección de Nick N3, sustituye a J15): la membresía
+/// «Calificado» en un único sitio (corrección de Nick): la membresía
 /// actual está activa Y además se cumple una de tres:
 /// <list type="bullet">
 ///   <item>(a) se inscribió hace menos de 12 meses (hora de servidor, borde estricto);</item>
-///   <item>(b) pagó su anualidad en curso (<see cref="IAnnualFeeStatus"/>; hoy nunca, Plan K);</item>
+///   <item>(b) pagó su anualidad en curso (<see cref="IAnnualFeeStatus"/>; hoy nunca);</item>
 ///   <item>(c) tiene la marca <c>MemberProfile.KeepQualified</c>.</item>
 /// </list>
 /// Membresía actual = la suscripción de StartDate más reciente (desempate por CreationDate), sea
-/// cual sea su estado. Lo usan los reportes del Plan J, Mi equipo de inscripción y Dual Team.
+/// cual sea su estado. Lo usan los reportes del equipo, Mi equipo de inscripción y Dual Team.
 /// </summary>
 public interface IQualificationService
 {

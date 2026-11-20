@@ -7,7 +7,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 /// <summary>
 /// Lo que importa del miembro para decidir. Un perfil borrado cuenta como inexistente.
 /// <paramref name="MembershipOnHold"/>: su membresía vigente está en HoldByBilling (decisión de Nick,
-/// 2026-10-17: entonces no se cobra la cuota) u OnHold (revisión de Q3, I4). Lo calcula <see cref="AnnualFeeMemberQueries.FactsAsync"/>.
+/// 2026-10-17: entonces no se cobra la cuota) u OnHold. Lo calcula <see cref="AnnualFeeMemberQueries.FactsAsync"/>.
 /// </summary>
 public sealed record AnnualFeeMemberFacts(
     bool Exists, MemberType MemberType, MemberAccountStatus Status, DateTime EnrollDate, bool KeepQualified,
@@ -44,7 +44,7 @@ public sealed record AnnualFeeDecision(AnnualFeeDecisionKind Kind, string? Reaso
 }
 
 /// <summary>
-/// Las exclusiones de la cuota anual (Plan K, K5, K14). Puro: sin base ni reloj; lo usan Billing (para
+/// Las exclusiones de la cuota anual. Puro: sin base ni reloj; lo usan Billing (para
 /// cobrar) y el BizCenter (para decir si se puede pagar y por qué no).
 /// </summary>
 public static class AnnualFeeEligibility
@@ -73,7 +73,7 @@ public static class AnnualFeeEligibility
         var today = now.Date;
 
         // 0. Sin perfil (o borrado) o que ya no es Ambassador: no se cobra hoy y se vuelve a mirar
-        //    mañana (revisión M4). Puede ser un dato que se corrige; parar sería para siempre.
+        //    mañana. Puede ser un dato que se corrige; parar sería para siempre.
         if (!member.Exists)
             return new(AnnualFeeDecisionKind.Postpone, ReasonProfileMissing);
         if (member.MemberType != MemberType.Ambassador)
@@ -95,13 +95,13 @@ public static class AnnualFeeEligibility
         if (member.Status == MemberAccountStatus.Pending)
             return new(AnnualFeeDecisionKind.Postpone, ReasonAccountPending);
 
-        // 3b. Membresía en HoldByBilling (decisión de Nick, 2026-10-17) u OnHold (revisión de Q3, I4: la
+        // 3b. Membresía en HoldByBilling (decisión de Nick, 2026-10-17) u OnHold (la
         //     retenida por el admin al suspender o inactivar la cuenta): excluida de la cuota mientras siga
         //     así. Temporal como la suspensión: se mira mañana sin mover el vencimiento.
         if (member.MembershipOnHold)
             return new(AnnualFeeDecisionKind.Postpone, ReasonMembershipOnHold);
 
-        // 3c. Membresía cancelada (decisión de Nick, M-8): no se cobra en automático hasta que reactive,
+        // 3c. Membresía cancelada (decisión de Nick): no se cobra en automático hasta que reactive,
         //     sin mover el vencimiento. "Pagar ahora" sí sigue disponible (ForPayNow).
         if (member.MembershipCancelled)
             return new(AnnualFeeDecisionKind.Postpone, ReasonMembershipCancelled);
@@ -124,15 +124,15 @@ public static class AnnualFeeEligibility
 
     /// <summary>
     /// ¿Puede el miembro pulsar "Pagar ahora"? Null si sí; si no, el código de AnnualFeeErrors. Solo
-    /// Ambassadors con la cuenta activa (o inactiva por haber cancelado la membresía: decisión de Nick,
-    /// M-8), sin KeepQualified, con la membresía fuera de HoldByBilling y dentro de la ventana de 30 días.
+    /// Ambassadors con la cuenta activa (o inactiva por haber cancelado la membresía: decisión de Nick),
+    /// sin KeepQualified, con la membresía fuera de HoldByBilling y dentro de la ventana de 30 días.
     /// Lo que depende de pagos ya hechos (pagada, en curso, en revisión) lo mira quien tiene la base.
     /// </summary>
     public static string? ForPayNow(AnnualFeeMemberFacts member, DateTime nextBillingDate, DateTime now)
     {
         if (!member.Exists || member.MemberType != MemberType.Ambassador) return AnnualFeeErrors.NotApplicable;
         // Quien canceló la membresía (su cuenta queda Inactive) puede pagar para mantener su Biz Center
-        // (decisión de Nick, M-8). Cualquier otra cuenta no activa, no.
+        // (decisión de Nick). Cualquier otra cuenta no activa, no.
         var cancelledButInactive = member.MembershipCancelled && member.Status == MemberAccountStatus.Inactive;
         if (member.Status != MemberAccountStatus.Active && !cancelledButInactive) return AnnualFeeErrors.AccountNotActive;
         if (member.MembershipOnHold)                                      return AnnualFeeErrors.MembershipOnHold;

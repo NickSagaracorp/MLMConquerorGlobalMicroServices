@@ -38,11 +38,11 @@ public interface ITokenPurchaseService
     Task<Result<TokenPurchaseResultDto>> ReconcileAsync(
         string purchaseId, ReconcileTokenPurchaseRequest request, string actor, CancellationToken ct = default);
 
-    /// <summary>El miembro retira su compra en cripto sin pagar (D18). Solo la suya.</summary>
+    /// <summary>El miembro retira su compra en cripto sin pagar. Solo la suya.</summary>
     Task<Result<TokenPurchaseResultDto>> CancelCryptoAsync(
         string memberId, string purchaseId, string actor, CancellationToken ct = default);
 
-    /// <summary>Un aprobador de cripto rechaza la compra: la transferencia no llegó o no vale (D18).</summary>
+    /// <summary>Un aprobador de cripto rechaza la compra: la transferencia no llegó o no vale.</summary>
     Task<Result<TokenPurchaseResultDto>> RejectCryptoAsync(
         string orderId, RejectCryptoTokenPurchaseRequest request, string rejectedByUserId, string rejectedByEmail,
         CancellationToken ct = default);
@@ -706,7 +706,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     /// <remarks>
     /// Mismas capas que ConfirmCryptoPaymentHandler (altas): máquina de estados, RowVersion de la
     /// confirmación en el mismo SaveChanges que los tokens y unicidad de OrderId. Solo filas de compra.
-    /// NO vuelve a comprobar el tope (D3): el cupo se comprobó al reservar, en el mes de su PeriodKey, y
+    /// NO vuelve a comprobar el tope: el cupo se comprobó al reservar, en el mes de su PeriodKey, y
     /// los tokens que emite cuentan en ese mes aunque se confirme en el siguiente.
     /// Si el guardado choca con el índice único de ReferenceId (otro proceso emitió el mismo código
     /// entre la comprobación de TokenIssuer y el guardado), se repite una vez con códigos nuevos.
@@ -817,7 +817,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     /// </summary>
     /// <remarks>
     /// La respuesta va a un administrador: NO lleva los códigos (al portador; quien los lee los canjea).
-    /// El miembro los ve en su pantalla de tokens y en el recibo (D17).
+    /// El miembro los ve en su pantalla de tokens y en el recibo.
     /// </remarks>
     private async Task<Result<TokenPurchaseResultDto>> ConfirmUnderGateAsync(
         IDbContextTransaction? tx, CryptoPaymentConfirmation confirmation, TokenPurchase purchase, Orders order,
@@ -954,7 +954,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         return Done(purchase, order, Array.Empty<string>(), await _quota.UsedAsync(purchase.MemberId, now, ct));
     }
 
-    // ── Cripto sin pagar (D18) ────────────────────────────────────────────────
+    // ── Cripto sin pagar ────────────────────────────────────────────────
     // Sin candado de fondos: cerrar una reserva solo puede BAJAR lo usado del mes, así que no rompe el
     // tope aunque se cruce con una compra. Contra una confirmación simultánea protege el RowVersion.
 

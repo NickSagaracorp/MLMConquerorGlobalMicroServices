@@ -23,7 +23,7 @@ public class DowngradeMembershipHandler : IRequestHandler<DowngradeMembershipCom
 
     public async Task<Result<bool>> Handle(DowngradeMembershipCommand command, CancellationToken ct)
     {
-        // Plan Q (seguimiento de la tercera revision del bloque 2): el candado de puntos del miembro (MemberPointsLocks) se
+        // El candado de puntos del miembro (MemberPointsLocks) se
         // toma ANTES de leer su suscripcion activa. Leida antes, dos cambios de nivel a la vez caducaban la misma y cada uno
         // abria una nueva: dos activas. Con el, el segundo espera y lee lo que confirmo el primero (otra activa, o ninguna).
         // El guardado lo reutiliza (no lo vuelve a pedir) y lo suelta al confirmar; si no se llega a guardar, el finally.
@@ -78,7 +78,7 @@ public class DowngradeMembershipHandler : IRequestHandler<DowngradeMembershipCom
         };
 
         await _db.MembershipSubscriptions.AddAsync(newSub, ct);
-        // Plan Q (tercera revisión del bloque 2, C-a): la vieja deja de cobrarse en el mismo guardado.
+        // La vieja deja de cobrarse en el mismo guardado.
         await MembershipBillingStops.StopForReplacedAsync(_db, currentSub.Id, now, command.MemberId, ct);
         await _db.SaveChangesAsync(ct);
 

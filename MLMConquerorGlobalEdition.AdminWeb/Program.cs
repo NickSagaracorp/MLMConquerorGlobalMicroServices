@@ -163,7 +163,7 @@ builder.Services.AddHttpClient("RankEngineApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["RankEngineApiBaseUrl"] ?? "https://localhost:7009");
 }).AddHttpMessageHandler<ApiAuthHandler>();
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 // Llaves de Data Protection en disco compartido: las sesiones sobreviven a reinicios y replicas.
 builder.Services.AddPersistentDataProtectionKeys(builder.Configuration, "MLMConqueror.AdminWeb");

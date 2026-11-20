@@ -111,7 +111,7 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
 
         await _db.SaveChangesAsync(ct);
 
-        // Plan Q (DQ10): el nivel de alta con los productos ya guardados (ComputeAsync lee la base). El perfil de arriba
+        // El nivel de alta con los productos ya guardados (ComputeAsync lee la base). El perfil de arriba
         // va sin seguimiento: se carga seguido para asignarlo.
         var perfil = await _db.MemberProfiles.FirstAsync(m => m.MemberId == order.MemberId, ct);
         await SignupMembershipLevel.RefreshAsync(_db, perfil, ct);

@@ -4,7 +4,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 
-/// <summary>Los pagos de cuota que ocupan un ciclo (Plan K, K10). La misma regla que UX_AnnualFeePayments_LivePerCycle.</summary>
+/// <summary>Los pagos de cuota que ocupan un ciclo. La misma regla que UX_AnnualFeePayments_LivePerCycle.</summary>
 public static class AnnualFeePaymentQueries
 {
     public static IQueryable<AnnualFeePayment> LiveForCycle(AppDbContext db, string billingStateId, DateTime cycleDue)

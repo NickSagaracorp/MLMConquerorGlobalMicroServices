@@ -36,7 +36,7 @@ public sealed record EntraxStartResult(EntraxStartOutcome Outcome, EntraxSignupP
 public static class EntraxSignupApi
 {
     // Códigos de error de SignupAPI que la pantalla distingue. SignupAPI no se puede referenciar desde
-    // el navegador; una prueba (EntraxSignupApiTests) vigila que no se separen de los del servidor.
+    // el navegador, así que estos códigos tienen que coincidir con los del servidor.
     public const string InProgressCode      = "ENTRAX_IN_PROGRESS";
     public const string AlreadySettledCode  = "SIGNUP_ALREADY_SETTLED";
     public const string QrAlreadyActiveCode = "ENTRAX_QR_ALREADY_ACTIVE";

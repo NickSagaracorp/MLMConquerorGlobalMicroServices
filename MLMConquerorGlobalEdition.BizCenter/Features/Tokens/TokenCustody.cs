@@ -17,7 +17,7 @@ internal static class TokenCustody
 {
     /// <summary>
     /// ¿Cuelga <paramref name="recipientId"/> del que envía en el árbol de inscripción (patrocinio)?
-    /// Se mira por <c>Node</c> (Plan M): el destinatario cuelga del Node del que envía, sin las falsas
+    /// Se mira por <c>Node</c>: el destinatario cuelga del Node del que envía, sin las falsas
     /// coincidencias de un prefijo de texto. Si el que envía tuviera más de un nodo, manda el más reciente.
     /// Devuelve el MemberId del que envía TAL COMO ESTÁ GUARDADO (el que viene del token puede diferir
     /// en mayúsculas): es el que nombra su candado y el que deben usar las consultas y los asientos.

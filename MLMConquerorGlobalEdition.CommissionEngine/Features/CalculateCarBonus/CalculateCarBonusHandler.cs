@@ -82,9 +82,9 @@ public class CalculateCarBonusHandler : IRequestHandler<CalculateCarBonusCommand
                 SkippedReasons        = ["No active Elite/Turbo ambassadors found."]
             });
 
-        // Plan M (revisión M6): el equipo de cada embajador es el rango de su Node en el árbol de
+        // El equipo de cada embajador es el rango de su Node en el árbol de
         // inscripción (nodo vigente de cada miembro, CurrentUnder), no HierarchyPath.Contains en memoria.
-        // Un miembro con dos nodos (R8 del Plan J) cuenta una vez, por el vigente, y ya no revienta el
+        // Un miembro con dos nodos cuenta una vez, por el vigente, y ya no revienta el
         // ToDictionary. Los puntos de cada miembro salen de su suscripción activa más reciente.
         var activos = await (
             from g   in _db.GenealogyTree.AsNoTracking().CurrentUnder(HierarchyId.GetRoot())

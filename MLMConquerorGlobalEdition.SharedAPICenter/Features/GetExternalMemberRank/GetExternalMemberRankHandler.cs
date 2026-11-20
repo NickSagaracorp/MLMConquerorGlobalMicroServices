@@ -36,7 +36,7 @@ public class GetExternalMemberRankHandler
                 "MEMBER_NOT_FOUND",
                 $"Member '{request.MemberId}' was not found.");
 
-        // Rango vigente (Plan Q: MemberRankQueries)
+        // Rango vigente (MemberRankQueries)
         var latest = await _db.GetCurrentRankAsync(request.MemberId, ct);
 
         var dto = new ExternalMemberRankDto

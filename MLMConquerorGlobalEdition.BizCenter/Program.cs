@@ -96,10 +96,10 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
-// «Calificado» (Plan J, N3): un solo servicio. La anualidad pagada es el estado de cuota anual al día (Plan K).
+// «Calificado»: un solo servicio. La anualidad pagada es el estado de cuota anual al día.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IAnnualFeeStatus,
                             MLMConquerorGlobalEdition.Repository.Services.AnnualFee.BillingStateAnnualFeeStatus>();
-// Tarjeta de la cuota anual (Plan K): resumen y preferencia. El pago lo hace Billing.
+// Tarjeta de la cuota anual: resumen y preferencia. El pago lo hace Billing.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.AnnualFee.IAnnualFeeOverviewService,
                             MLMConquerorGlobalEdition.Repository.Services.AnnualFee.AnnualFeeOverviewService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IQualificationService,
@@ -107,8 +107,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 
-// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
-// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
+// El recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
 
@@ -123,8 +123,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Loyalty
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Events.ITeamEventRegistrationsService,
                             MLMConquerorGlobalEdition.Repository.Services.Events.TeamEventRegistrationsService>();
 
-// "Mis enlaces" (Plan J): plantillas de appsettings validadas al arrancar. Con una plantilla
-// inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca. Un
+// "Mis enlaces": plantillas de appsettings validadas al arrancar. Con una plantilla
+// inválida el BizCenter no arranca. Sin sección no hay enlaces, y arranca. Un
 // appsettings.{Entorno}.json fusiona la lista POR ÍNDICE (no la sustituye): para cambiarla en un
 // entorno hay que repetirla entera.
 MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksServiceCollectionExtensions.AddMyLinks(
@@ -310,7 +310,7 @@ builder.Services.AddHttpClient("certificates");
 }
 builder.Services.AddScoped<IRankEngineClient, RankEngineClient>();
 
-// Cliente de Billing para la compra de tokens (Plan F). Ver BillingClientRegistration: valida el
+// Cliente de Billing para la compra de tokens. Ver BillingClientRegistration: valida el
 // certificado, 90 s, y fuera de Development exige Services:BillingBaseUrl.
 builder.Services.AddBillingClient(builder.Configuration, builder.Environment);
 
@@ -401,7 +401,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Detras del ALB: IP y esquema reales del cliente (Fase 0 de la guia de EKS).
+// Detras del balanceador: IP y esquema reales del cliente.
 builder.Services.AddProxyForwardedHeaders(builder.Configuration);
 
 var app = builder.Build();
@@ -493,7 +493,7 @@ RecurringJob.AddOrUpdate<AutoPlacementJob>(
     "0 */6 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-// Plan Q (P-R9): las piernas del binario se aplican desde la cola cada minuto.
+// Las piernas del binario se aplican desde la cola cada minuto.
 RecurringJob.AddOrUpdate<ApplyDualLegDeltasJob>(
     "apply-dual-leg-deltas",
     job => job.ExecuteAsync(CancellationToken.None),

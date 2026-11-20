@@ -9,10 +9,10 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Events;
 
 /// <inheritdoc />
 /// <remarks>
-/// El equipo es el subárbol de genealogía del que mira, ÉL INCLUIDO (J20): un miembro pertenece si
-/// su único nodo vivo (Plan Q, DQ9) cuelga del Node del que mira. Las entradas y la primera fecha son
+/// El equipo es el subárbol de genealogía del que mira, ÉL INCLUIDO: un miembro pertenece si
+/// su único nodo vivo cuelga del Node del que mira. Las entradas y la primera fecha son
 /// subconsultas correlacionadas sobre (EventId, MemberId), que el índice de esa pareja resuelve con
-/// un seek por fila de la página. Todavía no hay importación (N5): hasta entonces sale vacío.
+/// un seek por fila de la página. Todavía no hay importación: hasta entonces sale vacío.
 /// </remarks>
 public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsService
 {
@@ -66,7 +66,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
                 Page = Math.Max(1, request.Page), PageSize = request.PageSize <= 0 ? 20 : request.PageSize
             });
 
-        // Plan Q (DQ7): «Todo el equipo» con mas de TeamGridLimits.FreeMaxRows ordena por estructura (Node), busca por el
+        // «Todo el equipo» con mas de TeamGridLimits.FreeMaxRows ordena por estructura (Node), busca por el
         // comienzo del nombre o del id y lo avisa. El limite lo decide el tamano guardado (EnrollmentTeamSize del que mira).
         var limitado = !registeredOnly
                        && TeamGridLimits.Limit(request, await TeamGridLimits.EnrollmentTeamSizeAsync(_db, memberId, ct));
@@ -79,7 +79,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         {
             // «Solo inscritos» parte de las inscripciones del EVENTO (pocas, por el índice (EventId, MemberId)), agrupadas
             // por miembro, y solo sobre esas comprueba la pertenencia al equipo, uniendo con el rango (un nodo vivo por
-            // miembro, Tarea 21 del Plan Q).
+            // miembro).
             var inscritos =
                 from g in regs.GroupBy(r => r.MemberId)
                     .Select(g => new { MemberId = g.Key, First = g.Min(r => r.RegisteredAt), Tickets = g.Sum(r => r.Tickets) })
@@ -99,7 +99,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         }
         else
         {
-            // «Todo el equipo» recorre el equipo (R16). Revision del bloque 5 (I4), con los componentes de Mi equipo:
+            // «Todo el equipo» recorre el equipo, con los componentes de Mi equipo:
             // - sin busqueda, filtros ni orden (equipo grande), la pagina sale del arbol antes de unir (GenealogySubtree.PageUnder);
             // - con el limite y busqueda, por prefijo con indice (GenealogySubtree.SearchUnder);
             // - sin busqueda ni filtros, el total son los nodos vivos del equipo (CountUnderAsync), sin contar la union.
@@ -164,13 +164,13 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
     private Task<bool> IsVisibleAsync(string eventId, CancellationToken ct) =>
         _db.CorporateEvents.AsNoTracking().AnyAsync(e => e.Id == eventId && e.IsActive && !e.IsDeleted, ct);
 
-    /// <summary>Node vigente del que mira (R8); null si no tiene nodo.</summary>
+    /// <summary>Node vigente del que mira; null si no tiene nodo.</summary>
     private Task<HierarchyId?> RootAsync(string memberId, CancellationToken ct) =>
         _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
     /// <summary>
     /// Las filas de «Todo el equipo» para los nodos <paramref name="equipo"/> (el equipo, él incluido, o una página suya):
-    /// unión externa con los perfiles (revisión del bloque 5, I1: un nodo vivo sin perfil sale con su id, así las filas son
+    /// unión externa con los perfiles (un nodo vivo sin perfil sale con su id, así las filas son
     /// los nodos vivos, que es el total) y las entradas del evento por subconsultas correlacionadas sobre (EventId,
     /// MemberId). Con <paramref name="byStructure"/>, en el orden del árbol (una página tomada de PageUnder).
     /// </summary>
@@ -204,7 +204,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
 
         var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
-        // Plan Q: el rango vigente de MemberRankQueries.
+        // El rango vigente de MemberRankQueries.
         var ranks = await _db.GetCurrentRanksAsync(ids, ct);
 
         foreach (var row in rows)

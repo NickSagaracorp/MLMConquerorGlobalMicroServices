@@ -825,7 +825,7 @@
                 @* No hay pasarela de cripto integrada y no la va a haber: el cobro llega por fuera
                    y alguien de la casa lo confirma a mano. El texto de antes prometía una
                    redirección a una pasarela que no existe, y luego un correo con la dirección que
-                   nadie mandaba: ahora se muestra la dirección configurada en el admin (Plan F). *@
+                   nadie mandaba: ahora se muestra la dirección configurada en el admin. *@
                 @if (_paymentTab == "crypto")
                 {
                     <div class="py-4">
@@ -1218,7 +1218,7 @@
     // Si SignupAPI ofrece la tarjeta (Signup:CardEnabled). Falso hasta leerlo y si no se puede leer.
     private bool _cardEnabled;
 
-    // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el flujo del QR (componente único) y si
+    // Rublos por SBP con Entrax: países donde se ofrece, el flujo del QR (componente único) y si
     // el servidor dijo que el alta ya estaba pagada.
     private IReadOnlyList<string> _entraxCountries = [];
     private EntraxSignupFlow? _entraxFlow;
@@ -1235,7 +1235,7 @@
     private bool EntraxOffered => _entraxCountries.Any(c =>
         string.Equals(c, Locked ? _savedCountryIso2 : _countryIso2, StringComparison.OrdinalIgnoreCase));
 
-    // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto:
+    // Direcciones de depósito configuradas en Admin → Global Parameters. Vacío = sin cripto:
     // mejor no ofrecerla que mandar a alguien a pagar a una dirección que nadie le va a dar.
     private List<CryptoDepositAddressDto> _cryptoDeposits = new();
     private string? _cryptoCurrency;
@@ -1354,7 +1354,7 @@
         }
         catch { _cryptoDeposits = new(); }
 
-        // Opciones de pago del servidor, en una lectura: países con Entrax encendido (Plan H) y si se ofrece
+        // Opciones de pago del servidor, en una lectura: países con Entrax encendido y si se ofrece
         // la tarjeta. Si falla, ni la una ni la otra (falla cerrada) y la pestaña elegida es otra.
         var paymentOptions = await SignupPaymentOptionsApi.GetAsync(api);
         _entraxCountries = paymentOptions.EntraxCountries;
@@ -1830,7 +1830,7 @@
             // respuesta, la pantalla final tiene que hablar del método con el que se pagó.
             var paymentTab = _paymentTab;
 
-            // Rublos por SBP (Plan H): el servidor emite el QR y la pantalla espera el cobro. Todavía no
+            // Rublos por SBP: el servidor emite el QR y la pantalla espera el cobro. Todavía no
             // hay _success: la cuenta se activa cuando Entrax confirma, no al pulsar.
             if (paymentTab == "entrax")
             {
@@ -1896,7 +1896,7 @@
         finally { _busy = false; }
     }
 
-    // ── Rublos por SBP (Plan H) ──────────────────────────────────────────────
+    // ── Rublos por SBP ──────────────────────────────────────────────
     // Pedir el QR, reintentar, consultar el estado y pintarlo viven en EntraxSignupFlow (una vez para las
     // dos páginas). Aquí solo se decide qué enseña la página al terminar.
 

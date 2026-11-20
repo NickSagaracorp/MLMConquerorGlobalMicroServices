@@ -72,7 +72,7 @@ public static class OrderMembershipLevelQueries
     /// <summary>
     /// Nivel más alto por pedido para los pedidos de <paramref name="orderIds"/>, que es una
     /// CONSULTA y se une en SQL: los reportes pasan "las órdenes de alta del equipo en el rango" sin
-    /// traer miles de ids a memoria para un Contains (Plan J, corrección N2). Un pedido sin productos
+    /// traer miles de ids a memoria para un Contains. Un pedido sin productos
     /// de membresía no aparece en el resultado.
     /// </summary>
     public static Task<Dictionary<string, int>> GetHighestMembershipLevelIdsAsync(
@@ -90,7 +90,7 @@ public static class OrderMembershipLevelQueries
     }
 
     /// <summary>
-    /// Nivel de membresía de cada suscripción, por su Id (Plan J, corrección N2): el más alto de los
+    /// Nivel de membresía de cada suscripción, por su Id: el más alto de los
     /// productos de su última orden (<see cref="MembershipSubscription.LastOrderId"/>, que el alta,
     /// la renovación y la facturación recurrente mantienen). Solo si la suscripción no tiene orden, o
     /// la orden no trae productos de membresía (semillas, altas manuales), se usa como reserva el

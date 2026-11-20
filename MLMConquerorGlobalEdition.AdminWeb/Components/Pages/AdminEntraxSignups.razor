@@ -4,7 +4,7 @@
 @inject HttpClient Http
 
 @*
-    Altas pagadas en rublos por SBP con Entrax (Plan H). Re-check vuelve a preguntar a Entrax y, si el
+    Altas pagadas en rublos por SBP con Entrax. Re-check vuelve a preguntar a Entrax y, si el
     pago está hecho y cuadra, activa el alta por el mismo camino que el webhook (lo hace SignupAPI).
     Los "To review" tienen dinero en juego: o se aplican a mano o se devuelven desde Entrax.
 
@@ -270,7 +270,7 @@
     };
 
     // AdminWeb no referencia AdminAPI: el contrato se duplica por forma del JSON, como en AdminCryptoSignups.razor.
-    // PantallaAdminEntraxSignupsTests (AdminAPI.Tests) vigila que la fila no se separe de la del controlador.
+    // La fila debe mantenerse igual que la del controlador.
     private record ApiResp<T>(bool Success, T? Data, string? Message, string? ErrorCode, IEnumerable<string>? Errors);
 
     private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);

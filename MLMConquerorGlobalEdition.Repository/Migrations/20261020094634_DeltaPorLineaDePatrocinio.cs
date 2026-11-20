@@ -17,7 +17,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            // Plan Q: los ascendientes de un Node de inscripcion, el mismo incluido (Distancia 0), sin leer la tabla.
+            // Los ascendientes de un Node de inscripcion, el mismo incluido (Distancia 0), sin leer la tabla.
             migrationBuilder.Sql(@"
 CREATE OR ALTER FUNCTION dbo.GenealogyAncestors(@node hierarchyid)
 RETURNS TABLE AS RETURN

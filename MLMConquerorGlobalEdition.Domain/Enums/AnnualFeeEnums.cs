@@ -12,7 +12,7 @@ public enum AnnualFeePaymentStatus
     NeedsReconciliation = 4
 }
 
-/// <summary>Con qué se pagó la cuota. Sin tarjeta hasta el Plan I.</summary>
+/// <summary>Con qué se pagó la cuota. Sin tarjeta por ahora.</summary>
 public enum AnnualFeePaymentMethod
 {
     Token             = 1,

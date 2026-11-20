@@ -24,7 +24,7 @@ public partial class ClubRecognitionDetector
     /// </list>
     /// Inserta solo a Ambassadors no Terminated ni corporativos que aún no tienen registro de ese nivel (NOT EXISTS).
     /// SQL Server no admite RANGE con intervalo de fechas en las funciones de ventana: por eso la ventana móvil se
-    /// resuelve con entradas y salidas. Expuesta para medirla (Tarea 6 del plan C) y para revisarla.
+    /// resuelve con entradas y salidas. Expuesta para medirla y para revisarla.
     /// </summary>
     public const string HistoricalSql = """
         WITH Daily AS (

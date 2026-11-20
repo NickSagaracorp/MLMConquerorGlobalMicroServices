@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring;
 
 /// <summary>
-/// Plan K (revisión del Bloque 3, C-1). El trabajador y el barrido comparten el contexto con el procesador
+/// El trabajador y el barrido comparten el contexto con el procesador
 /// caso a caso. Si un caso lanza a mitad, lo que dejó sin guardar no puede colarse en el SaveChanges del
 /// caso siguiente ni en el cierre del trozo: se suelta lo añadido y se relee lo modificado o borrado.
 /// </summary>

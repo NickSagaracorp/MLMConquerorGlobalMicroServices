@@ -1,6 +1,6 @@
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
-/// <summary>Qué clientes del equipo de inscripción se listan (Plan J).</summary>
+/// <summary>Qué clientes del equipo de inscripción se listan.</summary>
 public enum CustomerScope
 {
     /// <summary>Solo los que inscribió directamente el que mira (SponsorMemberId == él).</summary>

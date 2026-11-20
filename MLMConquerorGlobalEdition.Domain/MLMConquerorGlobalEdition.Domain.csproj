@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Plan M: solo el tipo HierarchyId (GenealogyEntity.Node), sin el proveedor de EF. -->
+    <!-- Solo el tipo HierarchyId (GenealogyEntity.Node), sin el proveedor de EF. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.Abstractions" Version="10.0.11" />
   </ItemGroup>
 

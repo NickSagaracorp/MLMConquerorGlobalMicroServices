@@ -77,7 +77,7 @@ public class ConfirmCryptoPaymentHandler
     {
         var now = _dateTime.Now;
 
-        // Solo altas. Las compras de tokens en cripto las confirma Billing (Plan F): aquí no hay
+        // Solo altas. Las compras de tokens en cripto las confirma Billing: aquí no hay
         // suscripción que activar y activar una membresía por una compra de tokens sería un regalo.
         var confirmation = await _db.CryptoPaymentConfirmations
             .FirstOrDefaultAsync(c => c.OrderId == command.OrderId && c.Purpose == CryptoPaymentPurpose.Signup, ct);

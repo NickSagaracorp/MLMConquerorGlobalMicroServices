@@ -13,7 +13,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 
 /// <summary>
-/// La cuota con eWallet (Plan K, K11), en dos fases como TokenPurchaseService.PayWithEWalletAsync:
+/// La cuota con eWallet, en dos fases como TokenPurchaseService.PayWithEWalletAsync:
 /// (1) bajo el candado se reserva el ciclo (pago Pending, pedido Processing) y se confirma antes de tocar
 /// i-Payout; (2) con el candado otra vez y sin cancelación se relee el saldo real, se debita, se
 /// verifica por saldo y se cierra. Lo dudoso nunca se reintenta: queda NeedsReconciliation.
@@ -69,7 +69,7 @@ public sealed partial class AnnualFeeChargeService
             }
             catch (Exception)
             {
-                // Revisión C-1: nada a medias en el contexto compartido; se relanza.
+                // Nada a medias en el contexto compartido; se relanza.
                 await AbortUnderGateAsync(tx, state.MemberId, before1);
                 throw;
             }

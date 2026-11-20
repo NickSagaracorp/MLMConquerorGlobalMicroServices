@@ -52,15 +52,15 @@ public enum RecurringFundingSource
     CommissionBalance = 1,
     CreditCard = 2,
 
-    /// <summary>Saldo real de i-Payout (cuota anual, Plan K).</summary>
+    /// <summary>Saldo real de i-Payout (cuota anual).</summary>
     EWallet = 3,
 
-    /// <summary>Un token de cuota que el miembro ya tenía (cuota anual, Plan K). No mueve dinero.</summary>
+    /// <summary>Un token de cuota que el miembro ya tenía (cuota anual). No mueve dinero.</summary>
     Token = 4
 }
 
 /// <summary>
-/// Para qué es un SubscriptionBillingState (Plan K, K1). Un estado de membresía cobra una suscripción y
+/// Para qué es un SubscriptionBillingState (cuota anual). Un estado de membresía cobra una suscripción y
 /// la renueva; uno de cuota anual cobra la cuota del Biz Center del miembro y NO tiene suscripción
 /// (CK_SubscriptionBillingStates_Purpose lo obliga en la base).
 /// </summary>

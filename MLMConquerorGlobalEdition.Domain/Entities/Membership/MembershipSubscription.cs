@@ -17,7 +17,7 @@ public class MembershipSubscription : AuditChangesStringKey
     public DateTime? HoldDate { get; set; }
 
     /// <summary>
-    /// Plan Q (Q3): el estado de cuenta (Suspended o Inactive) con el que el admin dejo esta suscripcion en OnHold. Al volver
+    /// El estado de cuenta (Suspended o Inactive) con el que el admin dejo esta suscripcion en OnHold. Al volver
     /// la cuenta a Active solo se reactivan las que lo tienen; una OnHold de otro origen (null) se queda como esta. Se borra
     /// al restaurarla o al cancelarla.
     /// </summary>

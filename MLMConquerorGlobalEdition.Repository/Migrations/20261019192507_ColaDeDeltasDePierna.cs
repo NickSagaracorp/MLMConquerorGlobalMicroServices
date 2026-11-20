@@ -34,7 +34,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 table: "DualLegDeltas",
                 columns: new[] { "StartMemberId", "Id" });
 
-            // Plan Q: 0..@hasta sin tabla (100.000 como maximo; la clave admite 13.567 niveles).
+            // 0..@hasta sin tabla (100.000 como maximo; la clave admite 13.567 niveles).
             migrationBuilder.Sql(@"
 CREATE OR ALTER FUNCTION dbo.Numeros(@hasta int)
 RETURNS TABLE AS RETURN
@@ -44,9 +44,9 @@ SELECT TOP (CASE WHEN @hasta IS NULL OR @hasta < 0 THEN 0 ELSE @hasta + 1 END)
        CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS int) AS N
 FROM e5;");
 
-            // Plan Q: las claves de los ascendientes de @k (profundidad 0..D, D = la propia clave) y el lado por el que se
+            // Las claves de los ascendientes de @k (profundidad 0..D, D = la propia clave) y el lado por el que se
             // baja desde cada uno; en D, el lado del delta (@ladoPropio). Mismo algoritmo que DualBinaryPath.Ancestor y
-            // SideBelow (SqlServerAscendientesPorClaveTests). Byte (base 1) del bit j: 5 + j/8; bit dentro del byte: j%8.
+            // SideBelow. Byte (base 1) del bit j: 5 + j/8; bit dentro del byte: j%8.
             migrationBuilder.Sql(@"
 CREATE OR ALTER FUNCTION dbo.DualAncestorKeys(@k varbinary(1700), @ladoPropio int)
 RETURNS TABLE AS RETURN

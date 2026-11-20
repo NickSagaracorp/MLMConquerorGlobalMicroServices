@@ -20,7 +20,7 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
     private readonly int _lockTimeoutMs;
 
     /// <summary>
-    /// Revision de Q3 (I2): la pasarela devolvio el dinero y el pago y el pedido quedaron Refunded, pero la membresia no se
+    /// La pasarela devolvio el dinero y el pago y el pedido quedaron Refunded, pero la membresia no se
     /// pudo cancelar (candado de puntos ocupado o fallo al guardar). No se reintenta la devolucion: hay que cancelarla a mano.
     /// </summary>
     public const string MembershipNotCancelledCode = "REFUNDED_MEMBERSHIP_NOT_CANCELLED";
@@ -89,7 +89,7 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
         if (!refundResult.IsSuccess)
             return Result<bool>.Failure(refundResult.ErrorCode!, refundResult.Error!);
 
-        // Revision de Q3 (I2): la pasarela ya devolvio el dinero. Primero se guardan el pago y el pedido como Refunded, en su
+        // La pasarela ya devolvio el dinero. Primero se guardan el pago y el pedido como Refunded, en su
         // propio guardado y sin candado (no tocan puntos): si lo que sigue falla, un reintento ve el pago Refunded y no
         // vuelve a pedir la devolucion. Ningun candado de base se mantiene durante la llamada a la pasarela.
         var Now = _dateTime.Now;
@@ -115,7 +115,7 @@ public class RefundHandler : IRequestHandler<RefundCommand, Result<bool>>
 
         await _db.SaveChangesAsync(ct);
 
-        // Plan Q (Q3, decidido por Nick): la devolucion TOTAL del pedido vigente de una membresia viva la cancela; el
+        // La devolucion TOTAL del pedido vigente de una membresia viva la cancela; el
         // interceptor resta sus puntos del miembro y de su linea. Una parcial (un ajuste de importe) no la toca. Segundo
         // guardado: la cancelacion y la parada de su cobro, juntas, bajo el candado de puntos del miembro, tomado antes de
         // leer la suscripcion (como la subida y la bajada); el guardado lo reutiliza y lo suelta al confirmar, y si no se

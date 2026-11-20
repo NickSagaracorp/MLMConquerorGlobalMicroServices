@@ -3,8 +3,8 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <summary>
 /// Lo que inscribió un miembro del equipo en el rango. Los niveles son los ids reales de
 /// MembershipLevels (1 Lifestyle Ambassador, 2 VIP, 3 Elite, 4 Turbo); "Plus" no existe aquí y
-/// cualquier otro nivel, o ninguno, va a <see cref="OtherLevel"/> (Plan J, J10). El nivel de cada
-/// inscrito es el más alto de los productos de su orden de alta (corrección de Nick N2).
+/// cualquier otro nivel, o ninguno, va a <see cref="OtherLevel"/>. El nivel de cada
+/// inscrito es el más alto de los productos de su orden de alta (corrección de Nick).
 /// </summary>
 public sealed class EnrollmentActivityRowView
 {

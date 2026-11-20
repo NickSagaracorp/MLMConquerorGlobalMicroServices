@@ -10,7 +10,7 @@ using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
-/// <summary>Plan Q (revision del bloque 2): tamanos de tanda del vaciado. Las pruebas los bajan para forzar varias tandas.</summary>
+/// <summary>Tamanos de tanda del vaciado. Las pruebas los bajan para forzar varias tandas.</summary>
 public sealed record LegDrainOptions
 {
     /// <summary>Filas de la cola que mira cada tanda (en orden de Id); sus arranques distintos son la tanda.</summary>
@@ -26,10 +26,10 @@ public sealed record LegDrainOptions
 /// <summary>
 /// Piernas del binario (LeftLegPoints/RightLegPoints, LeftLegCount/RightLegCount, los calificados y las copias
 /// MemberStatistics.DualTeamPoints/DualTeamSize).
-/// Plan Q (P-R9): quien escribe el binario ENCOLA un delta en DualLegDeltas (O(1), sin tocar la linea ascendente) y
-/// DrainAsync los aplica por tandas. Semantica (DQ2): un delta se aplica por los ascendientes que su arranque tenga AL
+/// Quien escribe el binario ENCOLA un delta en DualLegDeltas (O(1), sin tocar la linea ascendente) y
+/// DrainAsync los aplica por tandas. Semantica: un delta se aplica por los ascendientes que su arranque tenga AL
 /// APLICARSE; los movimientos encolan lo que leen de las piernas ya aplicadas. En InMemory se aplica en el acto.
-/// Revision del bloque 2 (I-3): una tanda expande la UNION de los caminos de sus arranques (cada ascendiente distinto una
+/// Una tanda expande la UNION de los caminos de sus arranques (cada ascendiente distinto una
 /// sola vez) en lugar de un camino entero por arranque, y suma por ascendiente y lado con rangos sobre los arranques
 /// ordenados por la clave (inorden: los que comparten un prefijo son contiguos).
 /// </summary>
@@ -42,34 +42,34 @@ public static class LegPointMaintenance
     /// Ascendientes distintos (la union de los caminos) que expande una tanda, como mucho. Con la linea de 8.200 niveles,
     /// 1.000 arranques en la misma pierna son unos 9.000 y se vacian en una tanda de unos 6 s (medido en local). El tope
     /// solo actua con arranques en muchas ramas hondas distintas (unas 25 ramas de 8.000 niveles): con la expansion de la
-    /// Tarea 10 (82.000 filas en 2 a 3,4 s), 200.000 filas son unos 5 a 8 s por tanda, lejos del tiempo del comando. Si la
+    /// union (82.000 filas en 2 a 3,4 s medido), 200.000 filas son unos 5 a 8 s por tanda, lejos del tiempo del comando. Si la
     /// union de la ventana pasa del tope, la tanda se queda con la primera mitad de sus arranques (por orden de llegada)
     /// hasta que cabe o queda uno.
     /// </summary>
     public const int MaxPathRowsPerBatch = 200_000;
 
     /// <summary>
-    /// Revision I9: filas por UPDATE. Por debajo de 5.000, el umbral a partir del cual SQL Server escala los candados de
+    /// Filas por UPDATE. Por debajo de 5.000, el umbral a partir del cual SQL Server escala los candados de
     /// fila de una sentencia a la tabla entera (y bloquearia colocaciones y el MERGE del trabajo de estadisticas).
     /// </summary>
     public const int UpdateChunk = 4_000;
 
-    /// <summary>Revision I1: segundos de cada comando de una tanda, ademas de la espera del candado (el de EF es 30 s).</summary>
+    /// <summary>Segundos de cada comando de una tanda, ademas de la espera del candado (el de EF es 30 s).</summary>
     public const int BatchCommandSeconds = 300;
 
-    /// <summary>Revision C2: reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
+    /// <summary>Reintentos de una tanda si SQL Server la elige victima de un interbloqueo (1205).</summary>
     public const int MaxDeadlockRetries = 3;
 
     /// <summary>
-    /// Revision del bloque 2 (M-3): fallos de una tanda de un solo arranque antes de apartar sus deltas a
+    /// Fallos de una tanda de un solo arranque antes de apartar sus deltas a
     /// DualLegDeltaDeadLetters. Cada fallo termina la pasada, asi que son tres pasadas (unos tres minutos).
     /// </summary>
     public const int MaxAttempts = 3;
 
     /// <summary>
-    /// Revision 2 del bloque 2 (I1): los UNICOS errores que pueden ser culpa de los datos de un arranque (desbordamiento,
+    /// Los UNICOS errores que pueden ser culpa de los datos de un arranque (desbordamiento,
     /// conversion, division por cero, clave repetida, FK, nulo, truncado). Solo estos parten la ventana y anotan intentos, y
-    /// solo en la tanda de un solo arranque cuando el mismo error se repite al rehacerla (tercera revision del bloque 2: la
+    /// solo en la tanda de un solo arranque cuando el mismo error se repite al rehacerla. La
     /// clave repetida y la FK pueden ser carreras con otro escritor, y una carrera no se repite).
     /// Cualquier otro (tiempo agotado -2; conexion o conmutacion -1, 53, 233, 10054, 40613, 4060; registro lleno 9002;
     /// archivo lleno 1105; memoria 701 y 8645; espera de candado 1222; un fallo del propio SQL de la tanda) no depende de
@@ -79,15 +79,14 @@ public static class LegPointMaintenance
         new HashSet<int> { 8115, 8114, 220, 232, 517, 8134, 245, 2627, 2601, 547, 515, 8152, 2628 };
 
     /// <summary>
-    /// Revision 2 del bloque 2 (I1): los deltas apartados en DualLegDeltaDeadLetters (Q-R30). Debe ser 0: el trabajo de cada
+    /// Los deltas apartados en DualLegDeltaDeadLetters. Debe ser 0: el trabajo de cada
     /// minuto lo registra como error y la salud del sistema (AdminAPI) queda degradada mientras no lo sea.
     /// </summary>
     public static Task<int> DeadLetterCountAsync(AppDbContext db, CancellationToken ct = default) =>
         db.DualLegDeltaDeadLetters.AsNoTracking().CountAsync(ct);
 
     /// <summary>
-    /// Encola la hoja recien guardada: sus puntos propios APLICADOS y 1 nodo, en la pierna de su padre. Calificados 0 (revision del
-    /// bloque 2, M-7): un nodo nuevo nace con SelfQualified = 0, y sus activas le llegan como propios aparcados al vaciar.
+    /// Encola la hoja recien guardada: sus puntos propios APLICADOS y 1 nodo, en la pierna de su padre. Calificados 0: un nodo nuevo nace con SelfQualified = 0, y sus activas le llegan como propios aparcados al vaciar.
     /// </summary>
     public static async Task EnqueueLeafAsync(AppDbContext db, string memberId, DateTime now, string by, CancellationToken ct = default)
     {
@@ -103,8 +102,8 @@ WHERE d.MemberId = {memberId} AND d.IsDeleted = 0 AND d.ParentMemberId IS NOT NU
     }
 
     /// <summary>
-    /// Plan Q (DQ16): los puntos propios aplicados de un miembro son sus PersonalPoints MENOS sus propios de puntos pendientes
-    /// en la cola (los encola MembershipPointsDeltas y llegan al vaciar por la linea que tenga entonces, DQ2). La hoja y el
+    /// Los puntos propios aplicados de un miembro son sus PersonalPoints MENOS sus propios de puntos pendientes
+    /// en la cola (los encola MembershipPointsDeltas y llegan al vaciar por la linea que tenga entonces). La hoja y el
     /// subarbol llevan solo lo aplicado: asi lo pendiente no cuenta dos veces ni se pierde en un movimiento o una retirada.
     /// Encola el subarbol de <paramref name="subtreeRootId"/> entero (sus propios puntos mas sus dos piernas YA APLICADAS, y
     /// 1 + sus contadores) con el signo dado, en la pierna de su padre ACTUAL. -1 antes de soltarlo y +1 despues de colgarlo.
@@ -130,7 +129,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
     /// Aplica la cola hasta vaciar lo encolado al empezar (o hasta <paramref name="maxBatches"/> tandas) y devuelve cuantos
     /// deltas aplico. Cada tanda va en su transaccion; si quien llama ya tiene una (pruebas), trabaja dentro de ella sin
     /// confirmar, sin reintentar y sin apartar deltas por fallo.
-    /// <paramref name="isolateFailures"/> (revision 2 del bloque 2, I1): solo el trabajo de cada minuto
+    /// <paramref name="isolateFailures"/>: solo el trabajo de cada minuto
     /// (ApplyDualLegDeltasJob) aisla un fallo de datos partiendo la ventana y anotando intentos. Los demas (comisiones,
     /// instantanea, rango) propagan el error en el acto: no pueden quedarse decenas de minutos aislando un arranque.
     /// </summary>
@@ -141,13 +140,13 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
         if (!db.Database.IsRelational()) return await DrainInMemoryAsync(db, ct);
         options ??= new LegDrainOptions();
 
-        // Revision I1: el tiempo de EF por comando es 30 s; una tanda espera el candado (hasta lockTimeoutMs) y despues
+        // El tiempo de EF por comando es 30 s; una tanda espera el candado (hasta lockTimeoutMs) y despues
         // calcula. Con 30 s, un comando agotado se deshacia y la misma tanda se repetia sin fin.
         var antes = db.Database.GetCommandTimeout();
         db.Database.SetCommandTimeout(lockTimeoutMs / 1000 + options.BatchCommandSeconds);
         try
         {
-            // Revision I2: solo lo encolado hasta ahora. Con altas entrando sin parar, «hasta que no quede nada» podia no
+            // Solo lo encolado hasta ahora. Con altas entrando sin parar, «hasta que no quede nada» podia no
             // terminar nunca; lo que entre mientras tanto lo vacia la siguiente pasada (el trabajo corre cada minuto).
             var hasta = (await db.Database.SqlQueryRaw<long>("SELECT ISNULL(MAX(Id), 0) AS [Value] FROM DualLegDeltas")
                 .ToListAsync(ct)).Single();
@@ -158,7 +157,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
             long ultimo = 0;
             var completa = Math.Max(1, options.WindowRows);
             var ventana = completa;
-            // Tercera revision del bloque 2: el error de la tanda de un solo arranque que aun no se confirmo repitiendola.
+            // El error de la tanda de un solo arranque que aun no se confirmo repitiendola.
             int? errorAislado = null;
             for (var i = 0; i < maxBatches; i++)
             {
@@ -170,7 +169,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 catch (SqlException ex) when (isolateFailures && DataErrors.Contains(ex.Number)
                                               && db.Database.CurrentTransaction is null && !ct.IsCancellationRequested)
                 {
-                    // Revision del bloque 2 (M-3) y revision 2 (I1): un fallo de DATOS (un punto que desborda, una clave
+                    // Un fallo de DATOS (un punto que desborda, una clave
                     // repetida) se repite con la mitad de la ventana hasta aislar un arranque; con uno solo, se le anota el
                     // intento y, al llegar a MaxAttempts, sus deltas se apartan para que no bloqueen la cola. Cualquier otro
                     // error (tiempo, conexion, registro, memoria) se propaga sin anotar nada.
@@ -181,7 +180,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                         i--;
                         continue;
                     }
-                    // Tercera revision del bloque 2: solo se anota el intento si el MISMO error se repite en la tanda de un
+                    // Solo se anota el intento si el MISMO error se repite en la tanda de un
                     // solo arranque. Una clave repetida (2627, 2601) o una FK (547) pueden ser una carrera con otro escritor
                     // que ya paso: la primera vez se repite la tanda aislada sin anotar nada.
                     if (errorAislado != ex.Number)
@@ -196,7 +195,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
                 }
                 total += r.Claimed;
                 sinNodo += r.WithoutNode;
-                // Revision 2 del bloque 2 (I1): tras una tanda partida que sale bien, la siguiente vuelve a la ventana entera.
+                // Tras una tanda partida que sale bien, la siguiente vuelve a la ventana entera.
                 ventana = completa;
                 errorAislado = null;
                 if (r.WindowRows == 0) break;
@@ -214,7 +213,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
 
     private sealed record BatchResult(int Claimed, int WindowRows, long LastId, int WithoutNode, long PathRows);
 
-    /// <summary>Una tanda en su transaccion, reintentada si es victima de un interbloqueo (revision C2).</summary>
+    /// <summary>Una tanda en su transaccion, reintentada si es victima de un interbloqueo.</summary>
     private static async Task<BatchResult> ApplyBatchAsync(AppDbContext db, long hasta, long ultimo, int ventana,
         LegDrainOptions options, int lockTimeoutMs, CancellationToken ct)
     {
@@ -253,7 +252,7 @@ WHERE d.MemberId = {subtreeRootId} AND d.IsDeleted = 0 AND d.ParentMemberId IS N
     }
 
     /// <summary>
-    /// Revision del bloque 2 (M-3): la tanda de un solo arranque fallo. En otra transaccion se anota el intento en sus
+    /// La tanda de un solo arranque fallo. En otra transaccion se anota el intento en sus
     /// deltas y, si llegan a MaxAttempts, se apartan a DualLegDeltaDeadLetters con el error.
     /// </summary>
     private static async Task RecordFailureAsync(AppDbContext db, long hasta, long ultimo, SqlException error, int lockTimeoutMs,
@@ -303,10 +302,10 @@ WHERE q.StartMemberId = {arranque} AND q.Id <= {hasta}
         }
     }
 
-    // Una tanda (revision del bloque 2, I-3):
+    // Una tanda:
     //  1. Ventana: las primeras @lote filas con Id en (@ultimo, @hasta], en orden de Id (no se reagrupa la cola entera).
     //  2. Sus arranques. Los deltas DE PIERNA de un arranque sin nodo vivo con clave se apartan a DualLegDeltaDeadLetters
-    //     (M-2: antes se descartaban en silencio); los PROPIOS sin nodo esperan (DQ13).
+    //     (no se descartan en silencio); los PROPIOS sin nodo esperan.
     //  3. Los candidatos, ordenados por la clave (inorden), con C = la profundidad del prefijo comun con el anterior (-1 si
     //     es el primero o de otra raiz). La union de sus caminos son, por cada arranque i, las profundidades (C_i, D_i]: cada
     //     ascendiente distinto sale una sola vez. Si pasa de @maxFilas, se queda la primera mitad por orden de llegada.
@@ -316,7 +315,7 @@ WHERE q.StartMemberId = {arranque} AND q.Id <= {hasta}
     //     ascendiente si tambien es arranque (R = J y D_k = J). En J = D_i (el propio arranque) todo va a la derecha.
     //  6. Mas lo propio de cada arranque (su pierna Side para los de pierna; SelfQualified para los propios), y se aplica
     //     por trozos de @trozo filas.
-    // SET XACT_ABORT ON: cualquier error deshace la tanda entera. DEADLOCK_PRIORITY LOW (I-5): el vaciado es siempre la
+    // SET XACT_ABORT ON: cualquier error deshace la tanda entera. DEADLOCK_PRIORITY LOW: el vaciado es siempre la
     // victima de un interbloqueo (reintenta solo la tanda), no la colocacion ni el trabajo de estadisticas.
     private const string ApplyBatchSql = @"
 SET NOCOUNT ON;
@@ -334,7 +333,7 @@ DECLARE @nuevoUltimo bigint = ISNULL((SELECT MAX(Id) FROM #ventana), @ultimo);
 
 SELECT v.StartMemberId, MIN(v.Id) AS Primero INTO #arr FROM #ventana v GROUP BY v.StartMemberId;
 
--- M-2: de pierna sin nodo vivo con clave.
+-- Los deltas de pierna sin nodo vivo con clave (ya apartados arriba) salen de la cola.
 DELETE q
 OUTPUT deleted.Id, deleted.StartMemberId, deleted.Side, deleted.Points, deleted.NodeCount, deleted.QualifiedCount,
        deleted.OwnChange, deleted.Attempts, deleted.CreationDate, deleted.CreatedBy, GETDATE(), N'sin-nodo'
@@ -499,7 +498,7 @@ BEGIN
     JOIN #x x ON x.NodeId = d.Id
     WHERE x.Rn >= @desde AND x.Rn < @desde + @trozo;
 
-    -- DQ15: la copia del tamano del equipo binario en las estadisticas, junto a la de los puntos.
+    -- La copia del tamano del equipo binario en las estadisticas, junto a la de los puntos.
     UPDATE s
     SET DualTeamPoints = CAST(d.LeftLegPoints + d.RightLegPoints AS int),
         DualTeamSize   = d.LeftLegCount + d.RightLegCount
@@ -517,7 +516,7 @@ DROP TABLE IF EXISTS #lote; DROP TABLE IF EXISTS #s; DROP TABLE IF EXISTS #o; DR
 DROP TABLE IF EXISTS #ventana;";
 
     /// <summary>
-    /// Revision del bloque 2 (M-5): en InMemory la cola solo guarda propios (los de pierna se aplican en el acto). Se
+    /// En InMemory la cola solo guarda propios (los de pierna se aplican en el acto). Se
     /// aplican con la misma semantica que en SQL: los propios con nodo vivo a SelfQualified y a las piernas de sus
     /// ascendientes; sin nodo, esperan. Un delta de pierna (sembrado a mano) va a la pierna Side del arranque y sube.
     /// </summary>
@@ -552,7 +551,7 @@ DROP TABLE IF EXISTS #ventana;";
     }
 
     /// <summary>
-    /// La misma semantica sobre el proveedor InMemory (pruebas de logica): sube nodo a nodo. Revision del bloque 2 (M-5):
+    /// La misma semantica sobre el proveedor InMemory (pruebas de logica): sube nodo a nodo. Aplica
     /// tambien los calificados (la hoja, 0; un subarbol, SelfQualified + sus piernas) y DualTeamSize.
     /// </summary>
     private static async Task ApplyInMemoryAsync(AppDbContext db, string rootId, bool leaf, int sign, CancellationToken ct)

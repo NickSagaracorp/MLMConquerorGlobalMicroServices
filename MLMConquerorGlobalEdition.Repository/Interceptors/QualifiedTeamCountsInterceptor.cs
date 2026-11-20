@@ -5,11 +5,11 @@ using MLMConquerorGlobalEdition.Repository.Services.Teams;
 namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 
 /// <summary>
-/// Plan Q (DQ13): al guardar, los cambios de suscripciones hacia o desde Active encolan los deltas de calificados
-/// (QualifiedTeamDeltas) y, por DQ16, los puntos del producto (MembershipPointsDeltas). Va en AppDbContext.OnConfiguring, como StatusHistoryInterceptor, para que ningun anfitrion lo
+/// Al guardar, los cambios de suscripciones hacia o desde Active encolan los deltas de calificados
+/// (QualifiedTeamDeltas) y los puntos del producto (MembershipPointsDeltas). Va en AppDbContext.OnConfiguring, como StatusHistoryInterceptor, para que ningun anfitrion lo
 /// olvide. Hora de servidor (DateTime.Now).
-/// Revision 2 del bloque 2: las lecturas de MembershipPointsDeltas son asincronas; el SaveChanges sincrono (que casi nadie
-/// usa) las espera en el acto. Tercera revision: es aceptable porque toda la cadena (MembershipPointsDeltas,
+/// Las lecturas de MembershipPointsDeltas son asincronas; el SaveChanges sincrono (que casi nadie
+/// usa) las espera en el acto. Es aceptable porque toda la cadena (MembershipPointsDeltas,
 /// MemberPointsLocks y EF) espera con ConfigureAwait(false), asi que nada vuelve al contexto de sincronizacion bloqueado.
 /// </summary>
 public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
@@ -31,7 +31,7 @@ public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
         return await base.SavingChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
     }
 
-    // Tercera revision del bloque 2 (I-a): los candados de sesion por miembro se sueltan tras la confirmacion de EF, o si
+    // Los candados de sesion por miembro se sueltan tras la confirmacion de EF, o si
     // el guardado falla o se cancela (MemberPointsLocks).
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
@@ -78,7 +78,7 @@ public sealed class QualifiedTeamCountsInterceptor : SaveChangesInterceptor
         await base.SaveChangesCanceledAsync(eventData, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Plan Q (DQ16): primero los puntos (cambian PersonalPoints y encolan), despues los calificados (DQ13).</summary>
+    /// <summary>Primero los puntos (cambian PersonalPoints y encolan), despues los calificados.</summary>
     private async Task RecordAsync(DbContext context, CancellationToken ct)
     {
         var ahora = _now();

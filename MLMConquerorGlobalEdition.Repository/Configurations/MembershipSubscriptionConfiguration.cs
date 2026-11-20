@@ -5,7 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 /// <summary>
-/// Plan M (M8): la navegación LastOrder creaba una FK en sombra (LastOrderId1) vacía en todas las
+/// La navegación LastOrder creaba una FK en sombra (LastOrderId1) vacía en todas las
 /// filas. La relación va sobre LastOrderId, que es la columna que se rellena.
 /// </summary>
 public class MembershipSubscriptionConfiguration : IEntityTypeConfiguration<MembershipSubscription>
@@ -18,14 +18,14 @@ public class MembershipSubscriptionConfiguration : IEntityTypeConfiguration<Memb
             .HasForeignKey(s => s.LastOrderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Plan Q (revision del bloque 2, M-4): sin cascada desde el nivel. Borrar un nivel borraba sus suscripciones en
-        // SQL, por debajo del interceptor (DQ13, DQ16). El admin desactiva niveles (IsActive), no los borra.
+        // Sin cascada desde el nivel. Borrar un nivel borraba sus suscripciones en
+        // SQL, por debajo del interceptor. El admin desactiva niveles (IsActive), no los borra.
         builder.HasOne(s => s.MembershipLevel)
             .WithMany()
             .HasForeignKey(s => s.MembershipLevelId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // Plan Q: las suscripciones activas por miembro, para unir el equipo (millones de filas) con ellas sin leer la tabla.
+        // Las suscripciones activas por miembro, para unir el equipo (millones de filas) con ellas sin leer la tabla.
         // Solo el estado: las consultas no filtran IsDeleted (la entidad no tiene filtro global), y un filtro con
         // IsDeleted dejaria el indice sin uso.
         // El indice de la FK (IX_MembershipSubscriptions_MemberId) se declara aqui: si no, EF lo da por cubierto con el

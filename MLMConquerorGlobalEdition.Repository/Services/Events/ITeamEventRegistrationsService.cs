@@ -3,7 +3,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Events;
 
-/// <summary>Eventos del equipo de inscripción (Plan J, bloque 6). Quien llama pasa el miembro del token.</summary>
+/// <summary>Eventos del equipo de inscripción. Quien llama pasa el miembro del token.</summary>
 public interface ITeamEventRegistrationsService
 {
     /// <summary>Eventos activos (IsActive y no borrados), del más reciente al más antiguo, 50 como mucho.</summary>

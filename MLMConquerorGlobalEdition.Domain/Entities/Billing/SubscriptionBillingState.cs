@@ -11,7 +11,7 @@ namespace MLMConquerorGlobalEdition.Domain.Entities.Billing;
 public class SubscriptionBillingState : AuditChangesStringKey
 {
     /// <summary>
-    /// La suscripción que cobra un estado de membresía. Null en un estado de cuota anual (Plan K): la
+    /// La suscripción que cobra un estado de membresía. Null en un estado de cuota anual: la
     /// cuota es del miembro, no de una suscripción. CK_SubscriptionBillingStates_Purpose lo exige.
     /// </summary>
     public string? MembershipSubscriptionId { get; set; }
