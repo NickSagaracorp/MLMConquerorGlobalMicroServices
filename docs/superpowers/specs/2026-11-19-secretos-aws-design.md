@@ -39,7 +39,7 @@ Los secretos se agrupan **por tema**, no por servicio, para no repetir un mismo 
 
 | Secreto | Contenido (claves del JSON) | AdminAPI | AdminWeb | Billing | BizCenter | BizCenterWeb | CommissionEngine | RankEngine | SharedAPICenter | SignupAPI | Signups | TMS |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `datos` | `ConnectionStrings__DefaultConnection`, `ConnectionStrings__HangFire`, `ConnectionStrings__Redis` | ✔ | | ✔ | ✔ | | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `datos` | `ConnectionStrings__DefaultConnection`, `ConnectionStrings__HangFire`, `ConnectionStrings__Redis` | ✔ | | ✔ | ✔ | | ✔ | ✔ | ✔ | ✔ | | ✔ |
 | `jwt-firma` | `Jwt__PrivateKeyBase64` | ✔ | | | | | | | | ✔ | | |
 | `dp-gateway` | `DataProtection__Certificate__Base64`, `DataProtection__Certificate__Password` | ✔ | | ✔ | ✔ | | | | | | | |
 | `signupapi` | `RootAmbassador__Email`, `RootAmbassador__Password`, `Entrax__KeyId`, `Entrax__Secret` | | | | | | | | | ✔ | | |
@@ -56,7 +56,9 @@ Reglas:
 - **Las claves del JSON van en formato de variable de entorno de .NET** (`Seccion__Clave`). Son las mismas que ya enseña la guía de EKS.
 - **No van a Secrets Manager** las cosas que no son secretas: la llave pública JWT, URLs, CORS, zona horaria, puertos. Siguen en la configuración normal (ConfigMaps en EKS, `environment` del compose en Docker).
 - **S3 y SES** no necesitan secreto: usan la misma identidad de AWS del servicio.
-- **Signups** figura con `datos` porque su `appsettings.json` trae cadena de SQL. Si al implementar se comprueba que no la usa, se le quita de la tabla.
+- **Signups no lee ningún secreto**: no usa la base. Su lista queda vacía y, con la lista vacía, el servicio no llama a AWS. Las cadenas de conexión que trae su `appsettings.json` se borran porque nadie las lee.
+- **S3 y SES** se dan, además de los secretos, a signupapi, adminapi, billing, bizcenter y rankengine (los mismos que hoy usan la cuenta `mlm-aws` de la guía de EKS). Se declaran en el mismo `secretos-por-servicio.json`.
+- **Cuenta de Nick:** solo `local` y `staging` (creados el 19-nov-2026). Producción nunca vive en esa cuenta.
 - **Certificados retirados del anillo de pasarelas** (`DataProtection:Certificate:Retired:N`): durante una rotación conviven el certificado nuevo y los viejos. Se admiten como `DataProtection__Certificate__Retired__N__Base64` y `__Password` dentro del mismo secreto `dp-gateway`.
 - **La tabla vive en un solo archivo del repositorio** (`deploy/aws/secretos-por-servicio.json`). De él salen los permisos de IAM y contra él se prueba la lista de cada servicio (sección 8).
 
