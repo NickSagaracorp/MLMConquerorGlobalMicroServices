@@ -24,6 +24,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.CryptoSignups;
 /// </summary>
 public class AdminEntraxSignupsControllerTests
 {
+    private const string P1 = "3f2b8c1e-5d4a-4e7b-9c6f-0a1b2c3d4e5f";
+
     private static readonly DateTime Now = new(2026, 10, 16, 10, 0, 0);
 
     private sealed class Captura(HttpStatusCode codigo = HttpStatusCode.OK,
@@ -140,13 +142,13 @@ public class AdminEntraxSignupsControllerTests
     public async Task Por_defecto_muestra_los_que_esperan_pago()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         await SeedAsync(db, "p2", EntraxPaymentStatus.ToReview);
         await SeedAsync(db, "p3", EntraxPaymentStatus.Paid);
 
         var fila = Filas(await Build(db).List()).Should().ContainSingle().Subject;
 
-        fila.Id.Should().Be("p1");
+        fila.Id.Should().Be(P1);
         fila.Status.Should().Be("AwaitingPayment");
         fila.FullName.Should().Be("Ivan Petrov");
         fila.Country.Should().Be("RU");
@@ -156,7 +158,7 @@ public class AdminEntraxSignupsControllerTests
     public async Task A_revisar_no_pierde_un_pago_sin_perfil()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.ToReview, memberId: "AMB-BORRADO");
+        await SeedAsync(db, P1, EntraxPaymentStatus.ToReview, memberId: "AMB-BORRADO");
 
         var fila = Filas(await Build(db).List(AdminEntraxSignupsController.ViewReview)).Should()
             .ContainSingle("un pago a revisar tiene dinero en juego: no puede desaparecer de la lista.").Subject;
@@ -169,7 +171,7 @@ public class AdminEntraxSignupsControllerTests
     public async Task Recientes_muestra_todos_incluidos_los_sustituidos()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         await SeedAsync(db, "p2", EntraxPaymentStatus.Paid);
         await SeedAsync(db, "p3", EntraxPaymentStatus.Superseded);
 
@@ -222,13 +224,13 @@ public class AdminEntraxSignupsControllerTests
     public async Task Re_check_se_reenvia_a_SignupAPI_con_el_Bearer_del_administrador()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         var captura = new Captura();
 
-        var r = await Build(db, Fabrica(captura).Object, "Bearer token-admin").Recheck("p1");
+        var r = await Build(db, Fabrica(captura).Object, "Bearer token-admin").Recheck(P1);
 
         captura.Peticion!.Method.Should().Be(HttpMethod.Post);
-        captura.Peticion.RequestUri!.AbsolutePath.Should().Be("/api/v1/signups/entrax/p1/recheck");
+        captura.Peticion.RequestUri!.AbsolutePath.Should().Be("/api/v1/signups/entrax/3f2b8c1e-5d4a-4e7b-9c6f-0a1b2c3d4e5f/recheck");
         captura.Peticion.Headers.Authorization!.ToString().Should().Be("Bearer token-admin");
         var contenido = r.Should().BeOfType<ContentResult>().Subject;
         contenido.StatusCode.Should().Be(200);
@@ -239,13 +241,13 @@ public class AdminEntraxSignupsControllerTests
     public async Task Re_check_queda_auditado_con_quien_lo_pidio_y_lo_que_contesto_SignupAPI()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        await Build(db, Fabrica(new Captura()).Object, "Bearer token-admin").Recheck("p1");
+        await Build(db, Fabrica(new Captura()).Object, "Bearer token-admin").Recheck(P1);
 
         var fila = db.AuditTracking.Should().ContainSingle().Subject;
         fila.EntityName.Should().Be(nameof(EntraxPayment));
-        fila.EntityId.Should().Be("p1");
+        fila.EntityId.Should().Be(P1);
         fila.Action.Should().Be(AdminEntraxSignupsController.AuditRecheck);
         fila.ChangedBy.Should().Be("admin-uid-1");
         fila.ChangedAt.Should().Be(Now);
@@ -260,10 +262,10 @@ public class AdminEntraxSignupsControllerTests
     public async Task Re_check_con_error_de_SignupAPI_audita_su_codigo_y_devuelve_su_respuesta()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         var captura = new Captura(HttpStatusCode.Forbidden, "{\"success\":false,\"errorCode\":\"FORBIDDEN\"}");
 
-        var r = await Build(db, Fabrica(captura).Object, "Bearer token-admin").Recheck("p1");
+        var r = await Build(db, Fabrica(captura).Object, "Bearer token-admin").Recheck(P1);
 
         r.Should().BeOfType<ContentResult>().Which.StatusCode.Should().Be(403);
         using var nuevo = JsonDocument.Parse(db.AuditTracking.Single().NewValues!);
@@ -285,9 +287,9 @@ public class AdminEntraxSignupsControllerTests
     public async Task Con_SignupAPI_caido_es_502_y_queda_auditado()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        var r = await Build(db, Fabrica(new Caido(new HttpRequestException("caido"))).Object).Recheck("p1");
+        var r = await Build(db, Fabrica(new Caido(new HttpRequestException("caido"))).Object).Recheck(P1);
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
         using var nuevo = JsonDocument.Parse(db.AuditTracking.Single().NewValues!);
@@ -298,9 +300,9 @@ public class AdminEntraxSignupsControllerTests
     public async Task Con_SignupAPI_sin_responder_a_tiempo_es_502()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        var r = await Build(db, Fabrica(new Caido(new TaskCanceledException("timeout"))).Object).Recheck("p1");
+        var r = await Build(db, Fabrica(new Caido(new TaskCanceledException("timeout"))).Object).Recheck(P1);
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
     }
@@ -315,9 +317,9 @@ public class AdminEntraxSignupsControllerTests
     public async Task Si_SignupAPI_no_contesta_a_tiempo_es_502_y_queda_auditado()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        var r = await Build(db, Fabrica(new Mudo()).Object, recheckTimeout: TimeSpan.FromMilliseconds(50)).Recheck("p1");
+        var r = await Build(db, Fabrica(new Mudo()).Object, recheckTimeout: TimeSpan.FromMilliseconds(50)).Recheck(P1);
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
         using var nuevo = JsonDocument.Parse(db.AuditTracking.Single().NewValues!);
@@ -328,11 +330,11 @@ public class AdminEntraxSignupsControllerTests
     public async Task Si_el_administrador_cancela_se_audita_igualmente_y_se_relanza()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         var mudo = new Mudo();
         using var cts = new CancellationTokenSource();
 
-        var llamada = Build(db, Fabrica(mudo).Object).Recheck("p1", cts.Token);
+        var llamada = Build(db, Fabrica(mudo).Object).Recheck(P1, cts.Token);
         await mudo.Llamado.Task.WaitAsync(TimeSpan.FromSeconds(10));
         cts.Cancel();
 
@@ -348,10 +350,10 @@ public class AdminEntraxSignupsControllerTests
     public async Task La_respuesta_siempre_es_application_json()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
         var captura = new Captura(cuerpo: "{\"success\":true,\"data\":{\"outcome\":\"StillPending\"}}", tipo: "text/html");
 
-        var r = await Build(db, Fabrica(captura).Object).Recheck("p1");
+        var r = await Build(db, Fabrica(captura).Object).Recheck(P1);
 
         r.Should().BeOfType<ContentResult>().Which.ContentType.Should().Be("application/json");
     }
@@ -363,9 +365,9 @@ public class AdminEntraxSignupsControllerTests
     public async Task Un_cuerpo_que_no_es_JSON_es_502(HttpStatusCode codigo, string cuerpo)
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        var r = await Build(db, Fabrica(new Captura(codigo, cuerpo, "text/html")).Object).Recheck("p1");
+        var r = await Build(db, Fabrica(new Captura(codigo, cuerpo, "text/html")).Object).Recheck(P1);
 
         var obj = r.Should().BeOfType<ObjectResult>().Subject;
         obj.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
@@ -381,9 +383,9 @@ public class AdminEntraxSignupsControllerTests
     {
         // El [Authorize] de SignupAPI rechaza sin cuerpo; convertirlo en 502 escondería un problema de permisos.
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        await SeedAsync(db, P1, EntraxPaymentStatus.AwaitingPayment);
 
-        var r = await Build(db, Fabrica(new Captura(codigo, "", "text/plain")).Object).Recheck("p1");
+        var r = await Build(db, Fabrica(new Captura(codigo, "", "text/plain")).Object).Recheck(P1);
 
         var obj = r.Should().BeOfType<ObjectResult>().Subject;
         obj.StatusCode.Should().Be((int)codigo);
@@ -396,7 +398,7 @@ public class AdminEntraxSignupsControllerTests
     public async Task Una_pagina_enorme_no_desborda()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.Paid);
+        await SeedAsync(db, P1, EntraxPaymentStatus.Paid);
 
         var pagina = Pagina(await Build(db).List(AdminEntraxSignupsController.ViewRecent, int.MaxValue,
             AdminEntraxSignupsController.MaxPageSize));
@@ -422,7 +424,7 @@ public class AdminEntraxSignupsControllerTests
     public async Task A_revisar_no_tiene_limite_de_fecha()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedAsync(db, "p1", EntraxPaymentStatus.ToReview, creado: Now.AddDays(-400));
+        await SeedAsync(db, P1, EntraxPaymentStatus.ToReview, creado: Now.AddDays(-400));
 
         Filas(await Build(db).List(AdminEntraxSignupsController.ViewReview)).Should().ContainSingle(
             "un pago a revisar tiene dinero en juego hasta que alguien lo resuelve.");

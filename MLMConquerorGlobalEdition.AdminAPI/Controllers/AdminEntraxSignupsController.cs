@@ -131,38 +131,33 @@ public class AdminEntraxSignupsController : ControllerBase
     }
 
     /// <summary>
+    /// La URL absoluta del Re-check en SignupAPI: la dirección base configurada del cliente más
+    /// una ruta fija cuyo único tramo variable es un Guid, que no puede traer barras, puntos ni
+    /// otro host. Sin dirección base absoluta no se sale.
+    /// </summary>
+    public static Uri DestinoDelRecheck(Uri? baseAddress, Guid paymentId)
+    {
+        if (baseAddress is null || !baseAddress.IsAbsoluteUri)
+            throw new InvalidOperationException("El cliente de SignupAPI no tiene dirección base.");
+
+        return new Uri(baseAddress, $"api/v1/signups/entrax/{paymentId:D}/recheck");
+    }
+
+    /// <summary>
     /// POST api/v1/admin/entrax-signups/{id}/recheck — vuelve a preguntar a Entrax y liquida.
     ///
     /// Cada Re-check deja una fila en AuditTracking con quién lo pidió, en qué estado estaba el pago y
     /// qué contestó SignupAPI (código HTTP y desenlace), también si SignupAPI no respondió. El Bearer
     /// se reenvía en la petición y no se guarda.
     /// </summary>
-    /// <summary>
-    /// La URL absoluta del Re-check en SignupAPI: siempre sobre la dirección base configurada del
-    /// cliente, con el Id escapado como un único segmento. Si el resultado no queda en el mismo
-    /// esquema, host y puerto que esa base, no se sale.
-    /// </summary>
-    public static Uri DestinoDelRecheck(Uri? baseAddress, string paymentId)
-    {
-        if (baseAddress is null || !baseAddress.IsAbsoluteUri)
-            throw new InvalidOperationException("El cliente de SignupAPI no tiene dirección base.");
-        if (string.IsNullOrWhiteSpace(paymentId) || paymentId is "." or "..")
-            throw new InvalidOperationException("Id de pago no válido para el Re-check.");
-
-        var prefijo = new Uri(baseAddress, "api/v1/signups/entrax/");
-        var destino = new Uri(prefijo, $"{Uri.EscapeDataString(paymentId)}/recheck");
-
-        if (Uri.Compare(destino, baseAddress, UriComponents.SchemeAndServer,
-                UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0
-            || !destino.AbsolutePath.StartsWith(prefijo.AbsolutePath, StringComparison.Ordinal))
-            throw new InvalidOperationException("El Re-check saldría fuera de SignupAPI.");
-
-        return destino;
-    }
-
     [HttpPost("{id}/recheck")]
     public async Task<IActionResult> Recheck(string id, CancellationToken ct = default)
     {
+        // El Id de un pago de Entrax es siempre un Guid (AuditChangesStringKey). Lo que no lo sea no
+        // existe: no llega ni a la base ni a la URL de salida.
+        if (!Guid.TryParse(id, out _))
+            return NotFound(ApiResponse<object>.Fail("ENTRAX_PAYMENT_NOT_FOUND", "Payment not found."));
+
         var payment = await _db.EntraxPayments.AsNoTracking()
             .Where(p => p.Id == id)
             .Select(p => new { p.Id, p.Status })
@@ -174,7 +169,7 @@ public class AdminEntraxSignupsController : ControllerBase
         // La ruta se arma con el Id guardado, no con el de la URL, y va contra la direccion base fija del cliente de
         // SignupAPI: lo que escriba quien llama no decide a donde sale la peticion.
         var http = _httpFactory.CreateClient(SignupApiRegistration.HttpClientName);
-        var destino = DestinoDelRecheck(http.BaseAddress, payment.Id);
+        var destino = DestinoDelRecheck(http.BaseAddress, Guid.Parse(payment.Id));
         using var request = new HttpRequestMessage(HttpMethod.Post, destino);
 
         var bearer = Request.Headers.Authorization.ToString();

@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.AdminAPI.Controllers;
+using Moq;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Security;
@@ -70,36 +72,29 @@ public class CorreccionesAikidoTanda3Tests
     [Fact]
     public void El_recheck_va_a_la_base_de_SignupAPI()
     {
-        var destino = AdminEntraxSignupsController.DestinoDelRecheck(
-            new Uri("https://signup.pruebas/"), "pago-1");
-        destino.Should().Be(new Uri("https://signup.pruebas/api/v1/signups/entrax/pago-1/recheck"));
+        var id = Guid.Parse("3f2b8c1e-5d4a-4e7b-9c6f-0a1b2c3d4e5f");
+        var destino = AdminEntraxSignupsController.DestinoDelRecheck(new Uri("https://signup.pruebas/"), id);
+        destino.Should().Be(new Uri(
+            "https://signup.pruebas/api/v1/signups/entrax/3f2b8c1e-5d4a-4e7b-9c6f-0a1b2c3d4e5f/recheck"));
     }
 
     [Theory]
     [InlineData("//otro.host/x")]
     [InlineData("../../../x")]
     [InlineData("https://otro.host/")]
-    public void Un_id_raro_no_saca_la_peticion_de_SignupAPI(string id)
-    {
-        var destino = AdminEntraxSignupsController.DestinoDelRecheck(new Uri("https://signup.pruebas/"), id);
-        destino.Host.Should().Be("signup.pruebas");
-        destino.AbsolutePath.Should().StartWith("/api/v1/signups/entrax/");
-    }
-
-    [Theory]
     [InlineData("..")]
-    [InlineData(".")]
     [InlineData("")]
-    public void Un_id_que_sube_de_carpeta_no_sale(string id)
+    public async Task Un_id_que_no_es_Guid_no_sale(string id)
     {
-        var accion = () => AdminEntraxSignupsController.DestinoDelRecheck(new Uri("https://signup.pruebas/"), id);
-        accion.Should().Throw<InvalidOperationException>();
+        var fabrica = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        var controlador = new AdminEntraxSignupsController(null!, fabrica.Object, null!, null!, null!);
+        (await controlador.Recheck(id)).Should().BeOfType<NotFoundObjectResult>();
     }
 
     [Fact]
     public void Sin_direccion_base_no_sale()
     {
-        var accion = () => AdminEntraxSignupsController.DestinoDelRecheck(null, "pago-1");
+        var accion = () => AdminEntraxSignupsController.DestinoDelRecheck(null, Guid.NewGuid());
         accion.Should().Throw<InvalidOperationException>();
     }
 }

@@ -55,3 +55,10 @@ ruta `UI-Templates/` en Aikido.
 | Low: insecure cookie (`AuthEndpoints.cs`, `AdminWeb/Program.cs`, `BizCenterWeb/Program.cs`) | **Corregida.** La cookie del idioma sale de `CookieDeIdioma`: `Secure`, `HttpOnly`, `SameSite=Lax`. Se quitó el script del AdminWeb que la leía (el `lang` ya lo pone el servidor). |
 | Low: SSRF en `AdminEntraxSignupsController.cs` | **Endurecida.** `DestinoDelRecheck` arma la URL absoluta sobre la dirección base del cliente de SignupAPI y no sale si queda en otro esquema, host o puerto. |
 | High/Medium: `document.write`/`innerHTML` en `UI-Templates/` | **Resuelta por entrega.** `UI-Templates/` deja de viajar al cliente (decisión de Nick, 20-nov-2026): son plantillas de referencia que no se despliegan. |
+
+## Cuarta tanda (20-nov-2026, reescaneo del repositorio del cliente tras la entrega e76b002)
+
+| Alerta | Resultado |
+|---|---|
+| Medium: XSS por `MarkupString` en `HtmlSaneado.razor` | **Corregida.** `HtmlSaneado` pasa a ser una clase C# (`ComponentBase`) que entrega al árbol de render, con `AddMarkupContent`, solo el texto que devolvió `HtmlSeguro.Limpiar`. Ya no hay ningún `MarkupString` en la solución. Pruebas con bUnit (`HtmlSaneadoTests`): quita `<script>`, `onerror` y `javascript:`, y vuelve a limpiar cuando cambia el parámetro. |
+| Low (rebajadas por Aikido): SSRF en `AdminEntraxSignupsController.cs` líneas 152 y 178 | **Corregida.** El Re-check solo acepta un Id que sea un Guid (el Id de `EntraxPayment` siempre lo es); cualquier otra cosa responde 404 sin tocar la base ni la red. `DestinoDelRecheck` recibe un `Guid` y la URL es la dirección base fija más una ruta constante cuyo único tramo variable es ese Guid, que no puede traer barras, puntos ni otro host. |
