@@ -62,3 +62,12 @@ ruta `UI-Templates/` en Aikido.
 |---|---|
 | Medium: XSS por `MarkupString` en `HtmlSaneado.razor` | **Corregida.** `HtmlSaneado` pasa a ser una clase C# (`ComponentBase`) que entrega al árbol de render, con `AddMarkupContent`, solo el texto que devolvió `HtmlSeguro.Limpiar`. Ya no hay ningún `MarkupString` en la solución. Pruebas con bUnit (`HtmlSaneadoTests`): quita `<script>`, `onerror` y `javascript:`, y vuelve a limpiar cuando cambia el parámetro. |
 | Low (rebajadas por Aikido): SSRF en `AdminEntraxSignupsController.cs` líneas 152 y 178 | **Corregida.** El Re-check solo acepta un Id que sea un Guid (el Id de `EntraxPayment` siempre lo es); cualquier otra cosa responde 404 sin tocar la base ni la red. `DestinoDelRecheck` recibe un `Guid` y la URL es la dirección base fija más una ruta constante cuyo único tramo variable es ese Guid, que no puede traer barras, puntos ni otro host. |
+
+## Reescaneo del 21-nov-2026 (repositorio del cliente, entrega 7e218b4)
+
+Quedan 2 alertas abiertas; las dos se ignoran en Aikido con justificación (61 resueltas el 20-nov).
+
+| Alerta | Resultado |
+|---|---|
+| Critical, Unlicensed: `Hangfire.Core`, `Hangfire.AspNetCore`, `Hangfire.NetCore` 1.8.19 (SignupAPI, RankEngine, CommissionEngine, BizCenter) | **Falso positivo de metadatos, se ignora.** El paquete declara la licencia como archivo (`<license type="file">LICENSE.md</license>`) y no como expresión SPDX; la 1.8.23 lo declara igual, así que actualizar no la quita. Hangfire es LGPL-3.0 y se usa sin modificar. Justificación: *"Hangfire is LGPL-3.0 (see LICENSE.md in the package); used unmodified as a dynamically linked library. The package declares its license as a file, not an SPDX expression."* |
+| Low (rebajada por Aikido): SSRF en `AdminEntraxSignupsController.cs` línea 143 | **Se ignora.** El escáner marca la dirección base del cliente HTTP hacia SignupAPI, que viene de la configuración del servidor: en el escaneo anterior marcó también `new Uri(baseAddress, "api/v1/signups/entrax/")`, sin ningún dato variable. El Id solo se acepta si es un Guid (si no, 404) y es el único tramo variable de una ruta constante. Justificación: *"Destination is the fixed SignupAPI base address from server configuration plus a constant path; the only variable segment is a parsed Guid, so the request cannot be redirected to another host or path."* |
