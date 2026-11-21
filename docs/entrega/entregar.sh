@@ -29,9 +29,14 @@ armar() {
   trap 'git -C "$RAIZ" worktree remove --force "$base/fuente" 2>/dev/null || true' RETURN
   ls -d "$base"/fuente/*.Tests >/dev/null 2>&1 || { echo "No se encontraron proyectos de pruebas en $base/fuente." >&2; return 1; }
   for t in "$base"/fuente/*.Tests; do
-    r=$(dotnet test "$t" -nologo -v q 2>&1 | grep -E "Passed!|Failed!" || true)
+    salida=$(dotnet test "$t" -nologo -v q 2>&1 || true)
+    r=$(echo "$salida" | grep -E "Passed!|Failed!" || true)
     echo "    $(basename "$t"): ${r:-sin resultado}"
-    case "$r" in Passed!*) ;; *) echo "Una suite no paso: no se entrega." >&2; return 1 ;; esac
+    case "$r" in
+      Passed!*) ;;
+      *) echo "$salida" | grep -E "^\s+Failed |error " -A6 | head -40 >&2
+         echo "Una suite no paso: no se entrega." >&2; return 1 ;;
+    esac
   done
 
   echo "2/6 Exportar el arbol sin historial"
