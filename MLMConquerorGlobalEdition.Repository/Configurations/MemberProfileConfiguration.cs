@@ -39,6 +39,15 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
             .IsDescending()
             .HasFilter("[IsDeleted] = 0");
 
+        // Filtros del listado de miembros del admin por correo, nombre, apellido y teléfono ("igual a" y "empieza por"):
+        // con el índice buscan en él en vez de recorrer el millón de filas.
+        // El correo era nvarchar(max), que no admite índice; 256 es lo mismo que mide en AspNetUsers.
+        builder.Property(m => m.Email).HasMaxLength(256);
+        builder.HasIndex(m => m.Email).HasDatabaseName("IX_MemberProfiles_Email").HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(m => m.FirstName).HasDatabaseName("IX_MemberProfiles_FirstName").HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(m => m.LastName).HasDatabaseName("IX_MemberProfiles_LastName").HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(m => m.Phone).HasDatabaseName("IX_MemberProfiles_Phone").HasFilter("[IsDeleted] = 0");
+
         // Los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
         // global de MemberProfile anade IsDeleted = 0 a todas sus consultas, asi que el indice filtrado sirve.
         builder.HasIndex(new[] { nameof(MemberProfile.MemberId) }, "IX_MemberProfiles_Clientes")

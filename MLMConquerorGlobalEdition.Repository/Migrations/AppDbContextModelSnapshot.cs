@@ -8195,7 +8195,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("EnrollDate")
                         .HasColumnType("datetime2");
@@ -8330,6 +8331,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasDatabaseName("IX_MemberProfiles_CreationDate")
                         .HasFilter("[IsDeleted] = 0");
 
+                    b.HasIndex("Email")
+                        .HasDatabaseName("IX_MemberProfiles_Email")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.HasIndex("EnrollDate")
                         .HasDatabaseName("IX_MemberProfiles_EnrollDate");
 
@@ -8339,8 +8344,20 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[EnrollmentNodeId] IS NOT NULL");
 
+                    b.HasIndex("FirstName")
+                        .HasDatabaseName("IX_MemberProfiles_FirstName")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("LastName")
+                        .HasDatabaseName("IX_MemberProfiles_LastName")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.HasIndex("MemberId")
                         .IsUnique();
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("IX_MemberProfiles_Phone")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("ReplicateSiteSlug")
                         .IsUnique()

@@ -17216,3 +17216,62 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    DECLARE @var42 nvarchar(max);
+    SELECT @var42 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[MemberProfiles]') AND [c].[name] = N'Email');
+    IF @var42 IS NOT NULL EXEC(N'ALTER TABLE [MemberProfiles] DROP CONSTRAINT ' + @var42 + ';');
+    ALTER TABLE [MemberProfiles] ALTER COLUMN [Email] nvarchar(256) NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_MemberProfiles_Email] ON [MemberProfiles] ([Email]) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_MemberProfiles_FirstName] ON [MemberProfiles] ([FirstName]) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_MemberProfiles_LastName] ON [MemberProfiles] ([LastName]) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_MemberProfiles_Phone] ON [MemberProfiles] ([Phone]) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124224633_IndicesDeFiltrosDeMiembros'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261124224633_IndicesDeFiltrosDeMiembros', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

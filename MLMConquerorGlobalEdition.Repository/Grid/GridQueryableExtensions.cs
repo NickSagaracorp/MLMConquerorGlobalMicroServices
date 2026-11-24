@@ -20,6 +20,16 @@ public static class GridQueryableExtensions
 {
     private const int DefaultMaxPageSize = 200;
 
+    /// <summary>
+    /// Verdadero cuando la base ya compara texto sin distinguir mayúsculas (la intercalación de SQL Server del sistema
+    /// es SQL_Latin1_General_CP1_CI_AS): entonces búsquedas y filtros comparan la columna tal cual, sin ToLower.
+    /// Con LOWER(columna) SQL Server no puede usar ningún índice y con un millón de miembros cada filtro recorría la
+    /// tabla entera (4–7 s por lectura); sin él, "igual a" y "empieza por" buscan en el índice. Lo encienden al
+    /// arrancar las APIs que consultan SQL Server; apagado (pruebas en memoria, colecciones ya cargadas) se sigue
+    /// pasando todo a minúsculas, que es lo que hace falta donde la comparación sí distingue.
+    /// </summary>
+    public static bool BaseSinDistincionDeMayusculas { get; set; }
+
     public static async Task<SharedKernel.PagedResult<T>> ToGridResultAsync<T>(
         this IQueryable<T> source,
         GridDataRequest request,
@@ -98,7 +108,8 @@ public static class GridQueryableExtensions
     public static (int Page, int PageSize) ResolvePage(GridDataRequest request, int maxPageSize = DefaultMaxPageSize) =>
         (Math.Max(1, request.Page), Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, maxPageSize));
 
-    public static IQueryable<T> ApplySearch<T>(this IQueryable<T> source, string? search, string[] searchableFields)
+    public static IQueryable<T> ApplySearch<T>(this IQueryable<T> source, string? search, string[] searchableFields,
+        bool? baseSinMayusculas = null)
     {
         if (string.IsNullOrWhiteSpace(search) || searchableFields is null || searchableFields.Length == 0)
             return source;
@@ -112,14 +123,18 @@ public static class GridQueryableExtensions
 
         if (fields.Length == 0) return source;
 
-        var term   = search.Trim().ToLower();
+        var sinMinusculas = (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery;
+        var term   = sinMinusculas ? search.Trim() : search.Trim().ToLower();
         var clause = string.Join(" || ",
-            fields.Select(f => $"({f} != null && {f}.ToLower().Contains(@0))"));
+            fields.Select(f => sinMinusculas
+                ? $"({f} != null && {f}.Contains(@0))"
+                : $"({f} != null && {f}.ToLower().Contains(@0))"));
 
         return source.Where(clause, term);
     }
 
-    public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> source, List<GridFilter>? filters)
+    public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> source, List<GridFilter>? filters,
+        bool? baseSinMayusculas = null)
     {
         if (filters is null || filters.Count == 0) return source;
 
@@ -131,7 +146,7 @@ public static class GridQueryableExtensions
             var prop = GetProperty<T>(f.Field);
             if (prop is null) continue;
 
-            var clause = BuildClause(prop, f, values);
+            var clause = BuildClause(prop, f, values, (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery);
             if (clause is null) continue;
 
             if (predicate.Length > 0)
@@ -155,7 +170,7 @@ public static class GridQueryableExtensions
         return string.IsNullOrEmpty(ordering) ? source : source.OrderBy(ordering);
     }
 
-    private static string? BuildClause(PropertyInfo prop, GridFilter f, List<object?> values)
+    private static string? BuildClause(PropertyInfo prop, GridFilter f, List<object?> values, bool sinMinusculas)
     {
         var name       = prop.Name;
         var underlying = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
@@ -165,9 +180,22 @@ public static class GridQueryableExtensions
         {
             var raw = f.Value;
             if (raw is null) return null;
-            var v = raw.ToLower();
+            var v = sinMinusculas ? raw : raw.ToLower();
             var k = values.Count;
             values.Add(v);
+
+            // La base ya compara sin mayúsculas: la columna va tal cual para que el índice sirva.
+            if (sinMinusculas)
+            {
+                return op switch
+                {
+                    "startswith" => $"{name} != null && {name}.StartsWith(@{k})",
+                    "endswith"   => $"{name} != null && {name}.EndsWith(@{k})",
+                    "equal"      => $"{name} == @{k}",
+                    "notequal"   => $"({name} == null || {name} != @{k})",
+                    _            => $"{name} != null && {name}.Contains(@{k})",
+                };
+            }
 
             return op switch
             {

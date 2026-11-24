@@ -38,7 +38,11 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
     /// </summary>
     private const int MaxPageSize = 100;
 
-    /// <summary>String columns the free-text search box matches against.</summary>
+    /// <summary>
+    /// Columnas en las que busca el cuadro de búsqueda libre: solo las del propio miembro. El patrocinador, el upline,
+    /// el nivel y el rango salen de subconsultas por fila; buscar en ellas obligaba a calcularlas para el millón de
+    /// miembros en cada búsqueda. Siguen filtrándose con el filtro de su columna.
+    /// </summary>
     private static readonly string[] SearchableFields =
     {
         nameof(AdminMemberDto.MemberId),
@@ -46,12 +50,7 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         nameof(AdminMemberDto.LastName),
         nameof(AdminMemberDto.Email),
         nameof(AdminMemberDto.Phone),
-        nameof(AdminMemberDto.Country),
         nameof(AdminMemberDto.ReplicateSiteSlug),
-        nameof(AdminMemberDto.SponsorFullName),
-        nameof(AdminMemberDto.DualTeamUplineFullName),
-        nameof(AdminMemberDto.MembershipLevelName),
-        nameof(AdminMemberDto.LifetimeRankName),
     };
 
     public async Task<Result<PagedResult<AdminMemberDto>>> Handle(

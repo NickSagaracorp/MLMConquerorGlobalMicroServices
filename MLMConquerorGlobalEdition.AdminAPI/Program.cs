@@ -40,6 +40,9 @@ builder.Configuration.AddSecretosDeAws();
 
 builder.Logging.AddPiiMaskingConsole();
 
+// La base es SQL Server con intercalación que no distingue mayúsculas: los grids filtran sin LOWER(), con índice.
+MLMConquerorGlobalEdition.Repository.Grid.GridQueryableExtensions.BaseSinDistincionDeMayusculas = true;
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

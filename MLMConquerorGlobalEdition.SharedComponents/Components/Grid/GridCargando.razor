@@ -1,0 +1,23 @@
+@* Envuelve un grid de servidor y, mientras ServerGridAdaptor lee (OnLoading), lo tapa con un velo y un indicador:
+   así el usuario ve que su filtro, orden o cambio de página se está aplicando. El velo aparece a los 150 ms, para que
+   las lecturas instantáneas no parpadeen, y bloquea los clics sobre el grid mientras dura la lectura. *@
+<div class="grid-cargando">
+    @ChildContent
+    @if (Visible)
+    {
+        <div class="grid-cargando__velo" role="status" aria-live="polite">
+            <span class="grid-cargando__indicador" aria-hidden="true"></span>
+            <span class="grid-cargando__texto">@Texto</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Si hay una lectura en curso.</summary>
+    [Parameter] public bool Visible { get; set; }
+
+    /// <summary>Lo que se lee junto al indicador (y lo que anuncian los lectores de pantalla).</summary>
+    [Parameter] public string Texto { get; set; } = "Loading…";
+}

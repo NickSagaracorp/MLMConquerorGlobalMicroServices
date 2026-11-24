@@ -109,10 +109,32 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     /// </summary>
     [Parameter] public Func<int, Task>? OnCount { get; set; }
 
+    /// <summary>
+    /// Opcional. Se llama con <c>true</c> al empezar cada lectura y con <c>false</c> al terminar (también si falla),
+    /// para que el anfitrión muestre que está filtrando, ordenando o paginando. Con tablas de un millón de filas una
+    /// lectura puede tardar lo bastante como para que, sin aviso, parezca que el grid no hizo caso.
+    /// </summary>
+    [Parameter] public Func<bool, Task>? OnLoading { get; set; }
+
     private HttpClient Client => Http ?? InjectedHttp;
 
     /// <inheritdoc />
     public override async Task<object> ReadAsync(DataManagerRequest dm, string? key = null)
+    {
+        if (OnLoading is null) return await LeerAsync(dm).ConfigureAwait(false);
+
+        await OnLoading(true).ConfigureAwait(false);
+        try
+        {
+            return await LeerAsync(dm).ConfigureAwait(false);
+        }
+        finally
+        {
+            await OnLoading(false).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<object> LeerAsync(DataManagerRequest dm)
     {
         var request = new GridDataRequest
         {
