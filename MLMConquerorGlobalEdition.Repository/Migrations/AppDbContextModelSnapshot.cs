@@ -8325,6 +8325,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[BinaryNodeId] IS NOT NULL");
 
+                    b.HasIndex("CreationDate")
+                        .IsDescending()
+                        .HasDatabaseName("IX_MemberProfiles_CreationDate")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.HasIndex("EnrollDate")
                         .HasDatabaseName("IX_MemberProfiles_EnrollDate");
 

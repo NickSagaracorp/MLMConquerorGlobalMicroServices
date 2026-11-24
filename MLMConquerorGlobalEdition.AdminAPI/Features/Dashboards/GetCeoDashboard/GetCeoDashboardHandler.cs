@@ -15,7 +15,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetCeoDashboard
 /// <summary>
 /// Executive dashboard handler. Runs ~30 aggregation queries (counts, sums,
 /// group-bys) against the entire member/order/commission/ticket fact tables
-/// — easily 1-3 seconds on a populated DB. Cached for 3 minutes globally;
+/// — close to a minute with a million members. PrecalculoDePaneles recomputes
+/// it in the background every 5 minutes and the screen reads that cached copy;
 /// admins clicking "Refresh" pass <c>BypassCache = true</c> to force a fresh
 /// recompute.
 /// </summary>
@@ -326,6 +327,7 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
 
         var dto = new CeoDashboardDto
         {
+            GeneratedAt              = now,
             TotalMembers             = totalMembers,
             TotalAmbassadors         = totalAmbassadors,
             TotalExternalMembers     = totalExternalMembers,

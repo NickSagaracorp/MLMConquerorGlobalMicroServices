@@ -240,6 +240,11 @@ builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifi
 }
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
+// Paneles del admin precalculados en segundo plano (con un millón de miembros, el CEO tarda cerca de un minuto).
+// Paneles:Precalcular = false lo apaga; entonces cada pantalla calcula al abrirse, como antes.
+if (builder.Configuration.GetValue("Paneles:Precalcular", true))
+    builder.Services.AddHostedService<MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.PrecalculoDePaneles>();
+
 // Email/SMS transport — provider selected by Notifications:Email:Provider /
 // Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
 builder.Services.AddNotifications(builder.Configuration);

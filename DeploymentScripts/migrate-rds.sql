@@ -3487,8 +3487,8 @@ IF NOT EXISTS (
 )
 BEGIN
     EXEC(N'
-    IF OBJECT_ID(N''dbo.__PlanQ_TablasPrevias'') IS NOT NULL DROP TABLE dbo.__PlanQ_TablasPrevias;
-    SELECT name COLLATE DATABASE_DEFAULT AS Nombre INTO dbo.__PlanQ_TablasPrevias FROM sys.tables WHERE schema_id = SCHEMA_ID(N''dbo'');');
+    IF OBJECT_ID(N''dbo.__TablasPreviasDeMigracion'') IS NOT NULL DROP TABLE dbo.__TablasPreviasDeMigracion;
+    SELECT name COLLATE DATABASE_DEFAULT AS Nombre INTO dbo.__TablasPreviasDeMigracion FROM sys.tables WHERE schema_id = SCHEMA_ID(N''dbo'');');
 END;
 
 IF NOT EXISTS (
@@ -3496,7 +3496,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetRoles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetRoles')
         EXEC(N'CREATE TABLE [AspNetRoles] (
         [Id] nvarchar(450) NOT NULL,
         [Name] nvarchar(256) NULL,
@@ -3512,7 +3512,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUsers')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUsers')
         EXEC(N'CREATE TABLE [AspNetUsers] (
         [Id] nvarchar(450) NOT NULL,
         [MemberProfileId] nvarchar(max) NULL,
@@ -3546,7 +3546,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AuditTracking')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AuditTracking')
         EXEC(N'CREATE TABLE [AuditTracking] (
         [Id] bigint NOT NULL IDENTITY,
         [EntityName] nvarchar(max) NOT NULL,
@@ -3566,7 +3566,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCategories')
         EXEC(N'CREATE TABLE [CommissionCategories] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -3586,7 +3586,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionOperationType')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionOperationType')
         EXEC(N'CREATE TABLE [CommissionOperationType] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(max) NOT NULL,
@@ -3605,7 +3605,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CorporateEvents')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CorporateEvents')
         EXEC(N'CREATE TABLE [CorporateEvents] (
         [Id] nvarchar(450) NOT NULL,
         [Title] nvarchar(max) NOT NULL,
@@ -3632,7 +3632,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CorporatePromos')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CorporatePromos')
         EXEC(N'CREATE TABLE [CorporatePromos] (
         [Id] nvarchar(450) NOT NULL,
         [Title] nvarchar(max) NOT NULL,
@@ -3659,7 +3659,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CreditCards')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CreditCards')
         EXEC(N'CREATE TABLE [CreditCards] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -3692,7 +3692,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'DualTeamTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'DualTeamTree')
         EXEC(N'CREATE TABLE [DualTeamTree] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(450) NOT NULL,
@@ -3719,7 +3719,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ErrorLogs')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ErrorLogs')
         EXEC(N'CREATE TABLE [ErrorLogs] (
         [Id] bigint NOT NULL IDENTITY,
         [ApiName] nvarchar(max) NOT NULL,
@@ -3751,7 +3751,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ErrorMessages')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ErrorMessages')
         EXEC(N'CREATE TABLE [ErrorMessages] (
         [Id] int NOT NULL IDENTITY,
         [ErrorCode] nvarchar(100) NOT NULL,
@@ -3772,7 +3772,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GenealogyTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GenealogyTree')
         EXEC(N'CREATE TABLE [GenealogyTree] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(450) NOT NULL,
@@ -3797,7 +3797,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GhostPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GhostPoints')
         EXEC(N'CREATE TABLE [GhostPoints] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(450) NOT NULL,
@@ -3824,7 +3824,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberFcmTokens')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberFcmTokens')
         EXEC(N'CREATE TABLE [MemberFcmTokens] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(max) NOT NULL,
@@ -3845,7 +3845,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberIdentificationTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberIdentificationTypes')
         EXEC(N'CREATE TABLE [MemberIdentificationTypes] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(max) NOT NULL,
@@ -3865,7 +3865,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipLevels')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipLevels')
         EXEC(N'CREATE TABLE [MembershipLevels] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -3890,7 +3890,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberStatistics')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberStatistics')
         EXEC(N'CREATE TABLE [MemberStatistics] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(max) NOT NULL,
@@ -3921,7 +3921,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Orders')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Orders')
         EXEC(N'CREATE TABLE [Orders] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -3949,7 +3949,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'PlacementLogs')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'PlacementLogs')
         EXEC(N'CREATE TABLE [PlacementLogs] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(max) NOT NULL,
@@ -3971,7 +3971,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductLoyaltySettings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductLoyaltySettings')
         EXEC(N'CREATE TABLE [ProductLoyaltySettings] (
         [Id] int NOT NULL IDENTITY,
         [ProductId] nvarchar(36) NOT NULL,
@@ -3992,7 +3992,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'RankDefinitions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'RankDefinitions')
         EXEC(N'CREATE TABLE [RankDefinitions] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -4014,7 +4014,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SlaPolicies')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SlaPolicies')
         EXEC(N'CREATE TABLE [SlaPolicies] (
         [Id] nvarchar(36) NOT NULL,
         [Name] nvarchar(200) NOT NULL,
@@ -4055,7 +4055,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SupportTeams')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SupportTeams')
         EXEC(N'CREATE TABLE [SupportTeams] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -4077,7 +4077,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketMetrics')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketMetrics')
         EXEC(N'CREATE TABLE [TicketMetrics] (
         [Id] int NOT NULL IDENTITY,
         [Date] datetime2 NOT NULL,
@@ -4112,7 +4112,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketSequences')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketSequences')
         EXEC(N'CREATE TABLE [TicketSequences] (
         [Date] date NOT NULL,
         [LastSequence] int NOT NULL,
@@ -4126,7 +4126,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTransactions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTransactions')
         EXEC(N'CREATE TABLE [TokenTransactions] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(450) NOT NULL,
@@ -4151,7 +4151,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypeCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypeCommissions')
         EXEC(N'CREATE TABLE [TokenTypeCommissions] (
         [Id] int NOT NULL IDENTITY,
         [TokenTypeId] int NOT NULL,
@@ -4181,7 +4181,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypeProducts')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypeProducts')
         EXEC(N'CREATE TABLE [TokenTypeProducts] (
         [Id] int NOT NULL IDENTITY,
         [TokenTypeId] int NOT NULL,
@@ -4201,7 +4201,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypes')
         EXEC(N'CREATE TABLE [TokenTypes] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -4223,7 +4223,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'WalletHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'WalletHistories')
         EXEC(N'CREATE TABLE [WalletHistories] (
         [Id] bigint NOT NULL IDENTITY,
         [WalletId] nvarchar(max) NOT NULL,
@@ -4244,7 +4244,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Wallets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Wallets')
         EXEC(N'CREATE TABLE [Wallets] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -4272,7 +4272,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetRoleClaims')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetRoleClaims')
         EXEC(N'CREATE TABLE [AspNetRoleClaims] (
         [Id] int NOT NULL IDENTITY,
         [RoleId] nvarchar(450) NOT NULL,
@@ -4289,7 +4289,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserClaims')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserClaims')
         EXEC(N'CREATE TABLE [AspNetUserClaims] (
         [Id] int NOT NULL IDENTITY,
         [UserId] nvarchar(450) NOT NULL,
@@ -4306,7 +4306,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserLogins')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserLogins')
         EXEC(N'CREATE TABLE [AspNetUserLogins] (
         [LoginProvider] nvarchar(450) NOT NULL,
         [ProviderKey] nvarchar(450) NOT NULL,
@@ -4323,7 +4323,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserRoles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserRoles')
         EXEC(N'CREATE TABLE [AspNetUserRoles] (
         [UserId] nvarchar(450) NOT NULL,
         [RoleId] nvarchar(450) NOT NULL,
@@ -4339,7 +4339,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserTokens')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserTokens')
         EXEC(N'CREATE TABLE [AspNetUserTokens] (
         [UserId] nvarchar(450) NOT NULL,
         [LoginProvider] nvarchar(450) NOT NULL,
@@ -4356,7 +4356,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionTypes')
         EXEC(N'CREATE TABLE [CommissionTypes] (
         [Id] int NOT NULL IDENTITY,
         [CommissionCategoryId] int NOT NULL,
@@ -4405,7 +4405,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipLevelBenefits')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipLevelBenefits')
         EXEC(N'CREATE TABLE [MembershipLevelBenefits] (
         [Id] int NOT NULL IDENTITY,
         [MembershipLevelId] int NOT NULL,
@@ -4427,7 +4427,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'CREATE TABLE [Products] (
         [Id] nvarchar(450) NOT NULL,
         [Name] nvarchar(200) NOT NULL,
@@ -4468,7 +4468,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'OrderDetails')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'OrderDetails')
         EXEC(N'CREATE TABLE [OrderDetails] (
         [Id] bigint NOT NULL IDENTITY,
         [OrderId] nvarchar(max) NOT NULL,
@@ -4489,7 +4489,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'PaymentHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'PaymentHistories')
         EXEC(N'CREATE TABLE [PaymentHistories] (
         [Id] nvarchar(450) NOT NULL,
         [OrderId] nvarchar(max) NOT NULL,
@@ -4520,7 +4520,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberRankHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberRankHistories')
         EXEC(N'CREATE TABLE [MemberRankHistories] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -4547,7 +4547,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'RankRequirements')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'RankRequirements')
         EXEC(N'CREATE TABLE [RankRequirements] (
         [Id] int NOT NULL IDENTITY,
         [RankDefinitionId] int NOT NULL,
@@ -4585,7 +4585,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CannedResponses')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CannedResponses')
         EXEC(N'CREATE TABLE [CannedResponses] (
         [Id] nvarchar(450) NOT NULL,
         [Title] nvarchar(200) NOT NULL,
@@ -4616,7 +4616,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SupportAgents')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SupportAgents')
         EXEC(N'CREATE TABLE [SupportAgents] (
         [Id] nvarchar(450) NOT NULL,
         [UserId] nvarchar(450) NOT NULL,
@@ -4650,7 +4650,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketCategories')
         EXEC(N'CREATE TABLE [TicketCategories] (
         [Id] int NOT NULL IDENTITY,
         [Name] nvarchar(200) NOT NULL,
@@ -4678,7 +4678,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'CREATE TABLE [CommissionEarnings] (
         [Id] nvarchar(450) NOT NULL,
         [BeneficiaryMemberId] nvarchar(450) NOT NULL,
@@ -4714,7 +4714,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissionPromos')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissionPromos')
         EXEC(N'CREATE TABLE [ProductCommissionPromos] (
         [Id] int NOT NULL IDENTITY,
         [ProductId] nvarchar(450) NOT NULL,
@@ -4746,7 +4746,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissions')
         EXEC(N'CREATE TABLE [ProductCommissions] (
         [Id] int NOT NULL IDENTITY,
         [ProductId] nvarchar(450) NOT NULL,
@@ -4775,7 +4775,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticles')
         EXEC(N'CREATE TABLE [KbArticles] (
         [Id] nvarchar(450) NOT NULL,
         [Title] nvarchar(300) NOT NULL,
@@ -4810,7 +4810,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE TABLE [Tickets] (
         [Id] nvarchar(450) NOT NULL,
         [TicketNumber] nvarchar(20) NOT NULL,
@@ -4866,7 +4866,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticleVersions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticleVersions')
         EXEC(N'CREATE TABLE [KbArticleVersions] (
         [Id] bigint NOT NULL IDENTITY,
         [ArticleId] nvarchar(450) NOT NULL,
@@ -4887,7 +4887,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SlaBreaches')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SlaBreaches')
         EXEC(N'CREATE TABLE [SlaBreaches] (
         [Id] bigint NOT NULL IDENTITY,
         [TicketId] nvarchar(450) NOT NULL,
@@ -4911,7 +4911,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketAttachments')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketAttachments')
         EXEC(N'CREATE TABLE [TicketAttachments] (
         [Id] bigint NOT NULL IDENTITY,
         [TicketId] nvarchar(450) NOT NULL,
@@ -4932,7 +4932,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketComments')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketComments')
         EXEC(N'CREATE TABLE [TicketComments] (
         [Id] bigint NOT NULL IDENTITY,
         [TicketId] nvarchar(450) NOT NULL,
@@ -4953,7 +4953,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketHistories')
         EXEC(N'CREATE TABLE [TicketHistories] (
         [Id] bigint NOT NULL IDENTITY,
         [TicketId] nvarchar(450) NOT NULL,
@@ -4976,7 +4976,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDownHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDownHistories')
         EXEC(N'CREATE TABLE [CommissionCountDownHistories] (
         [Id] bigint NOT NULL IDENTITY,
         [CountDownId] nvarchar(450) NOT NULL,
@@ -5000,7 +5000,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDowns')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDowns')
         EXEC(N'CREATE TABLE [CommissionCountDowns] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] uniqueidentifier NOT NULL,
@@ -5029,7 +5029,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'LoyaltyPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'LoyaltyPoints')
         EXEC(N'CREATE TABLE [LoyaltyPoints] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -5061,7 +5061,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberNotifications')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberNotifications')
         EXEC(N'CREATE TABLE [MemberNotifications] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(max) NOT NULL,
@@ -5086,7 +5086,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'CREATE TABLE [MemberProfiles] (
         [Id] nvarchar(450) NOT NULL,
         [UserId] uniqueidentifier NOT NULL,
@@ -5137,7 +5137,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipSubscriptions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipSubscriptions')
         EXEC(N'CREATE TABLE [MembershipSubscriptions] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(20) NOT NULL,
@@ -5175,7 +5175,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberStatusHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberStatusHistories')
         EXEC(N'CREATE TABLE [MemberStatusHistories] (
         [Id] bigint NOT NULL IDENTITY,
         [MemberId] nvarchar(max) NOT NULL,
@@ -5197,7 +5197,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenBalances')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenBalances')
         EXEC(N'CREATE TABLE [TokenBalances] (
         [Id] nvarchar(450) NOT NULL,
         [MemberId] nvarchar(max) NOT NULL,
@@ -5223,7 +5223,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCategories')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CreatedBy'', N''CreationDate'', N''Description'', N''IsActive'', N''LastUpdateBy'', N''LastUpdateDate'', N''Name'') AND [object_id] = OBJECT_ID(N''[CommissionCategories]''))
         SET IDENTITY_INSERT [CommissionCategories] ON;
     EXEC(N''INSERT INTO [CommissionCategories] ([Id], [CreatedBy], [CreationDate], [Description], [IsActive], [LastUpdateBy], [LastUpdateDate], [Name])
@@ -5245,7 +5245,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ErrorMessages')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ErrorMessages')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CreatedBy'', N''CreationDate'', N''ErrorCode'', N''IsActive'', N''Language'', N''LastUpdateBy'', N''LastUpdateDate'', N''UserFriendlyMessage'') AND [object_id] = OBJECT_ID(N''[ErrorMessages]''))
         SET IDENTITY_INSERT [ErrorMessages] ON;
     EXEC(N''INSERT INTO [ErrorMessages] ([Id], [CreatedBy], [CreationDate], [ErrorCode], [IsActive], [Language], [LastUpdateBy], [LastUpdateDate], [UserFriendlyMessage])
@@ -5314,7 +5314,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipLevels')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipLevels')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CreatedBy'', N''CreationDate'', N''Description'', N''IsActive'', N''IsAutoRenew'', N''IsFree'', N''LastUpdateBy'', N''LastUpdateDate'', N''Name'', N''Price'', N''RenewalPrice'', N''SortOrder'') AND [object_id] = OBJECT_ID(N''[MembershipLevels]''))
         SET IDENTITY_INSERT [MembershipLevels] ON;
     EXEC(N''INSERT INTO [MembershipLevels] ([Id], [CreatedBy], [CreationDate], [Description], [IsActive], [IsAutoRenew], [IsFree], [LastUpdateBy], [LastUpdateDate], [Name], [Price], [RenewalPrice], [SortOrder])
@@ -5332,7 +5332,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductLoyaltySettings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductLoyaltySettings')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CreatedBy'', N''CreationDate'', N''IsActive'', N''LastUpdateBy'', N''LastUpdateDate'', N''PointsPerUnit'', N''ProductId'', N''RequiredSuccessfulPayments'') AND [object_id] = OBJECT_ID(N''[ProductLoyaltySettings]''))
         SET IDENTITY_INSERT [ProductLoyaltySettings] ON;
     EXEC(N''INSERT INTO [ProductLoyaltySettings] ([Id], [CreatedBy], [CreationDate], [IsActive], [LastUpdateBy], [LastUpdateDate], [PointsPerUnit], [ProductId], [RequiredSuccessfulPayments])
@@ -5349,7 +5349,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''AnnualPrice'', N''CreatedBy'', N''CreationDate'', N''DeletedAt'', N''DeletedBy'', N''Description'', N''DescriptionPromo'', N''ImageUrl'', N''ImageUrlPromo'', N''IsActive'', N''IsDeleted'', N''LastUpdateBy'', N''LastUpdateDate'', N''MembershipLevelId'', N''MonthlyFee'', N''MonthlyFeePromo'', N''Name'', N''OldSystemProductId'', N''Price180Days'', N''Price90Days'', N''QualificationPoins'', N''QualificationPoinsPromo'', N''SetupFee'', N''SetupFeePromo'') AND [object_id] = OBJECT_ID(N''[Products]''))
         SET IDENTITY_INSERT [Products] ON;
     EXEC(N''INSERT INTO [Products] ([Id], [AnnualPrice], [CreatedBy], [CreationDate], [DeletedAt], [DeletedBy], [Description], [DescriptionPromo], [ImageUrl], [ImageUrlPromo], [IsActive], [IsDeleted], [LastUpdateBy], [LastUpdateDate], [MembershipLevelId], [MonthlyFee], [MonthlyFeePromo], [Name], [OldSystemProductId], [Price180Days], [Price90Days], [QualificationPoins], [QualificationPoinsPromo], [SetupFee], [SetupFeePromo])
@@ -5365,7 +5365,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'RankDefinitions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'RankDefinitions')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CertificateTemplateUrl'', N''CreatedBy'', N''CreationDate'', N''Description'', N''LastUpdateBy'', N''LastUpdateDate'', N''Name'', N''SortOrder'', N''Status'') AND [object_id] = OBJECT_ID(N''[RankDefinitions]''))
         SET IDENTITY_INSERT [RankDefinitions] ON;
     EXEC(N''INSERT INTO [RankDefinitions] ([Id], [CertificateTemplateUrl], [CreatedBy], [CreationDate], [Description], [LastUpdateBy], [LastUpdateDate], [Name], [SortOrder], [Status])
@@ -5398,7 +5398,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypeCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypeCommissions')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CarBonusEligible'', N''CommissionPerToken'', N''CommissionTypeId'', N''CreatedBy'', N''CreationDate'', N''EligibleDailyResidual'', N''EligibleMembershipResidual'', N''LastUpdateBy'', N''LastUpdateDate'', N''PresidentialBonusEligible'', N''TokenTypeId'', N''TriggerBoostBonus'', N''TriggerBuilderBonus'', N''TriggerBuilderBonusTurbo'', N''TriggerFastStartBonus'', N''TriggerSponsorBonus'', N''TriggerSponsorBonusTurbo'') AND [object_id] = OBJECT_ID(N''[TokenTypeCommissions]''))
         SET IDENTITY_INSERT [TokenTypeCommissions] ON;
     EXEC(N''INSERT INTO [TokenTypeCommissions] ([Id], [CarBonusEligible], [CommissionPerToken], [CommissionTypeId], [CreatedBy], [CreationDate], [EligibleDailyResidual], [EligibleMembershipResidual], [LastUpdateBy], [LastUpdateDate], [PresidentialBonusEligible], [TokenTypeId], [TriggerBoostBonus], [TriggerBuilderBonus], [TriggerBuilderBonusTurbo], [TriggerFastStartBonus], [TriggerSponsorBonus], [TriggerSponsorBonusTurbo])
@@ -5512,7 +5512,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypes')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CreatedBy'', N''CreationDate'', N''Description'', N''IsActive'', N''IsGuestPass'', N''LastUpdateBy'', N''LastUpdateDate'', N''Name'', N''TemplateUrl'') AND [object_id] = OBJECT_ID(N''[TokenTypes]''))
         SET IDENTITY_INSERT [TokenTypes] ON;
     EXEC(N''INSERT INTO [TokenTypes] ([Id], [CreatedBy], [CreationDate], [Description], [IsActive], [IsGuestPass], [LastUpdateBy], [LastUpdateDate], [Name], [TemplateUrl])
@@ -5626,7 +5626,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionTypes')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CommissionCategoryId'', N''CreatedBy'', N''CreationDate'', N''Cummulative'', N''CurrentRank'', N''DaysAfterJoining'', N''Description'', N''EnrollmentTeam'', N''ExternalMembers'', N''FixedAmount'', N''IsActive'', N''IsEnrollmentBased'', N''IsPaidOnRenewal'', N''IsPaidOnSignup'', N''IsRealTime'', N''IsSponsorBonus'', N''LastUpdateBy'', N''LastUpdateDate'', N''LevelNo'', N''LifeTimeRank'', N''MaxEnrollmentTeamPointsPerBranch'', N''MaxTeamPointsPerBranch'', N''MembersRebill'', N''Name'', N''NewMembers'', N''PaymentDelayDays'', N''Percentage'', N''PersonalPoints'', N''ResidualBased'', N''ResidualOverCommissionType'', N''ResidualPercentage'', N''ReverseId'', N''SponsoredMembers'', N''TeamPoints'', N''TriggerOrder'') AND [object_id] = OBJECT_ID(N''[CommissionTypes]''))
         SET IDENTITY_INSERT [CommissionTypes] ON;
     EXEC(N''INSERT INTO [CommissionTypes] ([Id], [CommissionCategoryId], [CreatedBy], [CreationDate], [Cummulative], [CurrentRank], [DaysAfterJoining], [Description], [EnrollmentTeam], [ExternalMembers], [FixedAmount], [IsActive], [IsEnrollmentBased], [IsPaidOnRenewal], [IsPaidOnSignup], [IsRealTime], [IsSponsorBonus], [LastUpdateBy], [LastUpdateDate], [LevelNo], [LifeTimeRank], [MaxEnrollmentTeamPointsPerBranch], [MaxTeamPointsPerBranch], [MembersRebill], [Name], [NewMembers], [PaymentDelayDays], [Percentage], [PersonalPoints], [ResidualBased], [ResidualOverCommissionType], [ResidualPercentage], [ReverseId], [SponsoredMembers], [TeamPoints], [TriggerOrder])
@@ -5687,7 +5687,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''AnnualPrice'', N''CreatedBy'', N''CreationDate'', N''DeletedAt'', N''DeletedBy'', N''Description'', N''DescriptionPromo'', N''ImageUrl'', N''ImageUrlPromo'', N''IsActive'', N''IsDeleted'', N''LastUpdateBy'', N''LastUpdateDate'', N''MembershipLevelId'', N''MonthlyFee'', N''MonthlyFeePromo'', N''Name'', N''OldSystemProductId'', N''Price180Days'', N''Price90Days'', N''QualificationPoins'', N''QualificationPoinsPromo'', N''SetupFee'', N''SetupFeePromo'') AND [object_id] = OBJECT_ID(N''[Products]''))
         SET IDENTITY_INSERT [Products] ON;
     EXEC(N''INSERT INTO [Products] ([Id], [AnnualPrice], [CreatedBy], [CreationDate], [DeletedAt], [DeletedBy], [Description], [DescriptionPromo], [ImageUrl], [ImageUrlPromo], [IsActive], [IsDeleted], [LastUpdateBy], [LastUpdateDate], [MembershipLevelId], [MonthlyFee], [MonthlyFeePromo], [Name], [OldSystemProductId], [Price180Days], [Price90Days], [QualificationPoins], [QualificationPoinsPromo], [SetupFee], [SetupFeePromo])
@@ -5702,7 +5702,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''AnnualPrice'', N''CreatedBy'', N''CreationDate'', N''DeletedAt'', N''DeletedBy'', N''Description'', N''DescriptionPromo'', N''ImageUrl'', N''ImageUrlPromo'', N''IsActive'', N''IsDeleted'', N''JoinPageMembership'', N''LastUpdateBy'', N''LastUpdateDate'', N''MembershipLevelId'', N''MonthlyFee'', N''MonthlyFeePromo'', N''Name'', N''OldSystemProductId'', N''Price180Days'', N''Price90Days'', N''QualificationPoins'', N''QualificationPoinsPromo'', N''SetupFee'', N''SetupFeePromo'') AND [object_id] = OBJECT_ID(N''[Products]''))
         SET IDENTITY_INSERT [Products] ON;
     EXEC(N''INSERT INTO [Products] ([Id], [AnnualPrice], [CreatedBy], [CreationDate], [DeletedAt], [DeletedBy], [Description], [DescriptionPromo], [ImageUrl], [ImageUrlPromo], [IsActive], [IsDeleted], [JoinPageMembership], [LastUpdateBy], [LastUpdateDate], [MembershipLevelId], [MonthlyFee], [MonthlyFeePromo], [Name], [OldSystemProductId], [Price180Days], [Price90Days], [QualificationPoins], [QualificationPoinsPromo], [SetupFee], [SetupFeePromo])
@@ -5718,7 +5718,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''AnnualPrice'', N''CorporateFee'', N''CreatedBy'', N''CreationDate'', N''DeletedAt'', N''DeletedBy'', N''Description'', N''DescriptionPromo'', N''ImageUrl'', N''ImageUrlPromo'', N''IsActive'', N''IsDeleted'', N''LastUpdateBy'', N''LastUpdateDate'', N''MembershipLevelId'', N''MonthlyFee'', N''MonthlyFeePromo'', N''Name'', N''OldSystemProductId'', N''Price180Days'', N''Price90Days'', N''QualificationPoins'', N''QualificationPoinsPromo'', N''SetupFee'', N''SetupFeePromo'') AND [object_id] = OBJECT_ID(N''[Products]''))
         SET IDENTITY_INSERT [Products] ON;
     EXEC(N''INSERT INTO [Products] ([Id], [AnnualPrice], [CorporateFee], [CreatedBy], [CreationDate], [DeletedAt], [DeletedBy], [Description], [DescriptionPromo], [ImageUrl], [ImageUrlPromo], [IsActive], [IsDeleted], [LastUpdateBy], [LastUpdateDate], [MembershipLevelId], [MonthlyFee], [MonthlyFeePromo], [Name], [OldSystemProductId], [Price180Days], [Price90Days], [QualificationPoins], [QualificationPoinsPromo], [SetupFee], [SetupFeePromo])
@@ -5733,7 +5733,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'RankRequirements')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'RankRequirements')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''AchievementMessage'', N''CertificateUrl'', N''CreatedBy'', N''CreationDate'', N''CurrentRankDescription'', N''DailyBonus'', N''EnrollmentQualifiedTeamMembers'', N''EnrollmentTeam'', N''ExternalMembers'', N''LastUpdateBy'', N''LastUpdateDate'', N''LevelNo'', N''LifetimeHoldingDuration'', N''MaxEnrollmentTeamPointsPerBranch'', N''MaxTeamPointsPerBranch'', N''MonthlyBonus'', N''PersonalPoints'', N''PlacementQualifiedTeamMembers'', N''RankBonus'', N''RankDefinitionId'', N''RankDescription'', N''SalesVolume'', N''SponsoredMembers'', N''TeamPoints'') AND [object_id] = OBJECT_ID(N''[RankRequirements]''))
         SET IDENTITY_INSERT [RankRequirements] ON;
     EXEC(N''INSERT INTO [RankRequirements] ([Id], [AchievementMessage], [CertificateUrl], [CreatedBy], [CreationDate], [CurrentRankDescription], [DailyBonus], [EnrollmentQualifiedTeamMembers], [EnrollmentTeam], [ExternalMembers], [LastUpdateBy], [LastUpdateDate], [LevelNo], [LifetimeHoldingDuration], [MaxEnrollmentTeamPointsPerBranch], [MaxTeamPointsPerBranch], [MonthlyBonus], [PersonalPoints], [PlacementQualifiedTeamMembers], [RankBonus], [RankDefinitionId], [RankDescription], [SalesVolume], [SponsoredMembers], [TeamPoints])
@@ -5766,7 +5766,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissions')
         EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Id'', N''CarBonusEligible'', N''CreatedBy'', N''CreationDate'', N''EligibleDailyResidual'', N''EligibleMembershipResidual'', N''LastUpdateBy'', N''LastUpdateDate'', N''PresidentialBonusEligible'', N''ProductId'', N''TriggerBoostBonus'', N''TriggerBuilderBonus'', N''TriggerBuilderBonusTurbo'', N''TriggerFastStartBonus'', N''TriggerSponsorBonus'', N''TriggerSponsorBonusTurbo'') AND [object_id] = OBJECT_ID(N''[ProductCommissions]''))
         SET IDENTITY_INSERT [ProductCommissions] ON;
     EXEC(N''INSERT INTO [ProductCommissions] ([Id], [CarBonusEligible], [CreatedBy], [CreationDate], [EligibleDailyResidual], [EligibleMembershipResidual], [LastUpdateBy], [LastUpdateDate], [PresidentialBonusEligible], [ProductId], [TriggerBoostBonus], [TriggerBuilderBonus], [TriggerBuilderBonusTurbo], [TriggerFastStartBonus], [TriggerSponsorBonus], [TriggerSponsorBonusTurbo])
@@ -5783,7 +5783,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetRoleClaims')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetRoleClaims')
         EXEC(N'CREATE INDEX [IX_AspNetRoleClaims_RoleId] ON [AspNetRoleClaims] ([RoleId]);
     ');
 END;
@@ -5793,7 +5793,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetRoles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetRoles')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [RoleNameIndex] ON [AspNetRoles] ([NormalizedName]) WHERE [NormalizedName] IS NOT NULL'');
     ');
 END;
@@ -5803,7 +5803,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserClaims')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserClaims')
         EXEC(N'CREATE INDEX [IX_AspNetUserClaims_UserId] ON [AspNetUserClaims] ([UserId]);
     ');
 END;
@@ -5813,7 +5813,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserLogins')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserLogins')
         EXEC(N'CREATE INDEX [IX_AspNetUserLogins_UserId] ON [AspNetUserLogins] ([UserId]);
     ');
 END;
@@ -5823,7 +5823,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUserRoles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUserRoles')
         EXEC(N'CREATE INDEX [IX_AspNetUserRoles_RoleId] ON [AspNetUserRoles] ([RoleId]);
     ');
 END;
@@ -5833,7 +5833,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUsers')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUsers')
         EXEC(N'CREATE INDEX [EmailIndex] ON [AspNetUsers] ([NormalizedEmail]);
     ');
 END;
@@ -5843,7 +5843,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'AspNetUsers')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'AspNetUsers')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [UserNameIndex] ON [AspNetUsers] ([NormalizedUserName]) WHERE [NormalizedUserName] IS NOT NULL'');
     ');
 END;
@@ -5853,7 +5853,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CannedResponses')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CannedResponses')
         EXEC(N'CREATE INDEX [IX_CannedResponses_TeamId] ON [CannedResponses] ([TeamId]);
     ');
 END;
@@ -5863,7 +5863,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDownHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDownHistories')
         EXEC(N'CREATE INDEX [IX_CommissionCountDownHistories_CountDownId] ON [CommissionCountDownHistories] ([CountDownId]);
     ');
 END;
@@ -5873,7 +5873,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDownHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDownHistories')
         EXEC(N'CREATE INDEX [IX_CommissionCountDownHistories_MemberId1] ON [CommissionCountDownHistories] ([MemberId1]);
     ');
 END;
@@ -5883,7 +5883,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDowns')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDowns')
         EXEC(N'CREATE INDEX [IX_CommissionCountDowns_MemberId1] ON [CommissionCountDowns] ([MemberId1]);
     ');
 END;
@@ -5893,7 +5893,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'CREATE INDEX [IX_CommissionEarnings_BeneficiaryMemberId_Status] ON [CommissionEarnings] ([BeneficiaryMemberId], [Status]);
     ');
 END;
@@ -5903,7 +5903,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'CREATE INDEX [IX_CommissionEarnings_CommissionOperationTypeId] ON [CommissionEarnings] ([CommissionOperationTypeId]);
     ');
 END;
@@ -5913,7 +5913,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'CREATE INDEX [IX_CommissionEarnings_CommissionTypeId] ON [CommissionEarnings] ([CommissionTypeId]);
     ');
 END;
@@ -5923,7 +5923,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'CREATE INDEX [IX_CommissionEarnings_PeriodDate] ON [CommissionEarnings] ([PeriodDate]);
     ');
 END;
@@ -5933,7 +5933,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionEarnings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionEarnings')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_CommissionEarnings_SourceOrderId_CommissionTypeId] ON [CommissionEarnings] ([SourceOrderId], [CommissionTypeId]) WHERE [SourceOrderId] IS NOT NULL'');
     ');
 END;
@@ -5943,7 +5943,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionTypes')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionTypes')
         EXEC(N'CREATE INDEX [IX_CommissionTypes_CommissionCategoryId] ON [CommissionTypes] ([CommissionCategoryId]);
     ');
 END;
@@ -5953,7 +5953,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'DualTeamTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'DualTeamTree')
         EXEC(N'CREATE INDEX [IX_DualTeamTree_HierarchyPath] ON [DualTeamTree] ([HierarchyPath]);
     ');
 END;
@@ -5963,7 +5963,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'DualTeamTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'DualTeamTree')
         EXEC(N'CREATE INDEX [IX_DualTeamTree_MemberId] ON [DualTeamTree] ([MemberId]);
     ');
 END;
@@ -5973,7 +5973,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ErrorMessages')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ErrorMessages')
         EXEC(N'CREATE UNIQUE INDEX [IX_ErrorMessages_ErrorCode_Language] ON [ErrorMessages] ([ErrorCode], [Language]);
     ');
 END;
@@ -5983,7 +5983,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GenealogyTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GenealogyTree')
         EXEC(N'CREATE INDEX [IX_GenealogyTree_HierarchyPath] ON [GenealogyTree] ([HierarchyPath]);
     ');
 END;
@@ -5993,7 +5993,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GenealogyTree')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GenealogyTree')
         EXEC(N'CREATE INDEX [IX_GenealogyTree_MemberId_CreationDate] ON [GenealogyTree] ([MemberId], [CreationDate]);
     ');
 END;
@@ -6003,7 +6003,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GhostPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GhostPoints')
         EXEC(N'CREATE INDEX [IX_GhostPoints_LegMemberId] ON [GhostPoints] ([LegMemberId]);
     ');
 END;
@@ -6013,7 +6013,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'GhostPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'GhostPoints')
         EXEC(N'CREATE INDEX [IX_GhostPoints_MemberId] ON [GhostPoints] ([MemberId]);
     ');
 END;
@@ -6023,7 +6023,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticles')
         EXEC(N'CREATE INDEX [IX_KbArticles_CategoryId] ON [KbArticles] ([CategoryId]);
     ');
 END;
@@ -6033,7 +6033,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticles')
         EXEC(N'CREATE INDEX [IX_KbArticles_HelpfulCount] ON [KbArticles] ([HelpfulCount]);
     ');
 END;
@@ -6043,7 +6043,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticles')
         EXEC(N'CREATE UNIQUE INDEX [IX_KbArticles_Slug] ON [KbArticles] ([Slug]);
     ');
 END;
@@ -6053,7 +6053,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticles')
         EXEC(N'CREATE INDEX [IX_KbArticles_Visibility_CategoryId] ON [KbArticles] ([Visibility], [CategoryId]);
     ');
 END;
@@ -6063,7 +6063,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'KbArticleVersions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'KbArticleVersions')
         EXEC(N'CREATE INDEX [IX_KbArticleVersions_ArticleId] ON [KbArticleVersions] ([ArticleId]);
     ');
 END;
@@ -6073,7 +6073,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'LoyaltyPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'LoyaltyPoints')
         EXEC(N'CREATE INDEX [IX_LoyaltyPoints_MemberProfileId] ON [LoyaltyPoints] ([MemberProfileId]);
     ');
 END;
@@ -6083,7 +6083,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberNotifications')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberNotifications')
         EXEC(N'CREATE INDEX [IX_MemberNotifications_MemberProfileId] ON [MemberNotifications] ([MemberProfileId]);
     ');
 END;
@@ -6093,7 +6093,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_MemberProfiles_ActiveMembershipId] ON [MemberProfiles] ([ActiveMembershipId]) WHERE [ActiveMembershipId] IS NOT NULL'');
     ');
 END;
@@ -6103,7 +6103,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_MemberProfiles_BinaryNodeId] ON [MemberProfiles] ([BinaryNodeId]) WHERE [BinaryNodeId] IS NOT NULL'');
     ');
 END;
@@ -6113,7 +6113,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_MemberProfiles_EnrollmentNodeId] ON [MemberProfiles] ([EnrollmentNodeId]) WHERE [EnrollmentNodeId] IS NOT NULL'');
     ');
 END;
@@ -6123,7 +6123,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'CREATE UNIQUE INDEX [IX_MemberProfiles_MemberId] ON [MemberProfiles] ([MemberId]);
     ');
 END;
@@ -6133,7 +6133,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_MemberProfiles_ReplicateSiteSlug] ON [MemberProfiles] ([ReplicateSiteSlug]) WHERE [ReplicateSiteSlug] IS NOT NULL'');
     ');
 END;
@@ -6143,7 +6143,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'CREATE UNIQUE INDEX [IX_MemberProfiles_UserId] ON [MemberProfiles] ([UserId]);
     ');
 END;
@@ -6153,7 +6153,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberRankHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberRankHistories')
         EXEC(N'CREATE INDEX [IX_MemberRankHistories_RankDefinitionId] ON [MemberRankHistories] ([RankDefinitionId]);
     ');
 END;
@@ -6163,7 +6163,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipLevelBenefits')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipLevelBenefits')
         EXEC(N'CREATE INDEX [IX_MembershipLevelBenefits_MembershipLevelId] ON [MembershipLevelBenefits] ([MembershipLevelId]);
     ');
 END;
@@ -6173,7 +6173,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipSubscriptions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipSubscriptions')
         EXEC(N'CREATE INDEX [IX_MembershipSubscriptions_LastOrderId1] ON [MembershipSubscriptions] ([LastOrderId1]);
     ');
 END;
@@ -6183,7 +6183,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipSubscriptions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipSubscriptions')
         EXEC(N'CREATE INDEX [IX_MembershipSubscriptions_MemberId] ON [MembershipSubscriptions] ([MemberId]);
     ');
 END;
@@ -6193,7 +6193,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MembershipSubscriptions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MembershipSubscriptions')
         EXEC(N'CREATE INDEX [IX_MembershipSubscriptions_MembershipLevelId] ON [MembershipSubscriptions] ([MembershipLevelId]);
     ');
 END;
@@ -6203,7 +6203,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberStatusHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberStatusHistories')
         EXEC(N'CREATE INDEX [IX_MemberStatusHistories_MemberProfileId] ON [MemberStatusHistories] ([MemberProfileId]);
     ');
 END;
@@ -6213,7 +6213,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'OrderDetails')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'OrderDetails')
         EXEC(N'CREATE INDEX [IX_OrderDetails_OrdersId] ON [OrderDetails] ([OrdersId]);
     ');
 END;
@@ -6223,7 +6223,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'PaymentHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'PaymentHistories')
         EXEC(N'CREATE INDEX [IX_PaymentHistories_OrdersId] ON [PaymentHistories] ([OrdersId]);
     ');
 END;
@@ -6233,7 +6233,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissionPromos')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissionPromos')
         EXEC(N'CREATE INDEX [IX_ProductCommissionPromos_CorporatePromoId1] ON [ProductCommissionPromos] ([CorporatePromoId1]);
     ');
 END;
@@ -6243,7 +6243,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissionPromos')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissionPromos')
         EXEC(N'CREATE INDEX [IX_ProductCommissionPromos_ProductId] ON [ProductCommissionPromos] ([ProductId]);
     ');
 END;
@@ -6253,7 +6253,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductCommissions')
         EXEC(N'CREATE UNIQUE INDEX [IX_ProductCommissions_ProductId] ON [ProductCommissions] ([ProductId]);
     ');
 END;
@@ -6263,7 +6263,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'ProductLoyaltySettings')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'ProductLoyaltySettings')
         EXEC(N'CREATE UNIQUE INDEX [IX_ProductLoyaltySettings_ProductId] ON [ProductLoyaltySettings] ([ProductId]);
     ');
 END;
@@ -6273,7 +6273,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Products')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Products')
         EXEC(N'CREATE INDEX [IX_Products_MembershipLevelId] ON [Products] ([MembershipLevelId]);
     ');
 END;
@@ -6283,7 +6283,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'RankRequirements')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'RankRequirements')
         EXEC(N'CREATE INDEX [IX_RankRequirements_RankDefinitionId] ON [RankRequirements] ([RankDefinitionId]);
     ');
 END;
@@ -6293,7 +6293,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SlaBreaches')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SlaBreaches')
         EXEC(N'CREATE INDEX [IX_SlaBreaches_BreachedAt] ON [SlaBreaches] ([BreachedAt]);
     ');
 END;
@@ -6303,7 +6303,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SlaBreaches')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SlaBreaches')
         EXEC(N'CREATE INDEX [IX_SlaBreaches_TicketId] ON [SlaBreaches] ([TicketId]);
     ');
 END;
@@ -6313,7 +6313,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SupportAgents')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SupportAgents')
         EXEC(N'CREATE INDEX [IX_SupportAgents_TeamId] ON [SupportAgents] ([TeamId]);
     ');
 END;
@@ -6323,7 +6323,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'SupportAgents')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'SupportAgents')
         EXEC(N'CREATE UNIQUE INDEX [IX_SupportAgents_UserId] ON [SupportAgents] ([UserId]);
     ');
 END;
@@ -6333,7 +6333,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketAttachments')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketAttachments')
         EXEC(N'CREATE INDEX [IX_TicketAttachments_TicketId] ON [TicketAttachments] ([TicketId]);
     ');
 END;
@@ -6343,7 +6343,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketCategories')
         EXEC(N'CREATE INDEX [IX_TicketCategories_DefaultSlaPolicyId] ON [TicketCategories] ([DefaultSlaPolicyId]);
     ');
 END;
@@ -6353,7 +6353,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketCategories')
         EXEC(N'CREATE INDEX [IX_TicketCategories_DefaultTeamId] ON [TicketCategories] ([DefaultTeamId]);
     ');
 END;
@@ -6363,7 +6363,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketCategories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketCategories')
         EXEC(N'CREATE INDEX [IX_TicketCategories_ParentCategoryId] ON [TicketCategories] ([ParentCategoryId]);
     ');
 END;
@@ -6373,7 +6373,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketComments')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketComments')
         EXEC(N'CREATE INDEX [IX_TicketComments_IsInternal] ON [TicketComments] ([IsInternal]);
     ');
 END;
@@ -6383,7 +6383,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketComments')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketComments')
         EXEC(N'CREATE INDEX [IX_TicketComments_TicketId_CreationDate] ON [TicketComments] ([TicketId], [CreationDate]);
     ');
 END;
@@ -6393,7 +6393,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketHistories')
         EXEC(N'CREATE INDEX [IX_TicketHistories_TicketId_CreationDate] ON [TicketHistories] ([TicketId], [CreationDate]);
     ');
 END;
@@ -6403,7 +6403,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TicketMetrics')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TicketMetrics')
         EXEC(N'CREATE UNIQUE INDEX [IX_TicketMetrics_Date] ON [TicketMetrics] ([Date]);
     ');
 END;
@@ -6413,7 +6413,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_AssignedTeamId_Status] ON [Tickets] ([AssignedTeamId], [Status]);
     ');
 END;
@@ -6423,7 +6423,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_AssignedToUserId_Status] ON [Tickets] ([AssignedToUserId], [Status]);
     ');
 END;
@@ -6433,7 +6433,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_CategoryId] ON [Tickets] ([CategoryId]);
     ');
 END;
@@ -6443,7 +6443,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_MemberId_CreationDate] ON [Tickets] ([MemberId], [CreationDate]);
     ');
 END;
@@ -6453,7 +6453,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_SlaPolicyId] ON [Tickets] ([SlaPolicyId]);
     ');
 END;
@@ -6463,7 +6463,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE INDEX [IX_Tickets_Status_LastUpdateDate] ON [Tickets] ([Status], [LastUpdateDate]);
     ');
 END;
@@ -6473,7 +6473,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'Tickets')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'Tickets')
         EXEC(N'CREATE UNIQUE INDEX [IX_Tickets_TicketNumber] ON [Tickets] ([TicketNumber]);
     ');
 END;
@@ -6483,7 +6483,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenBalances')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenBalances')
         EXEC(N'CREATE INDEX [IX_TokenBalances_MemberProfileId] ON [TokenBalances] ([MemberProfileId]);
     ');
 END;
@@ -6493,7 +6493,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTransactions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTransactions')
         EXEC(N'CREATE INDEX [IX_TokenTransactions_MemberId_CreationDate] ON [TokenTransactions] ([MemberId], [CreationDate]);
     ');
 END;
@@ -6503,7 +6503,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypeCommissions')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypeCommissions')
         EXEC(N'CREATE UNIQUE INDEX [IX_TokenTypeCommissions_TokenTypeId_CommissionTypeId] ON [TokenTypeCommissions] ([TokenTypeId], [CommissionTypeId]);
     ');
 END;
@@ -6513,7 +6513,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'TokenTypeProducts')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'TokenTypeProducts')
         EXEC(N'CREATE UNIQUE INDEX [IX_TokenTypeProducts_TokenTypeId_ProductId] ON [TokenTypeProducts] ([TokenTypeId], [ProductId]);
     ');
 END;
@@ -6523,7 +6523,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDownHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDownHistories')
         EXEC(N'ALTER TABLE [CommissionCountDownHistories] ADD CONSTRAINT [FK_CommissionCountDownHistories_CommissionCountDowns_CountDownId] FOREIGN KEY ([CountDownId]) REFERENCES [CommissionCountDowns] ([Id]) ON DELETE CASCADE;
     ');
 END;
@@ -6533,7 +6533,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDownHistories')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDownHistories')
         EXEC(N'ALTER TABLE [CommissionCountDownHistories] ADD CONSTRAINT [FK_CommissionCountDownHistories_MemberProfiles_MemberId1] FOREIGN KEY ([MemberId1]) REFERENCES [MemberProfiles] ([Id]);
     ');
 END;
@@ -6543,7 +6543,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'CommissionCountDowns')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'CommissionCountDowns')
         EXEC(N'ALTER TABLE [CommissionCountDowns] ADD CONSTRAINT [FK_CommissionCountDowns_MemberProfiles_MemberId1] FOREIGN KEY ([MemberId1]) REFERENCES [MemberProfiles] ([Id]);
     ');
 END;
@@ -6553,7 +6553,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'LoyaltyPoints')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'LoyaltyPoints')
         EXEC(N'ALTER TABLE [LoyaltyPoints] ADD CONSTRAINT [FK_LoyaltyPoints_MemberProfiles_MemberProfileId] FOREIGN KEY ([MemberProfileId]) REFERENCES [MemberProfiles] ([Id]);
     ');
 END;
@@ -6563,7 +6563,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberNotifications')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberNotifications')
         EXEC(N'ALTER TABLE [MemberNotifications] ADD CONSTRAINT [FK_MemberNotifications_MemberProfiles_MemberProfileId] FOREIGN KEY ([MemberProfileId]) REFERENCES [MemberProfiles] ([Id]);
     ');
 END;
@@ -6573,7 +6573,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N'MemberProfiles')
+    IF NOT EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N'MemberProfiles')
         EXEC(N'ALTER TABLE [MemberProfiles] ADD CONSTRAINT [FK_MemberProfiles_MembershipSubscriptions_ActiveMembershipId] FOREIGN KEY ([ActiveMembershipId]) REFERENCES [MembershipSubscriptions] ([Id]);
     ');
 END;
@@ -6584,7 +6584,7 @@ IF NOT EXISTS (
 )
 BEGIN
     EXEC(N'
-    IF EXISTS (SELECT 1 FROM dbo.[__PlanQ_TablasPrevias] WHERE Nombre = N''TicketCategories'')
+    IF EXISTS (SELECT 1 FROM dbo.[__TablasPreviasDeMigracion] WHERE Nombre = N''TicketCategories'')
     BEGIN
         IF COL_LENGTH(N''dbo.TicketCategories'', N''Description'') IS NULL
             EXEC(N''ALTER TABLE [TicketCategories] ADD [Description] nvarchar(500) NULL;'');
@@ -6623,7 +6623,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260405130705_HelpdeskModule'
 )
 BEGIN
-    EXEC(N'DROP TABLE IF EXISTS dbo.__PlanQ_TablasPrevias;');
+    EXEC(N'DROP TABLE IF EXISTS dbo.__TablasPreviasDeMigracion;');
 END;
 
 IF NOT EXISTS (
@@ -15203,7 +15203,7 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM [MemberProfiles] WHERE DATALENGTH([SponsorMemberId]) / 2 > 450)
-        THROW 51001, N''MemberProfiles.SponsorMemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan J, Tarea 18).'', 1;');
+        THROW 51001, N''MemberProfiles.SponsorMemberId tiene valores de mas de 450 caracteres: revisar antes de migrar.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -15269,7 +15269,7 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM [MemberStatusHistories] WHERE DATALENGTH([MemberId]) / 2 > 450)
-        THROW 51003, N''MemberStatusHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan J, Tarea 27).'', 1;');
+        THROW 51003, N''MemberStatusHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -15437,18 +15437,18 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF (SELECT COUNT(*) FROM [RecurringBillingPlans] WHERE [Name] = N''Lifestyle Ambassador (Annual)'') > 1
-        THROW 51010, N''Hay mas de un plan Lifestyle Ambassador (Annual): dejar uno antes de migrar (Plan K, Tarea 5).'', 1;
+        THROW 51010, N''Hay mas de un plan Lifestyle Ambassador (Annual): dejar uno antes de migrar.'', 1;
     IF EXISTS (SELECT 1 FROM [SubscriptionBillingStates] s
                JOIN [RecurringBillingPlans] p ON p.[Id] = s.[RecurringBillingPlanId]
                WHERE p.[Name] = N''Lifestyle Ambassador (Annual)'')
-        THROW 51011, N''Hay estados de facturacion por suscripcion en el plan anual: revisarlos antes de migrar (Plan K, Tarea 5).'', 1;
+        THROW 51011, N''Hay estados de facturacion por suscripcion en el plan anual: revisarlos antes de migrar.'', 1;
     -- Anti-truncado: la columna se vuelve anulable manteniendo nvarchar(100). Si en esta base fuera mas
     -- ancha (alguien la amplio a mano), el ALTER la estrecharia: mejor parar.
     IF COL_LENGTH(N''SubscriptionBillingStates'', N''MembershipSubscriptionId'') = -1
        OR COL_LENGTH(N''SubscriptionBillingStates'', N''MembershipSubscriptionId'') > 200
-        THROW 51012, N''SubscriptionBillingStates.MembershipSubscriptionId es mas ancha que nvarchar(100): revisar antes de migrar (Plan K, Tarea 5).'', 1;
+        THROW 51012, N''SubscriptionBillingStates.MembershipSubscriptionId es mas ancha que nvarchar(100): revisar antes de migrar.'', 1;
     IF EXISTS (SELECT 1 FROM [SubscriptionBillingStates] WHERE LEN([MembershipSubscriptionId]) > 100)
-        THROW 51013, N''Hay MembershipSubscriptionId de mas de 100 caracteres: se truncarian (Plan K, Tarea 5).'', 1;');
+        THROW 51013, N''Hay MembershipSubscriptionId de mas de 100 caracteres: se truncarian.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -15632,23 +15632,23 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM [Orders] WHERE DATALENGTH([OrderNo]) / 2 > 40)
-        THROW 51020, N''Orders.OrderNo tiene valores de mas de 40 caracteres (Plan M, Tarea 5).'', 1;
+        THROW 51020, N''Orders.OrderNo tiene valores de mas de 40 caracteres.'', 1;
     IF EXISTS (SELECT 1 FROM [Orders] WHERE [OrderNo] IS NOT NULL GROUP BY [OrderNo] HAVING COUNT(*) > 1)
-        THROW 51021, N''Orders.OrderNo tiene duplicados: ver Scripts/sql/plan-m/01-orderno-duplicados.sql y R15 del Plan M.'', 1;
+        THROW 51021, N''Orders.OrderNo tiene duplicados: dejar un solo pedido por OrderNo antes de migrar.'', 1;
     IF EXISTS (SELECT 1 FROM [Orders] WHERE DATALENGTH([MemberId]) / 2 > 20 OR DATALENGTH([MembershipSubscriptionId]) / 2 > 450)
-        THROW 51022, N''Orders.MemberId o MembershipSubscriptionId no caben (Plan M, Tarea 5).'', 1;
+        THROW 51022, N''Orders.MemberId o MembershipSubscriptionId no caben.'', 1;
     IF EXISTS (SELECT 1 FROM [OrderDetails] WHERE DATALENGTH([OrderId]) / 2 > 450 OR DATALENGTH([ProductId]) / 2 > 450)
-        THROW 51023, N''OrderDetails.OrderId o ProductId no caben (Plan M, Tarea 5).'', 1;
+        THROW 51023, N''OrderDetails.OrderId o ProductId no caben.'', 1;
     IF EXISTS (SELECT 1 FROM [OrderDetails] d WHERE NOT EXISTS (SELECT 1 FROM [Orders] o WHERE o.[Id] = d.[OrderId]))
         THROW 51024, N''OrderDetails tiene lineas sin pedido: no se puede crear FK_OrderDetails_Orders_OrderId.'', 1;
     IF EXISTS (SELECT 1 FROM [PaymentHistories] WHERE DATALENGTH([OrderId]) / 2 > 450 OR DATALENGTH([MemberId]) / 2 > 100 OR DATALENGTH([GatewayTransactionId]) / 2 > 200)
-        THROW 51025, N''PaymentHistories.OrderId, MemberId o GatewayTransactionId no caben (Plan M, Tarea 5).'', 1;
+        THROW 51025, N''PaymentHistories.OrderId, MemberId o GatewayTransactionId no caben.'', 1;
     IF EXISTS (SELECT 1 FROM [MembershipSubscriptions] WHERE DATALENGTH([LastOrderId]) / 2 > 450)
-        THROW 51026, N''MembershipSubscriptions.LastOrderId no cabe (Plan M, Tarea 5).'', 1;
+        THROW 51026, N''MembershipSubscriptions.LastOrderId no cabe.'', 1;
     IF EXISTS (SELECT 1 FROM [MembershipSubscriptions] s WHERE s.[LastOrderId] IS NOT NULL AND NOT EXISTS (SELECT 1 FROM [Orders] o WHERE o.[Id] = s.[LastOrderId]))
         THROW 51027, N''MembershipSubscriptions.LastOrderId apunta a pedidos que no existen: no se puede crear la FK.'', 1;
     IF EXISTS (SELECT 1 FROM [MemberStatistics] WHERE DATALENGTH([MemberId]) / 2 > 100)
-        THROW 51028, N''MemberStatistics.MemberId no cabe (Plan M, Tarea 5).'', 1;');
+        THROW 51028, N''MemberStatistics.MemberId no cabe.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -16013,7 +16013,7 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM [GenealogyTree] WHERE DATALENGTH([Id]) / 2 > 100)
-        THROW 51033, N''GenealogyTree.Id tiene valores de mas de 100 caracteres: no caben en NodeNullKey (Plan M, Tarea 9).'', 1;');
+        THROW 51033, N''GenealogyTree.Id tiene valores de mas de 100 caracteres: no caben en NodeNullKey.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -16101,7 +16101,7 @@ BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM [DualTeamTree] WHERE [IsDeleted] = 0 AND [ParentMemberId] IS NOT NULL
                GROUP BY [ParentMemberId], [Side] HAVING COUNT(*) > 1)
-        THROW 51048, N''DualTeamTree tiene huecos repetidos: ejecutar Scripts/sql/plan-p/01-reparar-huecos-binario.sql (Plan P, Tarea 3).'', 1;');
+        THROW 51048, N''DualTeamTree tiene huecos repetidos: reparar los huecos repetidos del binario antes de migrar.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -16607,7 +16607,7 @@ BEGIN
         IF EXISTS (SELECT 1 FROM sys.dm_sql_referenced_entities(@modulo, N''OBJECT'') r
                    WHERE r.referenced_entity_name = N''DualTeamTree'' AND r.referenced_minor_name = N''HierarchyPath'')
         BEGIN
-            DECLARE @msg nvarchar(600) = CONCAT(N''El objeto '', @modulo, N'' aun lee DualTeamTree.HierarchyPath (Plan Q, Tarea 13).'');
+            DECLARE @msg nvarchar(600) = CONCAT(N''El objeto '', @modulo, N'' aun lee DualTeamTree.HierarchyPath.'');
             THROW 51100, @msg, 1;
         END
         FETCH NEXT FROM candidatos INTO @modulo;
@@ -16733,7 +16733,7 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'
     IF EXISTS (SELECT 1 FROM GenealogyTree WHERE IsDeleted = 0 GROUP BY MemberId HAVING COUNT(*) > 1)
-        THROW 51108, N''GenealogyTree tiene miembros con mas de un nodo vivo: ejecutar antes Scripts/sql/plan-q/01-nodos-de-inscripcion-repetidos.sql (Plan Q, Tarea 21).'', 1;');
+        THROW 51108, N''GenealogyTree tiene miembros con mas de un nodo vivo: dejar un solo nodo vivo por miembro antes de migrar.'', 1;');
 END;
 
 IF NOT EXISTS (
@@ -16886,7 +16886,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N''dbo.MemberRankHistories'') AND name = N''MemberId'' AND max_length = -1)
     BEGIN
         IF EXISTS (SELECT 1 FROM [MemberRankHistories] WHERE DATALENGTH([MemberId]) / 2 > 450)
-            THROW 51004, N''MemberRankHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan Q, IndiceDelHistorialDeRangos).'', 1;
+            THROW 51004, N''MemberRankHistories.MemberId tiene valores de mas de 450 caracteres: revisar antes de migrar.'', 1;
 
         IF EXISTS (SELECT 1 FROM sys.index_columns ic JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
                    WHERE ic.object_id = OBJECT_ID(N''dbo.MemberRankHistories'') AND c.name = N''MemberId'')
@@ -16896,7 +16896,7 @@ BEGIN
                       WHERE s.object_id = OBJECT_ID(N''dbo.MemberRankHistories'') AND c.name = N''MemberId''
                         AND s.auto_created = 0
                         AND NOT EXISTS (SELECT 1 FROM sys.indexes i WHERE i.object_id = s.object_id AND i.index_id = s.stats_id))
-            THROW 51005, N''MemberRankHistories.MemberId tiene un indice o una estadistica creada a mano: quitarlos antes de migrar (Plan Q, IndiceDelHistorialDeRangos).'', 1;
+            THROW 51005, N''MemberRankHistories.MemberId tiene un indice o una estadistica creada a mano: quitarlos antes de migrar.'', 1;
 
         DECLARE @estadisticas nvarchar(max) = N'''';
         SELECT @estadisticas += N''DROP STATISTICS [dbo].[MemberRankHistories].'' + QUOTENAME(s.name) + N''; ''
@@ -17190,6 +17190,27 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20261114211022_ReconocimientoDeClubes', N'10.0.11');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124203646_IndiceDelListadoDeMiembros'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_MemberProfiles_CreationDate] ON [MemberProfiles] ([CreationDate] DESC) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261124203646_IndiceDelListadoDeMiembros'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261124203646_IndiceDelListadoDeMiembros', N'10.0.11');
 END;
 
 COMMIT;

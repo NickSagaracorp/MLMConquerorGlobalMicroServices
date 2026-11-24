@@ -11,9 +11,9 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMemberStats;
 /// <summary>
 /// Computes the four headline counters that sit above the AdminWeb Members
 /// grid: total active members, new signups in the last 24h, cancellations
-/// in the last 24h, and binary-tree placements in the last 24h. Cached for
-/// ~30 seconds keyed at <c>admin:member-stats</c> so repeated page loads /
-/// "Refresh" clicks don't hammer the DB. Bypass with <c>BypassCache = true</c>.
+/// in the last 24h, and binary-tree placements in the last 24h. PrecalculoDePaneles
+/// recomputes it every 5 minutes into <c>admin:member-stats</c>, so page loads never
+/// wait for counts over a million rows. Bypass with <c>BypassCache = true</c>.
 /// </summary>
 public class GetMemberStatsHandler : IRequestHandler<GetMemberStatsQuery, Result<MemberStatsDto>>
 {
@@ -76,7 +76,8 @@ public class GetMemberStatsHandler : IRequestHandler<GetMemberStatsQuery, Result
             TotalActive              = totalActive,
             NewSignupsLast24Hours    = newSignups,
             CancellationsLast24Hours = cancellations,
-            PlacementsLast24Hours    = placements
+            PlacementsLast24Hours    = placements,
+            GeneratedAt              = now
         };
 
         await _cache.SetAsync(CacheKeys.AdminMemberStats, dto, CacheKeys.AdminMemberStatsTtl, ct);

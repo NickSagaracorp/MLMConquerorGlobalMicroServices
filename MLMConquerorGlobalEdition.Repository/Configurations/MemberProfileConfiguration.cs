@@ -32,6 +32,13 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         builder.HasIndex(m => m.EnrollDate).HasDatabaseName("IX_MemberProfiles_EnrollDate")
             .IncludeProperties(m => new { m.SponsorMemberId, m.MemberType, m.SignupMembershipLevelId });
 
+        // El listado de miembros del admin ordena por fecha de creacion, de la mas nueva a la mas vieja. Sin este
+        // indice, SQL Server ordena el millon entero para devolver una pagina de 50; con el, lee las 50 primeras del
+        // indice y resuelve las subconsultas de la fila (patrocinador, upline, nivel, rango) solo para esas.
+        builder.HasIndex(m => m.CreationDate).HasDatabaseName("IX_MemberProfiles_CreationDate")
+            .IsDescending()
+            .HasFilter("[IsDeleted] = 0");
+
         // Los clientes (MemberType = ExternalMember = 1) son pocos; el reporte de equipo parte de ellos. El filtro
         // global de MemberProfile anade IsDeleted = 0 a todas sus consultas, asi que el indice filtrado sirve.
         builder.HasIndex(new[] { nameof(MemberProfile.MemberId) }, "IX_MemberProfiles_Clientes")

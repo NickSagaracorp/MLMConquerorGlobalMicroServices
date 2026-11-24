@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.DTOs.Dashboards;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Members;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -151,7 +152,20 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
             CreationDate = m.CreationDate
         });
 
-        var result = await projected.ToGridResultAsync(grid, SearchableFields, MaxPageSize, cancellationToken);
+        // Sin estado ni patrocinador (y sin búsqueda ni filtros, que comprueba ToGridResultAsync) el total es el de
+        // todos los miembros, y el panel precalculado ya lo tiene: contar un millón de filas en cada carga de la
+        // primera página costaba casi 2 s. "Refresh" (BypassCache) sí cuenta de verdad.
+        int? totalConocido = null;
+        if (!request.BypassCache
+            && string.IsNullOrWhiteSpace(request.StatusFilter)
+            && string.IsNullOrWhiteSpace(request.SponsorId))
+        {
+            totalConocido = (await _cache.GetAsync<CeoDashboardDto>(CacheKeys.AdminCeoDashboard, cancellationToken))
+                ?.TotalMembers;
+        }
+
+        var result = await projected.ToGridResultAsync(
+            grid, SearchableFields, MaxPageSize, cancellationToken, totalConocido);
 
         await _cache.SetAsync(cacheKey, result, CacheKeys.AdminMembersTtl, cancellationToken);
         return Result<PagedResult<AdminMemberDto>>.Success(result);

@@ -10,9 +10,9 @@
 
 <BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members") })" />
 
-@* Four headline counters above the grid. Cached server-side (~30s) so a   *@
-@* "Refresh" click and a page back-and-forth don't re-run the four COUNT   *@
-@* queries. Quietly degrades to "—" on error — never breaks the page.     *@
+@* Four headline counters above the grid. AdminAPI recalculates them in    *@
+@* the background every 5 minutes, so opening the page never waits for     *@
+@* the COUNTs. Quietly degrades to "—" on error — never breaks the page.    *@
 <div class="row g-3 mb-3">
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">

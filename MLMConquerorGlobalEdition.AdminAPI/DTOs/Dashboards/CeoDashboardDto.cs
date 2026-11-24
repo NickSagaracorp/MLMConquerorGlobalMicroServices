@@ -2,6 +2,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.DTOs.Dashboards;
 
 public class CeoDashboardDto
 {
+    /// <summary>Hora del servidor en que se calcularon las cifras (el panel se precalcula cada 5 minutos).</summary>
+    public DateTime GeneratedAt { get; set; }
     public int TotalMembers { get; set; }
     public int TotalAmbassadors { get; set; }
     public int TotalExternalMembers { get; set; }

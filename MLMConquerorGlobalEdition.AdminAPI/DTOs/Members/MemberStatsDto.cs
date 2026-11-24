@@ -42,4 +42,7 @@ public class MemberStatsDto
     /// recorded. Includes both auto-placements and admin-driven placements.
     /// </summary>
     public int PlacementsLast24Hours { get; set; }
+
+    /// <summary>Hora del servidor en que se calcularon los contadores (se precalculan cada 5 minutos).</summary>
+    public DateTime GeneratedAt { get; set; }
 }

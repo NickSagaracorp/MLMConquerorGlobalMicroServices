@@ -145,11 +145,15 @@ public static class CacheKeys
     public static readonly TimeSpan DualTeamMyTeamTtl      = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan DualTreeStatsTtl       = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan AdminMembersTtl        = TimeSpan.FromMinutes(2);
-    public static readonly TimeSpan AdminMemberStatsTtl    = TimeSpan.FromSeconds(30);
-    public static readonly TimeSpan AdminCeoDashboardTtl       = TimeSpan.FromMinutes(3);
-    public static readonly TimeSpan AdminFinancialDashboardTtl = TimeSpan.FromMinutes(3);
-    public static readonly TimeSpan AdminGrowthDashboardTtl    = TimeSpan.FromMinutes(3);
-    public static readonly TimeSpan AdminHealthDashboardTtl    = TimeSpan.FromMinutes(3);
+    // Los paneles del admin y los contadores del listado los recalcula AdminAPI en segundo plano cada
+    // AdminPanelesIntervalo (PrecalculoDePaneles). Duran tres intervalos: si una vuelta falla, la pantalla sigue
+    // leyendo la anterior en vez de recalcular agregados sobre un millon de filas mientras el admin espera.
+    public static readonly TimeSpan AdminPanelesIntervalo  = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan AdminMemberStatsTtl        = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan AdminCeoDashboardTtl       = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan AdminFinancialDashboardTtl = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan AdminGrowthDashboardTtl    = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan AdminHealthDashboardTtl    = TimeSpan.FromMinutes(15);
     public static readonly TimeSpan RankDefinitionsTtl     = TimeSpan.FromHours(24);
     public static readonly TimeSpan MembershipLevelsTtl    = TimeSpan.FromHours(24);
     public static readonly TimeSpan CommissionTypesTtl     = TimeSpan.FromHours(24);
