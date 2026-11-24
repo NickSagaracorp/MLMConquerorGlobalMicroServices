@@ -108,8 +108,12 @@ public static class GridQueryableExtensions
     public static (int Page, int PageSize) ResolvePage(GridDataRequest request, int maxPageSize = DefaultMaxPageSize) =>
         (Math.Max(1, request.Page), Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, maxPageSize));
 
+    /// <param name="porPrefijo">
+    /// Busca los valores que EMPIEZAN por el término en vez de los que lo contienen. "Contiene" (LIKE '%x%') no puede
+    /// usar índice y con un millón de filas tarda segundos; "empieza por" busca en el índice de cada columna.
+    /// </param>
     public static IQueryable<T> ApplySearch<T>(this IQueryable<T> source, string? search, string[] searchableFields,
-        bool? baseSinMayusculas = null)
+        bool? baseSinMayusculas = null, bool porPrefijo = false)
     {
         if (string.IsNullOrWhiteSpace(search) || searchableFields is null || searchableFields.Length == 0)
             return source;
@@ -125,10 +129,11 @@ public static class GridQueryableExtensions
 
         var sinMinusculas = (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery;
         var term   = sinMinusculas ? search.Trim() : search.Trim().ToLower();
+        var metodo = porPrefijo ? "StartsWith" : "Contains";
         var clause = string.Join(" || ",
             fields.Select(f => sinMinusculas
-                ? $"({f} != null && {f}.Contains(@0))"
-                : $"({f} != null && {f}.ToLower().Contains(@0))"));
+                ? $"({f} != null && {f}.{metodo}(@0))"
+                : $"({f} != null && {f}.ToLower().{metodo}(@0))"));
 
         return source.Where(clause, term);
     }

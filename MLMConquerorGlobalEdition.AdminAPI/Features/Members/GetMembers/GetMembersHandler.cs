@@ -39,18 +39,22 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
     private const int MaxPageSize = 100;
 
     /// <summary>
-    /// Columnas en las que busca el cuadro de búsqueda libre: solo las del propio miembro. El patrocinador, el upline,
-    /// el nivel y el rango salen de subconsultas por fila; buscar en ellas obligaba a calcularlas para el millón de
-    /// miembros en cada búsqueda. Siguen filtrándose con el filtro de su columna.
+    /// Columnas del miembro en las que busca el cuadro de búsqueda libre, por PREFIJO: el valor tiene que empezar por
+    /// lo escrito. Todas tienen índice, así que con un millón de miembros la búsqueda tarda milisegundos; con
+    /// "contiene" en estas columnas y en el patrocinador, el upline, el nivel y el rango (subconsultas por fila)
+    /// tardaba 15 s. SearchName y SearchNameReversed son «nombre apellido» y «apellido nombre» sin tildes ni
+    /// mayúsculas: "luis lo" y "lopez lu" encuentran a Luis López. Lo demás se filtra con el filtro de su columna.
     /// </summary>
     private static readonly string[] SearchableFields =
     {
-        nameof(AdminMemberDto.MemberId),
-        nameof(AdminMemberDto.FirstName),
-        nameof(AdminMemberDto.LastName),
-        nameof(AdminMemberDto.Email),
-        nameof(AdminMemberDto.Phone),
-        nameof(AdminMemberDto.ReplicateSiteSlug),
+        nameof(MemberProfile.MemberId),
+        nameof(MemberProfile.FirstName),
+        nameof(MemberProfile.LastName),
+        nameof(MemberProfile.SearchName),
+        nameof(MemberProfile.SearchNameReversed),
+        nameof(MemberProfile.Email),
+        nameof(MemberProfile.Phone),
+        nameof(MemberProfile.ReplicateSiteSlug),
     };
 
     public async Task<Result<PagedResult<AdminMemberDto>>> Handle(
@@ -92,6 +96,14 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         if (!string.IsNullOrWhiteSpace(request.SponsorId))
         {
             baseQuery = baseQuery.Where(m => m.SponsorMemberId == request.SponsorId);
+        }
+
+        // La búsqueda libre se aplica aquí, sobre la tabla y antes de proyectar, para que use los índices del miembro.
+        var buscando = !string.IsNullOrWhiteSpace(grid.Search);
+        if (buscando)
+        {
+            baseQuery = baseQuery.ApplySearch(grid.Search, SearchableFields, porPrefijo: true);
+            grid.Search = null;
         }
 
         // Single projection: derived name columns are resolved via correlated
@@ -156,6 +168,7 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         // primera página costaba casi 2 s. "Refresh" (BypassCache) sí cuenta de verdad.
         int? totalConocido = null;
         if (!request.BypassCache
+            && !buscando
             && string.IsNullOrWhiteSpace(request.StatusFilter)
             && string.IsNullOrWhiteSpace(request.SponsorId))
         {

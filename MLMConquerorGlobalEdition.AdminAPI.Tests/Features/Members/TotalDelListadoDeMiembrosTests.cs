@@ -74,6 +74,18 @@ public class TotalDelListadoDeMiembrosTests
         (await handler.Handle(Pagina(busqueda: "AMB-002"), CancellationToken.None)).Value!.TotalCount.Should().Be(1);
     }
 
+    [Theory]
+    [InlineData("AMB-00", 2)]   // el ID empieza por lo escrito
+    [InlineData("gar", 2)]      // el apellido, sin mayúsculas
+    [InlineData("MB-001", 0)]   // por en medio no: la búsqueda es por prefijo, para que use el índice
+    public async Task La_busqueda_libre_es_por_prefijo(string termino, int esperados)
+    {
+        var (handler, db) = await ConPanelPrecalculado();
+        await using var _ = db;
+
+        (await handler.Handle(Pagina(busqueda: termino), CancellationToken.None)).Value!.TotalCount.Should().Be(esperados);
+    }
+
     [Fact]
     public async Task Refresh_cuenta_de_verdad()
     {
