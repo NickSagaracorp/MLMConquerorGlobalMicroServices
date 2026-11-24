@@ -55,7 +55,7 @@ else if (_data is not null)
                     <div class="kpi-icon teal"><i class="ri-group-line"></i></div>
                     <span class="pill pill-teal">Active</span>
                 </div>
-                <div class="kpi-value">@_data.ActiveMembers.ToString("N0")</div>
+                <div class="kpi-value" title="@_data.ActiveMembers.ToString("N0")">@Cantidad(_data.ActiveMembers)</div>
                 <div class="kpi-label mt-1">Active Members</div>
                 <div class="kpi-sub mt-1">@_data.TotalMembers.ToString("N0") total</div>
             </div>
@@ -75,9 +75,9 @@ else if (_data is not null)
                         @(growthPct >= 0 ? "↑" : "↓") @Math.Abs(growthPct).ToString("N0")%
                     </span>
                 </div>
-                <div class="kpi-value">@_data.NewMembersThisMonth.ToString("N0")</div>
+                <div class="kpi-value" title="@_data.NewMembersThisMonth.ToString("N0")">@Cantidad(_data.NewMembersThisMonth)</div>
                 <div class="kpi-label mt-1">New This Month</div>
-                <div class="kpi-sub mt-1">@_data.NewMembersLastMonth last month</div>
+                <div class="kpi-sub mt-1">@_data.NewMembersLastMonth.ToString("N0") last month</div>
             </div>
         </div>
 
@@ -95,9 +95,9 @@ else if (_data is not null)
                         @(revPct >= 0 ? "↑" : "↓") @Math.Abs(revPct).ToString("N0")%
                     </span>
                 </div>
-                <div class="kpi-value">$@_data.RevenueThisMonth.ToString("N0")</div>
+                <div class="kpi-value" title="$@_data.RevenueThisMonth.ToString("N2")">@Monto(_data.RevenueThisMonth)</div>
                 <div class="kpi-label mt-1">Revenue MTD</div>
-                <div class="kpi-sub mt-1">$@_data.RevenueLastMonth.ToString("N0") last mo.</div>
+                <div class="kpi-sub mt-1" title="$@_data.RevenueLastMonth.ToString("N2")">@Monto(_data.RevenueLastMonth) last mo.</div>
             </div>
         </div>
 
@@ -111,9 +111,9 @@ else if (_data is not null)
                         <span class="pill pill-amber">Pending</span>
                     }
                 </div>
-                <div class="kpi-value">$@_data.CommissionsPending.ToString("N0")</div>
+                <div class="kpi-value" title="$@_data.CommissionsPending.ToString("N2")">@Monto(_data.CommissionsPending)</div>
                 <div class="kpi-label mt-1">Commissions Pending</div>
-                <div class="kpi-sub mt-1">$@_data.CommissionsPaidThisMonth.ToString("N0") paid MTD</div>
+                <div class="kpi-sub mt-1" title="$@_data.CommissionsPaidThisMonth.ToString("N2")">@Monto(_data.CommissionsPaidThisMonth) paid MTD</div>
             </div>
         </div>
 
@@ -1114,6 +1114,20 @@ else if (_data is not null)
 }
 
 @code {
+    // Las tarjetas KPI son estrechas (seis por fila): a partir del millón el monto se abrevia ($61.35M) y el valor
+    // completo queda en el title de la tarjeta. Por debajo se muestra entero, como antes.
+    private static string Monto(decimal valor) => Abreviado(valor, "$", 1_000_000m);
+    private static string Cantidad(long valor) => Abreviado(valor, "", 10_000_000m);
+
+    private static string Abreviado(decimal valor, string prefijo, decimal desde)
+    {
+        var abs = Math.Abs(valor);
+        var signo = valor < 0 ? "-" : "";
+        if (abs < desde) return signo + prefijo + abs.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+        var (div, sufijo) = abs >= 1_000_000_000m ? (1_000_000_000m, "B") : (1_000_000m, "M");
+        return signo + prefijo + (abs / div).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + sufijo;
+    }
+
     private CeoDashboardDto? _data;
     private bool _loading = true;
     private string? _error;

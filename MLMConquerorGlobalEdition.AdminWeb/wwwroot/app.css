@@ -154,6 +154,10 @@ em.material-symbols-outlined {
     line-height: 1.1;
     color: #1a202c;
     letter-spacing: -.02em;
+    /* Nunca se sale de la tarjeta: si aun abreviado no cabe, se corta con puntos y el title lleva el valor. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 /* KPI label */
 .kpi-label {

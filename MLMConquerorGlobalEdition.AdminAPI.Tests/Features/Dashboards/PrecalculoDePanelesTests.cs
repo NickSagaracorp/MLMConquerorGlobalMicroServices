@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetFinancialDashboa
 using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetGrowthDashboard;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetHealthDashboard;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMemberStats;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMembers;
 using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Services;
@@ -62,6 +63,11 @@ public class PrecalculoDePanelesTests
         // El financiero con el rango con que lo pide la pantalla al abrir: del día 1 del mes a hoy.
         pedidos.OfType<GetFinancialDashboardQuery>().Should().ContainSingle()
             .Which.Should().Be(new GetFinancialDashboardQuery(new DateTime(2026, 11, 1), Ahora.Date, BypassCache: true));
+
+        // Y la primera página del listado, para que EF la compile antes de que la abra un admin.
+        pedidos.OfType<GetMembersQuery>().Should().ContainSingle()
+            .Which.Should().Match<GetMembersQuery>(q => q.Page.Page == 1 && q.Page.PageSize == 50 && q.BypassCache
+                                                     && q.StatusFilter == null && q.SponsorId == null);
     }
 
     [Fact]
@@ -86,7 +92,7 @@ public class PrecalculoDePanelesTests
 
         (await Precalculo(CacheCompartida(), mediator).RecalcularAsync(CancellationToken.None)).Should().BeTrue();
 
-        Pedidos(mediator).Should().HaveCount(5);
+        Pedidos(mediator).Should().HaveCount(6);
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetFinancialDashboa
 using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetGrowthDashboard;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetHealthDashboard;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMemberStats;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMembers;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -11,7 +12,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards;
 
 /// <summary>
 /// Recalcula en segundo plano, al arrancar y cada <see cref="CacheKeys.AdminPanelesIntervalo"/>, los paneles del
-/// admin (CEO, financiero del mes en curso, crecimiento y salud) y los contadores del listado de miembros, y los deja
+/// admin (CEO, financiero del mes en curso, crecimiento y salud), los contadores y la primera página del listado de
+/// miembros, y los deja
 /// en la caché donde los leen las pantallas. Con un millón de miembros el panel CEO hace unas 30 agregaciones que
 /// suman cerca de un minuto: así nadie las espera al abrir la pantalla. "Refresh" sigue recalculando al momento.
 /// </summary>
@@ -84,6 +86,12 @@ public sealed class PrecalculoDePaneles : BackgroundService
             new GetFinancialDashboardQuery(inicioDelMes, ahora.Date, BypassCache: true), ct));
         await PanelAsync("crecimiento", () => mediator.Send(new GetGrowthDashboardQuery(BypassCache: true), ct));
         await PanelAsync("salud", () => mediator.Send(new GetHealthDashboardQuery(BypassCache: true), ct));
+
+        // La primera página del listado de miembros, como la pide la pantalla al abrir (50 por página, sin filtros).
+        // Su consulta es barata con el índice, pero la primera vez que el proceso la arma EF tarda unos 3 s en
+        // compilarla: hacerlo aquí al arrancar evita que ese primer admin tras un despliegue lo espere.
+        await PanelAsync("listado de miembros", () => mediator.Send(
+            new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 50 }, StatusFilter: null, BypassCache: true), ct));
         return true;
     }
 
