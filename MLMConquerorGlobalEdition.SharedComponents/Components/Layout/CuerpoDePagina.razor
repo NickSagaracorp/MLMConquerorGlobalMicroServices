@@ -1,0 +1,10 @@
+@* El cuerpo de la página dentro de los layouts de los dos portales. Las páginas interactivas sin prerender llegan
+   del servidor vacías (solo el marcador de Blazor, un comentario) y se pintan cuando el circuito arranca, que con
+   datos grandes puede tardar segundos: mientras tanto el contenedor está vacío y el CSS pone un indicador de carga.
+   En cuanto la página pinta algo, deja de estar vacío y el indicador desaparece solo, sin JavaScript. Va todo en una
+   línea a propósito: un espacio o un salto de línea dentro del div haría que ya no estuviera vacío. *@
+<div class="cuerpo-de-pagina">@ChildContent</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

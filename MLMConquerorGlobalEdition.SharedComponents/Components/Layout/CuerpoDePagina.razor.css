@@ -1,0 +1,34 @@
+/* Vacío = la página todavía no ha pintado nada. El indicador aparece a los 150 ms, para que una página que pinta
+   al instante no parpadee, y siempre antes del medio segundo. */
+.cuerpo-de-pagina:empty {
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cuerpo-de-pagina:empty::before {
+    content: "";
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 4px solid rgba(0, 0, 0, .08);
+    border-top-color: var(--bs-primary, #605dff);
+    opacity: 0;
+    animation: cuerpo-de-pagina-aparece .2s ease-out .15s forwards,
+               cuerpo-de-pagina-gira .8s linear infinite;
+}
+
+@keyframes cuerpo-de-pagina-aparece {
+    to { opacity: 1; }
+}
+
+@keyframes cuerpo-de-pagina-gira {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cuerpo-de-pagina:empty::before {
+        animation: cuerpo-de-pagina-aparece .2s ease-out .15s forwards;
+    }
+}
