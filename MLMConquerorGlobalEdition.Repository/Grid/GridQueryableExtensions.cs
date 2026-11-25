@@ -30,13 +30,60 @@ public static class GridQueryableExtensions
     /// </summary>
     public static bool BaseSinDistincionDeMayusculas { get; set; }
 
+    /// <summary>
+    /// Cuánto se guarda el total de una lectura del grid (null = se cuenta siempre). El grid pide el total en CADA
+    /// lectura, también al pasar de página, y un COUNT sobre 1–2,4 millones de filas tarda 0,5–3 s. Con esto se cuenta
+    /// una vez por combinación de filtros: la clave es el SQL de la consulta ya filtrada, con los valores de sus
+    /// parámetros, así que otro filtro, otra búsqueda u otro filtro de la página cuentan de nuevo. La página de filas
+    /// nunca sale de aquí, siempre es fresca; solo el número del paginador puede ir unos segundos por detrás. Lo
+    /// encienden al arrancar las APIs que consultan SQL Server; "Refresh" pide recontar.
+    /// </summary>
+    public static TimeSpan? DuracionDeTotalesEnCache { get; set; }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int Total, DateTime Vence)> _totales = new();
+    private const int MaximoDeTotalesGuardados = 5_000;
+
+    private static async Task<int> ContarAsync<T>(IQueryable<T> source, bool recontar, CancellationToken ct)
+    {
+        if (DuracionDeTotalesEnCache is not { } duracion || source.Provider is EnumerableQuery)
+            return await source.CountAsync(ct);
+
+        string clave;
+        try
+        {
+            var sql = source.ToQueryString();
+            if (string.IsNullOrWhiteSpace(sql)) return await source.CountAsync(ct);
+            clave = typeof(T).FullName + "|" + sql;
+        }
+        catch (Exception)
+        {
+            // Un proveedor que no sabe escribir su SQL (pruebas en memoria): se cuenta siempre.
+            return await source.CountAsync(ct);
+        }
+
+        var ahora = DateTime.UtcNow;
+        if (!recontar && _totales.TryGetValue(clave, out var guardado) && guardado.Vence > ahora)
+            return guardado.Total;
+
+        var total = await source.CountAsync(ct);
+
+        if (_totales.Count >= MaximoDeTotalesGuardados)
+            foreach (var vencido in _totales.Where(t => t.Value.Vence <= ahora).Select(t => t.Key).ToList())
+                _totales.TryRemove(vencido, out _);
+        if (_totales.Count < MaximoDeTotalesGuardados)
+            _totales[clave] = (total, ahora + duracion);
+
+        return total;
+    }
+
     public static async Task<SharedKernel.PagedResult<T>> ToGridResultAsync<T>(
         this IQueryable<T> source,
         GridDataRequest request,
         string[] searchableFields,
         int maxPageSize = DefaultMaxPageSize,
         CancellationToken ct = default,
-        int? unfilteredTotal = null)
+        int? unfilteredTotal = null,
+        bool recontar = false)
     {
         var unfiltered = string.IsNullOrWhiteSpace(request.Search) && (request.Filters is null || request.Filters.Count == 0);
         source = source.ApplySearch(request.Search, searchableFields);
@@ -46,7 +93,7 @@ public static class GridQueryableExtensions
         // the grid pager reports, so paging reflects the filtered universe. Sin busqueda
         // ni filtros, quien llama puede dar el total que ya conoce (p. ej. los contadores de pierna del binario) y no
         // se cuenta un rango de un millon de filas.
-        var total = unfiltered && unfilteredTotal is { } conocido ? conocido : await source.CountAsync(ct);
+        var total = unfiltered && unfilteredTotal is { } conocido ? conocido : await ContarAsync(source, recontar, ct);
 
         source = source.ApplySorts(request.Sorts);
 

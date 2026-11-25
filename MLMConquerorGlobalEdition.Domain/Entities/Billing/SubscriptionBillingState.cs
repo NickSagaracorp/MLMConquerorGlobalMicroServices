@@ -45,6 +45,13 @@ public class SubscriptionBillingState : AuditChangesStringKey
     public RecurringBillingStatus Status { get; set; } = RecurringBillingStatus.Active;
 
     public DateTime? LastAttemptAt { get; set; }
+
+    /// <summary>
+    /// Último intento de cobro o, si nunca se intentó, el alta del estado. La calcula la base (columna calculada
+    /// persistida) y solo sirve para ordenar el grid del admin por actividad reciente usando un índice: ordenar por la
+    /// expresión obligaba a recorrer y ordenar el millón de estados en cada página.
+    /// </summary>
+    public DateTime LastActivityAt { get; private set; }
     public string? LastAttemptOutcome { get; set; }
     public string? LastFailureReason { get; set; }
 

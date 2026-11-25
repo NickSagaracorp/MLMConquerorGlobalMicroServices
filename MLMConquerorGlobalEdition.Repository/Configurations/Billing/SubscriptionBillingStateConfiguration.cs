@@ -27,6 +27,13 @@ public class SubscriptionBillingStateConfiguration : IEntityTypeConfiguration<Su
         // Primary scheduling index: daily sweep query filters on Status + NextAttemptDate
         builder.HasIndex(x => new { x.Status, x.NextAttemptDate });
         builder.HasIndex(x => x.MemberId);
+
+        // Orden por actividad reciente del grid de estados del admin (último intento o, si no hubo, el alta).
+        builder.Property(x => x.LastActivityAt)
+            .HasComputedColumnSql("COALESCE([LastAttemptAt], [CreationDate])", stored: true);
+        builder.HasIndex(x => new { x.LastActivityAt, x.Id })
+            .HasDatabaseName("IX_SubscriptionBillingStates_LastActivityAt")
+            .IsDescending(true, true);
         builder.HasIndex(x => x.MembershipSubscriptionId).IsUnique().HasFilter("[MembershipSubscriptionId] IS NOT NULL");
 
         // Un solo estado de cuota anual por miembro. Incluye los borrados lógicos: quien da

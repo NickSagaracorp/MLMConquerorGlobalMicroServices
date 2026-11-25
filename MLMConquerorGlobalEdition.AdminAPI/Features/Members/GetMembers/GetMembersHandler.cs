@@ -177,7 +177,7 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         }
 
         var result = await projected.ToGridResultAsync(
-            grid, SearchableFields, MaxPageSize, cancellationToken, totalConocido);
+            grid, SearchableFields, MaxPageSize, cancellationToken, totalConocido, recontar: request.BypassCache);
 
         await _cache.SetAsync(cacheKey, result, CacheKeys.AdminMembersTtl, cancellationToken);
         return Result<PagedResult<AdminMemberDto>>.Success(result);

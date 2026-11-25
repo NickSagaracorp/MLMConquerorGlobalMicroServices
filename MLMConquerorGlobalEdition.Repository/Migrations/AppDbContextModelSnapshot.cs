@@ -1322,6 +1322,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("LastActivityAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasComputedColumnSql("COALESCE([LastAttemptAt], [CreationDate])", true);
+
                     b.Property<DateTime?>("LastAttemptAt")
                         .HasColumnType("datetime2");
 
@@ -1392,6 +1397,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ShardKey")
                         .IsUnique();
+
+                    b.HasIndex("LastActivityAt", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("IX_SubscriptionBillingStates_LastActivityAt");
 
                     b.HasIndex("Status", "NextAttemptDate");
 

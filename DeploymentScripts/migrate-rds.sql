@@ -17328,3 +17328,32 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125014956_ActividadDeEstadosDeCobro'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [SubscriptionBillingStates] ADD [LastActivityAt] AS COALESCE([LastAttemptAt], [CreationDate]) PERSISTED');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125014956_ActividadDeEstadosDeCobro'
+)
+BEGIN
+    CREATE INDEX [IX_SubscriptionBillingStates_LastActivityAt] ON [SubscriptionBillingStates] ([LastActivityAt] DESC, [Id] DESC);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125014956_ActividadDeEstadosDeCobro'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261125014956_ActividadDeEstadosDeCobro', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

@@ -42,6 +42,8 @@ builder.Logging.AddPiiMaskingConsole();
 
 // La base es SQL Server con intercalación que no distingue mayúsculas: los grids filtran sin LOWER(), con índice.
 MLMConquerorGlobalEdition.Repository.Grid.GridQueryableExtensions.BaseSinDistincionDeMayusculas = true;
+// El total de cada lectura de grid se cuenta una vez por combinacion de filtros y dura 60 s: paginar no recuenta.
+MLMConquerorGlobalEdition.Repository.Grid.GridQueryableExtensions.DuracionDeTotalesEnCache = TimeSpan.FromSeconds(60);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

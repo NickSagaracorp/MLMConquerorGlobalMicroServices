@@ -232,8 +232,13 @@ public class AdminRecurringBillingController : ControllerBase
         // del estado (el mismo orden del GET). Va antes de proyectar porque la fecha de alta no viaja en el DTO; si
         // el usuario ordena por una columna, ToGridResultAsync lo reemplaza. El Id desempata para que el paginado
         // sea estable y una fila no salte de una página a otra.
+        // En SQL Server se ordena por LastActivityAt, la misma expresión guardada en una columna calculada con índice:
+        // ordenar por la expresión recorría el millón de estados (9–19 s por página). Las pruebas en memoria no
+        // calculan esa columna y siguen con la expresión.
         if (request.Sorts is not { Count: > 0 })
-            query = query.OrderByDescending(s => s.LastAttemptAt ?? s.CreationDate).ThenByDescending(s => s.Id);
+            query = _db.Database.IsRelational()
+                ? query.OrderByDescending(s => s.LastActivityAt).ThenByDescending(s => s.Id)
+                : query.OrderByDescending(s => s.LastAttemptAt ?? s.CreationDate).ThenByDescending(s => s.Id);
 
         var result = await ProyectarEstados(query).ToGridResultAsync(
             request, EstadosBuscables, MaxGridPageSize, ct);
