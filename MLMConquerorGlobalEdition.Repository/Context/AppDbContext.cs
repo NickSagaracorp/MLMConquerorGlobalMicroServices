@@ -62,6 +62,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
     public DbSet<MemberStatisticHistoryEntity> MemberStatisticHistories => Set<MemberStatisticHistoryEntity>();
     public DbSet<MemberCountrySnapshot> MemberCountrySnapshots => Set<MemberCountrySnapshot>();
+    public DbSet<EarningsRankingSnapshot> EarningsRankingSnapshots => Set<EarningsRankingSnapshot>();
+    public DbSet<RankStandingSnapshot> RankStandingSnapshots => Set<RankStandingSnapshot>();
     public DbSet<RecognitionLevel>  RecognitionLevels  => Set<RecognitionLevel>();
     public DbSet<RecognitionOption> RecognitionOptions => Set<RecognitionOption>();
     public DbSet<MemberRecognition> MemberRecognitions => Set<MemberRecognition>();

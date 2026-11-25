@@ -19,8 +19,9 @@ public interface IRankReportService
     /// <summary>Todas las filas que cumplen el filtro (exportación).</summary>
     Task<IReadOnlyList<RankReportRowView>> GetAllAsync(RankReportFilter filter, CancellationToken ct = default);
 
-    /// <summary>Recalcula la lista del modo aunque esté en caché y la deja guardada <see cref="RankReportService.PrecalculadoDura"/>.</summary>
-    Task PrecalcularAsync(RankReportMode mode, CancellationToken ct = default);
+    /// <summary>Fecha de la foto semanal que muestra el modo, o null si todavía no hay (entonces se calcula al momento).</summary>
+    Task<DateTime?> UltimaFotoAsync(RankReportMode mode, CancellationToken ct = default);
+
 }
 
 /// <summary>
@@ -39,20 +40,6 @@ public class RankReportService : IRankReportService
     };
 
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
-
-    /// <summary>Lo que dura una lista que dejó el precálculo (más que su intervalo; ver EarningsRankingService).</summary>
-    public static readonly TimeSpan PrecalculadoDura = TimeSpan.FromMinutes(25);
-
-    private static long _ultimoUso;
-
-    /// <summary>
-    /// Tiempo desde la última página o exportación pedida (reloj monótono del proceso: solo mide lo transcurrido);
-    /// null si nunca se pidió. El precálculo deja de recalcular cuando nadie usa el reporte.
-    /// </summary>
-    public static TimeSpan? TiempoSinUso
-    {
-        get { var t = Interlocked.Read(ref _ultimoUso); return t == 0 ? null : TimeSpan.FromMilliseconds(Environment.TickCount64 - t); }
-    }
 
     // Un cerrojo por modo: un Lifetime en frio no hace esperar al Current (cada uno calcula su propia lista).
     private static readonly SemaphoreSlim[] Gates =
@@ -124,8 +111,20 @@ public class RankReportService : IRankReportService
     public async Task<PagedResult<RankReportRowView>> GetPageAsync(RankReportFilter filter, GridDataRequest request,
         CancellationToken ct = default)
     {
-        var rows = Apply(await ListAsync(filter.Mode, ct), filter with { Search = request.Search });
         var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
+        if (await FotoAsync(filter.Mode, ct) is { } foto)
+        {
+            var filtradas = Filtrar(foto, filter with { Search = request.Search });
+            return new PagedResult<RankReportRowView>
+            {
+                Items      = await AVista(filtradas.OrderBy(s => s.Position).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct),
+                TotalCount = await filtradas.CountAsync(ct),
+                Page       = page,
+                PageSize   = pageSize
+            };
+        }
+
+        var rows = Apply(await ListAsync(filter.Mode, ct), filter with { Search = request.Search });
         return new PagedResult<RankReportRowView>
         {
             Items      = rows.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
@@ -136,7 +135,54 @@ public class RankReportService : IRankReportService
     }
 
     public async Task<IReadOnlyList<RankReportRowView>> GetAllAsync(RankReportFilter filter, CancellationToken ct = default) =>
-        Apply(await ListAsync(filter.Mode, ct), filter);
+        await FotoAsync(filter.Mode, ct) is { } foto
+            ? await AVista(Filtrar(foto, filter).OrderBy(s => s.Position)).ToListAsync(ct)
+            : Apply(await ListAsync(filter.Mode, ct), filter);
+
+    public async Task<DateTime?> UltimaFotoAsync(RankReportMode mode, CancellationToken ct = default)
+    {
+        var clave = Clave(mode);
+        return await _db.RankStandingSnapshots.AsNoTracking().Where(s => s.Mode == clave)
+            .MaxAsync(s => (DateTime?)s.SnapshotDate, ct);
+    }
+
+    private static int Clave(RankReportMode mode) =>
+        mode == RankReportMode.Lifetime ? RankStandingSnapshot.DePorVida : RankStandingSnapshot.Vigente;
+
+    /// <summary>Las filas de la última foto semanal del modo, o null si todavía no hay ninguna.</summary>
+    private async Task<IQueryable<RankStandingSnapshot>?> FotoAsync(RankReportMode mode, CancellationToken ct)
+    {
+        if (await UltimaFotoAsync(mode, ct) is not { } dia) return null;
+        var clave = Clave(mode);
+        return _db.RankStandingSnapshots.AsNoTracking().Where(s => s.SnapshotDate == dia && s.Mode == clave);
+    }
+
+    /// <summary>Los mismos filtros que <see cref="Apply"/>, en SQL sobre la foto.</summary>
+    private IQueryable<RankStandingSnapshot> Filtrar(IQueryable<RankStandingSnapshot> filas, RankReportFilter f)
+    {
+        var statuses = NormalizeStatuses(f.Statuses).ToList();
+        filas = filas.Where(s => statuses.Contains(s.Status));
+        if (f.RankDefinitionId is { } rango) filas = filas.Where(s => s.RankDefinitionId == rango);
+        if (f.SinceFrom?.Date is { } desde) filas = filas.Where(s => s.Since >= desde);
+        if (f.SinceTo?.Date.AddDays(1) is { } hasta) filas = filas.Where(s => s.Since < hasta);   // hasta incluye su día
+
+        if (string.IsNullOrWhiteSpace(f.Search)) return filas;
+        var t = f.Search.Trim().ToUpperInvariant();
+        const string bin = GridQueryableExtensions.IntercalacionBinaria;
+        return _db.Database.IsRelational()
+            ? filas.Where(s => EF.Functions.Collate(s.MemberName.ToUpper(), bin).Contains(t)
+                            || EF.Functions.Collate(s.Email.ToUpper(), bin).Contains(t)
+                            || EF.Functions.Collate(s.Country.ToUpper(), bin).Contains(t))
+            : filas.Where(s => s.MemberName.ToUpper().Contains(t) || s.Email.ToUpper().Contains(t)
+                            || s.Country.ToUpper().Contains(t));
+    }
+
+    private static IQueryable<RankReportRowView> AVista(IQueryable<RankStandingSnapshot> filas) =>
+        filas.Select(s => new RankReportRowView
+        {
+            MemberId = s.MemberId, MemberName = s.MemberName, Email = s.Email, Country = s.Country, Status = s.Status,
+            RankDefinitionId = s.RankDefinitionId, RankName = s.RankName, RankSortOrder = s.RankSortOrder, Since = s.Since
+        });
 
     /// <summary>Filtra la lista guardada. Devuelve siempre una lista nueva: nunca la cacheada.</summary>
     private static List<RankReportRowView> Apply(IReadOnlyList<RankReportRowView> rows, RankReportFilter f)
@@ -158,44 +204,21 @@ public class RankReportService : IRankReportService
             .ToList();
     }
 
-    public async Task PrecalcularAsync(RankReportMode mode, CancellationToken ct = default) =>
-        await ListAsync(mode, ct, recalcular: true);
-
-    private async Task<IReadOnlyList<RankReportRowView>> ListAsync(RankReportMode mode, CancellationToken ct,
-        bool recalcular = false)
+    private async Task<IReadOnlyList<RankReportRowView>> ListAsync(RankReportMode mode, CancellationToken ct)
     {
-        if (!recalcular) Interlocked.Exchange(ref _ultimoUso, Environment.TickCount64);
         var key = $"reports:ranks:{mode}";
-        IReadOnlyList<RankReportRowView>? cached;
-        if (!recalcular && _cache.TryGetValue(key, out cached) && cached is not null) return cached;
+        if (_cache.TryGetValue(key, out IReadOnlyList<RankReportRowView>? cached) && cached is not null) return cached;
 
         var gate = GateOf(mode);
         await gate.WaitAsync(ct);
         try
         {
-            if (!recalcular && _cache.TryGetValue(key, out cached) && cached is not null) return cached;
+            if (_cache.TryGetValue(key, out cached) && cached is not null) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
             var token  = CurrentToken();
-            var source = await SourceQuery(_db, mode).ToListAsync(ct);
-            IReadOnlyList<RankReportRowView> rows = source
-                .OrderByDescending(r => r.SortOrder)
-                .ThenByDescending(r => r.Since)
-                .ThenBy(r => r.MemberId, StringComparer.Ordinal)
-                .Select(r => new RankReportRowView
-                {
-                    MemberId         = r.MemberId,
-                    MemberName       = $"{r.FirstName} {r.LastName}".Trim(),
-                    Email            = r.Email,
-                    Country          = r.Country,
-                    Status           = r.Status,
-                    RankDefinitionId = r.RankDefinitionId,
-                    RankName         = r.RankName,
-                    RankSortOrder    = r.SortOrder,
-                    Since            = r.Since
-                }).ToList().AsReadOnly();
+            var rows   = await CalcularAsync(_db, mode, ct);
 
-            _cache.Set(key, rows, new MemoryCacheEntryOptions
-                    { AbsoluteExpirationRelativeToNow = recalcular ? PrecalculadoDura : CacheFor }
+            _cache.Set(key, rows, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
                 .AddExpirationToken(new CancellationChangeToken(token)));
             return rows;
         }
@@ -203,5 +226,28 @@ public class RankReportService : IRankReportService
         {
             gate.Release();
         }
+    }
+
+    /// <summary>La lista completa del modo, en el orden del reporte. La usan la pantalla (sin foto) y la foto semanal.</summary>
+    internal static async Task<IReadOnlyList<RankReportRowView>> CalcularAsync(AppDbContext db, RankReportMode mode,
+        CancellationToken ct)
+    {
+        var source = await SourceQuery(db, mode).ToListAsync(ct);
+        return source
+            .OrderByDescending(r => r.SortOrder)
+            .ThenByDescending(r => r.Since)
+            .ThenBy(r => r.MemberId, StringComparer.Ordinal)
+            .Select(r => new RankReportRowView
+            {
+                MemberId         = r.MemberId,
+                MemberName       = $"{r.FirstName} {r.LastName}".Trim(),
+                Email            = r.Email,
+                Country          = r.Country,
+                Status           = r.Status,
+                RankDefinitionId = r.RankDefinitionId,
+                RankName         = r.RankName,
+                RankSortOrder    = r.SortOrder,
+                Since            = r.Since
+            }).ToList().AsReadOnly();
     }
 }

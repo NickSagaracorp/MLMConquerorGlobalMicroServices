@@ -17357,3 +17357,57 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125170327_FotoSemanalDeReportes'
+)
+BEGIN
+    CREATE TABLE [EarningsRankingSnapshots] (
+        [SnapshotDate] date NOT NULL,
+        [WindowDays] int NOT NULL,
+        [Rank] int NOT NULL,
+        [MemberId] nvarchar(20) NOT NULL,
+        [Username] nvarchar(100) NULL,
+        [MemberName] nvarchar(201) NOT NULL,
+        [Email] nvarchar(256) NOT NULL,
+        [Country] nvarchar(100) NOT NULL,
+        [Total] decimal(19,4) NOT NULL,
+        CONSTRAINT [PK_EarningsRankingSnapshots] PRIMARY KEY ([SnapshotDate], [WindowDays], [Rank])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125170327_FotoSemanalDeReportes'
+)
+BEGIN
+    CREATE TABLE [RankStandingSnapshots] (
+        [SnapshotDate] date NOT NULL,
+        [Mode] int NOT NULL,
+        [Position] int NOT NULL,
+        [MemberId] nvarchar(20) NOT NULL,
+        [MemberName] nvarchar(201) NOT NULL,
+        [Email] nvarchar(256) NOT NULL,
+        [Country] nvarchar(100) NOT NULL,
+        [Status] int NOT NULL,
+        [RankDefinitionId] int NOT NULL,
+        [RankName] nvarchar(200) NOT NULL,
+        [RankSortOrder] int NOT NULL,
+        [Since] datetime2 NOT NULL,
+        CONSTRAINT [PK_RankStandingSnapshots] PRIMARY KEY ([SnapshotDate], [Mode], [Position])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125170327_FotoSemanalDeReportes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261125170327_FotoSemanalDeReportes', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

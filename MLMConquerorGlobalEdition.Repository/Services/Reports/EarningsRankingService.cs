@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using Microsoft.Extensions.Primitives;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Reports;
 
@@ -16,11 +17,8 @@ public interface IEarningsRankingService
     Task<IReadOnlyList<EarningsRankRowView>> GetAllAsync(DateTime cutoff, int? windowDays, string? search,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Recalcula el ranking de (corte, ventana) aunque esté en caché y lo deja guardado <see cref="EarningsRankingService.PrecalculadoDura"/>.
-    /// Lo usa el precálculo en segundo plano para que la pantalla no espere el cálculo completo.
-    /// </summary>
-    Task PrecalcularAsync(DateTime cutoff, int? windowDays, CancellationToken ct = default);
+    /// <summary>Fecha de la última foto semanal (el corte por defecto de la pantalla), o null si todavía no hay.</summary>
+    Task<DateTime?> UltimaFotoAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -39,23 +37,6 @@ public class EarningsRankingService : IEarningsRankingService
     public static readonly int[] AllowedWindows = { 30, 90, 180, 365 };
     public const int DefaultWindow = 180;
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
-
-    /// <summary>
-    /// Lo que dura un ranking que dejó el precálculo: más que su intervalo, para que entre dos vueltas la pantalla
-    /// siempre lo encuentre hecho. El precálculo lo reescribe antes de que venza.
-    /// </summary>
-    public static readonly TimeSpan PrecalculadoDura = TimeSpan.FromMinutes(25);
-
-    private static long _ultimoUso;
-
-    /// <summary>
-    /// Tiempo desde la última página o exportación pedida (reloj monótono del proceso: solo mide lo transcurrido);
-    /// null si nunca se pidió. El precálculo deja de recalcular cuando nadie usa el reporte.
-    /// </summary>
-    public static TimeSpan? TiempoSinUso
-    {
-        get { var t = Interlocked.Read(ref _ultimoUso); return t == 0 ? null : TimeSpan.FromMilliseconds(Environment.TickCount64 - t); }
-    }
 
     // Cerrojos por tramos: un arreglo fijo evita que el diccionario de cerrojos crezca con cada clave (corte x ventana).
     private const int LockStripes = 32;
@@ -96,8 +77,20 @@ public class EarningsRankingService : IEarningsRankingService
     public async Task<PagedResult<EarningsRankRowView>> GetPageAsync(DateTime cutoff, int? windowDays,
         GridDataRequest request, CancellationToken ct = default)
     {
-        var rows = Filter(await RankingAsync(cutoff, windowDays, ct), request.Search);
         var (page, pageSize) = GridQueryableExtensions.ResolvePage(request);
+        if (await FotoAsync(cutoff, windowDays, ct) is { } foto)
+        {
+            var filtradas = Buscar(foto, request.Search);
+            return new PagedResult<EarningsRankRowView>
+            {
+                Items      = await AVista(filtradas.OrderBy(s => s.Rank).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct),
+                TotalCount = await filtradas.CountAsync(ct),
+                Page       = page,
+                PageSize   = pageSize
+            };
+        }
+
+        var rows = Filter(await RankingAsync(cutoff, windowDays, ct), request.Search);
         return new PagedResult<EarningsRankRowView>
         {
             Items      = rows.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
@@ -109,7 +102,47 @@ public class EarningsRankingService : IEarningsRankingService
 
     public async Task<IReadOnlyList<EarningsRankRowView>> GetAllAsync(DateTime cutoff, int? windowDays, string? search,
         CancellationToken ct = default) =>
-        Filter(await RankingAsync(cutoff, windowDays, ct), search);
+        await FotoAsync(cutoff, windowDays, ct) is { } foto
+            ? await AVista(Buscar(foto, search).OrderBy(s => s.Rank)).ToListAsync(ct)
+            : Filter(await RankingAsync(cutoff, windowDays, ct), search);
+
+    public async Task<DateTime?> UltimaFotoAsync(CancellationToken ct = default) =>
+        await _db.EarningsRankingSnapshots.AsNoTracking().MaxAsync(s => (DateTime?)s.SnapshotDate, ct);
+
+    /// <summary>
+    /// Las filas de la foto semanal de (corte, ventana), o null si ese corte no tiene foto: solo se guardan la ventana de
+    /// la foto (180 días) y de por vida, con fecha de domingo. Sin foto, el ranking se calcula al momento como antes.
+    /// </summary>
+    private async Task<IQueryable<EarningsRankingSnapshot>?> FotoAsync(DateTime cutoff, int? windowDays, CancellationToken ct)
+    {
+        var window = NormalizeWindow(windowDays);
+        if (window is not null && window != ReportSnapshotWriter.VentanaDeLaFoto) return null;
+
+        var dia   = cutoff.Date;
+        var clave = window ?? EarningsRankingSnapshot.DePorVida;
+        var filas = _db.EarningsRankingSnapshots.AsNoTracking().Where(s => s.SnapshotDate == dia && s.WindowDays == clave);
+        return await filas.AnyAsync(ct) ? filas : null;
+    }
+
+    /// <summary>Nombre o correo que contienen el término, sin distinguir mayúsculas (como el filtro en memoria).</summary>
+    private IQueryable<EarningsRankingSnapshot> Buscar(IQueryable<EarningsRankingSnapshot> filas, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search)) return filas;
+        var t = search.Trim().ToUpperInvariant();
+        const string bin = GridQueryableExtensions.IntercalacionBinaria;
+        // En SQL Server, en mayúsculas con intercalación binaria: recorre la foto, pero varias veces más barato.
+        return _db.Database.IsRelational()
+            ? filas.Where(s => EF.Functions.Collate(s.MemberName.ToUpper(), bin).Contains(t)
+                            || EF.Functions.Collate(s.Email.ToUpper(), bin).Contains(t))
+            : filas.Where(s => s.MemberName.ToUpper().Contains(t) || s.Email.ToUpper().Contains(t));
+    }
+
+    private static IQueryable<EarningsRankRowView> AVista(IQueryable<EarningsRankingSnapshot> filas) =>
+        filas.Select(s => new EarningsRankRowView
+        {
+            Rank = s.Rank, MemberId = s.MemberId, Username = s.Username, MemberName = s.MemberName,
+            Email = s.Email, Country = s.Country, Total = s.Total
+        });
 
     private static List<EarningsRankRowView> Filter(IReadOnlyList<EarningsRankRowView> rows, string? search)
     {
@@ -119,31 +152,25 @@ public class EarningsRankingService : IEarningsRankingService
                             || r.Email.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    public async Task PrecalcularAsync(DateTime cutoff, int? windowDays, CancellationToken ct = default) =>
-        await RankingAsync(cutoff, windowDays, ct, recalcular: true);
-
-    private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays,
-        CancellationToken ct, bool recalcular = false)
+    private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays, CancellationToken ct)
     {
-        if (!recalcular) Interlocked.Exchange(ref _ultimoUso, Environment.TickCount64);
         var window = NormalizeWindow(windowDays);
         var day    = cutoff.Date;
         var today  = _clock.Now.Date;
         if (day > today) day = today;
         var key = $"reports:earnings:{day:yyyyMMdd}:{window?.ToString() ?? "all"}";
 
-        if (!recalcular && TryGetCached(key, out var cached)) return cached;
+        if (TryGetCached(key, out var cached)) return cached;
 
         var gate = Locks[(uint)key.GetHashCode() % LockStripes];
         await gate.WaitAsync(ct);
         try
         {
-            if (!recalcular && TryGetCached(key, out cached)) return cached;
+            if (TryGetCached(key, out cached)) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
             var token  = CurrentToken();
             var ranked = await ComputeAsync(day, window, ct);
-            _cache.Set(key, ranked, new MemoryCacheEntryOptions
-                    { AbsoluteExpirationRelativeToNow = recalcular ? PrecalculadoDura : CacheFor }
+            _cache.Set(key, ranked, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
                 .AddExpirationToken(new CancellationChangeToken(token)));
             return ranked;
         }
@@ -164,14 +191,19 @@ public class EarningsRankingService : IEarningsRankingService
         return false;
     }
 
-    private async Task<IReadOnlyList<EarningsRankRowView>> ComputeAsync(DateTime day, int? window, CancellationToken ct)
+    private Task<IReadOnlyList<EarningsRankRowView>> ComputeAsync(DateTime day, int? window, CancellationToken ct) =>
+        CalcularAsync(_db, day, window, ct);
+
+    /// <summary>El ranking completo de (corte, ventana), en orden. Lo usan la pantalla (sin foto) y la foto semanal.</summary>
+    internal static async Task<IReadOnlyList<EarningsRankRowView>> CalcularAsync(AppDbContext db, DateTime day, int? window,
+        CancellationToken ct)
     {
         var to   = day.AddDays(1);                                          // el corte incluye su día entero
         var from = window is null ? (DateTime?)null : day.AddDays(1 - window.Value);
 
         var totals = await (
-            from t in EarningsQueries.TotalsByMember(_db, @from, to)
-            join m in _db.MemberProfiles.AsNoTracking() on t.MemberId equals m.MemberId
+            from t in EarningsQueries.TotalsByMember(db, @from, to)
+            join m in db.MemberProfiles.AsNoTracking() on t.MemberId equals m.MemberId
             where !m.IsCorporateAccount && t.Total > 0
             select new
             {

@@ -7939,6 +7939,50 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("S3StorageConfig", (string)null);
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.EarningsRankingSnapshot", b =>
+                {
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("WindowDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MemberName")
+                        .IsRequired()
+                        .HasMaxLength(201)
+                        .HasColumnType("nvarchar(201)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("SnapshotDate", "WindowDays", "Rank");
+
+                    b.ToTable("EarningsRankingSnapshots");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberAddressHistory", b =>
                 {
                     b.Property<long>("Id")
@@ -8732,6 +8776,59 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("MemberId", "ChangedAt");
 
                     b.ToTable("MemberStatusHistories");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.RankStandingSnapshot", b =>
+                {
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MemberName")
+                        .IsRequired()
+                        .HasMaxLength(201)
+                        .HasColumnType("nvarchar(201)");
+
+                    b.Property<int>("RankDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RankName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("RankSortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Since")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("SnapshotDate", "Mode", "Position");
+
+                    b.ToTable("RankStandingSnapshots");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipLevel", b =>

@@ -53,9 +53,23 @@
 
 @if (_total is not null)
 {
-    <div class="text-muted small mb-2">@NumeroCorto.Cantidad(_total.Value) results</div>
+    <div class="text-muted small mb-2">
+        @NumeroCorto.Cantidad(_total.Value) results
+        <span class="ms-2">
+            @if (DesdeLaFoto)
+            {
+                <i class="ri-camera-line me-1"></i>@($"Weekly snapshot as of {Cutoff:MMM d, yyyy} · refreshed every Monday")
+            }
+            else
+            {
+                <i class="ri-flashlight-line me-1"></i>@("Calculated live for the selected date")
+            }
+        </span>
+    </div>
 }
 
+@if (_listo)
+{
 <GridCargando Visible="_cargando" Texto="Loading…">
 <SfGrid TValue="EarningsRow" @ref="_grid" @key="IsWindow" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
@@ -78,6 +92,7 @@
     </GridColumns>
 </SfGrid>
 </GridCargando>
+}
 
 @code {
     // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
@@ -101,6 +116,13 @@
     private DateTime _cutoff = DateTime.Today.AddDays(-1);
     private bool     _exporting;
     private string?  _error;
+    private DateTime? _foto;     // última foto semanal: el corte por defecto (null si todavía no hay)
+    private bool     _listo;     // el grid espera a saber el corte por defecto, para no leer dos veces
+
+    // La foto semanal guarda la ventana de 180 días y de por vida, con fecha de domingo; otro corte o ventana se
+    // calcula al momento (tarda unos segundos con el volumen real).
+    private bool DesdeLaFoto => _foto is { } f && Cutoff == f.Date && (!IsWindow || _days == 180);
+    private DateTime CortePorDefecto => _foto?.Date ?? Today.AddDays(-1);
 
     private static DateTime Today => DateTime.Today;   // hora de servidor
 
@@ -112,6 +134,18 @@
     // Un corte futuro se trata como hoy (el servidor tambien lo acota).
     private DateTime Cutoff => _cutoff.Date > Today ? Today : _cutoff.Date;
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<DateTime?>>("api/v1/admin/reports/earnings/snapshot");
+            _foto = resp?.Data;
+        }
+        catch { /* sin la fecha de la foto, el corte por defecto es ayer y el servidor decide */ }
+        _cutoff = CortePorDefecto;
+        _listo  = true;
+    }
+
     protected override void OnParametersSet()
     {
         var isWindow = IsWindow;
@@ -119,7 +153,7 @@
         {
             _search = _appliedSearch = string.Empty;
             _days   = 180;
-            _cutoff = Today.AddDays(-1);
+            _cutoff = CortePorDefecto;
             _total  = null;
             _error  = null;
         }
@@ -182,6 +216,8 @@
         }
         finally { _exporting = false; }
     }
+
+    private sealed record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 
     private sealed class EarningsRow
     {

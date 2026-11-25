@@ -59,7 +59,15 @@
 
 @if (_total is not null)
 {
-    <div class="text-muted small mb-2">@NumeroCorto.Cantidad(_total.Value) results</div>
+    <div class="text-muted small mb-2">
+        @NumeroCorto.Cantidad(_total.Value) results
+        @if (_fotoCargada)
+        {
+            <span class="ms-2"><i class="ri-camera-line me-1"></i>@(_foto is { } f
+                ? $"Weekly snapshot as of {f:MMM d, yyyy} · refreshed every Monday"
+                : "No weekly snapshot yet: calculated live")</span>
+        }
+    </div>
 }
 
 <GridCargando Visible="_cargando" Texto="Loading…">
@@ -114,6 +122,8 @@
     private bool?     _lastIsLifetime;
     private bool      _exporting;
     private string?   _error;
+    private DateTime? _foto;          // fecha de la foto semanal que se muestra (null: se calcula al momento)
+    private bool      _fotoCargada;
 
     private bool   IsLifetime => Nav.Uri.Contains("/lifetime-rank", StringComparison.OrdinalIgnoreCase);
     private string Mode       => IsLifetime ? "Lifetime" : "Current";
@@ -135,9 +145,10 @@
         catch { /* sin la lista, el filtro queda en «All ranks» */ }
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         var isLifetime = IsLifetime;
+        if (_lastIsLifetime != isLifetime) await CargarFotoAsync();
         if (_lastIsLifetime is not null && _lastIsLifetime != isLifetime)
         {
             _search = _appliedSearch = string.Empty;
@@ -149,6 +160,18 @@
             _error = null;
         }
         _lastIsLifetime = isLifetime;
+    }
+
+    private async Task CargarFotoAsync()
+    {
+        _fotoCargada = false;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<DateTime?>>($"api/v1/admin/reports/ranks/snapshot?mode={Mode}");
+            _foto        = resp?.Data;
+            _fotoCargada = true;
+        }
+        catch { /* sin la fecha, no se muestra la leyenda */ }
     }
 
     private Task OnServerErrorAsync(string? errorCode)

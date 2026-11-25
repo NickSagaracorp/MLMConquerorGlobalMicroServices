@@ -29,6 +29,11 @@ public class AdminRankStandingsReportController : ControllerBase
         _clock = clock;
     }
 
+    /// <summary>GET reports/ranks/snapshot?mode= — fecha de la foto semanal que se muestra (null: se calcula al momento).</summary>
+    [HttpGet("snapshot")]
+    public async Task<IActionResult> Snapshot([FromQuery] RankReportMode mode, CancellationToken ct) =>
+        Ok(ApiResponse<DateTime?>.Ok(await _ranks.UltimaFotoAsync(mode, ct)));
+
     /// <summary>POST reports/ranks/grid?mode=&amp;rankId=&amp;statuses=&amp;sinceFrom=&amp;sinceTo= — la búsqueda va en el cuerpo.</summary>
     [HttpPost("grid")]
     public async Task<IActionResult> Grid([FromBody] GridDataRequest request, [FromQuery] RankReportMode mode,

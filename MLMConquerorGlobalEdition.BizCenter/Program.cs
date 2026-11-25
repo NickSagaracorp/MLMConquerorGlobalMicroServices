@@ -277,6 +277,9 @@ builder.Services.AddScoped<ApplyDualLegDeltasJob>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IMemberCountrySnapshotWriter,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.MemberCountrySnapshotWriter>();
 builder.Services.AddScoped<MemberCountrySnapshotJob>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IReportSnapshotWriter,
+                            MLMConquerorGlobalEdition.Repository.Services.Reports.ReportSnapshotWriter>();
+builder.Services.AddScoped<ReportSnapshotJob>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Reports.IClubRecognitionDetector,
                             MLMConquerorGlobalEdition.Repository.Services.Reports.ClubRecognitionDetector>();
 builder.Services.AddScoped<ClubRecognitionJob>();
@@ -482,6 +485,16 @@ RecurringJob.AddOrUpdate<ClubRecognitionJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     "45 5 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
+
+// Reportes de ganancias y de rango: foto semanal (como el CSV de los lunes del sistema anterior). Los lunes a las 06:15
+// UTC = 01:15 en invierno y 02:15 en verano, despues de Club Recognition; la semana la decide IDateTimeProvider.Now.
+// Si al arrancar falta la foto de la ultima semana cerrada, se arma una vez.
+RecurringJob.AddOrUpdate<ReportSnapshotJob>(
+    "report-snapshot",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "15 6 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "bizcenter" });
+BackgroundJob.Enqueue<ReportSnapshotJob>(job => job.ExecuteIfMissingAsync(CancellationToken.None));
 
 RecurringJob.AddOrUpdate<ExpiredTokenCleanupJob>(
     "expired-token-cleanup",

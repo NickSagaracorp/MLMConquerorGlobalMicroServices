@@ -25,14 +25,21 @@ public class AdminReportsController : ControllerBase
         _clock    = clock;
     }
 
-    private DateTime Cutoff(DateTime? cutoff) => (cutoff ?? _clock.Now.Date.AddDays(-1)).Date;
+    /// <summary>Sin corte: el de la última foto semanal; si todavía no hay foto, ayer.</summary>
+    private async Task<DateTime> CutoffAsync(DateTime? cutoff, CancellationToken ct) =>
+        (cutoff ?? await _earnings.UltimaFotoAsync(ct) ?? _clock.Now.Date.AddDays(-1)).Date;
 
-    /// <summary>POST reports/earnings/grid?cutoff=yyyy-MM-dd&amp;days=180 — sin days: de por vida.</summary>
+    /// <summary>GET reports/earnings/snapshot — fecha de la última foto semanal (null si todavía no hay).</summary>
+    [HttpGet("earnings/snapshot")]
+    public async Task<IActionResult> EarningsSnapshot(CancellationToken ct) =>
+        Ok(ApiResponse<DateTime?>.Ok(await _earnings.UltimaFotoAsync(ct)));
+
+    /// <summary>POST reports/earnings/grid?cutoff=yyyy-MM-dd&amp;days=180 — sin days: de por vida; sin cutoff: la última foto.</summary>
     [HttpPost("earnings/grid")]
     public async Task<IActionResult> EarningsGrid([FromBody] GridDataRequest request,
         [FromQuery] DateTime? cutoff, [FromQuery] int? days, CancellationToken ct) =>
         Ok(ApiResponse<PagedResult<EarningsRankRowView>>.Ok(
-            await _earnings.GetPageAsync(Cutoff(cutoff), days, request, ct)));
+            await _earnings.GetPageAsync(await CutoffAsync(cutoff, ct), days, request, ct)));
 
     /// <summary>GET reports/earnings/export?cutoff=&amp;days=&amp;search= — CSV con las filas filtradas.</summary>
     [HttpGet("earnings/export")]
@@ -41,7 +48,7 @@ public class AdminReportsController : ControllerBase
     public async Task<IActionResult> EarningsExport([FromQuery] DateTime? cutoff, [FromQuery] int? days,
         [FromQuery] string? search, CancellationToken ct)
     {
-        var date   = Cutoff(cutoff);
+        var date   = await CutoffAsync(cutoff, ct);
         var window = EarningsRankingService.NormalizeWindow(days);
         var rows   = await _earnings.GetAllAsync(date, days, search, ct);
         var bytes  = _csv.Write(rows,
