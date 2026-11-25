@@ -16,6 +16,7 @@
 @inject IViewContextService ViewContext
 
 <PageTitle>@Current.Title</PageTitle>
+<CambioDeRuta Rutas="@(new[] { "/admin/club-recognition/all", "/admin/club-recognition/not-recognized-online", "/admin/club-recognition/not-recognized-events", "/admin/club-recognition/recognized-online", "/admin/club-recognition/recognized-events" })" AlCambiar="AlCambiarDeRutaAsync" />
 
 <h4 class="mb-1">@Current.Title</h4>
 <p class="text-muted mb-4">@Current.Subtitle</p>
@@ -107,6 +108,14 @@
 </GridCargando>
 
 @code {
+    // Pasar entre las rutas de esta página reutiliza la instancia: CambioDeRuta avisa y aquí se reinicia la vista.
+    private Task AlCambiarDeRutaAsync()
+    {
+        OnParametersSet();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
     // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
     // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
     private bool _cargando;

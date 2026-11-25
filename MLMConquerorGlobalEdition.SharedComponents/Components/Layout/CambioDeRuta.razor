@@ -1,0 +1,37 @@
+@*
+  Avisa a una página con varias rutas (@page) cuando se navega de una de sus rutas a otra. Con render interactivo por
+  página, Blazor reutiliza la misma instancia de la página al pasar, por ejemplo, de Earnings 180 Days a Earnings
+  Lifetime y, como la página no tiene parámetros, no vuelve a renderizar: se quedaba mostrando la vista anterior.
+  Solo avisa si la ruta nueva es una de Rutas (al salir a otra página no hace nada) y si cambió la ruta, no la
+  consulta.
+*@
+@implements IDisposable
+@inject NavigationManager Nav
+
+@code {
+    /// <summary>Las rutas de la página (las de sus @page), p. ej. "/admin/reports/earnings-window".</summary>
+    [Parameter, EditorRequired] public string[] Rutas { get; set; } = Array.Empty<string>();
+
+    /// <summary>Lo que hace la página al cambiar de ruta: reiniciar filtros y volver a renderizar.</summary>
+    [Parameter, EditorRequired] public EventCallback AlCambiar { get; set; }
+
+    private string _ruta = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _ruta = Ruta(Nav.Uri);
+        Nav.LocationChanged += AlNavegar;
+    }
+
+    private void AlNavegar(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var ruta = Ruta(e.Location);
+        if (ruta == _ruta || !Rutas.Any(r => string.Equals(r.TrimEnd('/'), ruta, StringComparison.OrdinalIgnoreCase))) return;
+        _ruta = ruta;
+        _ = InvokeAsync(() => AlCambiar.InvokeAsync());
+    }
+
+    private string Ruta(string uri) => "/" + Nav.ToBaseRelativePath(uri).Split('?', '#')[0].TrimEnd('/');
+
+    public void Dispose() => Nav.LocationChanged -= AlNavegar;
+}

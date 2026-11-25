@@ -13,6 +13,7 @@
 @inject IViewContextService ViewContext
 
 <PageTitle>@Title</PageTitle>
+<CambioDeRuta Rutas="@(new[] { "/admin/reports/earnings-lifetime", "/admin/reports/earnings-window" })" AlCambiar="AlCambiarDeRutaAsync" />
 
 <h4 class="mb-1">@Title</h4>
 <p class="text-muted mb-4">@Subtitle</p>
@@ -95,6 +96,14 @@
 }
 
 @code {
+    // Pasar entre las rutas de esta página reutiliza la instancia: CambioDeRuta avisa y aquí se reinicia la vista.
+    private Task AlCambiarDeRutaAsync()
+    {
+        OnParametersSet();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
     // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
     // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
     private bool _cargando;
