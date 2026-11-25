@@ -163,6 +163,31 @@ public static class GridQueryableExtensions
         return predicate.Length == 0 ? source : source.Where(predicate.ToString(), values.ToArray());
     }
 
+    /// <summary>
+    /// Saca de la petición los filtros "igual a" de <paramref name="field"/> y devuelve sus valores, para que quien
+    /// llama los aplique sobre la entidad antes de proyectar. Sirve para las columnas que el DTO enseña como texto pero
+    /// que en la tabla son un enum (Status.ToString()): filtrar sobre la proyección es un CASE por fila que ningún
+    /// índice resuelve; sobre la entidad es una comparación de entero. Solo los saca cuando todos los filtros se unen
+    /// con "and": con un "or" de por medio, aplicarlos aparte cambiaría el resultado, y se quedan donde estaban.
+    /// </summary>
+    public static bool TryTakeEqualFilters(this GridDataRequest request, string field, out List<string> values)
+    {
+        values = new List<string>();
+        if (request.Filters is null || request.Filters.Count == 0) return false;
+        if (request.Filters.Any(f => string.Equals(f.Logic, "or", StringComparison.OrdinalIgnoreCase))) return false;
+
+        var propios = request.Filters
+            .Where(f => string.Equals(f.Field, field, StringComparison.OrdinalIgnoreCase)
+                     && string.Equals(f.Operator, "equal", StringComparison.OrdinalIgnoreCase)
+                     && f.Value is not null)
+            .ToList();
+        if (propios.Count == 0) return false;
+
+        foreach (var f in propios) request.Filters.Remove(f);
+        values = propios.Select(f => f.Value!).ToList();
+        return true;
+    }
+
     public static IQueryable<T> ApplySorts<T>(this IQueryable<T> source, List<GridSort>? sorts)
     {
         if (sorts is null || sorts.Count == 0) return source;

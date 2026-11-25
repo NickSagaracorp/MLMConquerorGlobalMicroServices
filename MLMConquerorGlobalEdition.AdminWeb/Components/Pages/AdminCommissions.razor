@@ -2,6 +2,8 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor.Data
 
 <PageTitle>Commissions — Admin</PageTitle>
 
@@ -14,28 +16,31 @@
     </div>
 }
 
+@* Contadores por estado de TODA la tabla, de su propia llamada (commissions/stats, en caché unos minutos en la API). *@
+@* Antes se contaban sobre la página cargada; con el grid de servidor esa página no vive aquí, y paginar o filtrar  *@
+@* no debe repetir un agrupado de 2,4 millones de filas. Si la llamada falla, las tarjetas enseñan "—".             *@
 <div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-primary">@_items.Count</div>
-            <div class="small text-muted">Total (Page)</div>
+            <div class="fw-bold fs-4 text-primary">@FormatStat(_stats?.Total)</div>
+            <div class="small text-muted">Total</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-warning">@_items.Count(x => x.Status == "Pending")</div>
+            <div class="fw-bold fs-4 text-warning">@FormatStat(_stats?.Pending)</div>
             <div class="small text-muted">Pending</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-success">@_items.Count(x => x.Status == "Paid")</div>
+            <div class="fw-bold fs-4 text-success">@FormatStat(_stats?.Paid)</div>
             <div class="small text-muted">Paid</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-danger">@_items.Count(x => x.Status == "Cancelled")</div>
+            <div class="fw-bold fs-4 text-danger">@FormatStat(_stats?.Cancelled)</div>
             <div class="small text-muted">Cancelled</div>
         </div>
     </div>
@@ -47,100 +52,92 @@
             <i class="ri-money-dollar-circle-line me-2 text-primary"></i>Commission Earnings
         </h6>
         <select class="form-select form-select-sm w-auto" style="min-width:140px"
-                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+                @bind="_statusFilter" @bind:after="OnStatusChangedAsync">
             <option value="">All Statuses</option>
             <option value="Pending">Pending</option>
             <option value="Paid">Paid</option>
             <option value="Cancelled">Cancelled</option>
         </select>
-        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" title="Refresh from server" @onclick="RefreshAsync"><i class="ri-refresh-line"></i></button>
         <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
             <i class="ri-add-line me-1"></i>New Commission
         </button>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else
-        {
-            <SfGrid TValue="CommissionDto" DataSource="@_items"
-                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn HeaderText="Member" Width="150">
-                        <Template>
-                            <a href="/admin/members/@(((CommissionDto)context).BeneficiaryMemberId)" class="text-primary small fw-semibold text-decoration-none">
-                                @(((CommissionDto)context).BeneficiaryMemberId)
-                            </a>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Commission Type" Width="180">
-                        <Template><span class="small">@(((CommissionDto)context).CommissionTypeName)</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
-                        <Template><span class="fw-semibold">$@(((CommissionDto)context).Amount.ToString("F2"))</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Status" Width="110">
-                        <Template>
-                            <span class="badge @StatusBadge(((CommissionDto)context).Status)">@(((CommissionDto)context).Status)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Earned Date" Width="130">
-                        <Template><span class="small text-muted">@(((CommissionDto)context).EarnedDate.ToString("yyyy-MM-dd"))</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Payment Date" Width="130">
-                        <Template>
-                            @if (((CommissionDto)context).PaymentDate.HasValue)
-                            {<text><span class="small text-muted">@(((CommissionDto)context).PaymentDate!.Value.ToString("yyyy-MM-dd"))</span></text>}
-                            else
-                            {<text><span class="small text-muted">—</span></text>}
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Manual" Width="90" TextAlign="TextAlign.Center">
-                        <Template>
-                            <span class="badge @(((CommissionDto)context).IsManualEntry ? "bg-info text-dark" : "bg-light text-dark border")">
-                                @(((CommissionDto)context).IsManualEntry ? "Yes" : "No")
-                            </span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="150" TextAlign="TextAlign.Center">
-                        <Template>
-                            @if (((CommissionDto)context).Status == "Pending")
-                            {
-                                <text>
-                                    <button class="btn btn-sm btn-outline-success py-0 me-1"
-                                            @onclick="() => MarkPaid((CommissionDto)context)">
-                                        <i class="ri-check-line"></i> Paid
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger py-0"
-                                            @onclick="() => ConfirmCancel((CommissionDto)context)">
-                                        <i class="ri-close-line"></i>
-                                    </button>
-                                </text>
-                            }
-                        </Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-
-            @if (_totalPages > 1)
-            {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
-                        </ul>
-                    </nav>
-                </div>
-            }
-        }
+        @* Grid de servidor: filtros de columna, orden y paginación viajan a commissions/grid por ServerGridAdaptor  *@
+        @* y se aplican sobre TODAS las comisiones, no solo sobre la página cargada. El estado del desplegable va en *@
+        @* la query string. Filtro de tipo Menu (operador + valor) y no Excel: el de Excel pide al servidor la lista *@
+        @* de valores de la columna, que con millones de filas tarda segundos por apertura. Páginas de hasta 100,    *@
+        @* que es el tope que aplica la API. GridCargando tapa el grid mientras dura cada lectura.                   *@
+        <GridCargando Visible="_cargando" Texto="Loading commissions…">
+        <SfGrid TValue="CommissionDto" @ref="_grid"
+                AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="CommissionDto"
+                                   Http="Http"
+                                   Endpoint="api/v1/admin/commissions/grid"
+                                   QueryStringProvider="BuildQueryString"
+                                   OnLoading="OnCargandoAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
+            <GridColumns>
+                <GridColumn Field="@nameof(CommissionDto.BeneficiaryMemberId)" HeaderText="Member" Width="150">
+                    <Template>
+                        <a href="/admin/members/@(((CommissionDto)context).BeneficiaryMemberId)" class="text-primary small fw-semibold text-decoration-none">
+                            @(((CommissionDto)context).BeneficiaryMemberId)
+                        </a>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.CommissionTypeName)" HeaderText="Commission Type" Width="180">
+                    <Template><span class="small">@(((CommissionDto)context).CommissionTypeName)</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.Amount)" HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
+                    <Template><span class="fw-semibold">$@(((CommissionDto)context).Amount.ToString("F2"))</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.Status)" HeaderText="Status" Width="110">
+                    <Template>
+                        <span class="badge @StatusBadge(((CommissionDto)context).Status)">@(((CommissionDto)context).Status)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.EarnedDate)" HeaderText="Earned Date" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date">
+                    <Template><span class="small text-muted">@(((CommissionDto)context).EarnedDate.ToString("yyyy-MM-dd"))</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.PaymentDate)" HeaderText="Payment Date" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date">
+                    <Template>
+                        @if (((CommissionDto)context).PaymentDate.HasValue)
+                        {<text><span class="small text-muted">@(((CommissionDto)context).PaymentDate!.Value.ToString("yyyy-MM-dd"))</span></text>}
+                        else
+                        {<text><span class="small text-muted">—</span></text>}
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CommissionDto.IsManualEntry)" HeaderText="Manual" Width="90" TextAlign="TextAlign.Center" Type="ColumnType.Boolean">
+                    <Template>
+                        <span class="badge @(((CommissionDto)context).IsManualEntry ? "bg-info text-dark" : "bg-light text-dark border")">
+                            @(((CommissionDto)context).IsManualEntry ? "Yes" : "No")
+                        </span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="Actions" Width="150" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                    <Template>
+                        @if (((CommissionDto)context).Status == "Pending")
+                        {
+                            <text>
+                                <button class="btn btn-sm btn-outline-success py-0 me-1"
+                                        @onclick="() => MarkPaid((CommissionDto)context)">
+                                    <i class="ri-check-line"></i> Paid
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger py-0"
+                                        @onclick="() => ConfirmCancel((CommissionDto)context)">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </text>
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+        </GridCargando>
     </div>
 </div>
 
@@ -212,44 +209,70 @@
 }
 
 @code {
-    private List<CommissionDto> _items = new();
-    private bool _loading = true;
+    private SfGrid<CommissionDto>? _grid;
     private bool _saving;
     private string? _alertMsg;
     private bool _alertIsError;
-    private int _page = 1;
-    private const int PageSize = 25;
-    private int _totalCount;
-    private int _totalPages = 1;
     private string _statusFilter = string.Empty;
     private bool _showForm;
     private bool _showCancelConfirm;
     private CommissionFormModel _form = new();
     private CommissionDto? _cancelTarget;
+    private CommissionStatsDto? _stats;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura.
+    private bool _cargando;
 
-    private async Task LoadAsync()
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; StateHasChanged();
-        try
-        {
-            var url = $"api/v1/admin/commissions?page={_page}&pageSize={PageSize}";
-            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CommissionDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items = resp.Data.Items.ToList();
-                _totalCount = resp.Data.TotalCount;
-                _totalPages = resp.Data.TotalPages;
-            }
-            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load commissions."; _alertIsError = true; }
-        }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+    // El grid se carga solo por el adaptador; aquí solo hacen falta los contadores de la cabecera.
+    protected override async Task OnInitializedAsync() => await LoadStatsAsync();
+
+    /// <summary>
+    /// Query string que ServerGridAdaptor añade al endpoint en cada lectura. Se evalúa en cada lectura, así que
+    /// siempre lleva el estado actual del desplegable, que va aparte de los filtros de columna.
+    /// </summary>
+    private string? BuildQueryString() =>
+        string.IsNullOrWhiteSpace(_statusFilter) ? null : $"status={Uri.EscapeDataString(_statusFilter)}";
+
+    /// <summary>Cambio del desplegable de estado: el grid vuelve a leer con el estado nuevo en la query string.</summary>
+    private async Task OnStatusChangedAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    /// <summary>
+    /// "Refresh" y después de crear, pagar o cancelar: vuelve a leer el grid y recalcula los contadores sin caché,
+    /// para que la pantalla enseñe el cambio que se acaba de hacer.
+    /// </summary>
+    private async Task RefreshAsync()
+    {
+        var stats = LoadStatsAsync(bypassCache: true);
+        if (_grid is not null) await _grid.Refresh();
+        await stats;
+    }
+
+    private async Task LoadStatsAsync(bool bypassCache = false)
+    {
+        try
+        {
+            var url = "api/v1/admin/commissions/stats";
+            if (bypassCache) url += "?bypassCache=true";
+            var resp = await Http.GetFromJsonAsync<ApiResp<CommissionStatsDto>>(url);
+            if (resp?.Success == true) _stats = resp.Data;
+        }
+        catch
+        {
+            // Las tarjetas enseñan "—" si no hay contadores; el grid es lo que manda y no debe romperse por ellas.
+        }
+        finally { StateHasChanged(); }
+    }
+
+    private static string FormatStat(int? value) => value?.ToString("N0") ?? "—";
 
     private void OpenCreate() { _form = new(); _showForm = true; }
     private void CloseForm() { _showForm = false; }
@@ -262,7 +285,7 @@
         try
         {
             var response = await Http.PostAsJsonAsync("api/v1/admin/commissions", _form);
-            if (response.IsSuccessStatusCode) { _alertMsg = "Commission created."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission created."; _alertIsError = false; CloseForm(); await RefreshAsync(); }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -278,7 +301,7 @@
         try
         {
             var response = await Http.DeleteAsync($"api/v1/admin/commissions/{_cancelTarget.Id}");
-            if (response.IsSuccessStatusCode) { _alertMsg = "Commission cancelled."; _alertIsError = false; _showCancelConfirm = false; _cancelTarget = null; await LoadAsync(); }
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission cancelled."; _alertIsError = false; _showCancelConfirm = false; _cancelTarget = null; await RefreshAsync(); }
             else { _alertMsg = $"Cancel failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -291,7 +314,7 @@
         try
         {
             var response = await Http.PostAsJsonAsync("api/v1/admin/commissions/pay", new { CommissionIds = new[] { dto.Id } });
-            if (response.IsSuccessStatusCode) { _alertMsg = "Commission marked as paid."; _alertIsError = false; await LoadAsync(); }
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission marked as paid."; _alertIsError = false; await RefreshAsync(); }
             else { _alertMsg = $"Pay failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -310,7 +333,10 @@
         public string? Notes { get; set; }
     }
 
-    private record CommissionDto(string Id, string BeneficiaryMemberId, string CommissionTypeName, decimal Amount, string Status, DateTime EarnedDate, DateTime? PaymentDate, bool IsManualEntry);
+    // Público porque lo usan el grid y el adaptador genérico. Mismo contrato JSON que AdminCommissionDto de AdminAPI:
+    // los nombres de las propiedades son los campos de filtro y orden que viajan al servidor.
+    public record CommissionDto(string Id, string BeneficiaryMemberId, string CommissionTypeName, decimal Amount, string Status, DateTime EarnedDate, DateTime? PaymentDate, bool IsManualEntry);
+    // Espejo de CommissionStatsDto de AdminAPI (AdminWeb habla con la API por HTTP y no referencia su proyecto).
+    private record CommissionStatsDto(int Total, int Pending, int Paid, int Cancelled);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }

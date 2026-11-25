@@ -6,7 +6,10 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.BackfillFsbCountdo
 using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.CancelCommission;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.CreateCommission;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.GetAdminCommissions;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.GetAdminCommissionsGrid;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.GetCommissionStats;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Commissions.PayCommissions;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -33,6 +36,43 @@ public class AdminCommissionsController : ControllerBase
             return BadRequest(ApiResponse<PagedResult<AdminCommissionDto>>.Fail(result.ErrorCode!, result.Error!));
 
         return Ok(ApiResponse<PagedResult<AdminCommissionDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de servidor de la pantalla de comisiones. El CustomAdaptor de Syncfusion manda en el cuerpo
+    /// la página, el orden y los filtros de las columnas, y se aplican en SQL sobre toda la tabla, no solo sobre la
+    /// página cargada. <paramref name="status"/> es el desplegable de la cabecera. El GET de arriba se queda para
+    /// quien lo siga usando.
+    /// </summary>
+    [HttpPost("commissions/grid")]
+    public async Task<IActionResult> GetCommissionsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAdminCommissionsGridQuery(request, status), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<AdminCommissionDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<AdminCommissionDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Contadores por estado de toda la tabla para la cabecera de la pantalla, aparte del grid para que paginar o
+    /// filtrar no repita el agrupado. En caché unos minutos; <paramref name="bypassCache"/> es el "Refresh".
+    /// </summary>
+    [HttpGet("commissions/stats")]
+    public async Task<IActionResult> GetCommissionStats(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetCommissionStatsQuery(bypassCache), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<CommissionStatsDto>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<CommissionStatsDto>.Ok(result.Value!));
     }
 
     [HttpPost("commissions")]

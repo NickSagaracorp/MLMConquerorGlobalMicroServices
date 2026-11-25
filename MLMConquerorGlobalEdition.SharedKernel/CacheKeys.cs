@@ -58,6 +58,13 @@ public static class CacheKeys
     public const string AdminMemberStats = "admin:member-stats";
 
     /// <summary>
+    /// Contadores por estado de la pantalla de comisiones del admin (total, pendientes, pagadas, canceladas) sobre
+    /// TODA la tabla. Con 2,4 millones de filas el agrupado tarda lo bastante como para no repetirlo en cada visita;
+    /// "Refresh" lo recalcula.
+    /// </summary>
+    public const string AdminCommissionStats = "admin:commission-stats";
+
+    /// <summary>
     /// CEO / executive dashboard snapshot. The dashboard handler runs ~30 DB
     /// queries (counts, sums, group-bys) — perfect cache candidate. TTL is
     /// short so freshly-billed orders still surface within minutes.
@@ -145,6 +152,7 @@ public static class CacheKeys
     public static readonly TimeSpan DualTeamMyTeamTtl      = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan DualTreeStatsTtl       = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan AdminMembersTtl        = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan AdminCommissionStatsTtl = TimeSpan.FromMinutes(2);
     // Los paneles del admin y los contadores del listado los recalcula AdminAPI en segundo plano cada
     // AdminPanelesIntervalo (PrecalculoDePaneles). Duran tres intervalos: si una vuelta falla, la pantalla sigue
     // leyendo la anterior en vez de recalcular agregados sobre un millon de filas mientras el admin espera.

@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Members;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Security;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccessAudit;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccessAuditGrid;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccountChanges;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetFlaggedSignups;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetThirdParties;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.UnblockFingerprint;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -35,6 +37,23 @@ public class SecurityController : ControllerBase
             return BadRequest(ApiResponse<PagedResult<MemberStatusHistory>>.Fail(result.ErrorCode!, result.Error!));
 
         return Ok(ApiResponse<PagedResult<MemberStatusHistory>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de servidor del registro de auditoría de acceso: página, orden y filtros de las columnas en
+    /// el cuerpo, aplicados en SQL sobre toda la tabla. El GET de arriba se queda para quien lo siga usando.
+    /// </summary>
+    [HttpPost("access-audit/grid")]
+    public async Task<IActionResult> GetAccessAuditGrid(
+        [FromBody] GridDataRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAccessAuditGridQuery(request), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<AccessAuditEntryDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<AccessAuditEntryDto>>.Ok(result.Value!));
     }
 
     [HttpGet("account-changes")]
