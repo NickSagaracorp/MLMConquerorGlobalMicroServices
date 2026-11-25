@@ -65,6 +65,14 @@ public static class CacheKeys
     public const string AdminCommissionStats = "admin:commission-stats";
 
     /// <summary>
+    /// Contadores de la cabecera de Subscriptions (activas, por vencer en 7 dias, canceladas, con auto-renovacion).
+    /// Son cuatro COUNT sobre toda la tabla de suscripciones; con un millon de filas no se repiten en cada carga de
+    /// la pagina, y el boton Refresh los salta (bypassCache).
+    /// </summary>
+    public const string AdminSubscriptionStats = "admin:subscription-stats";
+    public static readonly TimeSpan AdminSubscriptionStatsTtl = TimeSpan.FromMinutes(2);
+
+    /// <summary>
     /// CEO / executive dashboard snapshot. The dashboard handler runs ~30 DB
     /// queries (counts, sums, group-bys) — perfect cache candidate. TTL is
     /// short so freshly-billed orders still surface within minutes.

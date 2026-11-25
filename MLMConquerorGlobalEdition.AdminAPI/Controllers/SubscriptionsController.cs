@@ -1,9 +1,13 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Subscriptions;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Subscriptions.GetSubscriptionStats;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Subscriptions.GetSubscriptionsGrid;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -14,10 +18,46 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class SubscriptionsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IMediator    _mediator;
 
-    public SubscriptionsController(AppDbContext db)
+    public SubscriptionsController(AppDbContext db, IMediator mediator)
     {
-        _db = db;
+        _db       = db;
+        _mediator = mediator;
+    }
+
+    /// <summary>
+    /// Lectura del grid de servidor de Subscriptions en AdminWeb. El CustomAdaptor de Syncfusion manda un
+    /// <see cref="GridDataRequest"/> (pagina, orden, filtros de columna, busqueda) para que filtrar y ordenar abarquen
+    /// TODAS las suscripciones y no solo la pagina cargada. <paramref name="status"/> es el desplegable de la pagina.
+    /// El GET de abajo se queda para quien ya lo usa.
+    /// </summary>
+    [HttpPost("subscriptions/grid")]
+    public async Task<IActionResult> GetSubscriptionsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetSubscriptionsGridQuery(request, status), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<SubscriptionDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<SubscriptionDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>Contadores de la cabecera de Subscriptions sobre toda la tabla (cache corta; Refresh la salta).</summary>
+    [HttpGet("subscriptions/stats")]
+    public async Task<IActionResult> GetSubscriptionStats(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetSubscriptionStatsQuery(bypassCache), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<SubscriptionStatsDto>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<SubscriptionStatsDto>.Ok(result.Value!));
     }
 
     /// <summary>
