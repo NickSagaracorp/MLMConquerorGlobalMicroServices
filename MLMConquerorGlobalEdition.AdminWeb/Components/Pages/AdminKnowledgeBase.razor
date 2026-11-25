@@ -69,8 +69,8 @@
                     <GridColumn HeaderText="Helpful" Width="90" TextAlign="TextAlign.Center">
                         <Template>
                             @{ var a = (KbArticleSummaryDto)context; }
-                            <span class="small text-success">+@a.HelpfulCount</span>
-                            <span class="small text-danger ms-1">-@a.NotHelpfulCount</span>
+                            <span class="small text-success">+@NumeroCorto.Cantidad(a.HelpfulCount)</span>
+                            <span class="small text-danger ms-1">-@NumeroCorto.Cantidad(a.NotHelpfulCount)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Published" Width="120">

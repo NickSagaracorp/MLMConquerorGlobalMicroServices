@@ -70,9 +70,9 @@
                                 <td>@(dto.OrderNo ?? dto.OrderId)</td>
                                 <td>@dto.FullName <span class="text-muted small">(@dto.MemberId)</span></td>
                                 <td>@dto.TokenTypeName</td>
-                                <td class="text-end">@dto.Quantity</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(dto.Quantity)</td>
                                 <td><span class="badge bg-warning text-dark">@dto.CryptoCurrency</span></td>
-                                <td class="text-end">@dto.AmountDue.ToString("C", Usd)</td>
+                                <td class="text-end">@NumeroCorto.Monto(dto.AmountDue)</td>
                                 <td class="text-nowrap text-end">
                                     <button class="btn btn-sm btn-outline-success py-0 me-1" @onclick="() => OpenConfirm(dto)">
                                         <i class="ri-check-line me-1"></i>Confirm payment
@@ -127,9 +127,9 @@
                                 <td>@(dto.OrderNo ?? dto.OrderId)</td>
                                 <td>@dto.FullName <span class="text-muted small">(@dto.MemberId)</span></td>
                                 <td>@dto.TokenTypeName</td>
-                                <td class="text-end">@dto.Quantity</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(dto.Quantity)</td>
                                 <td><span class="badge bg-secondary">@dto.CryptoCurrency</span></td>
-                                <td class="text-end">@dto.AmountDue.ToString("C", Usd)</td>
+                                <td class="text-end">@NumeroCorto.Monto(dto.AmountDue)</td>
                                 <td class="small">@PeriodText(dto.PeriodKey)</td>
                                 <td class="text-nowrap text-end">
                                     <button class="btn btn-sm btn-outline-success py-0" @onclick="() => OpenReopen(dto)">
@@ -184,8 +184,8 @@
                                         <td class="font-monospace small">@dto.PurchaseId</td>
                                         <td>@dto.FullName <span class="text-muted small">(@dto.MemberId)</span></td>
                                         <td>@dto.TokenTypeName</td>
-                                        <td class="text-end">@dto.Quantity</td>
-                                        <td class="text-end">@dto.TotalAmount.ToString("C", Usd)</td>
+                                        <td class="text-end">@NumeroCorto.Cantidad(dto.Quantity)</td>
+                                        <td class="text-end">@NumeroCorto.Monto(dto.TotalAmount)</td>
                                         <td><span class="badge bg-light text-dark">@dto.PaymentMethod</span></td>
                                         <td class="small" title="@dto.Notes">@(dto.Reason ?? "—")</td>
                                         <td class="text-nowrap text-end">
@@ -219,7 +219,7 @@
                     }
                     @if (_confirmTarget is not null)
                     {
-                        <p class="mb-2"><strong>@_confirmTarget.FullName</strong> — @_confirmTarget.Quantity × @_confirmTarget.TokenTypeName, @_confirmTarget.AmountDue.ToString("C", Usd) in @_confirmTarget.CryptoCurrency</p>
+                        <p class="mb-2"><strong>@_confirmTarget.FullName</strong> — @NumeroCorto.Cantidad(_confirmTarget.Quantity) × @_confirmTarget.TokenTypeName, @NumeroCorto.Monto(_confirmTarget.AmountDue) in @_confirmTarget.CryptoCurrency</p>
                         <div class="alert alert-warning py-2 small">Confirming issues the tokens. Only do this once the transfer is verified on-chain.</div>
                         <label class="form-label small fw-semibold" for="tp-ref">Transaction id <span class="text-danger">*</span></label>
                         <input id="tp-ref" class="form-control form-control-sm mb-3" @bind="_reference" @bind:event="oninput" maxlength="128" />
@@ -227,7 +227,7 @@
                     }
                     else if (_reopenTarget is not null)
                     {
-                        <p class="mb-2"><strong>@_reopenTarget.FullName</strong> — @_reopenTarget.Quantity × @_reopenTarget.TokenTypeName, @_reopenTarget.AmountDue.ToString("C", Usd) in @_reopenTarget.CryptoCurrency (@PeriodText(_reopenTarget.PeriodKey))</p>
+                        <p class="mb-2"><strong>@_reopenTarget.FullName</strong> — @NumeroCorto.Cantidad(_reopenTarget.Quantity) × @_reopenTarget.TokenTypeName, @NumeroCorto.Monto(_reopenTarget.AmountDue) in @_reopenTarget.CryptoCurrency (@PeriodText(_reopenTarget.PeriodKey))</p>
                         <div class="alert alert-warning py-2 small">
                             This purchase expired without confirmation. Reopening it issues the tokens now, counted in
                             @PeriodText(_reopenTarget.PeriodKey). Only do this once the late transfer is verified on-chain.
@@ -239,13 +239,13 @@
                     }
                     else if (_rejectTarget is not null)
                     {
-                        <p class="mb-2"><strong>@_rejectTarget.FullName</strong> — @_rejectTarget.Quantity × @_rejectTarget.TokenTypeName, @_rejectTarget.AmountDue.ToString("C", Usd) in @_rejectTarget.CryptoCurrency</p>
+                        <p class="mb-2"><strong>@_rejectTarget.FullName</strong> — @NumeroCorto.Cantidad(_rejectTarget.Quantity) × @_rejectTarget.TokenTypeName, @NumeroCorto.Monto(_rejectTarget.AmountDue) in @_rejectTarget.CryptoCurrency</p>
                         <div class="alert alert-warning py-2 small">No tokens are issued and the member's monthly quota is released. The order can no longer be confirmed.</div>
                         <label class="form-label small fw-semibold" for="tp-notes">Reason <span class="text-danger">*</span></label>
                     }
                     else
                     {
-                        <p class="mb-2"><strong>@_reconcileTarget!.FullName</strong> — @_reconcileTarget.Quantity × @_reconcileTarget.TokenTypeName, @_reconcileTarget.TotalAmount.ToString("C", Usd) (@_reconcileTarget.PaymentMethod)</p>
+                        <p class="mb-2"><strong>@_reconcileTarget!.FullName</strong> — @NumeroCorto.Cantidad(_reconcileTarget.Quantity) × @_reconcileTarget.TokenTypeName, @NumeroCorto.Monto(_reconcileTarget.TotalAmount) (@_reconcileTarget.PaymentMethod)</p>
                         <div class="alert alert-warning py-2 small">
                             @(_charged
                                 ? "The money was taken: the tokens will be issued to the member."
@@ -276,8 +276,7 @@
     // Mismo conjunto que AdminTokenPurchasesController y Billing para conciliar.
     private const string TreasuryRoles = "SuperAdmin,Admin,BillingManager";
 
-    // Los importes de la compra son USD: no dependen de la cultura del servidor.
-    private static readonly System.Globalization.CultureInfo Usd = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+    // Los importes de la compra son USD: se formatean con NumeroCorto.Monto, que no depende de la cultura del servidor.
 
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 

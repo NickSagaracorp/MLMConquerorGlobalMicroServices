@@ -20,7 +20,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="ri-user-line fs-4 text-success"></i>
                     <div class="flex-grow-1">
-                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.TotalActive)</div>
+                        <div class="fs-3 fw-bold lh-1" title="@FormatStatFull(_stats?.TotalActive)">@FormatStat(_stats?.TotalActive)</div>
                         <small class="text-muted">Active Members</small>
                     </div>
                 </div>
@@ -33,7 +33,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="ri-user-add-line fs-4 text-primary"></i>
                     <div class="flex-grow-1">
-                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.NewSignupsLast24Hours)</div>
+                        <div class="fs-3 fw-bold lh-1" title="@FormatStatFull(_stats?.NewSignupsLast24Hours)">@FormatStat(_stats?.NewSignupsLast24Hours)</div>
                         <small class="text-muted">New Signups (24h)</small>
                     </div>
                 </div>
@@ -46,7 +46,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="ri-user-unfollow-line fs-4 text-danger"></i>
                     <div class="flex-grow-1">
-                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.CancellationsLast24Hours)</div>
+                        <div class="fs-3 fw-bold lh-1" title="@FormatStatFull(_stats?.CancellationsLast24Hours)">@FormatStat(_stats?.CancellationsLast24Hours)</div>
                         <small class="text-muted">Cancellations (24h)</small>
                     </div>
                 </div>
@@ -59,7 +59,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="ri-share-forward-line fs-4 text-info"></i>
                     <div class="flex-grow-1">
-                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.PlacementsLast24Hours)</div>
+                        <div class="fs-3 fw-bold lh-1" title="@FormatStatFull(_stats?.PlacementsLast24Hours)">@FormatStat(_stats?.PlacementsLast24Hours)</div>
                         <small class="text-muted">Placements (24h)</small>
                     </div>
                 </div>
@@ -355,7 +355,10 @@
         finally { StateHasChanged(); }
     }
 
-    private static string FormatStat(int? value) => value?.ToString("N0") ?? "—";
+    // Tarjetas de contadores: el valor completo si cabe en el ancho de la tarjeta; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+    private static string FormatStat(int? value) => value is int v ? NumeroCorto.Cantidad(v, AnchoDeTarjeta) : "—";
+    private static string FormatStatFull(int? value) => value is int v ? NumeroCorto.Cantidad(v) : "—";
 
     private async Task RetryCompleteAsync(string memberId)
     {

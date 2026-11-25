@@ -88,7 +88,7 @@
                     </GridColumn>
                     <GridColumn Field="@nameof(PaymentDto.Amount)" HeaderText="Amount" Width="110" TextAlign="TextAlign.Right" Type="ColumnType.Decimal" AllowFiltering="true">
                         <Template>
-                            <span class="fw-semibold">$@(((PaymentDto)context).Amount.ToString("F2"))</span>
+                            <span class="fw-semibold">@NumeroCorto.Monto(((PaymentDto)context).Amount)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(PaymentDto.GatewayName)" HeaderText="Gateway" Width="120" AllowFiltering="true" />

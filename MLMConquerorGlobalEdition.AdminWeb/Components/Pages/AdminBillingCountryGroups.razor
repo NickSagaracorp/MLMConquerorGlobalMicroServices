@@ -41,7 +41,7 @@
                         <Template><span class="fw-semibold">@(((CountryGroupDto)context).Name)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Countries" Width="120" TextAlign="TextAlign.Center">
-                        <Template><span class="badge bg-info text-dark">@(((CountryGroupDto)context).IsoCodes.Count)</span></Template>
+                        <Template><span class="badge bg-info text-dark">@NumeroCorto.Cantidad(((CountryGroupDto)context).IsoCodes.Count)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="ISO Codes" Width="300">
                         <Template><span class="small text-muted">@string.Join(", ", ((CountryGroupDto)context).IsoCodes)</span></Template>

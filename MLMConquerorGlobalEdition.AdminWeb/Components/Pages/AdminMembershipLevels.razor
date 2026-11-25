@@ -57,14 +57,14 @@
                             }
                             else
                             {
-                                <span class="fw-semibold">$@row.Price.ToString("N2")</span>
+                                <span class="fw-semibold">@NumeroCorto.Monto(row.Price)</span>
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Renewal" Width="120" TextAlign="TextAlign.Right">
                         <Template>
                             @{ var row = (MembershipLevelDto)context; }
-                            <span class="text-muted small">$@row.RenewalPrice.ToString("N2")</span>
+                            <span class="text-muted small">@NumeroCorto.Monto(row.RenewalPrice)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Auto-Renew" Width="110" TextAlign="TextAlign.Center">

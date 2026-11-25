@@ -213,7 +213,7 @@ else
                     else
                     {
                         <div class="mb-2">
-                            <div class="display-6 fw-bold text-primary lh-1">@_preview.PendingBills.ToString("N0")</div>
+                            <div class="display-6 fw-bold text-primary lh-1">@NumeroCorto.Cantidad(_preview.PendingBills)</div>
                             <div class="small text-muted">Pending recurring bills today</div>
                             <div class="small text-muted mt-1">as of @_preview.AsOfUtc.ToString("yyyy-MM-dd HH:mm 'UTC'")</div>
                         </div>
@@ -237,9 +237,9 @@ else
                                             <td>
                                                 <span class="fw-semibold">@ProcessorLabel(g.Processor)</span>
                                             </td>
-                                            <td class="text-end">@g.CasesAssigned.ToString("N0")</td>
+                                            <td class="text-end">@NumeroCorto.Cantidad(g.CasesAssigned)</td>
                                             <td class="text-end"><code class="small">@FormatLatency(g.AvgLatencyMs)</code></td>
-                                            <td class="text-end">@g.WorkersNeeded</td>
+                                            <td class="text-end">@NumeroCorto.Cantidad(g.WorkersNeeded)</td>
                                             <td class="text-center">
                                                 @if (g.HitFloor)
                                                 {

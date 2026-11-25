@@ -48,7 +48,7 @@
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-calendar-check-line me-2 text-primary"></i>Seniority bonus candidates
         </h6>
-        <span class="small text-muted">@_totalCount records</span>
+        <span class="small text-muted">@NumeroCorto.Cantidad(_totalCount) records</span>
     </div>
     <div class="card-body p-0">
         @if (_loading)
@@ -79,7 +79,7 @@
                     <GridColumn HeaderText="Consecutive days" Width="130" TextAlign="TextAlign.Center">
                         <Template>
                             @{ var r = (SeniorityRow)context; }
-                            <span class="badge bg-success fs-6">@r.ConsecutiveDays</span>
+                            <span class="badge bg-success fs-6">@NumeroCorto.Cantidad(r.ConsecutiveDays)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Streak start" Width="120">
@@ -97,7 +97,7 @@
                     <GridColumn HeaderText="Bonus amount" Width="120" TextAlign="TextAlign.Right">
                         <Template>
                             @{ var r = (SeniorityRow)context; }
-                            <span class="fw-semibold">@r.BonusAmount.ToString("C")</span>
+                            <span class="fw-semibold">@NumeroCorto.Monto(r.BonusAmount)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="" Width="120" TextAlign="TextAlign.Center">
@@ -121,7 +121,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) records — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
@@ -157,9 +157,9 @@
                         <dt class="col-5 text-muted">Rank</dt>
                         <dd class="col-7">@_grantTarget.RankName</dd>
                         <dt class="col-5 text-muted">Consecutive days</dt>
-                        <dd class="col-7">@_grantTarget.ConsecutiveDays</dd>
+                        <dd class="col-7">@NumeroCorto.Cantidad(_grantTarget.ConsecutiveDays)</dd>
                         <dt class="col-5 text-muted">Bonus amount</dt>
-                        <dd class="col-7 fw-semibold">@_grantTarget.BonusAmount.ToString("C")</dd>
+                        <dd class="col-7 fw-semibold">@NumeroCorto.Monto(_grantTarget.BonusAmount)</dd>
                     </dl>
                 </div>
                 <div class="modal-footer">

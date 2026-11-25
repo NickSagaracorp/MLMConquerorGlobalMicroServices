@@ -71,9 +71,9 @@
             <h6 class="card-title mb-0 fw-semibold flex-grow-1">
                 <i class="ri-key-line me-2 text-primary"></i>Token Codes for <code>@_memberId</code>
             </h6>
-            <span class="badge bg-secondary">@_totalCount total</span>
-            <span class="badge bg-success">@_availableCount available</span>
-            <span class="badge bg-secondary opacity-75">@(Math.Max(0, _totalCount - _availableCount)) used</span>
+            <span class="badge bg-secondary">@NumeroCorto.Cantidad(_totalCount) total</span>
+            <span class="badge bg-success">@NumeroCorto.Cantidad(_availableCount) available</span>
+            <span class="badge bg-secondary opacity-75">@NumeroCorto.Cantidad(Math.Max(0, _totalCount - _availableCount)) used</span>
         </div>
         <div class="card-body p-0">
             @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan  *@

@@ -35,7 +35,7 @@
                             <tr>
                                 <td class="fw-semibold">@r.LevelName</td>
                                 <td>@r.ReachedDate.ToString("yyyy-MM-dd")</td>
-                                <td class="text-end">@r.QualifyingTotal.ToString("N2")</td>
+                                <td class="text-end">@NumeroCorto.Monto(r.QualifyingTotal)</td>
                                 <td>
                                     @if (r.CeoCallRecognized is null) { <span class="badge bg-warning text-dark">Not recognized</span> }
                                     else { @r.CeoCallRecognized }

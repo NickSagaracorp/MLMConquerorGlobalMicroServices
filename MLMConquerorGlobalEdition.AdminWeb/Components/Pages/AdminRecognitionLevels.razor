@@ -44,7 +44,7 @@
                             <tr>
                                 <td>@l.SortOrder</td>
                                 <td class="fw-semibold">@l.Name</td>
-                                <td class="text-end">@l.Threshold.ToString("N2")</td>
+                                <td class="text-end">@NumeroCorto.Monto(l.Threshold)</td>
                                 <td>@(l.WindowDays is null ? "Lifetime" : $"{l.WindowDays} days")</td>
                                 <td>@l.Reward</td>
                                 <td>@(l.RewardNeedsSize ? "Yes" : "No")</td>

@@ -16,7 +16,7 @@
             <div class="member-footer">
                 @if (IsRoot)
                 {
-                    <div class="points">L: @Node.LeftPoints.ToString("N0") / R: @Node.RightPoints.ToString("N0")</div>
+                    <div class="points">L: @Node.LeftPoints.ToString("N0", CultureInfo.InvariantCulture) / R: @Node.RightPoints.ToString("N0", CultureInfo.InvariantCulture)</div>
                 }
                 else
                 {

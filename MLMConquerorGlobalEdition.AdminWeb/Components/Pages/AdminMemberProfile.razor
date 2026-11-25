@@ -99,13 +99,13 @@ else
                         <h5 class="fw-semibold border-bottom pb-3 mb-3">Network Stats</h5>
                         <dl class="row mb-0">
                             <dt class="col-7 text-muted">Dual Team Pts</dt>
-                            <dd class="col-5 fw-semibold">@_member.DualTeamPoints</dd>
+                            <dd class="col-5 fw-semibold">@NumeroCorto.Cantidad(_member.DualTeamPoints)</dd>
                             <dt class="col-7 text-muted">Dual Team Size</dt>
-                            <dd class="col-5 fw-semibold">@_member.DualTeamSize</dd>
+                            <dd class="col-5 fw-semibold">@NumeroCorto.Cantidad(_member.DualTeamSize)</dd>
                             <dt class="col-7 text-muted">Enroll Pts</dt>
-                            <dd class="col-5 fw-semibold">@_member.EnrollmentPoints</dd>
+                            <dd class="col-5 fw-semibold">@NumeroCorto.Cantidad(_member.EnrollmentPoints)</dd>
                             <dt class="col-7 text-muted">Enroll Team Size</dt>
-                            <dd class="col-5 fw-semibold">@_member.EnrollmentTeamSize</dd>
+                            <dd class="col-5 fw-semibold">@NumeroCorto.Cantidad(_member.EnrollmentTeamSize)</dd>
                             <dt class="col-7 text-muted">Current Rank</dt>
                             <dd class="col-5 fw-semibold">
                                 @if (!string.IsNullOrEmpty(_member.CurrentRank))
@@ -135,9 +135,9 @@ else
                         <h5 class="fw-semibold border-bottom pb-3 mb-3">Income</h5>
                         <dl class="row mb-0">
                             <dt class="col-7 text-muted">Current Month</dt>
-                            <dd class="col-5 fw-semibold text-success">$@_member.CurrentMonthIncome.ToString("F2")</dd>
+                            <dd class="col-5 fw-semibold text-success">@NumeroCorto.Monto(_member.CurrentMonthIncome)</dd>
                             <dt class="col-7 text-muted">Current Year</dt>
-                            <dd class="col-5 fw-semibold text-success">$@_member.CurrentYearIncome.ToString("F2")</dd>
+                            <dd class="col-5 fw-semibold text-success">@NumeroCorto.Monto(_member.CurrentYearIncome)</dd>
                             <dt class="col-7 text-muted">Sponsor</dt>
                             <dd class="col-5 fw-semibold">
                                 @if (!string.IsNullOrWhiteSpace(_member.SponsorMemberId))
@@ -683,7 +683,7 @@ else
                                         <tr>
                                             <td class="fw-semibold"><code>@ord.OrderNo</code></td>
                                             <td>@ord.OrderDate.ToString("yyyy-MM-dd")</td>
-                                            <td class="fw-semibold text-success">$@ord.TotalAmount.ToString("F2")</td>
+                                            <td class="fw-semibold text-success">@NumeroCorto.Monto(ord.TotalAmount)</td>
                                             <td><span class="badge @OrderStatusBadge(ord.Status)">@ord.Status</span></td>
                                             <td>@(string.IsNullOrWhiteSpace(ord.Notes) ? "—" : ord.Notes)</td>
                                         </tr>

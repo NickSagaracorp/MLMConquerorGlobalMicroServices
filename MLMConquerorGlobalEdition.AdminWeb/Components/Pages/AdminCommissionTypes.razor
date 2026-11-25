@@ -43,13 +43,13 @@
                         <Template>@(((CommissionTypeDto)context).Percentage.ToString("F2"))%</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Amount" Width="100" TextAlign="TextAlign.Right">
-                        <Template>@(((CommissionTypeDto)context).Amount.HasValue ? ((CommissionTypeDto)context).Amount!.Value.ToString("C") : "—")</Template>
+                        <Template>@(((CommissionTypeDto)context).Amount.HasValue ? NumeroCorto.Monto(((CommissionTypeDto)context).Amount!.Value) : "—")</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Promo" Width="100" TextAlign="TextAlign.Right">
                         <Template>
                             @if (((CommissionTypeDto)context).AmountPromo is > 0)
                             {
-                                <span class="badge bg-warning text-dark">@(((CommissionTypeDto)context).AmountPromo!.Value.ToString("C"))</span>
+                                <span class="badge bg-warning text-dark">@NumeroCorto.Monto(((CommissionTypeDto)context).AmountPromo!.Value)</span>
                             }
                             else { <text>—</text> }
                         </Template>

@@ -31,7 +31,7 @@ else if (_stats is not null)
         <div class="col-md-3 col-sm-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-2 fw-bold text-primary">@_stats.TotalSignups.ToString("N0")</div>
+                    <div class="fs-2 fw-bold text-primary" title="@NumeroCorto.Cantidad(_stats.TotalSignups)">@NumeroCorto.Cantidad(_stats.TotalSignups, AnchoDeTarjeta)</div>
                     <div class="text-muted small">Total Signups</div>
                 </div>
             </div>
@@ -55,7 +55,7 @@ else if (_stats is not null)
         <div class="col-md-3 col-sm-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-2 fw-bold text-info">@_stats.ActiveSubscriptions.ToString("N0")</div>
+                    <div class="fs-2 fw-bold text-info" title="@NumeroCorto.Cantidad(_stats.ActiveSubscriptions)">@NumeroCorto.Cantidad(_stats.ActiveSubscriptions, AnchoDeTarjeta)</div>
                     <div class="text-muted small">Active Subscriptions</div>
                 </div>
             </div>
@@ -66,7 +66,7 @@ else if (_stats is not null)
         <div class="col-md-4 col-sm-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-3 fw-bold text-success">@_stats.TotalIncome.ToString("C2")</div>
+                    <div class="fs-3 fw-bold text-success" title="@NumeroCorto.Monto(_stats.TotalIncome)">@NumeroCorto.Monto(_stats.TotalIncome, AnchoDeTarjeta)</div>
                     <div class="text-muted small">Income (Signups)</div>
                 </div>
             </div>
@@ -74,7 +74,7 @@ else if (_stats is not null)
         <div class="col-md-4 col-sm-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-3 fw-bold text-danger">@_stats.TotalCommissions.ToString("C2")</div>
+                    <div class="fs-3 fw-bold text-danger" title="@NumeroCorto.Monto(_stats.TotalCommissions)">@NumeroCorto.Monto(_stats.TotalCommissions, AnchoDeTarjeta)</div>
                     <div class="text-muted small">Commission Expenses</div>
                 </div>
             </div>
@@ -83,7 +83,7 @@ else if (_stats is not null)
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
                     @{ var net = _stats.TotalIncome - _stats.TotalCommissions; }
-                    <div class="fs-3 fw-bold @(net >= 0 ? "text-success" : "text-danger")">@net.ToString("C2")</div>
+                    <div class="fs-3 fw-bold @(net >= 0 ? "text-success" : "text-danger")" title="@NumeroCorto.Monto(net)">@NumeroCorto.Monto(net, AnchoDeTarjeta)</div>
                     <div class="text-muted small">Net Revenue</div>
                 </div>
             </div>
@@ -116,7 +116,7 @@ else if (_stats is not null)
                             var pct = _stats.TotalSignups > 0 ? (decimal)kv.Value / _stats.TotalSignups * 100 : 0;
                             <tr>
                                 <td class="fw-semibold">@kv.Key</td>
-                                <td class="text-end">@kv.Value.ToString("N0")</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(kv.Value)</td>
                                 <td>
                                     <div class="progress" style="height:10px;">
                                         <div class="progress-bar bg-primary" style="width:@pct.ToString("F1")%"></div>
@@ -137,6 +137,9 @@ else if (!_loading)
 }
 
 @code {
+    // Tarjetas KPI: el valor completo si cabe; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter] public string PromoId { get; set; } = string.Empty;
 
     private bool _loading = true;

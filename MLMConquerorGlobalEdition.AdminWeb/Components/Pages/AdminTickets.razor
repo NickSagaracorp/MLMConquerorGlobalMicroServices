@@ -28,7 +28,7 @@
                         <i class="ri-inbox-line fs-5"></i>
                     </div>
                     <div>
-                        <div class="fs-4 fw-bold lh-1">@_stats.Open</div>
+                        <div class="fs-4 fw-bold lh-1" title="@NumeroCorto.Cantidad(_stats.Open)">@NumeroCorto.Cantidad(_stats.Open, AnchoDeTarjeta)</div>
                         <small class="text-muted">Open</small>
                     </div>
                 </div>
@@ -41,7 +41,7 @@
                         <i class="ri-loader-line fs-5"></i>
                     </div>
                     <div>
-                        <div class="fs-4 fw-bold lh-1">@_stats.InProgress</div>
+                        <div class="fs-4 fw-bold lh-1" title="@NumeroCorto.Cantidad(_stats.InProgress)">@NumeroCorto.Cantidad(_stats.InProgress, AnchoDeTarjeta)</div>
                         <small class="text-muted">In Progress</small>
                     </div>
                 </div>
@@ -54,7 +54,7 @@
                         <i class="ri-time-line fs-5"></i>
                     </div>
                     <div>
-                        <div class="fs-4 fw-bold lh-1">@_stats.NewLast48Hours</div>
+                        <div class="fs-4 fw-bold lh-1" title="@NumeroCorto.Cantidad(_stats.NewLast48Hours)">@NumeroCorto.Cantidad(_stats.NewLast48Hours, AnchoDeTarjeta)</div>
                         <small class="text-muted">New (48h)</small>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
                         <i class="ri-check-double-line fs-5"></i>
                     </div>
                     <div>
-                        <div class="fs-4 fw-bold lh-1">@_stats.Closed</div>
+                        <div class="fs-4 fw-bold lh-1" title="@NumeroCorto.Cantidad(_stats.Closed)">@NumeroCorto.Cantidad(_stats.Closed, AnchoDeTarjeta)</div>
                         <small class="text-muted">Closed</small>
                     </div>
                 </div>
@@ -133,7 +133,7 @@
                         <span class="badge @StatusBadge(((TicketDto)context).Status)">@(((TicketDto)context).Status)</span>
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(TicketDto.CommentCount)" HeaderText="Comments" Width="100" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(TicketDto.CommentCount)" HeaderText="Comments" Width="100" TextAlign="TextAlign.Center" Format="N0" />
                 <GridColumn Field="@nameof(TicketDto.CreationDate)" HeaderText="Created" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
                 <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
                     <Template>
@@ -207,6 +207,9 @@
 }
 
 @code {
+    // Tarjetas de contadores: el valor completo si cabe; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+
     private static readonly List<ToolbarItemModel> _rteToolbar = new()
     {
         new() { Command = ToolbarCommand.Bold },

@@ -22,25 +22,25 @@
 <div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-primary">@FormatStat(_stats?.Total)</div>
+            <div class="fw-bold fs-4 text-primary" title="@FormatStatFull(_stats?.Total)">@FormatStat(_stats?.Total)</div>
             <div class="small text-muted">Total</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-warning">@FormatStat(_stats?.Pending)</div>
+            <div class="fw-bold fs-4 text-warning" title="@FormatStatFull(_stats?.Pending)">@FormatStat(_stats?.Pending)</div>
             <div class="small text-muted">Pending</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-success">@FormatStat(_stats?.Paid)</div>
+            <div class="fw-bold fs-4 text-success" title="@FormatStatFull(_stats?.Paid)">@FormatStat(_stats?.Paid)</div>
             <div class="small text-muted">Paid</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="fw-bold fs-4 text-danger">@FormatStat(_stats?.Cancelled)</div>
+            <div class="fw-bold fs-4 text-danger" title="@FormatStatFull(_stats?.Cancelled)">@FormatStat(_stats?.Cancelled)</div>
             <div class="small text-muted">Cancelled</div>
         </div>
     </div>
@@ -93,7 +93,7 @@
                     <Template><span class="small">@(((CommissionDto)context).CommissionTypeName)</span></Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(CommissionDto.Amount)" HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
-                    <Template><span class="fw-semibold">$@(((CommissionDto)context).Amount.ToString("F2"))</span></Template>
+                    <Template><span class="fw-semibold">@NumeroCorto.Monto(((CommissionDto)context).Amount)</span></Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(CommissionDto.Status)" HeaderText="Status" Width="110">
                     <Template>
@@ -195,7 +195,7 @@
                     <h5 class="modal-title fw-bold text-danger">Cancel Commission</h5>
                     <button type="button" class="btn-close" @onclick="() => { _showCancelConfirm = false; _cancelTarget = null; }"></button>
                 </div>
-                <div class="modal-body">Cancel commission of <strong>$@(_cancelTarget?.Amount.ToString("F2"))</strong> for member <code>@_cancelTarget?.BeneficiaryMemberId</code>? This cannot be undone.</div>
+                <div class="modal-body">Cancel commission of <strong>@(_cancelTarget is null ? "" : NumeroCorto.Monto(_cancelTarget.Amount))</strong> for member <code>@_cancelTarget?.BeneficiaryMemberId</code>? This cannot be undone.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => { _showCancelConfirm = false; _cancelTarget = null; }">Back</button>
                     <button class="btn btn-danger" @onclick="CancelCommission" disabled="@_saving">
@@ -272,7 +272,10 @@
         finally { StateHasChanged(); }
     }
 
-    private static string FormatStat(int? value) => value?.ToString("N0") ?? "—";
+    // Tarjetas de contadores: el valor completo si cabe en el ancho de la tarjeta; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+    private static string FormatStat(int? value) => value is int v ? NumeroCorto.Cantidad(v, AnchoDeTarjeta) : "—";
+    private static string FormatStatFull(int? value) => value is int v ? NumeroCorto.Cantidad(v) : "—";
 
     private void OpenCreate() { _form = new(); _showForm = true; }
     private void CloseForm() { _showForm = false; }

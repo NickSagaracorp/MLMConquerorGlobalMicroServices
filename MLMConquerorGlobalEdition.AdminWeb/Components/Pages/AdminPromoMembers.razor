@@ -21,7 +21,7 @@
     <div class="card-header py-3 d-flex align-items-center gap-2">
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-team-line me-2 text-primary"></i>Members Signed Up During Promo
-            @if (_totalCount is not null) { <span class="badge bg-secondary ms-2">@_totalCount.Value.ToString("N0") total</span> }
+            @if (_totalCount is not null) { <span class="badge bg-secondary ms-2">@NumeroCorto.Cantidad(_totalCount.Value) total</span> }
         </h6>
         <button class="btn btn-outline-secondary btn-sm" title="Refresh from server" @onclick="RefreshAsync"><i class="ri-refresh-line"></i></button>
         <a href="/admin/events/promos/@PromoId/dashboard" class="btn btn-outline-success btn-sm">

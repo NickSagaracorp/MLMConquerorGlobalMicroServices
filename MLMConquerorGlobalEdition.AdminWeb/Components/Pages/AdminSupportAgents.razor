@@ -142,7 +142,7 @@
                     <GridColumn HeaderText="Tickets (Active/Max)" Width="165" TextAlign="TextAlign.Center">
                         <Template>
                             @{ var a = (AgentWorkloadDto)context; }
-                            <span class="small fw-semibold">@a.CurrentTicketCount / @a.MaxConcurrentTickets</span>
+                            <span class="small fw-semibold">@NumeroCorto.Cantidad(a.CurrentTicketCount) / @NumeroCorto.Cantidad(a.MaxConcurrentTickets)</span>
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Workload" Width="180">

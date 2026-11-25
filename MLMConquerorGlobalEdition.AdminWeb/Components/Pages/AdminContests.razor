@@ -322,8 +322,8 @@
                                             <code class="ms-2 small text-muted">@r.MemberId</code>
                                         </td>
                                         <td><span class="text-muted small">@(r.Country ?? "—")</span></td>
-                                        <td class="text-end">@r.Signups</td>
-                                        <td class="text-end fw-bold text-success">@r.TotalPoints</td>
+                                        <td class="text-end">@NumeroCorto.Cantidad(r.Signups)</td>
+                                        <td class="text-end fw-bold text-success">@NumeroCorto.Cantidad(r.TotalPoints)</td>
                                     </tr>
                                 }
                             </tbody>

@@ -62,7 +62,7 @@
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-medal-line me-2 text-primary"></i>Rank first achievements
         </h6>
-        <span class="small text-muted">@_totalCount records</span>
+        <span class="small text-muted">@NumeroCorto.Cantidad(_totalCount) records</span>
     </div>
     <div class="card-body p-0">
         @if (_loading)
@@ -113,7 +113,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) records — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>

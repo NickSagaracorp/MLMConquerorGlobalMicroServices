@@ -51,7 +51,7 @@
                     <GridColumn HeaderText="End Date" Width="130">
                         <Template><span class="small">@(((CorporatePromoDto)context).EndDate.ToString("yyyy-MM-dd"))</span></Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(CorporatePromoDto.MemberCount)" HeaderText="Signups" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(CorporatePromoDto.MemberCount)" HeaderText="Signups" Width="100" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="Mechanics" Width="180">
                         <Template>
                             @{ var p = (CorporatePromoDto)context; }
@@ -378,8 +378,8 @@
                 if (body?.Success == true && body.Data is not null)
                 {
                     _form.ResetFsbCountdownExecutedAt = body.Data.ExecutedAt;
-                    _alertMsg = $"FSB reset complete — {body.Data.AmbassadorsReset} ambassadors updated, " +
-                                $"{body.Data.ArchivedRows} prior countdowns archived.";
+                    _alertMsg = $"FSB reset complete — {NumeroCorto.Cantidad(body.Data.AmbassadorsReset)} ambassadors updated, " +
+                                $"{NumeroCorto.Cantidad(body.Data.ArchivedRows)} prior countdowns archived.";
                     _alertIsError = false;
                     await LoadAsync(); // refresh grid so the row reflects ExecutedAt
                 }

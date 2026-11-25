@@ -116,31 +116,31 @@ else if (_metrics is not null)
                     <div class="row g-3 text-center">
                         <div class="col-4 col-md-2">
                             <div class="p-3 rounded-3 bg-primary-subtle">
-                                <div class="h4 fw-bold text-primary mb-1">@_metrics.OpenCount</div>
+                                <div class="h4 fw-bold text-primary mb-1" title="@NumeroCorto.Cantidad(_metrics.OpenCount)">@NumeroCorto.Cantidad(_metrics.OpenCount, AnchoDeTarjeta)</div>
                                 <div class="small text-muted">Open</div>
                             </div>
                         </div>
                         <div class="col-4 col-md-2">
                             <div class="p-3 rounded-3 bg-warning-subtle">
-                                <div class="h4 fw-bold text-warning mb-1">@_metrics.InProgressCount</div>
+                                <div class="h4 fw-bold text-warning mb-1" title="@NumeroCorto.Cantidad(_metrics.InProgressCount)">@NumeroCorto.Cantidad(_metrics.InProgressCount, AnchoDeTarjeta)</div>
                                 <div class="small text-muted">In Progress</div>
                             </div>
                         </div>
                         <div class="col-4 col-md-2">
                             <div class="p-3 rounded-3 bg-info-subtle">
-                                <div class="h4 fw-bold text-info mb-1">@_metrics.WaitingCustomerCount</div>
+                                <div class="h4 fw-bold text-info mb-1" title="@NumeroCorto.Cantidad(_metrics.WaitingCustomerCount)">@NumeroCorto.Cantidad(_metrics.WaitingCustomerCount, AnchoDeTarjeta)</div>
                                 <div class="small text-muted">Waiting</div>
                             </div>
                         </div>
                         <div class="col-4 col-md-2">
                             <div class="p-3 rounded-3 bg-danger-subtle">
-                                <div class="h4 fw-bold text-danger mb-1">@_metrics.EscalatedCount</div>
+                                <div class="h4 fw-bold text-danger mb-1" title="@NumeroCorto.Cantidad(_metrics.EscalatedCount)">@NumeroCorto.Cantidad(_metrics.EscalatedCount, AnchoDeTarjeta)</div>
                                 <div class="small text-muted">Escalated</div>
                             </div>
                         </div>
                         <div class="col-4 col-md-2">
                             <div class="p-3 rounded-3 bg-success-subtle">
-                                <div class="h4 fw-bold text-success mb-1">@_metrics.ResolvedCount</div>
+                                <div class="h4 fw-bold text-success mb-1" title="@NumeroCorto.Cantidad(_metrics.ResolvedCount)">@NumeroCorto.Cantidad(_metrics.ResolvedCount, AnchoDeTarjeta)</div>
                                 <div class="small text-muted">Resolved</div>
                             </div>
                         </div>
@@ -155,11 +155,11 @@ else if (_metrics is not null)
                         </div>
                         <div class="col-4">
                             <p class="text-muted small mb-0">FRT Breaches Today</p>
-                            <span class="fw-bold fs-5 @(_metrics.FrtBreachesToday == 0 ? "text-success" : "text-danger")">@_metrics.FrtBreachesToday</span>
+                            <span class="fw-bold fs-5 @(_metrics.FrtBreachesToday == 0 ? "text-success" : "text-danger")">@NumeroCorto.Cantidad(_metrics.FrtBreachesToday)</span>
                         </div>
                         <div class="col-4">
                             <p class="text-muted small mb-0">Resolution Breaches Today</p>
-                            <span class="fw-bold fs-5 @(_metrics.ResolutionBreachesToday == 0 ? "text-success" : "text-danger")">@_metrics.ResolutionBreachesToday</span>
+                            <span class="fw-bold fs-5 @(_metrics.ResolutionBreachesToday == 0 ? "text-success" : "text-danger")">@NumeroCorto.Cantidad(_metrics.ResolutionBreachesToday)</span>
                         </div>
                     </div>
                 </div>
@@ -194,8 +194,8 @@ else if (_metrics is not null)
                                 {
                                     <tr>
                                         <td class="ps-3 small text-muted">@t.Date.ToString("MMM dd")</td>
-                                        <td class="text-center"><span class="badge bg-primary-subtle text-primary">@t.Created</span></td>
-                                        <td class="text-center"><span class="badge bg-success-subtle text-success">@t.Resolved</span></td>
+                                        <td class="text-center"><span class="badge bg-primary-subtle text-primary">@NumeroCorto.Cantidad(t.Created)</span></td>
+                                        <td class="text-center"><span class="badge bg-success-subtle text-success">@NumeroCorto.Cantidad(t.Resolved)</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -252,7 +252,7 @@ else if (_metrics is not null)
                         <GridColumn HeaderText="Tickets" Width="90" TextAlign="TextAlign.Center">
                             <Template>
                                 @{ var a = (AgentWorkloadDto)context; }
-                                <span class="small fw-semibold">@a.CurrentTicketCount / @a.MaxConcurrentTickets</span>
+                                <span class="small fw-semibold">@NumeroCorto.Cantidad(a.CurrentTicketCount) / @NumeroCorto.Cantidad(a.MaxConcurrentTickets)</span>
                             </Template>
                         </GridColumn>
                         <GridColumn HeaderText="Workload" Width="180">
@@ -279,6 +279,9 @@ else if (_metrics is not null)
 }
 
 @code {
+    // Tarjetas de contadores: el valor completo si cabe; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+
     private bool _loading = true;
     private string? _alertMsg;
     private bool _alertIsError;

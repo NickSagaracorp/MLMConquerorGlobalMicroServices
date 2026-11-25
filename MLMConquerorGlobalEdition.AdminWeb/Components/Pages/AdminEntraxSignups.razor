@@ -87,13 +87,13 @@
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="USD" Width="90" TextAlign="TextAlign.Right">
-                        <Template>@(((EntraxSignupRowDto)context).AmountUsd.ToString("N2"))</Template>
+                        <Template>@NumeroCorto.Monto(((EntraxSignupRowDto)context).AmountUsd)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="RUB" Width="110" TextAlign="TextAlign.Right">
-                        <Template>@(((EntraxSignupRowDto)context).AmountRub?.ToString("N2") ?? "—")</Template>
+                        <Template>@(((EntraxSignupRowDto)context).AmountRub?.ToString("N2", CultureInfo.InvariantCulture) ?? "—")</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Paid USD" Width="100" TextAlign="TextAlign.Right">
-                        <Template>@(((EntraxSignupRowDto)context).PaidAmountUsd?.ToString("N2") ?? "—")</Template>
+                        <Template>@(((EntraxSignupRowDto)context).PaidAmountUsd is decimal pagado ? NumeroCorto.Monto(pagado) : "—")</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Reason" Width="190">
                         <Template><code class="small">@(((EntraxSignupRowDto)context).Reason ?? "—")</code></Template>
@@ -136,7 +136,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount payments — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) payments — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>

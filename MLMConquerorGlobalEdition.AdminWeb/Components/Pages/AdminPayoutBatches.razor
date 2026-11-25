@@ -55,7 +55,7 @@
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-stack-line me-2 text-primary"></i>Payout batches
         </h6>
-        <span class="small text-muted">@_totalCount records</span>
+        <span class="small text-muted">@NumeroCorto.Cantidad(_totalCount) records</span>
     </div>
     <div class="card-body p-0">
         @if (_loading)
@@ -80,10 +80,10 @@
                         <Template>@RenderStatus(((PayoutBatchRowDto)context).Status)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Members" Width="100" TextAlign="TextAlign.Right">
-                        <Template><span class="small">@(((PayoutBatchRowDto)context).MemberCount)</span></Template>
+                        <Template><span class="small">@NumeroCorto.Cantidad(((PayoutBatchRowDto)context).MemberCount)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Total (USD)" Width="130" TextAlign="TextAlign.Right">
-                        <Template><span class="fw-semibold">@(((PayoutBatchRowDto)context).TotalAmountUsd.ToString("C"))</span></Template>
+                        <Template><span class="fw-semibold">@NumeroCorto.Monto(((PayoutBatchRowDto)context).TotalAmountUsd)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Created (UTC)" Width="140">
                         <Template>
@@ -143,7 +143,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) records — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
@@ -177,8 +177,8 @@
                     <dl class="row small mb-3">
                         <dt class="col-5 text-muted">Gateway</dt><dd class="col-7">@GatewayLabel(_reconcileRow.WalletType)</dd>
                         <dt class="col-5 text-muted">Process date</dt><dd class="col-7">@_reconcileRow.ProcessDateUtc.ToString("yyyy-MM-dd")</dd>
-                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@_reconcileRow.MemberCount</dd>
-                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@_reconcileRow.TotalAmountUsd.ToString("C")</dd>
+                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@NumeroCorto.Cantidad(_reconcileRow.MemberCount)</dd>
+                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@NumeroCorto.Monto(_reconcileRow.TotalAmountUsd)</dd>
                     </dl>
 
                     <label class="form-label fw-semibold small mb-1">Gateway result file <span class="text-danger">*</span></label>
@@ -196,8 +196,8 @@
                         <div class="alert alert-info mt-3 mb-0">
                             <div class="fw-semibold mb-1"><i class="ri-check-line me-1"></i>Reconciliation result</div>
                             <div class="small">
-                                Succeeded: <span class="text-success fw-semibold">@_reconcileResult.Succeeded</span> ·
-                                Failed: <span class="text-danger fw-semibold">@_reconcileResult.Failed</span> ·
+                                Succeeded: <span class="text-success fw-semibold">@NumeroCorto.Cantidad(_reconcileResult.Succeeded)</span> ·
+                                Failed: <span class="text-danger fw-semibold">@NumeroCorto.Cantidad(_reconcileResult.Failed)</span> ·
                                 Batch status: <span class="fw-semibold">@_reconcileResult.BatchStatus</span>
                             </div>
                         </div>
@@ -247,8 +247,8 @@
                         <p class="small text-muted mb-0">Use this only as a fallback when no gateway result file is available.</p>
                     }
                     <dl class="row small mb-0 mt-2">
-                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@_confirmRow.MemberCount</dd>
-                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@_confirmRow.TotalAmountUsd.ToString("C")</dd>
+                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@NumeroCorto.Cantidad(_confirmRow.MemberCount)</dd>
+                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@NumeroCorto.Monto(_confirmRow.TotalAmountUsd)</dd>
                     </dl>
                 </div>
                 <div class="modal-footer">
@@ -297,8 +297,8 @@
                 <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-information-line me-1 text-muted"></i>Summary</h6>
                 <dl class="row small mb-3">
                     <dt class="col-5 text-muted">Batch ID</dt><dd class="col-7"><code>@d.Id</code></dd>
-                    <dt class="col-5 text-muted">Members</dt><dd class="col-7">@d.MemberCount</dd>
-                    <dt class="col-5 text-muted">Total (USD)</dt><dd class="col-7 fw-semibold">@d.TotalAmountUsd.ToString("C")</dd>
+                    <dt class="col-5 text-muted">Members</dt><dd class="col-7">@NumeroCorto.Cantidad(d.MemberCount)</dd>
+                    <dt class="col-5 text-muted">Total (USD)</dt><dd class="col-7 fw-semibold">@NumeroCorto.Monto(d.TotalAmountUsd)</dd>
                     <dt class="col-5 text-muted">Created (UTC)</dt><dd class="col-7">@d.CreationDate.ToString("yyyy-MM-dd HH:mm:ss")</dd>
                     <dt class="col-5 text-muted">Reconciled (UTC)</dt><dd class="col-7">@(d.ReconciledAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</dd>
                     <dt class="col-5 text-muted">Reconciled by</dt><dd class="col-7">@(d.ReconciledBy ?? "—")</dd>
@@ -313,7 +313,7 @@
                 </dl>
 
                 <h6 class="fw-bold border-bottom pb-1 mb-2">
-                    <i class="ri-team-line me-1 text-muted"></i>Members (@(d.Members?.Count ?? 0))
+                    <i class="ri-team-line me-1 text-muted"></i>Members (@NumeroCorto.Cantidad(d.Members?.Count ?? 0))
                 </h6>
                 @if (d.Members is { Count: > 0 })
                 {
@@ -333,7 +333,7 @@
                                 {
                                     <tr>
                                         <td><code class="small">@m.MemberId</code></td>
-                                        <td class="text-end">@m.AmountUsd.ToString("C")</td>
+                                        <td class="text-end">@NumeroCorto.Monto(m.AmountUsd)</td>
                                         <td class="text-center">@RenderOutcome(m.Outcome)</td>
                                         <td class="text-danger small">@(m.GatewayErrorMessage ?? "—")</td>
                                         <td class="text-center">
@@ -508,7 +508,7 @@
                 if (body?.Success == true && body.Data is not null)
                 {
                     _reconcileResult = body.Data;
-                    _alertMsg = $"Reconciled batch — {body.Data.Succeeded} succeeded, {body.Data.Failed} failed (status: {body.Data.BatchStatus}).";
+                    _alertMsg = $"Reconciled batch — {NumeroCorto.Cantidad(body.Data.Succeeded)} succeeded, {NumeroCorto.Cantidad(body.Data.Failed)} failed (status: {body.Data.BatchStatus}).";
                     _alertIsError = false;
                     await LoadAsync();
                 }
@@ -557,7 +557,7 @@
                 {
                     _alertMsg = _confirmAction == BatchAction.Cancel
                         ? $"Batch cancelled (status: {body.Data.BatchStatus})."
-                        : $"Batch marked paid — {body.Data.Succeeded} succeeded, {body.Data.Failed} failed (status: {body.Data.BatchStatus}).";
+                        : $"Batch marked paid — {NumeroCorto.Cantidad(body.Data.Succeeded)} succeeded, {NumeroCorto.Cantidad(body.Data.Failed)} failed (status: {body.Data.BatchStatus}).";
                     _alertIsError = false;
                     CloseConfirm();
                     await LoadAsync();

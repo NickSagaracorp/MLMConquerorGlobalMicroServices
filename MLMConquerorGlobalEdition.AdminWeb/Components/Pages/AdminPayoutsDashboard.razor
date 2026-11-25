@@ -126,12 +126,12 @@ else
                         </div>
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="small text-muted">Pending</span>
-                            <span class="fw-bold fs-5 text-warning">@g.PendingTotal.ToString("C")</span>
+                            <span class="fw-bold fs-5 text-warning" title="@NumeroCorto.Monto(g.PendingTotal)">@NumeroCorto.Monto(g.PendingTotal, AnchoDeTarjeta)</span>
                         </div>
-                        <div class="small text-muted text-end mb-2">@g.PendingCount @(g.PendingCount == 1 ? "member" : "members")</div>
+                        <div class="small text-muted text-end mb-2">@NumeroCorto.Cantidad(g.PendingCount) @(g.PendingCount == 1 ? "member" : "members")</div>
                         <div class="d-flex justify-content-between align-items-baseline border-top pt-2">
                             <span class="small text-muted">Paid (this day)</span>
-                            <span class="fw-bold fs-6 text-success">@g.PaidTotal.ToString("C")</span>
+                            <span class="fw-bold fs-6 text-success" title="@NumeroCorto.Monto(g.PaidTotal)">@NumeroCorto.Monto(g.PaidTotal, AnchoDeTarjeta)</span>
                         </div>
                     </div>
                 </div>
@@ -146,7 +146,7 @@ else
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-hand-coin-line me-2 text-primary"></i>Pending payouts
         </h6>
-        <span class="small text-muted">@_totalCount records</span>
+        <span class="small text-muted">@NumeroCorto.Cantidad(_totalCount) records</span>
     </div>
     <div class="card-body p-0">
         @if (_loading)
@@ -178,7 +178,7 @@ else
                         </Template>
                     </GridColumn>
                     <GridColumn Field="PendingAmount" HeaderText="Pending amount" Width="140" TextAlign="TextAlign.Right">
-                        <Template><span class="fw-semibold">@(((PendingRow)context).PendingAmount.ToString("C"))</span></Template>
+                        <Template><span class="fw-semibold">@NumeroCorto.Monto(((PendingRow)context).PendingAmount)</span></Template>
                     </GridColumn>
                     <GridColumn Field="WalletType" HeaderText="Gateway" Width="150">
                         <Template><span class="small">@GatewayLabel(((PendingRow)context).WalletType)</span></Template>
@@ -230,7 +230,7 @@ else
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) records — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
@@ -280,6 +280,9 @@ else
 }
 
 @code {
+    // Tarjetas por gateway: el monto completo si cabe; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+
     // WalletType enum NAMES — AdminAPI serializes enums as names (JsonStringEnumConverter),
     // so WalletType is bound as a string on the wire and round-tripped as the name.
     // Populated at init from the ACTIVE payout gateways the operator actually has
@@ -508,7 +511,7 @@ else
                     _results[row.MemberId] = body.Data;
                     if (body.Data.Outcome == "Success")
                     {
-                        _alertMsg = $"Payout for {row.FullName} succeeded ({body.Data.AmountUsd.ToString("C")}).";
+                        _alertMsg = $"Payout for {row.FullName} succeeded ({NumeroCorto.Monto(body.Data.AmountUsd)}).";
                         _alertIsError = false;
                         // Refresh stats + list so the paid amount moves and the row may drop off.
                         await LoadStatsAsync();

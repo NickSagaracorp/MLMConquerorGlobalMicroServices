@@ -72,10 +72,10 @@
                 <GridColumn Field="@nameof(ChargeAttemptDto.FallbackStepIndex)" HeaderText="Step" Width="70" TextAlign="TextAlign.Center" />
                 <GridColumn Field="@nameof(ChargeAttemptDto.PresentmentCurrency)" HeaderText="Currency" Width="90" TextAlign="TextAlign.Center" />
                 <GridColumn Field="@nameof(ChargeAttemptDto.OriginalAmountUsd)" HeaderText="USD Amount" Width="110" TextAlign="TextAlign.Right">
-                    <Template>$@(((ChargeAttemptDto)context).OriginalAmountUsd.ToString("F2"))</Template>
+                    <Template>@NumeroCorto.Monto(((ChargeAttemptDto)context).OriginalAmountUsd)</Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(ChargeAttemptDto.ConvertedAmount)" HeaderText="Converted" Width="110" TextAlign="TextAlign.Right">
-                    <Template>@(((ChargeAttemptDto)context).ConvertedAmount.ToString("F2"))</Template>
+                    <Template>@(((ChargeAttemptDto)context).ConvertedAmount.ToString("N2", CultureInfo.InvariantCulture)) @(((ChargeAttemptDto)context).PresentmentCurrency)</Template>
                 </GridColumn>
                 <GridColumn Field="@nameof(ChargeAttemptDto.Outcome)" HeaderText="Outcome" Width="110" TextAlign="TextAlign.Center">
                     <Template><span class="badge @OutcomeBadge(((ChargeAttemptDto)context).Outcome)">@(((ChargeAttemptDto)context).Outcome)</span></Template>

@@ -40,7 +40,7 @@
                         <Template><code class="text-primary">@(((PayoutGatewayDto)context).WalletType)</code></Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(PayoutGatewayDto.MinimumPayoutAmount)" HeaderText="Minimum payout" Width="150" TextAlign="TextAlign.Right">
-                        <Template><span>@(((PayoutGatewayDto)context).MinimumPayoutAmount.ToString("C"))</span></Template>
+                        <Template><span>@NumeroCorto.Monto(((PayoutGatewayDto)context).MinimumPayoutAmount)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Admin fee" Width="170">
                         <Template>@AdminFeeLabel((PayoutGatewayDto)context)</Template>
@@ -249,16 +249,22 @@
         finally { _saving = false; }
     }
 
-    // Fixed: "$5.00". Percentage: "2% (min $6.95)" using MinAdminFee when present.
+    // Fixed: "5.00 USD". Percentage: "2% (min 6.95 USD)" using MinAdminFee when present.
+    // La comision va en la moneda del gateway (Currency), por eso no lleva "$" ni depende de la cultura.
     private static string AdminFeeLabel(PayoutGatewayDto g)
     {
         if (string.Equals(g.AdminFeeKind, "Percentage", StringComparison.OrdinalIgnoreCase))
         {
             var pct = $"{g.AdminFee:0.##}%";
-            return g.MinAdminFee is > 0 ? $"{pct} (min {g.MinAdminFee.Value.ToString("C")})" : pct;
+            return g.MinAdminFee is > 0 ? $"{pct} (min {MontoEnMoneda(g.MinAdminFee.Value, g.Currency)})" : pct;
         }
-        return g.AdminFee.ToString("C");
+        return MontoEnMoneda(g.AdminFee, g.Currency);
     }
+
+    private static string MontoEnMoneda(decimal monto, string? moneda) =>
+        string.IsNullOrWhiteSpace(moneda) || string.Equals(moneda, "USD", StringComparison.OrdinalIgnoreCase)
+            ? NumeroCorto.Monto(monto)
+            : monto.ToString("N2", CultureInfo.InvariantCulture) + " " + moneda;
 
     private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
 

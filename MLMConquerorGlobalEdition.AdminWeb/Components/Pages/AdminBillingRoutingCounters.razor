@@ -43,7 +43,7 @@
                         <Template><code class="small text-primary">@(((CounterRow)context).RouteBucketKey)</code></Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(CounterRow.ProcessorName)" HeaderText="Processor" Width="160" />
-                    <GridColumn Field="@nameof(CounterRow.AttemptCount)" HeaderText="Attempts" Width="110" TextAlign="TextAlign.Right" />
+                    <GridColumn Field="@nameof(CounterRow.AttemptCount)" HeaderText="Attempts" Width="110" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="Actual %" Width="120" TextAlign="TextAlign.Right">
                         <Template>@(((CounterRow)context).ActualPercent.ToString("0.##"))%</Template>
                     </GridColumn>
@@ -61,7 +61,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount counter rows — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) counter rows — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>

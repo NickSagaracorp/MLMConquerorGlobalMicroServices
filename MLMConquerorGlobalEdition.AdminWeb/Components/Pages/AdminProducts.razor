@@ -56,15 +56,15 @@
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Monthly" Width="110" TextAlign="TextAlign.Right">
-                        <Template>$@(((ProductDto)context).MonthlyFee.ToString("F2"))</Template>
+                        <Template>@NumeroCorto.Monto(((ProductDto)context).MonthlyFee)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Setup" Width="100" TextAlign="TextAlign.Right">
-                        <Template>$@(((ProductDto)context).SetupFee.ToString("F2"))</Template>
+                        <Template>@NumeroCorto.Monto(((ProductDto)context).SetupFee)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Annual" Width="100" TextAlign="TextAlign.Right">
-                        <Template>$@(((ProductDto)context).AnnualPrice.ToString("F2"))</Template>
+                        <Template>@NumeroCorto.Monto(((ProductDto)context).AnnualPrice)</Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(ProductDto.QualificationPoins)" HeaderText="BV Pts" Width="90" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(ProductDto.QualificationPoins)" HeaderText="BV Pts" Width="90" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="Status" Width="100">
                         <Template>
                             <span class="badge @ActiveBadge(((ProductDto)context).IsActive)">

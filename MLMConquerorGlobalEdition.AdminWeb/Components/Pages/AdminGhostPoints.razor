@@ -86,7 +86,7 @@
                 <h6 class="card-title mb-0 fw-semibold flex-grow-1">
                     <i class="ri-list-check-3 me-2 text-primary"></i>Session Ghost Points
                 </h6>
-                <span class="badge bg-secondary">@_sessionPoints.Count added this session</span>
+                <span class="badge bg-secondary">@NumeroCorto.Cantidad(_sessionPoints.Count) added this session</span>
             </div>
             <div class="card-body p-0">
                 @if (_sessionPoints.Count == 0)
@@ -110,7 +110,7 @@
                                 <Template><code class="small">@(((GhostPointDto)context).LegMemberId)</code></Template>
                             </GridColumn>
                             <GridColumn HeaderText="Points" Width="100" TextAlign="TextAlign.Right">
-                                <Template><span class="fw-semibold">@(((GhostPointDto)context).Points.ToString("F2"))</span></Template>
+                                <Template><span class="fw-semibold">@(((GhostPointDto)context).Points.ToString("N2", CultureInfo.InvariantCulture))</span></Template>
                             </GridColumn>
                             <GridColumn HeaderText="Side" Width="90" TextAlign="TextAlign.Center">
                                 <Template>

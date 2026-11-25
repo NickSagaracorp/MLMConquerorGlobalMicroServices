@@ -133,9 +133,9 @@
                         {
                             <tr>
                                 <td>@row.Country</td>
-                                <td class="text-end">@row.Total.ToString("N0")</td>
-                                <td class="text-end">@row.Ambassadors.ToString("N0")</td>
-                                <td class="text-end">@row.Customers.ToString("N0")</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(row.Total)</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(row.Ambassadors)</td>
+                                <td class="text-end">@NumeroCorto.Cantidad(row.Customers)</td>
                                 <td class="text-end">
                                     @if (row.Change is null)
                                     {
@@ -143,11 +143,11 @@
                                     }
                                     else if (row.Change > 0)
                                     {
-                                        <span class="text-success"><i class="ri-arrow-up-line"></i>@row.Change.Value.ToString("N0")</span>
+                                        <span class="text-success"><i class="ri-arrow-up-line"></i>@NumeroCorto.Cantidad(row.Change.Value)</span>
                                     }
                                     else if (row.Change < 0)
                                     {
-                                        <span class="text-danger"><i class="ri-arrow-down-line"></i>@Math.Abs(row.Change.Value).ToString("N0")</span>
+                                        <span class="text-danger"><i class="ri-arrow-down-line"></i>@NumeroCorto.Cantidad(Math.Abs(row.Change.Value))</span>
                                     }
                                     else
                                     {

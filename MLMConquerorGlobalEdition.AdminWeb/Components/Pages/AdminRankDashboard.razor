@@ -24,7 +24,7 @@ else
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-3 fw-bold text-primary">@_stats?.TotalMembers.ToString("N0")</div>
+                    <div class="fs-3 fw-bold text-primary" title="@(_stats is null ? "" : NumeroCorto.Cantidad(_stats.TotalMembers))">@(_stats is null ? "" : NumeroCorto.Cantidad(_stats.TotalMembers, AnchoDeTarjeta))</div>
                     <div class="text-muted small">Total Ranked Members</div>
                 </div>
             </div>
@@ -32,7 +32,7 @@ else
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-3 fw-bold text-success">@_stats?.TotalRanks</div>
+                    <div class="fs-3 fw-bold text-success">@(_stats is null ? "" : NumeroCorto.Cantidad(_stats.TotalRanks, AnchoDeTarjeta))</div>
                     <div class="text-muted small">Active Ranks</div>
                 </div>
             </div>
@@ -48,7 +48,7 @@ else
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div class="fs-3 fw-bold text-warning">@(_stats?.UnrankedCount.ToString("N0") ?? "—")</div>
+                    <div class="fs-3 fw-bold text-warning" title="@(_stats is null ? "" : NumeroCorto.Cantidad(_stats.UnrankedCount))">@(_stats is null ? "—" : NumeroCorto.Cantidad(_stats.UnrankedCount, AnchoDeTarjeta))</div>
                     <div class="text-muted small">Unranked Members</div>
                 </div>
             </div>
@@ -87,7 +87,7 @@ else
                                     @if (!string.IsNullOrWhiteSpace(r.RankCode))
                                     {<text> <span class="badge bg-light text-dark border">@r.RankCode</span></text>}
                                 </td>
-                                <td class="text-end fw-bold">@r.MemberCount.ToString("N0")</td>
+                                <td class="text-end fw-bold">@NumeroCorto.Cantidad(r.MemberCount)</td>
                                 <td>
                                     <div class="progress" style="height:12px;">
                                         <div class="progress-bar @BarColor(r.Percentage)" style="width:@r.Percentage.ToString("F1")%"></div>
@@ -104,6 +104,9 @@ else
 }
 
 @code {
+    // Tarjetas KPI: el valor completo si cabe; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+
     private bool _loading = true;
     private string? _alertMsg;
     private RankDashboardStatsDto? _stats;

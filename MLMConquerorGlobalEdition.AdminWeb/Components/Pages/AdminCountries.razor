@@ -436,7 +436,7 @@
                             <label class="form-check-label w-100" for="retroChoiceMigrate">
                                 <span class="fw-semibold">Also migrate existing wallets</span>
                                 <span class="d-block text-muted small mt-1">
-                                    <strong>@_retroactivePreviewCount</strong>
+                                    <strong>@NumeroCorto.Cantidad(_retroactivePreviewCount)</strong>
                                     @(_retroactivePreviewCount == 1 ? "ambassador" : "ambassadors")
                                     in this country
                                     @(_retroactivePreviewCount == 1 ? "is" : "are")
@@ -934,7 +934,7 @@
 
                 var msg = $"Default gateway saved for {_payoutCountry.NameEn}.";
                 if (applyRetroactively && migrated > 0)
-                    msg += $" Migrated {migrated} existing wallet{(migrated == 1 ? "" : "s")}.";
+                    msg += $" Migrated {NumeroCorto.Cantidad(migrated)} existing wallet{(migrated == 1 ? "" : "s")}.";
 
                 ShowAlert(msg, isError: false);
                 ClosePayoutDefault();

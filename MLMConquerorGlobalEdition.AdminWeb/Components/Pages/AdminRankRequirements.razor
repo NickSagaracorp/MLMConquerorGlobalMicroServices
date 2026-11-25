@@ -45,21 +45,21 @@
                 <GridColumns>
                     <GridColumn Field="@nameof(RankRequirementDto.Id)" HeaderText="ID" Width="65" TextAlign="TextAlign.Center" />
                     <GridColumn Field="@nameof(RankRequirementDto.LevelNo)" HeaderText="Level" Width="75" TextAlign="TextAlign.Center" />
-                    <GridColumn Field="@nameof(RankRequirementDto.PersonalPoints)" HeaderText="Pers.Pts" Width="95" TextAlign="TextAlign.Right" />
-                    <GridColumn Field="@nameof(RankRequirementDto.TeamPoints)" HeaderText="Team Pts" Width="95" TextAlign="TextAlign.Right" />
+                    <GridColumn Field="@nameof(RankRequirementDto.PersonalPoints)" HeaderText="Pers.Pts" Width="95" TextAlign="TextAlign.Right" Format="N0" />
+                    <GridColumn Field="@nameof(RankRequirementDto.TeamPoints)" HeaderText="Team Pts" Width="95" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="Max Branch%" Width="115" TextAlign="TextAlign.Right">
                         <Template>@(((RankRequirementDto)context).MaxTeamPointsPerBranch.ToString("P0"))</Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(RankRequirementDto.EnrollmentTeam)" HeaderText="Enroll.Team" Width="110" TextAlign="TextAlign.Right" />
+                    <GridColumn Field="@nameof(RankRequirementDto.EnrollmentTeam)" HeaderText="Enroll.Team" Width="110" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="MaxEnroll%" Width="110" TextAlign="TextAlign.Right">
                         <Template>@(((RankRequirementDto)context).MaxEnrollmentTeamPointsPerBranch.ToString("P0"))</Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(RankRequirementDto.SponsoredMembers)" HeaderText="Sponsored" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(RankRequirementDto.SponsoredMembers)" HeaderText="Sponsored" Width="100" TextAlign="TextAlign.Right" Format="N0" />
                     <GridColumn HeaderText="Daily Bonus" Width="110" TextAlign="TextAlign.Right">
-                        <Template>$@(((RankRequirementDto)context).DailyBonus.ToString("F2"))</Template>
+                        <Template>@NumeroCorto.Monto(((RankRequirementDto)context).DailyBonus)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Rank Bonus" Width="110" TextAlign="TextAlign.Right">
-                        <Template>$@(((RankRequirementDto)context).RankBonus.ToString("F2"))</Template>
+                        <Template>@NumeroCorto.Monto(((RankRequirementDto)context).RankBonus)</Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(RankRequirementDto.LifetimeHoldingDuration)" HeaderText="Hold Days" Width="100" TextAlign="TextAlign.Center" />
                     <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">

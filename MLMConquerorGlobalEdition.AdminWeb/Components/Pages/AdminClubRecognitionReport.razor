@@ -72,7 +72,7 @@
 
 @if (_total is not null)
 {
-    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+    <div class="text-muted small mb-2">@NumeroCorto.Cantidad(_total.Value) results</div>
 }
 
 <GridCargando Visible="_cargando" Texto="Loading…">
@@ -97,7 +97,7 @@
             <Template>@((context as RecognitionRow)!.ReachedDate.ToString("yyyy-MM-dd"))</Template>
         </GridColumn>
         <GridColumn Field="@nameof(RecognitionRow.QualifyingTotal)" HeaderText="Total" TextAlign="TextAlign.Right" Width="130">
-            <Template>@((context as RecognitionRow)!.QualifyingTotal.ToString("N2"))</Template>
+            <Template>@NumeroCorto.Monto((context as RecognitionRow)!.QualifyingTotal)</Template>
         </GridColumn>
         <GridColumn Field="@nameof(RecognitionRow.CeoCallRecognized)" HeaderText="CEO Call Recognized" />
         <GridColumn Field="@nameof(RecognitionRow.EventRecognized)" HeaderText="Event Recognized" />
@@ -249,7 +249,7 @@
                 var result = (await resp.Content.ReadFromJsonAsync<ApiResp<HistoryResult>>())?.Data;
                 _info = result is null
                     ? "Historical load finished."
-                    : $"Historical load through {result.LastDay:yyyy-MM-dd}: {result.Added:N0} new records.";
+                    : $"Historical load through {result.LastDay:yyyy-MM-dd}: {NumeroCorto.Cantidad(result.Added)} new records.";
                 await RefreshAsync();
             }
             else _error = $"Historical load failed ({(int)resp.StatusCode}).";

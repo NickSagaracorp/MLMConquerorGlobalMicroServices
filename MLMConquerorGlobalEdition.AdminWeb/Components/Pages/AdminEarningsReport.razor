@@ -53,7 +53,7 @@
 
 @if (_total is not null)
 {
-    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+    <div class="text-muted small mb-2">@NumeroCorto.Cantidad(_total.Value) results</div>
 }
 
 <GridCargando Visible="_cargando" Texto="Loading…">
@@ -72,7 +72,9 @@
         <GridColumn Field="@nameof(EarningsRow.MemberName)" HeaderText="Member Name" />
         <GridColumn Field="@nameof(EarningsRow.Email)" HeaderText="Email" />
         <GridColumn Field="@nameof(EarningsRow.Country)" HeaderText="Country" />
-        <GridColumn Field="@nameof(EarningsRow.Total)" HeaderText="Total" Format="N2" TextAlign="TextAlign.Right" />
+        <GridColumn Field="@nameof(EarningsRow.Total)" HeaderText="Total" TextAlign="TextAlign.Right">
+            <Template>@NumeroCorto.Monto((context as EarningsRow)!.Total)</Template>
+        </GridColumn>
     </GridColumns>
 </SfGrid>
 </GridCargando>

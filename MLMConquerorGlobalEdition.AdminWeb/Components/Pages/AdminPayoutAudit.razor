@@ -85,7 +85,7 @@
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-shield-check-line me-2 text-primary"></i>Payout audit trail
         </h6>
-        <span class="small text-muted">@_totalCount records</span>
+        <span class="small text-muted">@NumeroCorto.Cantidad(_totalCount) records</span>
     </div>
     <div class="card-body p-0">
         @if (_loading)
@@ -118,7 +118,7 @@
                         <Template><span class="small">@GatewayLabel(((PayoutAuditRowDto)context).WalletTypeSnapshot)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
-                        <Template><span class="fw-semibold">@(((PayoutAuditRowDto)context).AmountUsd.ToString("C"))</span></Template>
+                        <Template><span class="fw-semibold">@NumeroCorto.Monto(((PayoutAuditRowDto)context).AmountUsd)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Outcome" Width="120" TextAlign="TextAlign.Center">
                         <Template>@RenderOutcome(((PayoutAuditRowDto)context).Outcome)</Template>
@@ -166,7 +166,7 @@
             @if (_totalPages > 1)
             {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <small class="text-muted">@NumeroCorto.Cantidad(_totalCount) records — Page @_page of @_totalPages</small>
                     <nav>
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
@@ -293,7 +293,7 @@
                 @* ── Amounts & outcome ── *@
                 <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-money-dollar-circle-line me-1 text-muted"></i>Amounts &amp; outcome</h6>
                 <dl class="row small mb-3">
-                    <dt class="col-5 text-muted">Amount (USD)</dt><dd class="col-7 fw-semibold">@d.AmountUsd.ToString("C")</dd>
+                    <dt class="col-5 text-muted">Amount (USD)</dt><dd class="col-7 fw-semibold">@NumeroCorto.Monto(d.AmountUsd)</dd>
                     <dt class="col-5 text-muted">Outcome</dt><dd class="col-7">@RenderOutcome(d.Outcome)</dd>
                     <dt class="col-5 text-muted">Process date (UTC)</dt><dd class="col-7">@d.ProcessDateUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
                     <dt class="col-5 text-muted">Completed (UTC)</dt><dd class="col-7">@(d.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</dd>
@@ -321,7 +321,7 @@
                 }
 
                 @* ── Itemized earnings ── *@
-                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-list-check-2 me-1 text-muted"></i>Earnings (@(d.Earnings?.Count ?? 0))</h6>
+                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-list-check-2 me-1 text-muted"></i>Earnings (@NumeroCorto.Cantidad(d.Earnings?.Count ?? 0))</h6>
                 @if (d.Earnings is { Count: > 0 })
                 {
                     <table class="table table-sm small mb-3">
@@ -329,13 +329,13 @@
                         <tbody>
                             @foreach (var e in d.Earnings)
                             {
-                                <tr><td><code class="small">@e.CommissionEarningId</code></td><td class="text-end">@e.Amount.ToString("C")</td></tr>
+                                <tr><td><code class="small">@e.CommissionEarningId</code></td><td class="text-end">@NumeroCorto.Monto(e.Amount)</td></tr>
                             }
                         </tbody>
                         <tfoot>
                             <tr class="fw-semibold border-top">
                                 <td>Total</td>
-                                <td class="text-end">@d.Earnings.Sum(e => e.Amount).ToString("C")</td>
+                                <td class="text-end">@NumeroCorto.Monto(d.Earnings.Sum(e => e.Amount))</td>
                             </tr>
                         </tfoot>
                     </table>

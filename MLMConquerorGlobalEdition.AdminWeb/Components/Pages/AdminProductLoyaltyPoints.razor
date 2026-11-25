@@ -49,7 +49,7 @@
                 <GridColumns>
                     <GridColumn Field="@nameof(LoyaltyDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
                     <GridColumn HeaderText="Points / Unit" Width="130" TextAlign="TextAlign.Right">
-                        <Template>@(((LoyaltyDto)context).PointsPerUnit.ToString("F2"))</Template>
+                        <Template>@(((LoyaltyDto)context).PointsPerUnit.ToString("N2", CultureInfo.InvariantCulture))</Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(LoyaltyDto.RequiredSuccessfulPayments)" HeaderText="Req. Payments to Unlock" Width="200" TextAlign="TextAlign.Center" />
                     <GridColumn HeaderText="Status" Width="100">

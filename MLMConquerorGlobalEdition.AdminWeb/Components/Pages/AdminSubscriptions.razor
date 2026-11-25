@@ -15,7 +15,7 @@
             <div class="card-body">
                 <i class="ri-vip-crown-line fs-2 text-primary d-block mb-2"></i>
                 <p class="fw-semibold text-muted small text-uppercase mb-1">Active</p>
-                <h3 class="fw-bold text-primary mb-0">@FormatStat(_stats?.Active)</h3>
+                <h3 class="fw-bold text-primary mb-0" title="@FormatStatFull(_stats?.Active)">@FormatStat(_stats?.Active)</h3>
             </div>
         </div>
     </div>
@@ -24,7 +24,7 @@
             <div class="card-body">
                 <i class="ri-time-line fs-2 text-warning d-block mb-2"></i>
                 <p class="fw-semibold text-muted small text-uppercase mb-1">Expiring ≤ 7 days</p>
-                <h3 class="fw-bold text-warning mb-0">@FormatStat(_stats?.ExpiringIn7Days)</h3>
+                <h3 class="fw-bold text-warning mb-0" title="@FormatStatFull(_stats?.ExpiringIn7Days)">@FormatStat(_stats?.ExpiringIn7Days)</h3>
             </div>
         </div>
     </div>
@@ -33,7 +33,7 @@
             <div class="card-body">
                 <i class="ri-close-circle-line fs-2 text-danger d-block mb-2"></i>
                 <p class="fw-semibold text-muted small text-uppercase mb-1">Cancelled</p>
-                <h3 class="fw-bold text-danger mb-0">@FormatStat(_stats?.Cancelled)</h3>
+                <h3 class="fw-bold text-danger mb-0" title="@FormatStatFull(_stats?.Cancelled)">@FormatStat(_stats?.Cancelled)</h3>
             </div>
         </div>
     </div>
@@ -42,7 +42,7 @@
             <div class="card-body">
                 <i class="ri-refresh-line fs-2 text-success d-block mb-2"></i>
                 <p class="fw-semibold text-muted small text-uppercase mb-1">Auto-Renew</p>
-                <h3 class="fw-bold text-success mb-0">@FormatStat(_stats?.AutoRenew)</h3>
+                <h3 class="fw-bold text-success mb-0" title="@FormatStatFull(_stats?.AutoRenew)">@FormatStat(_stats?.AutoRenew)</h3>
             </div>
         </div>
     </div>
@@ -168,7 +168,10 @@
         finally { StateHasChanged(); }
     }
 
-    private static string FormatStat(int? value) => value?.ToString("N0") ?? "—";
+    // Tarjetas de contadores: el valor completo si cabe en el ancho de la tarjeta; si no, abreviado (el completo va en el title).
+    private const int AnchoDeTarjeta = 7;
+    private static string FormatStat(int? value) => value is int v ? NumeroCorto.Cantidad(v, AnchoDeTarjeta) : "—";
+    private static string FormatStatFull(int? value) => value is int v ? NumeroCorto.Cantidad(v) : "—";
 
     private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
 

@@ -76,7 +76,7 @@
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Amount due" Width="120" TextAlign="TextAlign.Right">
-                        <Template>@(((PendingCryptoSignupDto)context).AmountDue.ToString("C"))</Template>
+                        <Template>@NumeroCorto.Monto(((PendingCryptoSignupDto)context).AmountDue)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center">
                         <Template>
@@ -119,7 +119,7 @@
                     <GridColumn Field="@nameof(ConfirmedCryptoSignupDto.MemberId)" HeaderText="Member ID" Width="130" />
                     <GridColumn Field="@nameof(ConfirmedCryptoSignupDto.FullName)" HeaderText="Name" Width="170" />
                     <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
-                        <Template>@(((ConfirmedCryptoSignupDto)context).AmountDue.ToString("C"))</Template>
+                        <Template>@NumeroCorto.Monto(((ConfirmedCryptoSignupDto)context).AmountDue)</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Transaction id" Width="240">
                         <Template>
@@ -152,7 +152,7 @@
                 <div class="modal-body">
                     <p class="mb-2">
                         <strong>@_confirmTarget.FullName</strong> (@_confirmTarget.MemberId) —
-                        @_confirmTarget.AmountDue.ToString("C") in @_confirmTarget.CryptoCurrency
+                        @NumeroCorto.Monto(_confirmTarget.AmountDue) in @_confirmTarget.CryptoCurrency
                     </p>
                     <div class="alert alert-warning py-2 small">
                         <i class="ri-alert-line me-1"></i>

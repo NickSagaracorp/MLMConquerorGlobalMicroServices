@@ -59,7 +59,7 @@
 
 @if (_total is not null)
 {
-    <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
+    <div class="text-muted small mb-2">@NumeroCorto.Cantidad(_total.Value) results</div>
 }
 
 <GridCargando Visible="_cargando" Texto="Loading…">

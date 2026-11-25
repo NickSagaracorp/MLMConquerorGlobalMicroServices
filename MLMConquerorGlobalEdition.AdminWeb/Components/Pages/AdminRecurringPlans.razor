@@ -54,10 +54,10 @@
                         <Template><span class="badge @(((PlanDto)context).PayFromCommissionBalanceFirst ? "bg-info text-dark" : "bg-secondary")">@(((PlanDto)context).PayFromCommissionBalanceFirst ? "Yes" : "No")</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Fixed Amount" Width="120" TextAlign="TextAlign.Right">
-                        <Template>@(((PlanDto)context).FixedAmountOverride is decimal a ? "$" + a.ToString("F2") : "—")</Template>
+                        <Template>@(((PlanDto)context).FixedAmountOverride is decimal a ? NumeroCorto.Monto(a) : "—")</Template>
                     </GridColumn>
                     <GridColumn HeaderText="Products" Width="100" TextAlign="TextAlign.Center">
-                        <Template><span class="badge bg-light text-dark border">@(((PlanDto)context).PlanProducts.Count)</span></Template>
+                        <Template><span class="badge bg-light text-dark border">@NumeroCorto.Cantidad(((PlanDto)context).PlanProducts.Count)</span></Template>
                     </GridColumn>
                     <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
                         <Template><span class="badge @(((PlanDto)context).IsActive ? "bg-success" : "bg-secondary")">@(((PlanDto)context).IsActive ? "Active" : "Inactive")</span></Template>
