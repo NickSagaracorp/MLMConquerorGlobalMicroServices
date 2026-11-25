@@ -17411,3 +17411,32 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125180818_IndiceDeAltasPorPromo'
+)
+BEGIN
+    DROP INDEX [IX_MembershipSubscriptions_CreationDate] ON [MembershipSubscriptions];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125180818_IndiceDeAltasPorPromo'
+)
+BEGIN
+    CREATE INDEX [IX_MembershipSubscriptions_CreationDate] ON [MembershipSubscriptions] ([CreationDate] DESC) INCLUDE ([MemberId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125180818_IndiceDeAltasPorPromo'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261125180818_IndiceDeAltasPorPromo', N'10.0.11');
+END;
+
+COMMIT;
+GO
+

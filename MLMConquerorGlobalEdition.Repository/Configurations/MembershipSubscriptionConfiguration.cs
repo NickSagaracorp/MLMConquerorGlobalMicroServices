@@ -33,7 +33,10 @@ public class MembershipSubscriptionConfiguration : IEntityTypeConfiguration<Memb
         builder.HasIndex(s => s.MemberId);
         // Grid de Subscriptions del admin: lo más nuevo primero sin ordenar el millón, y los contadores por estado
         // ("por vencer": activas con EndDate cercana) sin recorrer la tabla.
-        builder.HasIndex(s => s.CreationDate).HasDatabaseName("IX_MembershipSubscriptions_CreationDate").IsDescending();
+        // Incluye MemberId: Corporate Promos cuenta los miembros distintos con alta dentro de las fechas de cada promo;
+        // sin él, SQL Server recorría el millón de suscripciones por cada promo (0,8 s y 2 s de CPU cada una).
+        builder.HasIndex(s => s.CreationDate).HasDatabaseName("IX_MembershipSubscriptions_CreationDate").IsDescending()
+               .IncludeProperties(s => s.MemberId);
         builder.HasIndex(s => new { s.SubscriptionStatus, s.EndDate }).HasDatabaseName("IX_MembershipSubscriptions_Status_EndDate");
         builder.HasIndex(new[] { nameof(MembershipSubscription.MemberId) }, "IX_MembershipSubscriptions_Activas")
             .HasFilter("[SubscriptionStatus] = 1");

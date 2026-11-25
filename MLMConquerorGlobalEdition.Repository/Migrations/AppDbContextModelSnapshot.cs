@@ -9119,6 +9119,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsDescending()
                         .HasDatabaseName("IX_MembershipSubscriptions_CreationDate");
 
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CreationDate"), new[] { "MemberId" });
+
                     b.HasIndex("LastOrderId");
 
                     b.HasIndex("MemberId");
