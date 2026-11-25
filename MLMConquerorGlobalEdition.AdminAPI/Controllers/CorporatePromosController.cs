@@ -10,6 +10,8 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.DeleteCorporat
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetCorporatePromoById;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetCorporatePromos;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetPromoMembers;
+using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetPromoMembersGrid;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetPromoStats;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.ResetFsbCountdowns;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.UpdateCorporatePromo;
@@ -104,6 +106,25 @@ public class CorporatePromosController : ControllerBase
     {
         var result = await _mediator.Send(
             new GetPromoMembersQuery(id, new PagedRequest { Page = page, PageSize = pageSize }), ct);
+
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<PagedResult<PromoMemberDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<PromoMemberDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de miembros de la promo en AdminWeb: el CustomAdaptor de Syncfusion manda un
+    /// <see cref="GridDataRequest"/> (página, filtros de columna y orden) y se resuelve en el servidor sobre todos
+    /// los miembros de la promo, no solo sobre los cargados.
+    /// </summary>
+    [HttpPost("{id}/members/grid")]
+    public async Task<IActionResult> GetMembersGrid(
+        string id,
+        [FromBody] GridDataRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetPromoMembersGridQuery(id, request), ct);
 
         if (!result.IsSuccess)
             return NotFound(ApiResponse<PagedResult<PromoMemberDto>>.Fail(result.ErrorCode!, result.Error!));

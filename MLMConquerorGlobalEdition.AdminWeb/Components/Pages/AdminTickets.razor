@@ -4,6 +4,8 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @using Syncfusion.Blazor.RichTextEditor
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor.Data
 
 <PageTitle>Tickets — Admin</PageTitle>
 
@@ -80,79 +82,69 @@
             <i class="ri-customer-service-2-line me-2 text-primary"></i>Support Tickets
         </h6>
         <select class="form-select form-select-sm w-auto" style="min-width:140px"
-                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+                @bind="_statusFilter" @bind:after="OnStatusChangedAsync">
             <option value="">All Statuses</option>
             <option value="Open">Open</option>
             <option value="InProgress">In Progress</option>
             <option value="Resolved">Resolved</option>
             <option value="Closed">Closed</option>
         </select>
-        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" title="Refresh from server" @onclick="RefreshAsync"><i class="ri-refresh-line"></i></button>
         <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
             <i class="ri-add-line me-1"></i>New Ticket
         </button>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else
-        {
-            <SfGrid TValue="TicketDto" DataSource="@_items"
-                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn HeaderText="#" Width="110">
-                        <Template><code class="text-primary small">@(((TicketDto)context).Id[..Math.Min(8, ((TicketDto)context).Id.Length)])…</code></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Subject" Width="220">
-                        <Template><span class="fw-semibold">@(((TicketDto)context).Subject)</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Member" Width="130">
-                        <Template><code>@(((TicketDto)context).MemberId)</code></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Category" Width="130">
-                        <Template><span class="text-muted small">@(((TicketDto)context).CategoryName ?? "—")</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Priority" Width="110">
-                        <Template>
-                            <span class="badge @PriorityBadge(((TicketDto)context).Priority)">@(((TicketDto)context).Priority)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Status" Width="120">
-                        <Template>
-                            <span class="badge @StatusBadge(((TicketDto)context).Status)">@(((TicketDto)context).Status)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(TicketDto.CommentCount)" HeaderText="Comments" Width="100" TextAlign="TextAlign.Center" />
-                    <GridColumn Field="@nameof(TicketDto.CreationDate)" HeaderText="Created" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
-                        <Template>
-                            <a href="/admin/tickets/@(((TicketDto)context).Id)" class="btn btn-sm btn-outline-primary py-0 px-2">
-                                <i class="ri-eye-line"></i>
-                            </a>
-                        </Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-
-            @if (_totalPages > 1)
-            {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount tickets — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
-                        </ul>
-                    </nav>
-                </div>
-            }
-        }
+        @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan   *@
+        @* TODOS los tickets, no solo la página cargada. Filtro de tipo Menu (operador + valor) y no Excel: el de     *@
+        @* Excel pide la lista de valores de la columna a la tabla entera. GridCargando tapa el grid mientras lee.   *@
+        <GridCargando Visible="_cargando" Texto="Loading tickets…">
+        <SfGrid TValue="TicketDto" @ref="_grid"
+                AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="TicketDto"
+                                   Http="Http"
+                                   Endpoint="api/v1/admin/tickets/grid"
+                                   QueryStringProvider="BuildQueryString"
+                                   OnLoading="OnCargandoAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
+            <GridColumns>
+                <GridColumn Field="@nameof(TicketDto.Id)" HeaderText="#" Width="110">
+                    <Template><code class="text-primary small">@(((TicketDto)context).Id[..Math.Min(8, ((TicketDto)context).Id.Length)])…</code></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.Subject)" HeaderText="Subject" Width="220">
+                    <Template><span class="fw-semibold">@(((TicketDto)context).Subject)</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.MemberId)" HeaderText="Member" Width="130">
+                    <Template><code>@(((TicketDto)context).MemberId)</code></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.CategoryName)" HeaderText="Category" Width="130">
+                    <Template><span class="text-muted small">@(((TicketDto)context).CategoryName ?? "—")</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.Priority)" HeaderText="Priority" Width="110">
+                    <Template>
+                        <span class="badge @PriorityBadge(((TicketDto)context).Priority)">@(((TicketDto)context).Priority)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.Status)" HeaderText="Status" Width="120">
+                    <Template>
+                        <span class="badge @StatusBadge(((TicketDto)context).Status)">@(((TicketDto)context).Status)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(TicketDto.CommentCount)" HeaderText="Comments" Width="100" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(TicketDto.CreationDate)" HeaderText="Created" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                    <Template>
+                        <a href="/admin/tickets/@(((TicketDto)context).Id)" class="btn btn-sm btn-outline-primary py-0 px-2">
+                            <i class="ri-eye-line"></i>
+                        </a>
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+        </GridCargando>
     </div>
 </div>
 
@@ -233,24 +225,23 @@
         new() { Command = ToolbarCommand.Redo }
     };
 
-    private List<TicketDto> _items = new();
+    private SfGrid<TicketDto>? _grid;
     private List<TicketCategoryItem> _categories = new();
     private TicketStatsDto? _stats;
-    private bool _loading = true;
     private bool _saving;
     private string? _alertMsg;
     private bool _alertIsError;
-    private int _page = 1;
-    private const int PageSize = 20;
-    private int _totalCount;
-    private int _totalPages = 1;
+
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura.
+    private bool _cargando;
     private string _statusFilter = string.Empty;
     private bool _showForm;
     private TicketFormModel _form = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(LoadCategories(), LoadStats(), LoadAsync());
+        // El grid se carga solo a través del adaptador; aquí solo van las categorías y los contadores.
+        await Task.WhenAll(LoadCategories(), LoadStats());
     }
 
     private async Task LoadCategories()
@@ -274,22 +265,32 @@
         catch { /* non-critical */ }
     }
 
-    private async Task LoadAsync()
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; StateHasChanged();
-        try
-        {
-            var url = $"api/v1/admin/tickets?page={_page}&pageSize={PageSize}";
-            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<TicketDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null) { _items = resp.Data.Items.ToList(); _totalCount = resp.Data.TotalCount; _totalPages = resp.Data.TotalPages; }
-            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load tickets."; _alertIsError = true; }
-        }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+    /// <summary>
+    /// Parámetros de página que ServerGridAdaptor añade a cada lectura. Se evalúa en cada lectura, así que siempre
+    /// lleva el estado elegido en el desplegable; va como parámetro y no como filtro de columna para que se aplique
+    /// sobre la tabla antes de proyectar.
+    /// </summary>
+    private string? BuildQueryString() =>
+        string.IsNullOrWhiteSpace(_statusFilter) ? null : $"status={Uri.EscapeDataString(_statusFilter)}";
+
+    /// <summary>Cambio de estado: el grid vuelve a leer con el nuevo parámetro, como en Members.</summary>
+    private async Task OnStatusChangedAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var stats = LoadStats();
+        if (_grid is not null) await _grid.Refresh();
+        await stats;
+    }
 
     private void OpenCreate() { _form = new(); _showForm = true; }
     private void CloseForm() { _showForm = false; }
@@ -302,7 +303,7 @@
         try
         {
             var response = await Http.PostAsJsonAsync("api/v1/admin/tickets", _form);
-            if (response.IsSuccessStatusCode) { _alertMsg = "Ticket created."; _alertIsError = false; CloseForm(); await LoadAsync(); await LoadStats(); }
+            if (response.IsSuccessStatusCode) { _alertMsg = "Ticket created."; _alertIsError = false; CloseForm(); await RefreshAsync(); }
             else { _alertMsg = $"Create failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -324,10 +325,9 @@
         public int? CategoryId { get; set; }
     }
 
-    private record TicketDto(string Id, string Subject, string MemberId, string Status, string Priority,
+    public record TicketDto(string Id, string Subject, string MemberId, string Status, string Priority,
         string? CategoryName, string? AssignedToUserId, DateTime CreationDate, int CommentCount);
     private record TicketCategoryItem(int Id, string Name);
     private record TicketStatsDto(int Open, int InProgress, int Resolved, int Closed, int NewLast48Hours, int Total);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }

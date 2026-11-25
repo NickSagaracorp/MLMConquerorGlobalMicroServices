@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccessAudit;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccessAuditGrid;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetAccountChanges;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetFlaggedSignups;
+using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetFlaggedSignupsGrid;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.GetThirdParties;
 using MLMConquerorGlobalEdition.AdminAPI.Features.Security.UnblockFingerprint;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
@@ -102,6 +103,32 @@ public class SecurityController : ControllerBase
         var result = await _mediator.Send(new GetFlaggedSignupsQuery(
             visitorId, ipAddress, sponsorReplicateSite, from, to,
             onlyFlagged, includeCleared, page, pageSize), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<FlaggedSignupDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<FlaggedSignupDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de "Flagged Signups" de AdminWeb: el CustomAdaptor de Syncfusion manda un
+    /// <see cref="GridDataRequest"/> (página, filtros de columna y orden) y se resuelve en el servidor sobre todos los
+    /// eventos. Los filtros de la cabecera de la página siguen llegando como parámetros, igual que en el GET.
+    /// </summary>
+    [HttpPost("flagged-signups/grid")]
+    public async Task<IActionResult> GetFlaggedSignupsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string?  visitorId            = null,
+        [FromQuery] string?  ipAddress            = null,
+        [FromQuery] string?  sponsorReplicateSite = null,
+        [FromQuery] DateTime? from                = null,
+        [FromQuery] DateTime? to                  = null,
+        [FromQuery] bool     onlyFlagged          = false,
+        [FromQuery] bool     includeCleared       = false,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetFlaggedSignupsGridQuery(
+            request, visitorId, ipAddress, sponsorReplicateSite, from, to, onlyFlagged, includeCleared), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<FlaggedSignupDto>>.Fail(result.ErrorCode!, result.Error!));

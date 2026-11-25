@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.TokenAdmin;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GetAdminTokenBalances;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GetTokenCodes;
+using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GetTokenCodesGrid;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GrantTokens;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.UpdateTokenBalance;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
@@ -60,6 +62,27 @@ public class AdminTokensController : ControllerBase
     {
         var result = await _mediator.Send(
             new GetTokenCodesQuery(memberId, tokenTypeId, isUsed, page, pageSize), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<TokenCodeDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<TokenCodeDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de códigos de token de AdminWeb: el CustomAdaptor de Syncfusion manda un
+    /// <see cref="GridDataRequest"/> (página, filtros de columna y orden) y se resuelve en el servidor sobre todos los
+    /// códigos del miembro. <paramref name="tokenTypeId"/> e <paramref name="isUsed"/> son los controles de la página.
+    /// </summary>
+    [HttpPost("{memberId}/codes/grid")]
+    public async Task<IActionResult> GetTokenCodesGrid(
+        string memberId,
+        [FromBody] GridDataRequest request,
+        [FromQuery] int? tokenTypeId = null,
+        [FromQuery] bool? isUsed = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetTokenCodesGridQuery(memberId, request, tokenTypeId, isUsed), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<TokenCodeDto>>.Fail(result.ErrorCode!, result.Error!));

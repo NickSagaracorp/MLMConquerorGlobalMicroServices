@@ -3,6 +3,8 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
 @inject HttpClient Http
 @inject IJSRuntime JS
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor.Data
 
 <PageTitle>Flagged Signups — Admin</PageTitle>
 
@@ -67,34 +69,34 @@
                 <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">
                     <i class="ri-eraser-line me-1"></i>Clear
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync" title="Refresh">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshAsync" title="Refresh">
                     <i class="ri-refresh-line"></i>
                 </button>
             </div>
         </div>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else if (!_items.Any())
-        {
-            <div class="text-center text-muted py-5">
-                <i class="ri-shield-cross-line" style="font-size:2rem;"></i>
-                <div class="mt-2">No fingerprint events match the current filters.</div>
-            </div>
-        }
-        else
-        {
-            <SfGrid TValue="FlaggedSignupDto" DataSource="@_items"
-                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan *@
+            @* TODOS los eventos que dejan pasar los filtros de la cabecera; antes se traían 25 y el filtro de la      *@
+            @* columna solo veía esos. Filtro de tipo Menu (operador + valor) y no Excel, que pide la lista de valores *@
+            @* de la columna. GridCargando tapa el grid mientras lee.                                                *@
+            <GridCargando Visible="_cargando" Texto="Loading fingerprint events…">
+            <SfGrid TValue="FlaggedSignupDto" @ref="_grid"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                    <ServerGridAdaptor TValue="FlaggedSignupDto"
+                                       Http="Http"
+                                       Endpoint="api/v1/admin/security/flagged-signups/grid"
+                                       QueryStringProvider="BuildQueryString"
+                                       OnLoading="OnCargandoAsync" />
+                </SfDataManager>
+                <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
                 <GridColumns>
-                    <GridColumn HeaderText="Created (UTC)" Width="150">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.CreationDate)" HeaderText="Created (UTC)" Width="150" Type="ColumnType.DateTime">
                         <Template><span class="small text-muted">@(((FlaggedSignupDto)context).CreationDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Visitor ID" Width="220">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.VisitorId)" HeaderText="Visitor ID" Width="220">
                         <Template>
                             @{ var v = ((FlaggedSignupDto)context).VisitorId ?? string.Empty; }
                             <div class="d-flex align-items-center gap-1">
@@ -105,13 +107,13 @@
                             </div>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Flow" Width="140" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.Flow)" HeaderText="Flow" Width="140" TextAlign="TextAlign.Center">
                         <Template>
                             @{ var f = ((FlaggedSignupDto)context).Flow ?? string.Empty; }
                             <span class="badge @FlowBadge(f)">@f</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Flagged" Width="100" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.IsFlagged)" HeaderText="Flagged" Width="100" TextAlign="TextAlign.Center" Type="ColumnType.Boolean">
                         <Template>
                             @{ var dto = (FlaggedSignupDto)context; }
                             @if (dto.IsFlagged)
@@ -124,7 +126,7 @@
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Cleared" Width="120" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.Cleared)" HeaderText="Cleared" Width="120" TextAlign="TextAlign.Center" Type="ColumnType.Boolean">
                         <Template>
                             @{ var dto = (FlaggedSignupDto)context; }
                             @if (dto.Cleared)
@@ -138,13 +140,13 @@
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Sponsor" Width="140">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.SponsorReplicateSite)" HeaderText="Sponsor" Width="140">
                         <Template><span class="small">@(((FlaggedSignupDto)context).SponsorReplicateSite ?? "—")</span></Template>
                     </GridColumn>
-                    <GridColumn HeaderText="IP Address" Width="140">
+                    <GridColumn Field="@nameof(FlaggedSignupDto.IpAddress)" HeaderText="IP Address" Width="140">
                         <Template><code class="small">@(((FlaggedSignupDto)context).IpAddress ?? "—")</code></Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="220" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="Actions" Width="220" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
                         <Template>
                             @{ var dto = (FlaggedSignupDto)context; }
                             <div class="d-flex justify-content-center gap-1">
@@ -177,22 +179,7 @@
                     </GridColumn>
                 </GridColumns>
             </SfGrid>
-
-            @if (_totalPages > 1)
-            {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount events — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
-                        </ul>
-                    </nav>
-                </div>
-            }
-        }
+            </GridCargando>
     </div>
     <div class="card-footer bg-light small text-muted">
         Fingerprint events recorded by the signup join page. When a legitimate customer is blocked,
@@ -261,14 +248,16 @@
     private bool    _includeCleared;
 
     // ── Grid state ──────────────────────────────────────────────────────
-    private List<FlaggedSignupDto> _items = new();
-    private bool _loading = true;
+    private SfGrid<FlaggedSignupDto>? _grid;
+
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura.
+    private bool _cargando;
+
+    // Filtros de la cabecera tal como se aplicaron con "Search" (o "Clear"). El grid lee con estos y no con los
+    // campos en vivo: si no, escribir en un campo sin pulsar el botón cambiaría lo que trae la siguiente página.
+    private AppliedFilters _applied = new(null, null, null, null, null, false, false);
     private string? _alertMsg;
     private bool _alertIsError;
-    private int _page = 1;
-    private const int PageSize = 25;
-    private int _totalCount;
-    private int _totalPages = 1;
 
     // ── Unblock modal ───────────────────────────────────────────────────
     private bool _showUnblockModal;
@@ -277,58 +266,49 @@
     private UnblockTarget? _unblockTarget;
 
     private enum UnblockMode { Visitor, Ip }
+    private record AppliedFilters(string? VisitorId, string? IpAddress, string? Sponsor,
+        DateTime? From, DateTime? To, bool OnlyFlagged, bool IncludeCleared);
     private record UnblockTarget(UnblockMode Mode, string Value, int MatchingCount);
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    private async Task LoadAsync()
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; StateHasChanged();
-        try
-        {
-            var qs = new List<string>
-            {
-                $"page={_page}",
-                $"pageSize={PageSize}",
-                $"onlyFlagged={_onlyFlagged.ToString().ToLower()}",
-                $"includeCleared={_includeCleared.ToString().ToLower()}"
-            };
-            if (!string.IsNullOrWhiteSpace(_visitorIdFilter))
-                qs.Add($"visitorId={Uri.EscapeDataString(_visitorIdFilter.Trim())}");
-            if (!string.IsNullOrWhiteSpace(_ipAddressFilter))
-                qs.Add($"ipAddress={Uri.EscapeDataString(_ipAddressFilter.Trim())}");
-            if (!string.IsNullOrWhiteSpace(_sponsorFilter))
-                qs.Add($"sponsorReplicateSite={Uri.EscapeDataString(_sponsorFilter.Trim())}");
-            if (_fromFilter.HasValue)
-                qs.Add($"from={Uri.EscapeDataString(_fromFilter.Value.ToString("o"))}");
-            if (_toFilter.HasValue)
-                qs.Add($"to={Uri.EscapeDataString(_toFilter.Value.ToString("o"))}");
-
-            var url = $"api/v1/admin/security/flagged-signups?{string.Join("&", qs)}";
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<FlaggedSignupDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items = resp.Data.Items.ToList();
-                _totalCount = resp.Data.TotalCount;
-                _totalPages = resp.Data.TotalPages;
-            }
-            else
-            {
-                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load flagged signups.";
-                _alertIsError = true;
-                _items = new();
-                _totalCount = 0; _totalPages = 1;
-            }
-        }
-        catch (Exception ex)
-        {
-            _alertMsg = $"Error: {ex.Message}";
-            _alertIsError = true;
-        }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task Search() { _page = 1; await LoadAsync(); }
+    /// <summary>
+    /// Parámetros que ServerGridAdaptor añade a cada lectura: los filtros de la cabecera aplicados. Van como
+    /// parámetros (los mismos del GET) para que el servidor los aplique sobre la tabla antes de proyectar.
+    /// </summary>
+    private string? BuildQueryString() => BuildQueryString(_applied);
+
+    private static string BuildQueryString(AppliedFilters f)
+    {
+        var qs = new List<string>
+        {
+            $"onlyFlagged={f.OnlyFlagged.ToString().ToLower()}",
+            $"includeCleared={f.IncludeCleared.ToString().ToLower()}"
+        };
+        if (!string.IsNullOrWhiteSpace(f.VisitorId))
+            qs.Add($"visitorId={Uri.EscapeDataString(f.VisitorId)}");
+        if (!string.IsNullOrWhiteSpace(f.IpAddress))
+            qs.Add($"ipAddress={Uri.EscapeDataString(f.IpAddress)}");
+        if (!string.IsNullOrWhiteSpace(f.Sponsor))
+            qs.Add($"sponsorReplicateSite={Uri.EscapeDataString(f.Sponsor)}");
+        if (f.From.HasValue)
+            qs.Add($"from={Uri.EscapeDataString(f.From.Value.ToString("o"))}");
+        if (f.To.HasValue)
+            qs.Add($"to={Uri.EscapeDataString(f.To.Value.ToString("o"))}");
+        return string.Join("&", qs);
+    }
+
+    private async Task Search()
+    {
+        _applied = new AppliedFilters(
+            NullIfBlank(_visitorIdFilter), NullIfBlank(_ipAddressFilter), NullIfBlank(_sponsorFilter),
+            _fromFilter, _toFilter, _onlyFlagged, _includeCleared);
+        await RefreshAsync();
+    }
 
     private async Task ClearFilters()
     {
@@ -339,32 +319,48 @@
         _toFilter        = null;
         _onlyFlagged     = false;
         _includeCleared  = false;
-        _page = 1;
-        await LoadAsync();
+        await Search();
     }
 
-    private async Task ChangePage(int p)
+    private async Task RefreshAsync()
     {
-        if (p < 1 || p > _totalPages) return;
-        _page = p;
-        await LoadAsync();
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    private static string? NullIfBlank(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>
+    /// Cuántos eventos sin liberar tiene un visitante o una IP en TODA la tabla, que es lo que libera el desbloqueo.
+    /// Antes se contaban entre las filas cargadas. Se pide al endpoint del grid con una sola fila y se usa su total.
+    /// </summary>
+    private async Task<int> CountUnclearedAsync(string? visitorId, string? ipAddress)
+    {
+        try
+        {
+            var qs   = BuildQueryString(new AppliedFilters(visitorId, ipAddress, null, null, null, false, false));
+            var resp = await Http.PostAsJsonAsync($"api/v1/admin/security/flagged-signups/grid?{qs}", new { Page = 1, PageSize = 1 });
+            if (!resp.IsSuccessStatusCode) return 0;
+            var body = await resp.Content.ReadFromJsonAsync<ApiResp<Paged<FlaggedSignupDto>>>();
+            return body?.Data?.TotalCount ?? 0;
+        }
+        catch { return 0; }
     }
 
     // ── Unblock flow ────────────────────────────────────────────────────
-    private void OpenUnblockVisitor(FlaggedSignupDto dto)
+    private async Task OpenUnblockVisitor(FlaggedSignupDto dto)
     {
         var v = dto.VisitorId ?? string.Empty;
-        var matching = _items.Count(x => string.Equals(x.VisitorId, v, StringComparison.Ordinal) && !x.Cleared);
+        var matching = await CountUnclearedAsync(v, null);
         _unblockTarget = new UnblockTarget(UnblockMode.Visitor, v, matching);
         _unblockReason = string.Empty;
         _showUnblockModal = true;
     }
 
-    private void OpenUnblockIp(FlaggedSignupDto dto)
+    private async Task OpenUnblockIp(FlaggedSignupDto dto)
     {
         var ip = dto.IpAddress ?? string.Empty;
         if (string.IsNullOrWhiteSpace(ip)) return;
-        var matching = _items.Count(x => string.Equals(x.IpAddress, ip, StringComparison.Ordinal) && !x.Cleared);
+        var matching = await CountUnclearedAsync(null, ip);
         _unblockTarget = new UnblockTarget(UnblockMode.Ip, ip, matching);
         _unblockReason = string.Empty;
         _showUnblockModal = true;
@@ -397,7 +393,7 @@
                 _alertMsg = $"Cleared {n} row(s) for {(_unblockTarget.Mode == UnblockMode.Visitor ? "visitor" : "IP")} {_unblockTarget.Value}.";
                 _alertIsError = false;
                 CloseUnblockModal();
-                await LoadAsync();
+                await RefreshAsync();
             }
             else
             {
@@ -446,7 +442,7 @@
     };
 
     // ── DTOs ────────────────────────────────────────────────────────────
-    private record FlaggedSignupDto(
+    public record FlaggedSignupDto(
         long Id,
         string VisitorId,
         string Flow,
@@ -465,5 +461,5 @@
 
     private record UnblockRequest(string? VisitorId, string? IpAddress, string Reason);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount);
 }

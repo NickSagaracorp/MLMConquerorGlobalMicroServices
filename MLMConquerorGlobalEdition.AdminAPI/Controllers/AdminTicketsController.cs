@@ -10,6 +10,8 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.AdminCreateTicket;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.AdminUploadAttachment;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.GetAdminTicketDetail;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.GetAdminTickets;
+using MLMConquerorGlobalEdition.AdminAPI.Features.TicketAdmin.GetAdminTicketsGrid;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
 
@@ -32,6 +34,25 @@ public class AdminTicketsController : ControllerBase
     {
         var result = await _mediator.Send(
             new GetAdminTicketsQuery(new PagedRequest { Page = page, PageSize = pageSize }), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<AdminTicketDto>>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<PagedResult<AdminTicketDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Lectura del grid de tickets de AdminWeb: el CustomAdaptor de Syncfusion manda un <see cref="GridDataRequest"/>
+    /// (página, filtros de columna y orden) y se resuelve en el servidor sobre todos los tickets, no solo sobre la
+    /// página cargada. <paramref name="status"/> es el desplegable de estado de la página.
+    /// </summary>
+    [HttpPost("grid")]
+    public async Task<IActionResult> GetTicketsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAdminTicketsGridQuery(request, status), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<AdminTicketDto>>.Fail(result.ErrorCode!, result.Error!));

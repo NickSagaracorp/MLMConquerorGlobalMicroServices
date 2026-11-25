@@ -3,6 +3,8 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor.Data
 
 <PageTitle>Promo Members — Admin</PageTitle>
 
@@ -19,78 +21,100 @@
     <div class="card-header py-3 d-flex align-items-center gap-2">
         <h6 class="card-title mb-0 fw-semibold flex-grow-1">
             <i class="ri-team-line me-2 text-primary"></i>Members Signed Up During Promo
-            @if (!_loading) { <span class="badge bg-secondary ms-2">@_items.Count total</span> }
+            @if (_totalCount is not null) { <span class="badge bg-secondary ms-2">@_totalCount.Value.ToString("N0") total</span> }
         </h6>
-        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" title="Refresh from server" @onclick="RefreshAsync"><i class="ri-refresh-line"></i></button>
         <a href="/admin/events/promos/@PromoId/dashboard" class="btn btn-outline-success btn-sm">
             <i class="ri-dashboard-line me-1"></i>Dashboard
         </a>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else
-        {
-            <SfGrid TValue="PromoMemberDto" DataSource="@_items"
-                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn HeaderText="Member" Width="250">
-                        <Template>
-                            <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="text-primary fw-semibold">
-                                <code class="small">@(((PromoMemberDto)context).MemberId)</code>
-                            </a>
-                            <span class="ms-1 small">@(((PromoMemberDto)context).FullName)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(PromoMemberDto.Email)" HeaderText="Email" Width="220" />
-                    <GridColumn Field="@nameof(PromoMemberDto.MembershipLevelName)" HeaderText="Level" Width="150" />
-                    <GridColumn HeaderText="Signup Date" Width="140">
-                        <Template><span class="small">@(((PromoMemberDto)context).SignupDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Status" Width="110">
-                        <Template>
-                            <span class="badge @StatusBadge(((PromoMemberDto)context).SubscriptionStatus)">
-                                @(((PromoMemberDto)context).SubscriptionStatus)
-                            </span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
-                        <Template>
-                            <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="btn btn-sm btn-outline-primary py-0">
-                                <i class="ri-eye-line"></i>
-                            </a>
-                        </Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-        }
+        @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan  *@
+        @* TODOS los miembros de la promo; antes se pedían 500 y se filtraba solo sobre ellos. Filtro de tipo Menu *@
+        @* (operador + valor) y no Excel, que pide la lista de valores de la columna. GridCargando tapa el grid    *@
+        @* mientras lee.                                                                                        *@
+        <GridCargando Visible="_cargando" Texto="Loading promo members…">
+        <SfGrid TValue="PromoMemberDto" @ref="_grid"
+                AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="PromoMemberDto"
+                                   Http="Http"
+                                   Endpoint="@($"api/v1/admin/corporate-promos/{Uri.EscapeDataString(PromoId)}/members/grid")"
+                                   OnCount="OnTotalAsync"
+                                   OnServerError="OnServerErrorAsync"
+                                   OnLoading="OnCargandoAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
+            <GridColumns>
+                <GridColumn Field="@nameof(PromoMemberDto.FullName)" HeaderText="Member" Width="250">
+                    <Template>
+                        <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="text-primary fw-semibold">
+                            <code class="small">@(((PromoMemberDto)context).MemberId)</code>
+                        </a>
+                        <span class="ms-1 small">@(((PromoMemberDto)context).FullName)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(PromoMemberDto.Email)" HeaderText="Email" Width="220" />
+                <GridColumn Field="@nameof(PromoMemberDto.MembershipLevel)" HeaderText="Level" Width="150" />
+                <GridColumn Field="@nameof(PromoMemberDto.SignupDate)" HeaderText="Signup Date" Width="140" Type="ColumnType.DateTime">
+                    <Template><span class="small">@(((PromoMemberDto)context).SignupDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(PromoMemberDto.SubscriptionStatus)" HeaderText="Status" Width="110">
+                    <Template>
+                        <span class="badge @StatusBadge(((PromoMemberDto)context).SubscriptionStatus)">
+                            @(((PromoMemberDto)context).SubscriptionStatus)
+                        </span>
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                    <Template>
+                        <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="btn btn-sm btn-outline-primary py-0">
+                            <i class="ri-eye-line"></i>
+                        </a>
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+        </GridCargando>
     </div>
 </div>
 
 @code {
     [Parameter] public string PromoId { get; set; } = string.Empty;
 
-    private List<PromoMemberDto> _items = new();
-    private bool _loading = true;
+    private SfGrid<PromoMemberDto>? _grid;
     private string? _alertMsg;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    // Total de miembros de la promo con los filtros de columna aplicados (todas las páginas), del servidor.
+    private int? _totalCount;
 
-    private async Task LoadAsync()
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; StateHasChanged();
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PromoMemberDto>>>($"api/v1/admin/corporate-promos/{PromoId}/members?page=1&pageSize=500");
-            if (resp?.Success == true && resp.Data is not null)
-                _items = resp.Data.Items.ToList();
-        }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnTotalAsync(int total)
+    {
+        _totalCount = total;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // La API responde 404 si la promo no existe o se borró: se explica en vez de dejar el grid vacío sin más.
+    private async Task OnServerErrorAsync(string? errorCode)
+    {
+        _alertMsg = errorCode == "PROMO_NOT_FOUND" ? "Corporate promo not found." : "Failed to load promo members.";
+        _totalCount = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
     }
 
     private static string StatusBadge(string status) => status switch
@@ -101,7 +125,6 @@
         _ => "bg-secondary"
     };
 
-    private record PromoMemberDto(string MemberId, string FullName, string Email, string MembershipLevelName, DateTime SignupDate, string SubscriptionStatus);
-    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+    // Mismo contrato que AdminAPI.DTOs.CorporatePromos.PromoMemberDto (AdminWeb no referencia la API).
+    public record PromoMemberDto(string MemberId, string FullName, string Email, string MembershipLevel, DateTime SignupDate, string SubscriptionStatus);
 }
