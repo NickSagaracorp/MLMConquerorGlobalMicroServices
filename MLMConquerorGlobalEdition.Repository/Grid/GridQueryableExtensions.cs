@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Linq.Dynamic.Core;
 using System.Reflection;
 using System.Text;
@@ -190,6 +191,14 @@ public static class GridQueryableExtensions
     {
         if (filters is null || filters.Count == 0) return source;
 
+        var sinMinusculas = (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery;
+
+        // "Contiene" y "termina en" de texto no pueden usar índice: en SQL Server van aparte, comparando en mayúsculas
+        // con intercalación binaria (ver FiltroBinario). Solo cuando todos los filtros se unen con "and": con un "or"
+        // de por medio, aplicarlos por separado cambiaría el resultado, y se quedan en el predicado de siempre.
+        var todosConY = filters.All(f => !string.Equals(f.Logic, "or", StringComparison.OrdinalIgnoreCase));
+        var binarios  = new List<(PropertyInfo Prop, string Op, string Valor)>();
+
         var predicate = new StringBuilder();
         var values    = new List<object?>();
 
@@ -198,7 +207,16 @@ public static class GridQueryableExtensions
             var prop = GetProperty<T>(f.Field);
             if (prop is null) continue;
 
-            var clause = BuildClause(prop, f, values, (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery);
+            var filtro = sinMinusculas ? ConPrefijoSiEsCorto(prop, f) : f;
+
+            if (sinMinusculas && todosConY && prop.PropertyType == typeof(string) && !string.IsNullOrEmpty(filtro.Value)
+                && filtro.Operator?.ToLowerInvariant() is "contains" or "endswith" or null)
+            {
+                binarios.Add((prop, (filtro.Operator ?? "contains").ToLowerInvariant(), filtro.Value!));
+                continue;
+            }
+
+            var clause = BuildClause(prop, filtro, values, sinMinusculas);
             if (clause is null) continue;
 
             if (predicate.Length > 0)
@@ -207,8 +225,62 @@ public static class GridQueryableExtensions
             predicate.Append('(').Append(clause).Append(')');
         }
 
-        return predicate.Length == 0 ? source : source.Where(predicate.ToString(), values.ToArray());
+        if (predicate.Length > 0)
+            source = source.Where(predicate.ToString(), values.ToArray());
+
+        foreach (var (prop, op, valor) in binarios)
+            source = source.Where(FiltroBinario<T>(prop, op, valor));
+
+        return source;
     }
+
+    /// <summary>Intercalación con la que se compara "contiene" en SQL Server: binaria, sobre el texto en mayúsculas.</summary>
+    public const string IntercalacionBinaria = "Latin1_General_100_BIN2";
+
+    /// <summary>
+    /// Mínimo de caracteres para que "contiene" busque a mitad de texto. Con menos, una o dos letras coinciden con casi
+    /// toda la tabla y el recorrido no aporta nada: se busca "empieza por", que usa el índice.
+    /// </summary>
+    public const int MinimoParaContiene = 3;
+
+    private static GridFilter ConPrefijoSiEsCorto(PropertyInfo prop, GridFilter f)
+    {
+        var op = (f.Operator ?? "contains").ToLowerInvariant();
+        if (prop.PropertyType != typeof(string) || op is not ("contains" or "endswith")) return f;
+        if ((f.Value?.Trim().Length ?? 0) >= MinimoParaContiene) return f;
+        return new GridFilter { Field = f.Field, Operator = "startswith", Value = f.Value?.Trim(), Logic = f.Logic };
+    }
+
+    /// <summary>
+    /// <c>UPPER(columna) COLLATE Latin1_General_100_BIN2 LIKE '%VALOR%'</c> (o '%VALOR' para "termina en"). Sigue
+    /// recorriendo la columna —ningún índice sirve para buscar a mitad de texto—, pero la comparación binaria es mucho
+    /// más barata que la de la intercalación de la base: sobre el millón de miembros, el correo bajó de 2,4–2,7 s a
+    /// 0,4–0,6 s y el apellido de 0,6–1,1 s a 0,16–0,23 s. Las mayúsculas a los dos lados mantienen la búsqueda sin
+    /// distinguir mayúsculas. El valor va como parámetro, no como literal, para que SQL Server reutilice el plan.
+    /// </summary>
+    private static Expression<Func<T, bool>> FiltroBinario<T>(PropertyInfo prop, string op, string valor)
+    {
+        var x       = Expression.Parameter(typeof(T), "x");
+        var columna = Expression.Property(x, prop);
+        var upper   = Expression.Call(columna, typeof(string).GetMethod(nameof(string.ToUpper), Type.EmptyTypes)!);
+        var collate = Expression.Call(
+            typeof(RelationalDbFunctionsExtensions).GetMethod(nameof(RelationalDbFunctionsExtensions.Collate))!
+                .MakeGenericMethod(typeof(string)),
+            Expression.Constant(EF.Functions),
+            upper,
+            Expression.Constant(IntercalacionBinaria));
+
+        var buscado = Expression.Property(Expression.Constant(new ValorBuscado(valor.Trim().ToUpperInvariant())),
+            nameof(ValorBuscado.Valor));
+        var metodo  = op == "endswith" ? nameof(string.EndsWith) : nameof(string.Contains);
+        var compara = Expression.Call(collate, typeof(string).GetMethod(metodo, new[] { typeof(string) })!, buscado);
+
+        var cuerpo = Expression.AndAlso(Expression.NotEqual(columna, Expression.Constant(null, typeof(string))), compara);
+        return Expression.Lambda<Func<T, bool>>(cuerpo, x);
+    }
+
+    /// <summary>Envoltorio para que EF trate el valor buscado como parámetro y no como literal en el SQL.</summary>
+    private sealed record ValorBuscado(string Valor);
 
     /// <summary>
     /// Saca de la petición los filtros "igual a" de <paramref name="field"/> y devuelve sus valores, para que quien
