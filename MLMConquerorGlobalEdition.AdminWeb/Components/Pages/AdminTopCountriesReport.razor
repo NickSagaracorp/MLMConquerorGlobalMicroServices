@@ -4,6 +4,7 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 @using MLMConquerorGlobalEdition.SharedComponents.Services
 @using Syncfusion.Blazor.Charts
+@using Syncfusion.Blazor.Grids
 @inject HttpClient Http
 @inject IJSRuntime Js
 @inject IViewContextService ViewContext
@@ -117,48 +118,44 @@
                 Snapshot of @_table.SnapshotDate.Value.ToString("yyyy-MM-dd") ·
                 Change vs @(_table.ComparedWith?.ToString("yyyy-MM-dd") ?? "— (no snapshot from 30 days before)")
             </p>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Country</th>
-                            <th class="text-end">Total</th>
-                            <th class="text-end">Ambassadors</th>
-                            <th class="text-end">Customers</th>
-                            <th class="text-end">Change</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in _table.Rows)
-                        {
-                            <tr>
-                                <td>@row.Country</td>
-                                <td class="text-end">@NumeroCorto.Cantidad(row.Total)</td>
-                                <td class="text-end">@NumeroCorto.Cantidad(row.Ambassadors)</td>
-                                <td class="text-end">@NumeroCorto.Cantidad(row.Customers)</td>
-                                <td class="text-end">
-                                    @if (row.Change is null)
-                                    {
-                                        <span class="text-muted">—</span>
-                                    }
-                                    else if (row.Change > 0)
-                                    {
-                                        <span class="text-success"><i class="ri-arrow-up-line"></i>@NumeroCorto.Cantidad(row.Change.Value)</span>
-                                    }
-                                    else if (row.Change < 0)
-                                    {
-                                        <span class="text-danger"><i class="ri-arrow-down-line"></i>@NumeroCorto.Cantidad(Math.Abs(row.Change.Value))</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">0</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            @* Mismo grid que el resto de reportes (cabecera, bordes, orden por columna); los datos ya vienen completos. *@
+            <SfGrid TValue="CountryRow" DataSource="@_table.Rows" AllowSorting="true">
+                <GridColumns>
+                    <GridColumn Field="@nameof(CountryRow.Country)" HeaderText="Country">
+                        <Template>@PaisVisible((context as CountryRow)!.Country)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CountryRow.Total)" HeaderText="Total" TextAlign="TextAlign.Right" Width="140">
+                        <Template>@NumeroCorto.Cantidad((context as CountryRow)!.Total)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CountryRow.Ambassadors)" HeaderText="Ambassadors" TextAlign="TextAlign.Right" Width="140">
+                        <Template>@NumeroCorto.Cantidad((context as CountryRow)!.Ambassadors)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CountryRow.Customers)" HeaderText="Customers" TextAlign="TextAlign.Right" Width="140">
+                        <Template>@NumeroCorto.Cantidad((context as CountryRow)!.Customers)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CountryRow.Change)" HeaderText="Change" TextAlign="TextAlign.Right" Width="120">
+                        <Template>
+                            @{ var cambio = (context as CountryRow)!.Change; }
+                            @if (cambio is null)
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else if (cambio > 0)
+                            {
+                                <span class="text-success"><i class="ri-arrow-up-line"></i>@NumeroCorto.Cantidad(cambio.Value)</span>
+                            }
+                            else if (cambio < 0)
+                            {
+                                <span class="text-danger"><i class="ri-arrow-down-line"></i>@NumeroCorto.Cantidad(Math.Abs(cambio.Value))</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">0</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
     </div>
 </div>
@@ -276,6 +273,9 @@
 
     private sealed record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
     private sealed record TableResp(DateTime? SnapshotDate, DateTime? ComparedWith, List<CountryRow> Rows);
+    // Miembros sin país cargado: la fila no se deja en blanco.
+    private static string PaisVisible(string pais) => string.IsNullOrWhiteSpace(pais) ? "(No country)" : pais;
+
     private sealed record CountryRow(string Country, int Total, int Ambassadors, int Customers, int? Change);
 
     // Clase con propiedades publicas: SfChart lee XName/YName por reflexion.
