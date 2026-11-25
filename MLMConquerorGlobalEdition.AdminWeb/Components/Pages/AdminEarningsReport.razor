@@ -56,11 +56,12 @@
     <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
 }
 
+<GridCargando Visible="_cargando" Texto="Loading…">
 <SfGrid TValue="EarningsRow" @ref="_grid" @key="IsWindow" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
         <ServerGridAdaptor TValue="EarningsRow" Http="Http" Endpoint="api/v1/admin/reports/earnings/grid"
                            QueryStringProvider="Query" OnCount="OnCountAsync"
-                           OnServerError="OnServerErrorAsync" />
+                           OnServerError="OnServerErrorAsync" OnLoading="OnCargandoAsync" />
     </SfDataManager>
     <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
     <GridColumns>
@@ -74,8 +75,19 @@
         <GridColumn Field="@nameof(EarningsRow.Total)" HeaderText="Total" Format="N2" TextAlign="TextAlign.Right" />
     </GridColumns>
 </SfGrid>
+</GridCargando>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private static readonly int[] Windows = { 30, 90, 180, 365 };
 
     private SfGrid<EarningsRow>? _grid;

@@ -58,6 +58,7 @@
             }
 
             <LargeTeamNotice @ref="_aviso" />
+            <GridCargando Visible="_cargando" Texto="@L["Common.Loading"]">
             <SfGrid @key="_eventId" TValue="RegistrationDto" @ref="_grid"
                     AllowPaging="true" AllowSorting="true" AllowResizing="true"
                     AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -67,10 +68,10 @@
                                        Endpoint="@($"{ApiBaseUrl}/events/{Uri.EscapeDataString(_eventId)}/team-registrations/grid")"
                                        QueryStringProvider="FilterQuery"
                                        AccessTokenProvider="GetTokenAsync"
-                                       OnLimited="@(l => _aviso?.SetAsync(l) ?? Task.CompletedTask)" />
+                                       OnLimited="@(l => _aviso?.SetAsync(l) ?? Task.CompletedTask)" OnLoading="OnCargandoAsync" />
                 </SfDataManager>
                 <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
                 <GridColumns>
                     <GridColumn Field="@nameof(RegistrationDto.FirstName)" HeaderText="@L["Changes.FirstName"]" Width="130" Type="ColumnType.String" />
                     <GridColumn Field="@nameof(RegistrationDto.LastName)" HeaderText="@L["Changes.LastName"]" Width="130" Type="ColumnType.String" />
@@ -90,11 +91,22 @@
                     </GridColumn>
                 </GridColumns>
             </SfGrid>
+            </GridCargando>
         }
     </div>
 </div>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     /// <summary>Raíz del API, p. ej. "api/v1/bizcenter".</summary>
     [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;

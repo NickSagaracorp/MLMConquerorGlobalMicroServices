@@ -46,6 +46,7 @@
         @* Server-side grid: search / column filters / sort / paging ALL travel  *@
         @* to the server via ServerGridAdaptor, so they span EVERY customer — not *@
         @* just the current page.                                                 *@
+        <GridCargando Visible="_cargando" Texto="@L["Common.Loading"]">
         <SfGrid TValue="CustomerDto" @ref="_grid"
                 AllowPaging="true" AllowSorting="true" AllowResizing="true"
                 AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -54,10 +55,10 @@
                                    Http="Http"
                                    Endpoint="@($"{ApiBaseUrl}/customers/grid")"
                                    QueryStringProvider="ScopeQuery"
-                                   AccessTokenProvider="GetTokenAsync" />
+                                   AccessTokenProvider="GetTokenAsync" OnLoading="OnCargandoAsync" />
             </SfDataManager>
             <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
-            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
             <GridColumns>
 
                 <GridColumn Field="@nameof(CustomerDto.EnrollDate)" HeaderText="@L["Reports.JoinDate"]"
@@ -128,10 +129,21 @@
 
             </GridColumns>
         </SfGrid>
+        </GridCargando>
     </div>
 </div>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team/enrollment";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;

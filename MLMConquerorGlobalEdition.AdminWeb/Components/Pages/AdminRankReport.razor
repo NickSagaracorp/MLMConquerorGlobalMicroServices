@@ -62,11 +62,12 @@
     <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
 }
 
+<GridCargando Visible="_cargando" Texto="Loading…">
 <SfGrid TValue="RankRow" @ref="_grid" @key="IsLifetime" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
         <ServerGridAdaptor TValue="RankRow" Http="Http" Endpoint="api/v1/admin/reports/ranks/grid"
                            QueryStringProvider="Query" OnCount="OnCountAsync"
-                           OnServerError="OnServerErrorAsync" />
+                           OnServerError="OnServerErrorAsync" OnLoading="OnCargandoAsync" />
     </SfDataManager>
     <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
     <GridColumns>
@@ -85,8 +86,19 @@
         </GridColumn>
     </GridColumns>
 </SfGrid>
+</GridCargando>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     // Terminated no se ofrece: nunca aparece en estos reportes.
     private static readonly IReadOnlyList<string> Statuses = new[] { "Active", "Inactive", "Suspended", "Pending" };
 

@@ -43,6 +43,7 @@
         @* just the current page. The Excel filter menu's distinct-value reads    *@
         @* are served by the same endpoint.                                       *@
         <LargeTeamNotice @ref="_aviso" />
+        <GridCargando Visible="_cargando" Texto="@L["Common.Loading"]">
         <SfGrid TValue="DualTeamMyTeamMemberDto" @ref="_grid"
                 AllowPaging="true" AllowSorting="true" AllowResizing="true"
                 AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -52,10 +53,10 @@
                                    Endpoint="@($"{ApiBaseUrl}/my-team/grid")"
                                    QueryStringProvider="BuildQueryString"
                                    AccessTokenProvider="GetTokenAsync"
-                                   OnLimited="@(l => _aviso?.SetAsync(l) ?? Task.CompletedTask)" />
+                                   OnLimited="@(l => _aviso?.SetAsync(l) ?? Task.CompletedTask)" OnLoading="OnCargandoAsync" />
             </SfDataManager>
             <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
-            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
             <GridColumns>
 
                     <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.EnrollDate)"
@@ -221,10 +222,21 @@
 
                 </GridColumns>
             </SfGrid>
+        </GridCargando>
     </div>
 </div>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     // El servidor avisa si el equipo supera TeamGridLimits.FreeMaxRows (orden por estructura, busqueda por
     // prefijo); el aviso comun (LargeTeamNotice) lo explica encima de la rejilla.
     private LargeTeamNotice? _aviso;

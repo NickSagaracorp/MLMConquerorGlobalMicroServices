@@ -42,6 +42,7 @@
 
         @if (_ready)
         {
+            <GridCargando Visible="_cargando" Texto="@L["Common.Loading"]">
             <SfGrid TValue="ChangeDto" @ref="_grid"
                     AllowPaging="true" AllowSorting="true" AllowResizing="true"
                     AllowFiltering="true" GridLines="GridLine.Horizontal">
@@ -51,10 +52,10 @@
                                        Endpoint="@($"{ApiBaseUrl}/changes/{Scope}/grid")"
                                        QueryStringProvider="RangeQuery"
                                        OnServerError="OnServerErrorAsync"
-                                       AccessTokenProvider="GetTokenAsync" />
+                                       AccessTokenProvider="GetTokenAsync" OnLoading="OnCargandoAsync" />
                 </SfDataManager>
                 <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
                 <GridColumns>
                     <GridColumn Field="@nameof(ChangeDto.FirstName)" HeaderText="@L["Changes.FirstName"]" Width="130" Type="ColumnType.String" />
                     <GridColumn Field="@nameof(ChangeDto.LastName)" HeaderText="@L["Changes.LastName"]" Width="130" Type="ColumnType.String" />
@@ -110,11 +111,22 @@
                     }
                 </GridColumns>
             </SfGrid>
+            </GridCargando>
         }
     </div>
 </div>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     /// <summary>"enrollment", "dual" o "customers": la vista y el segmento de la ruta del API.</summary>
     [Parameter, EditorRequired] public string Scope { get; set; } = "enrollment";
 

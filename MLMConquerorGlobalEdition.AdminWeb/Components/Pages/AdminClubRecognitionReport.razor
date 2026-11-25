@@ -75,10 +75,11 @@
     <div class="text-muted small mb-2">@_total.Value.ToString("N0") results</div>
 }
 
+<GridCargando Visible="_cargando" Texto="Loading…">
 <SfGrid TValue="RecognitionRow" @ref="_grid" @key="Current.View" AllowPaging="true">
     <SfDataManager Adaptor="Adaptors.CustomAdaptor">
         <ServerGridAdaptor TValue="RecognitionRow" Http="Http" Endpoint="api/v1/admin/reports/club-recognition/grid"
-                           QueryStringProvider="Query" OnCount="OnCountAsync" OnServerError="OnServerErrorAsync" />
+                           QueryStringProvider="Query" OnCount="OnCountAsync" OnServerError="OnServerErrorAsync" OnLoading="OnCargandoAsync" />
     </SfDataManager>
     <GridPageSettings PageSize="20" PageSizes="@(new int[] { 20, 50, 100 })" />
     <GridColumns>
@@ -103,8 +104,19 @@
         <GridColumn Field="@nameof(RecognitionRow.RewardSize)" HeaderText="Reward Size" Width="120" />
     </GridColumns>
 </SfGrid>
+</GridCargando>
 
 @code {
+    // Lectura del grid en curso (filtrar, ordenar, paginar): GridCargando tapa el grid mientras dura, para que se vea
+    // que el filtro se está aplicando. Con equipos y reportes de un millón de filas una lectura puede tardar.
+    private bool _cargando;
+
+    private async Task OnCargandoAsync(bool cargando)
+    {
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private sealed record ViewInfo(string Slug, string View, string Title, string Subtitle);
 
     private static readonly ViewInfo[] Views =
