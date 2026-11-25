@@ -26,25 +26,25 @@
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <StatCard Title="@L["Placement.StatPending"]"
-                  Value="@_pendingCount.ToString()"
+                  Value="@NumeroCorto.Cantidad(_pendingCount, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_pendingCount)"
                   Icon="ri-user-add-line"
                   Color="warning" />
     </div>
     <div class="col-6 col-md-3">
         <StatCard Title="@L["Placement.StatPlaced"]"
-                  Value="@_placedCount.ToString()"
+                  Value="@NumeroCorto.Cantidad(_placedCount, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_placedCount)"
                   Icon="ri-checkbox-circle-line"
                   Color="success" />
     </div>
     <div class="col-6 col-md-3">
         <StatCard Title="@L["Placement.StatAutoPlaced"]"
-                  Value="@_autoPlacedCount.ToString()"
+                  Value="@NumeroCorto.Cantidad(_autoPlacedCount, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_autoPlacedCount)"
                   Icon="ri-robot-line"
                   Color="info" />
     </div>
     <div class="col-6 col-md-3">
         <StatCard Title="@L["Placement.StatExpired"]"
-                  Value="@_expiredCount.ToString()"
+                  Value="@NumeroCorto.Cantidad(_expiredCount, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_expiredCount)"
                   Icon="ri-time-line"
                   Color="danger" />
     </div>
@@ -171,6 +171,9 @@ else
 </ConfirmModal>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter] public string HistoryRoute   { get; set; } = "/team/placement/history";
     [Parameter] public bool   IsAdminContext { get; set; }
 

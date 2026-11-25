@@ -36,7 +36,7 @@
                         {
                             <tr>
                                 <td>@e.CommissionType</td>
-                                <td><span class="fw-semibold">@e.Amount.ToString("C")</span></td>
+                                <td><span class="fw-semibold">@NumeroCorto.Monto(e.Amount)</span></td>
                                 <td>@e.PeriodDate.ToString("MMM yyyy")</td>
                                 <td>@(e.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</td>
                                 <td><StatusBadge Status="@e.Status" /></td>

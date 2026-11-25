@@ -84,7 +84,7 @@
                                     <td class="fw-semibold">@Money.Usd(r.Amount)</td>
                                     <td><span class="badge @BadgeClass(r.Status) p-2 fs-12 fw-normal">@StatusText(r.Status)</span></td>
                                     <td>@(r.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</td>
-                                    <td>@(r.EligiblePoints?.ToString("N0") ?? "—")</td>
+                                    <td>@(r.EligiblePoints is { } ep ? NumeroCorto.Cantidad(ep) : "—")</td>
                                     <td class="small text-muted">@(r.PaymentComment ?? "—")</td>
                                 </tr>
                             }
@@ -93,7 +93,7 @@
                 </div>
 
                 <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <span class="fs-12 fw-medium">@L["Reports.Showing"] @_data.Items.Count @L["Common.Of"] @_data.TotalCount @L["Reports.Results"]</span>
+                    <span class="fs-12 fw-medium">@L["Reports.Showing"] @_data.Items.Count @L["Common.Of"] @NumeroCorto.Cantidad(_data.TotalCount) @L["Reports.Results"]</span>
                     @if (TotalPages > 1)
                     {
                         <div class="btn-group">

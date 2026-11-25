@@ -33,7 +33,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Reports.Pending"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.PendingTotal.ToString("C")</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Monto(_summary.PendingTotal)">@NumeroCorto.Monto(_summary.PendingTotal, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -49,7 +49,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Reports.Paid"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.PaidTotal.ToString("C")</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Monto(_summary.PaidTotal)">@NumeroCorto.Monto(_summary.PaidTotal, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -65,7 +65,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["CommissionsDashboard.HistoryCurrentYear"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.CurrentYearTotal.ToString("C")</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Monto(_summary.CurrentYearTotal)">@NumeroCorto.Monto(_summary.CurrentYearTotal, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -124,7 +124,7 @@
                                     <td class="text-body">@group.PaymentDate.ToString("MM/dd/yyyy")</td>
                                     <td>
                                         <span class="badge @(group.TotalAmount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
-                                            @group.TotalAmount.ToString("C")
+                                            @NumeroCorto.Monto(group.TotalAmount)
                                         </span>
                                     </td>
                                     <td>
@@ -225,7 +225,7 @@
                                     <td class="text-body">@group.PaymentDate.ToString("MM/dd/yyyy")</td>
                                     <td>
                                         <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
-                                            @group.TotalAmount.ToString("C")
+                                            @NumeroCorto.Monto(group.TotalAmount)
                                         </span>
                                     </td>
                                     <td>
@@ -289,7 +289,7 @@
             <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg"
                     type="button">
                 <i class="ri-download-2-fill fw-medium fs-18 me-1"></i>
-                <span>@string.Format(L["CommissionsDashboard.DownloadYearly"].Value, _historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear)?.TotalIncome.ToString("C") ?? "$0.00")</span>
+                <span>@string.Format(L["CommissionsDashboard.DownloadYearly"].Value, NumeroCorto.Monto(_historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear)?.TotalIncome ?? 0m))</span>
             </button>
         </div>
 
@@ -331,7 +331,7 @@
                                         <td class="text-body">@m.MonthName</td>
                                         <td>
                                             <span class="badge @(m.TotalIncome >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
-                                                @m.TotalIncome.ToString("C")
+                                                @NumeroCorto.Monto(m.TotalIncome)
                                             </span>
                                         </td>
                                         <td>
@@ -396,7 +396,7 @@
                                                         <td class="text-body">@d.Detail</td>
                                                         <td>
                                                             <span class="badge @(d.Amount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
-                                                                @d.Amount.ToString("C")
+                                                                @NumeroCorto.Monto(d.Amount)
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -441,7 +441,7 @@
                             }
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
                                 <h3 class="mb-0">@_selectedHistoryType</h3>
-                                <h3 class="mb-0 @histGroupBadgeClass">@histGroupTotal.ToString("C")</h3>
+                                <h3 class="mb-0 @histGroupBadgeClass">@NumeroCorto.Monto(histGroupTotal)</h3>
                             </div>
 
                             <ul class="history-tabs nav flex-wrap gap-2 px-4 pt-4 pb-2" role="tablist">
@@ -483,7 +483,7 @@
                                                         <td class="text-body">@i.Detail</td>
                                                         <td>
                                                             <span class="badge @(i.Amount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
-                                                                @i.Amount.ToString("C")
+                                                                @NumeroCorto.Monto(i.Amount)
                                                             </span>
                                                         </td>
                                                         <td class="text-body">@(string.IsNullOrEmpty(i.Frequency) ? "-" : i.Frequency)</td>
@@ -510,6 +510,9 @@
 }
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
@@ -736,7 +739,7 @@
 
     private async Task OpenHistoryModal(int year, int monthNo, string monthName, decimal total)
     {
-        _historyModalTitle     = $"{monthName} {year} — {total:C}";
+        _historyModalTitle     = $"{monthName} {year} — {NumeroCorto.Monto(total)}";
         _historyModalOpen      = true;
         _historyDetailLoading  = true;
         _historyDetailGroups   = new();

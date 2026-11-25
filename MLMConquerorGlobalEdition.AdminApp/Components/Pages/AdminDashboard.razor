@@ -14,16 +14,16 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-md-3">
-                <StatCard Title="Total Members" Value="@_stats.TotalMembers.ToString()" Icon="ri-team-line" Color="primary" />
+                <StatCard Title="Total Members" Value="@NumeroCorto.Cantidad(_stats.TotalMembers, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_stats.TotalMembers)" Icon="ri-team-line" Color="primary" />
             </div>
             <div class="col-md-3">
-                <StatCard Title="Active Ambassadors" Value="@_stats.ActiveAmbassadors.ToString()" Icon="ri-user-star-line" Color="success" />
+                <StatCard Title="Active Ambassadors" Value="@NumeroCorto.Cantidad(_stats.ActiveAmbassadors, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_stats.ActiveAmbassadors)" Icon="ri-user-star-line" Color="success" />
             </div>
             <div class="col-md-3">
-                <StatCard Title="Pending Commissions" Value="@_stats.PendingCommissions.ToString("C")" Icon="ri-money-dollar-circle-line" Color="warning" />
+                <StatCard Title="Pending Commissions" Value="@NumeroCorto.Monto(_stats.PendingCommissions, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Monto(_stats.PendingCommissions)" Icon="ri-money-dollar-circle-line" Color="warning" />
             </div>
             <div class="col-md-3">
-                <StatCard Title="Open Tickets" Value="@_stats.OpenTickets.ToString()" Icon="ri-ticket-line" Color="danger" />
+                <StatCard Title="Open Tickets" Value="@NumeroCorto.Cantidad(_stats.OpenTickets, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_stats.OpenTickets)" Icon="ri-ticket-line" Color="danger" />
             </div>
         </div>
 
@@ -51,6 +51,9 @@
 </div>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     private bool _loading = true;
     private AdminStats _stats = new();
 

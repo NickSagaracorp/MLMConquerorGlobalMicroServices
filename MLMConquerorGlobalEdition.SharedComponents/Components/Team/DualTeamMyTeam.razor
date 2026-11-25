@@ -192,7 +192,7 @@
                                 HeaderText="@L["Reports.QualPoints"]" Width="115" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Integer">
                         <Template>
-                            @(((DualTeamMyTeamMemberDto)context).QualificationPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad(((DualTeamMyTeamMemberDto)context).QualificationPoints))
                         </Template>
                     </GridColumn>
 
@@ -200,7 +200,7 @@
                                 HeaderText="@L["Reports.EnrollTeamPoints"]" Width="135" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Integer">
                         <Template>
-                            @(((DualTeamMyTeamMemberDto)context).EnrollmentTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad(((DualTeamMyTeamMemberDto)context).EnrollmentTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -208,7 +208,7 @@
                                 HeaderText="@L["Reports.LeftTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Decimal">
                         <Template>
-                            @(((DualTeamMyTeamMemberDto)context).LeftTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad((long)((DualTeamMyTeamMemberDto)context).LeftTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -216,7 +216,7 @@
                                 HeaderText="@L["Reports.RightTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Decimal">
                         <Template>
-                            @(((DualTeamMyTeamMemberDto)context).RightTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad((long)((DualTeamMyTeamMemberDto)context).RightTeamPoints))
                         </Template>
                     </GridColumn>
 

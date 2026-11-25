@@ -28,7 +28,7 @@
                                         </div>
                                         <div class="flex-grow-1 ms-2">
                                             <span>@L["Boost.Gold"]</span>
-                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.GoldPoints/@_weekStats.GoldPointsTarget</h3>
+                                            <h3 class="fs-20 mt-1 mb-0">@NumeroCorto.Cantidad(_weekStats.GoldPoints)/@NumeroCorto.Cantidad(_weekStats.GoldPointsTarget)</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -43,7 +43,7 @@
                                         </div>
                                         <div class="flex-grow-1 ms-2">
                                             <span>@L["Boost.Platinum"]</span>
-                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.PlatinumPoints/@_weekStats.PlatinumPointsTarget</h3>
+                                            <h3 class="fs-20 mt-1 mb-0">@NumeroCorto.Cantidad(_weekStats.PlatinumPoints)/@NumeroCorto.Cantidad(_weekStats.PlatinumPointsTarget)</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -175,7 +175,7 @@
                                                         }
                                                     </td>
                                                     <td>
-                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points @L["Common.Points"]</span>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@NumeroCorto.Cantidad(en.Points) @L["Common.Points"]</span>
                                                     </td>
                                                 </tr>
                                             }
@@ -247,7 +247,7 @@
                                                         }
                                                     </td>
                                                     <td>
-                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points @L["Common.Points"]</span>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@NumeroCorto.Cantidad(en.Points) @L["Common.Points"]</span>
                                                     </td>
                                                 </tr>
                                             }
@@ -283,7 +283,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Boost.TotalMembers"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.TotalMembers ?? 0)</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_memberSummary?.TotalMembers ?? 0)">@NumeroCorto.Cantidad(_memberSummary?.TotalMembers ?? 0, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -299,7 +299,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Boost.ActiveRebilling"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.ActiveRebilling ?? 0)</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_memberSummary?.ActiveRebilling ?? 0)">@NumeroCorto.Cantidad(_memberSummary?.ActiveRebilling ?? 0, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -315,7 +315,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Boost.InactiveRebilling"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.InactiveRebilling ?? 0)</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_memberSummary?.InactiveRebilling ?? 0)">@NumeroCorto.Cantidad(_memberSummary?.InactiveRebilling ?? 0, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -374,7 +374,7 @@
                                 };
                                 <tr>
                                     <td class="text-body">@item.EarnedDate.ToString("MM/dd/yyyy")</td>
-                                    <td class="text-body">@item.Amount.ToString("C")</td>
+                                    <td class="text-body">@NumeroCorto.Monto(item.Amount)</td>
                                     <td class="text-body">-</td>
                                     <td><span class="@paidBadgeClass">@item.Status</span></td>
                                 </tr>
@@ -388,7 +388,7 @@
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @NumeroCorto.Cantidad(_total) @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
@@ -422,6 +422,9 @@
 </div>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;

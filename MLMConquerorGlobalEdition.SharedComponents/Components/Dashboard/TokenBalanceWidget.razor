@@ -19,7 +19,7 @@
             {
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="small text-muted">@b.TokenTypeName</span>
-                    <span class="fw-semibold">@b.Balance</span>
+                    <span class="fw-semibold">@NumeroCorto.Cantidad(b.Balance)</span>
                 </div>
             }
             @if (!_balances.Any())

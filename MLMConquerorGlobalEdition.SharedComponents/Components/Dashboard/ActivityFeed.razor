@@ -60,7 +60,7 @@
                     .Select(c => new ActivityItem(
                         Icon:        "ri-money-dollar-circle-line",
                         Color:       "success",
-                        Title:       $"{c.CommissionType} — {c.Amount:C}",
+                        Title:       $"{c.CommissionType} — {NumeroCorto.Monto(c.Amount)}",
                         Description: $"{L["ActivityFeed.Period"]} {c.PeriodDate:MMM yyyy} · {L["ActivityFeed.Status"]} {c.Status}",
                         TimeAgo:     FormatTimeAgo(c.PeriodDate)))
                     .ToList();

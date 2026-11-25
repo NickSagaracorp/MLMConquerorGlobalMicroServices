@@ -23,7 +23,7 @@
                                     <span>@L["Team.TotalMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
-                                        else { @(_stats?.TotalMembers.ToString("N0") ?? "0") }
+                                        else { <span title="@NumeroCorto.Cantidad(_stats?.TotalMembers ?? 0)">@NumeroCorto.Cantidad(_stats?.TotalMembers ?? 0, AnchoDeTarjeta)</span> }
                                     </h3>
                                 </div>
                             </div>
@@ -41,7 +41,7 @@
                                     <span>@L["Team.TotalQualifiedMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
-                                        else { @(_stats?.TotalQualified.ToString("N0") ?? "0") }
+                                        else { <span title="@NumeroCorto.Cantidad(_stats?.TotalQualified ?? 0)">@NumeroCorto.Cantidad(_stats?.TotalQualified ?? 0, AnchoDeTarjeta)</span> }
                                     </h3>
                                 </div>
                             </div>
@@ -59,7 +59,7 @@
                                     <span>@L["Team.TotalUnqualifiedMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
-                                        else { @(_stats?.TotalUnqualified.ToString("N0") ?? "0") }
+                                        else { <span title="@NumeroCorto.Cantidad(_stats?.TotalUnqualified ?? 0)">@NumeroCorto.Cantidad(_stats?.TotalUnqualified ?? 0, AnchoDeTarjeta)</span> }
                                     </h3>
                                 </div>
                             </div>
@@ -77,7 +77,7 @@
                                     <span>@L["Team.TotalCancelledMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
-                                        else { @(_stats?.TotalCancelled.ToString("N0") ?? "0") }
+                                        else { <span title="@NumeroCorto.Cantidad(_stats?.TotalCancelled ?? 0)">@NumeroCorto.Cantidad(_stats?.TotalCancelled ?? 0, AnchoDeTarjeta)</span> }
                                     </h3>
                                 </div>
                             </div>
@@ -188,8 +188,8 @@
                                         </span>
 
                                         @* Points badge *@
-                                        <span class="badge-points" aria-label="@string.Format(L["Team.PointsAriaSuffix"], n.Points)">
-                                            @n.Points.ToString("N0") @L["Common.Pts"]
+                                        <span class="badge-points" aria-label="@string.Format(L["Team.PointsAriaSuffix"], NumeroCorto.Cantidad(n.Points))">
+                                            @NumeroCorto.Cantidad(n.Points) @L["Common.Pts"]
                                         </span>
                                     </div>
                                 </li>
@@ -235,6 +235,9 @@
 </style>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     // ── Parameters ──────────────────────────────────────────────────────────
     /// <summary>The member whose enrollment subtree is visualized.</summary>
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;

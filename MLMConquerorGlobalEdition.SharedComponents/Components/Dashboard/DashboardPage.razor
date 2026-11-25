@@ -14,13 +14,13 @@ else
     <!-- KPI Stats Row -->
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="@L["Dashboard.TotalEarnings"]" Value="@_totalEarnings" Icon="ri-money-dollar-circle-line" Color="primary" Trend="@_earningsTrend" TrendUp="@_earningsTrendUp" />
+            <StatCard Title="@L["Dashboard.TotalEarnings"]" Value="@NumeroCorto.Monto(_totalEarnings, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Monto(_totalEarnings)" Icon="ri-money-dollar-circle-line" Color="primary" Trend="@_earningsTrend" TrendUp="@_earningsTrendUp" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="@L["Dashboard.TeamSize"]" Value="@_teamSize" Icon="ri-group-line" Color="success" />
+            <StatCard Title="@L["Dashboard.TeamSize"]" Value="@NumeroCorto.Cantidad(_teamSize, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_teamSize)" Icon="ri-group-line" Color="success" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="@L["Dashboard.TokenBalance"]" Value="@_tokenBalance" Icon="ri-copper-coin-line" Color="warning" />
+            <StatCard Title="@L["Dashboard.TokenBalance"]" Value="@NumeroCorto.Cantidad(_tokenBalance, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_tokenBalance)" Icon="ri-copper-coin-line" Color="warning" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <StatCard Title="@L["Dashboard.CurrentRank"]" Value="@_currentRank" Icon="ri-medal-line" Color="info" />
@@ -66,9 +66,11 @@ else
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
     private bool    _isLoading      = true;
-    private string  _totalEarnings  = "$0.00";
-    private string  _teamSize       = "0";
-    private string  _tokenBalance   = "0";
+    // Las tarjetas KPI son angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+    private decimal _totalEarnings;
+    private int     _teamSize;
+    private int     _tokenBalance;
     private string  _currentRank    = "—";
     private string? _earningsTrend;
     private bool    _earningsTrendUp = true;
@@ -96,9 +98,9 @@ else
             if (response?.Success == true && response.Data is not null)
             {
                 var d = response.Data;
-                _totalEarnings = d.TotalEarnings.ToString("C");
-                _teamSize      = d.TeamSize.ToString();
-                _tokenBalance  = d.TokenBalance.ToString();
+                _totalEarnings = d.TotalEarnings;
+                _teamSize      = d.TeamSize;
+                _tokenBalance  = d.TokenBalance;
                 _currentRank   = d.CurrentRank ?? "—";
                 _fsbWindows    = d.FsbWindows
                     .Select(w => new FsbWindowDto(w.WindowNumber, w.StartDate, w.EndDate, w.Earned, w.Status, w.IsActive, w.IsCompleted, w.SponsoredCount))

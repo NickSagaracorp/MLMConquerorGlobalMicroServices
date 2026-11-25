@@ -69,7 +69,7 @@
     {
         if (Window.IsCompleted)
         {
-            _timerDisplay = Window.Earned > 0 ? Window.Earned.ToString("C") : L["Fsb.Completed"].Value;
+            _timerDisplay = Window.Earned > 0 ? NumeroCorto.Monto(Window.Earned) : L["Fsb.Completed"].Value;
             return;
         }
         if (Window.IsActive && Window.EndDate.HasValue)

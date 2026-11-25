@@ -169,7 +169,7 @@
                         {
                             <div class="plan-card__desc"><HtmlSaneado Html="@_enrollmentProduct.Description" /></div>
                         }
-                        <span class="price-chip">@_enrollmentProduct.Price.ToString("C")</span>
+                        <span class="price-chip">@NumeroCorto.Monto(_enrollmentProduct.Price)</span>
                     </div>
                 </label>
             </div>
@@ -212,7 +212,7 @@
                                         <p class="plan-card__title mb-0">@p.Name</p>
                                         <span class="plan-selected-chip"><i class="ri-check-fill"></i> Selected</span>
                                     </div>
-                                    <p class="plan-card__subtitle">@p.Price.ToString("C") / month</p>
+                                    <p class="plan-card__subtitle">@NumeroCorto.Monto(p.Price) / month</p>
                                 </div>
                                 @if (!string.IsNullOrEmpty(p.ImageUrl))
                                 {
@@ -224,7 +224,7 @@
                             {
                                 <div class="plan-card__desc"><HtmlSaneado Html="@p.Description" /></div>
                             }
-                            <span class="price-chip">@p.Price.ToString("C")</span>
+                            <span class="price-chip">@NumeroCorto.Monto(p.Price)</span>
                         </div>
                     </label>
                 }
@@ -843,7 +843,7 @@
                     <div class="py-4">
                         <p class="small text-muted mb-0">
                             Pay in rubles through the Russian Fast Payment System (SBP). After you click Join Now we'll show
-                            a QR code for @AmountToday.ToString("C") converted to rubles at the current rate. Your account
+                            a QR code for @NumeroCorto.Monto(AmountToday) converted to rubles at the current rate. Your account
                             activates as soon as the payment arrives.
                         </p>
                     </div>
@@ -874,7 +874,7 @@
                         {
                             <span class="spinner-border spinner-border-sm me-2"></span>
                         }
-                        Join Now — @AmountToday.ToString("C")
+                        Join Now — @NumeroCorto.Monto(AmountToday)
                     </button>
                 </div>
 
@@ -908,7 +908,7 @@
                 {
                     <div class="pricing-sidebar__line">
                         <span class="label">@_enrollmentProduct.Name</span>
-                        <span class="amount">@_enrollmentProduct.Price.ToString("C")</span>
+                        <span class="amount">@NumeroCorto.Monto(_enrollmentProduct.Price)</span>
                     </div>
                 }
                 @{
@@ -918,11 +918,11 @@
                 {
                     <div class="pricing-sidebar__line">
                         <span class="label">@selectedProduct.Name</span>
-                        <span class="amount">@selectedProduct.Price.ToString("C")</span>
+                        <span class="amount">@NumeroCorto.Monto(selectedProduct.Price)</span>
                     </div>
                     <div class="pricing-sidebar__line">
                         <span class="label">Monthly recurring</span>
-                        <span class="amount">@selectedProduct.Price.ToString("C")/mo</span>
+                        <span class="amount">@NumeroCorto.Monto(selectedProduct.Price)/mo</span>
                     </div>
                 }
                 else
@@ -935,7 +935,7 @@
 
                 <div class="pricing-sidebar__total">
                     <span>Due today</span>
-                    <span class="total-amount">@AmountToday.ToString("C")</span>
+                    <span class="total-amount">@NumeroCorto.Monto(AmountToday)</span>
                 </div>
                 <p class="pricing-sidebar__note">
                     Secure, encrypted checkout.<br />

@@ -53,7 +53,7 @@
             <h4 class="fs-14 mb-2">@L["Tokens.PurchaseNote"]</h4>
             @if (_catalog is not null)
             {
-                <p class="text-muted small mb-3" id="tokens-remaining">@L["Tokens.MonthlyRemaining", _catalog.MonthlyRemaining]</p>
+                <p class="text-muted small mb-3" id="tokens-remaining">@L["Tokens.MonthlyRemaining", NumeroCorto.Cantidad(_catalog.MonthlyRemaining)]</p>
             }
 
             @if (_purchaseErrorKey is not null)
@@ -94,7 +94,7 @@
                 else if (result.Status == TokenPurchaseStatuses.Completed)
                 {
                     <div class="alert alert-success py-2" role="status" id="tokens-purchase-done">
-                        @L["Tokens.PurchaseDone", result.Quantity]
+                        @L["Tokens.PurchaseDone", NumeroCorto.Cantidad(result.Quantity)]
                         <div class="mt-1 font-monospace">@string.Join(", ", result.TokenCodes)</div>
                     </div>
                 }
@@ -290,7 +290,7 @@
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_items.Count @L["Common.Of"] @_total @L["Reports.Results"]</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_items.Count @L["Common.Of"] @NumeroCorto.Cantidad(_total) @L["Reports.Results"]</span>
                         @if (_total > PageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / PageSize);
@@ -346,7 +346,7 @@
                         <option value="">—</option>
                         @foreach (var b in _balances.Where(b => b.TokenTypeId > 0 && b.Balance > 0))
                         {
-                            <option value="@b.TokenTypeId">@b.TokenTypeName (@b.Balance)</option>
+                            <option value="@b.TokenTypeId">@b.TokenTypeName (@NumeroCorto.Cantidad(b.Balance))</option>
                         }
                     </select>
                 </div>
@@ -529,6 +529,9 @@
         <span class="visually-hidden">@L["Common.Loading"]</span>
     };
 
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M).
+    private const int AnchoDeTarjeta = 7;
+
     private RenderFragment StatBox(string icon, string color, string label, int? value) => __builder =>
     {
         <div class="col-xxl-4 col-xl-4 col-sm-4">
@@ -538,7 +541,7 @@
                     <div class="flex-grow-1 ms-2">
                         <span>@label</span>
                         @if (value is null) { <span class="placeholder col-6 d-block mt-1"></span> }
-                        else { <h3 class="fs-20 mt-1 mb-0">@value</h3> }
+                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(value.Value)">@NumeroCorto.Cantidad(value.Value, AnchoDeTarjeta)</h3> }
                     </div>
                 </div>
             </div>

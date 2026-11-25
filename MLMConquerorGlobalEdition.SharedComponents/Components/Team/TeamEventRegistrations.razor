@@ -47,8 +47,8 @@
                     <label class="form-check-label" for="ev-registered-only">@L["Events.RegisteredOnly"]</label>
                 </div>
                 <div class="ms-auto d-flex gap-4">
-                    <div><span class="text-muted fs-12 d-block">@L["Events.Registered"]</span><span class="fw-semibold">@(_totals?.Registered.ToString("N0") ?? "—")</span></div>
-                    <div><span class="text-muted fs-12 d-block">@L["Events.Tickets"]</span><span class="fw-semibold">@(_totals?.Tickets.ToString("N0") ?? "—")</span></div>
+                    <div><span class="text-muted fs-12 d-block">@L["Events.Registered"]</span><span class="fw-semibold">@(_totals is null ? "—" : NumeroCorto.Cantidad(_totals.Registered))</span></div>
+                    <div><span class="text-muted fs-12 d-block">@L["Events.Tickets"]</span><span class="fw-semibold">@(_totals is null ? "—" : NumeroCorto.Cantidad(_totals.Tickets))</span></div>
                 </div>
             </div>
 
@@ -85,7 +85,7 @@
                         <Template>@(((RegistrationDto)context).RankName ?? "—")</Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(RegistrationDto.RegisteredAt)" HeaderText="@L["Events.RegistrationDate"]" Width="130" Format="d" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(RegistrationDto.Tickets)" HeaderText="@L["Events.Tickets"]" Width="90" TextAlign="TextAlign.Right" Type="ColumnType.Integer" />
+                    <GridColumn Field="@nameof(RegistrationDto.Tickets)" HeaderText="@L["Events.Tickets"]" Width="90" TextAlign="TextAlign.Right" Format="N0" Type="ColumnType.Integer" />
                     <GridColumn Field="@nameof(RegistrationDto.Registered)" HeaderText="@L["Events.Registered"]" Width="100" TextAlign="TextAlign.Center" Type="ColumnType.Boolean">
                         <Template>@(((RegistrationDto)context).Registered ? L["Common.Yes"] : L["Common.No"])</Template>
                     </GridColumn>

@@ -110,7 +110,7 @@
                 </GridColumn>
 
                 <GridColumn Field="@nameof(CustomerDto.PersonalPoints)" HeaderText="@L["Reports.Points"]" Width="100" TextAlign="TextAlign.Right" Type="ColumnType.Integer">
-                    <Template>@(((CustomerDto)context).PersonalPoints.ToString("N0"))</Template>
+                    <Template>@(NumeroCorto.Cantidad(((CustomerDto)context).PersonalPoints))</Template>
                 </GridColumn>
 
                 @if (ViewContext.IsAdminContext)

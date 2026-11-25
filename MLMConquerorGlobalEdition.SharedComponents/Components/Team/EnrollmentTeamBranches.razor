@@ -27,7 +27,7 @@
                                 </div>
                                 <div class="flex-grow-1 ms-2">
                                     <span class="text-white">@L["Team.TotalPoints"]</span>
-                                    <h3 class="fs-20 mt-1 mb-0 text-white">@_result.TotalPoints.ToString("N0")</h3>
+                                    <h3 class="fs-20 mt-1 mb-0 text-white" title="@NumeroCorto.Cantidad(_result.TotalPoints)">@NumeroCorto.Cantidad(_result.TotalPoints, AnchoDeTarjeta)</h3>
                                 </div>
                             </div>
                         </div>
@@ -42,7 +42,7 @@
                                 </div>
                                 <div class="flex-grow-1 ms-2">
                                     <span>@L["Team.TotalEligibleCurrentRank"]</span>
-                                    <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleCurrentRank.ToString("N0")</h3>
+                                    <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_result.TotalEligibleCurrentRank)">@NumeroCorto.Cantidad(_result.TotalEligibleCurrentRank, AnchoDeTarjeta)</h3>
                                 </div>
                             </div>
                         </div>
@@ -57,7 +57,7 @@
                                 </div>
                                 <div class="flex-grow-1 ms-2">
                                     <span>@L["Team.TotalEligibleNextRank"]</span>
-                                    <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleNextRank.ToString("N0")</h3>
+                                    <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_result.TotalEligibleNextRank)">@NumeroCorto.Cantidad(_result.TotalEligibleNextRank, AnchoDeTarjeta)</h3>
                                 </div>
                             </div>
                         </div>
@@ -118,7 +118,7 @@
                                 var branch = b;
                                 <tr class="cursor" style="cursor:pointer" @onclick="() => OpenBranchDetail(branch)">
                                     <td class="text-body">@b.FullName</td>
-                                    <td class="text-body">@b.TotalPoints.ToString("N0")</td>
+                                    <td class="text-body">@NumeroCorto.Cantidad(b.TotalPoints)</td>
                                     <td class="text-body">
                                         @RenderDonut(b.EligibleCurrentPct, b.EligibleCurrentRank)
                                     </td>
@@ -134,7 +134,7 @@
                 @* Pagination *@
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_branches.Count @L["Common.Of"] @_total @L["Reports.Results"]</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_branches.Count @L["Common.Of"] @NumeroCorto.Cantidad(_total) @L["Reports.Results"]</span>
                         @if (_totalPages > 1)
                         {
                             <nav>
@@ -184,7 +184,7 @@
                     <div class="modal-header p-0 border-0">
                         <div>
                             <h3 class="mb-0">@_detail.BranchMemberName</h3>
-                            <h5 class="mb-0">@_detail.TotalPoints.ToString("N0") @L["Reports.Points"]</h5>
+                            <h5 class="mb-0">@NumeroCorto.Cantidad(_detail.TotalPoints) @L["Reports.Points"]</h5>
                         </div>
                         <button type="button" class="btn-close ms-auto" @onclick="CloseModal"></button>
                     </div>
@@ -197,13 +197,13 @@
                         <li class="nav-item">
                             <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "ambassadors" ? "active" : "")"
                                     @onclick='() => _activeTab = "ambassadors"'>
-                                @string.Format(L["Team.AmbassadorsCount"], _detail.Ambassadors.Count)
+                                @string.Format(L["Team.AmbassadorsCount"], NumeroCorto.Cantidad(_detail.Ambassadors.Count))
                             </button>
                         </li>
                         <li class="nav-item">
                             <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "customers" ? "active" : "")"
                                     @onclick='() => _activeTab = "customers"'>
-                                @string.Format(L["Team.OnlyCustomersCount"], _detail.Customers.Count)
+                                @string.Format(L["Team.OnlyCustomersCount"], NumeroCorto.Cantidad(_detail.Customers.Count))
                             </button>
                         </li>
                     </ul>
@@ -319,6 +319,9 @@
 }
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team/enrollment";

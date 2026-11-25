@@ -149,7 +149,7 @@
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @NumeroCorto.Cantidad(_total) @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
@@ -303,7 +303,7 @@
     private string GetTimerDisplay(FsbWindowCard win)
     {
         if (win.State == FsbState.Complete)
-            return win.Amount > 0 ? win.Amount.ToString("C") : L["Fsb.Completed"].Value;
+            return win.Amount > 0 ? NumeroCorto.Monto(win.Amount) : L["Fsb.Completed"].Value;
 
         if (win.State == FsbState.Active && win.EndDate.HasValue)
             return FmtDHMS(win.EndDate.Value - DateTime.UtcNow);

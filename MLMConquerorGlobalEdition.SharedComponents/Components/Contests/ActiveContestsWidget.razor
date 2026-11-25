@@ -66,7 +66,7 @@ else if (_contests.Count > 0)
                            the parent's click handler. *@
                         <div class="position-absolute"
                              style="left:@(contest.PointsBoxXPercent)%;top:@(contest.PointsBoxYPercent)%;transform:translate(-50%,-50%);background:rgba(255,255,255,.85);border-radius:8px;padding:18px 36px;min-width:140px;text-align:center;pointer-events:none;">
-                            <div style="font-size:48px;font-weight:bold;color:#ED9A08;line-height:1;">@contest.MyPoints</div>
+                            <div style="font-size:48px;font-weight:bold;color:#ED9A08;line-height:1;">@NumeroCorto.Cantidad(contest.MyPoints)</div>
                         </div>
                     </div>
                 </div>
@@ -98,7 +98,7 @@ else if (_contests.Count > 0)
                                         <tr class="@(row.IsViewer ? "table-warning fw-semibold" : "")">
                                             <td>@MaskName(row.FullName)</td>
                                             <td>@(row.Country ?? "—")</td>
-                                            <td class="text-end fw-bold">@row.TotalPoints</td>
+                                            <td class="text-end fw-bold">@NumeroCorto.Cantidad(row.TotalPoints)</td>
                                             <td class="text-end">@row.Rank</td>
                                         </tr>
                                     }
@@ -142,7 +142,7 @@ else if (_contests.Count > 0)
                             → @d.EndDate.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
                         </li>
                         <li><i class="ri-trophy-line me-1"></i>@string.Format(L["Contest.TopXLeaderboard"], d.TopX)</li>
-                        <li><i class="ri-group-line me-1"></i>@d.Participants @L["Contest.Participants"]</li>
+                        <li><i class="ri-group-line me-1"></i>@NumeroCorto.Cantidad(d.Participants) @L["Contest.Participants"]</li>
                     </ul>
                 </div>
                 <div class="modal-footer">

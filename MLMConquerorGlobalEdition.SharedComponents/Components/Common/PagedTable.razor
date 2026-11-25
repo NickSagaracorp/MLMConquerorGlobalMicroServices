@@ -41,7 +41,7 @@
                 {
                     <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top flex-wrap gap-2">
                         <p class="text-muted small mb-0" role="status" aria-live="polite" aria-atomic="true">
-                            Mostrando @((CurrentPage - 1) * PageSize + 1)–@(Math.Min(CurrentPage * PageSize, TotalCount)) de @TotalCount registros
+                            Mostrando @((CurrentPage - 1) * PageSize + 1)–@NumeroCorto.Cantidad(Math.Min(CurrentPage * PageSize, TotalCount)) de @NumeroCorto.Cantidad(TotalCount) registros
                         </p>
                         <nav aria-label="Navegación de páginas">
                             <ul class="pagination pagination-sm mb-0 gap-1">

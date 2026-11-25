@@ -54,7 +54,7 @@
                 <div class="mb-3">
                     <div class="d-flex justify-content-between small mb-1">
                         <span class="fw-medium">@req.Label</span>
-                        <span class="text-muted">@req.Current.ToString("N0") / @req.Required.ToString("N0")</span>
+                        <span class="text-muted">@NumeroCorto.Cantidad(req.Current) / @NumeroCorto.Cantidad(req.Required)</span>
                     </div>
                     <div class="progress" style="height: 8px;">
                         <div class="progress-bar bg-primary" role="progressbar"

@@ -121,7 +121,7 @@
                             ? "bg-success bg-opacity-10 text-success"
                             : "bg-danger bg-opacity-10 text-danger";
                         var deltaSign = _dtTrendDelta > 0 ? "+" : "";
-                        <span class="badge @deltaClass px-3 py-2 rounded-pill fs-12 fw-semibold">@deltaSign@_dtTrendDelta.ToString("N0")</span>
+                        <span class="badge @deltaClass px-3 py-2 rounded-pill fs-12 fw-semibold">@deltaSign@NumeroCorto.Cantidad((long)_dtTrendDelta)</span>
                     }
                 </div>
 
@@ -162,7 +162,7 @@
                                     <span class="badge" style="background:#F08080;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
                                     @L["Reports.LeftLeg"]
                                 </span>
-                                <span class="fw-semibold">@(_residualSummary?.LeftLegPoints.ToString("N0") ?? "—")</span>
+                                <span class="fw-semibold">@(_residualSummary is null ? "—" : NumeroCorto.Cantidad(_residualSummary.LeftLegPoints))</span>
                             </div>
                             @RenderLegProgress(leftLeg, dtApplies, nextRankName)
                         </li>
@@ -172,7 +172,7 @@
                                     <span class="badge" style="background:#A8B0BD;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
                                     @L["Reports.RightLeg"]
                                 </span>
-                                <span class="fw-semibold">@(_residualSummary?.RightLegPoints.ToString("N0") ?? "—")</span>
+                                <span class="fw-semibold">@(_residualSummary is null ? "—" : NumeroCorto.Cantidad(_residualSummary.RightLegPoints))</span>
                             </div>
                             @RenderLegProgress(rightLeg, dtApplies, nextRankName)
                         </li>
@@ -182,7 +182,7 @@
                                 @L["Common.Total"]
                             </span>
                             <span class="fw-bold text-primary fs-16">
-                                @((_residualSummary is not null ? _residualSummary.LeftLegPoints + _residualSummary.RightLegPoints : 0).ToString("N0"))
+                                @NumeroCorto.Cantidad(_residualSummary is not null ? _residualSummary.LeftLegPoints + _residualSummary.RightLegPoints : 0)
                             </span>
                         </li>
                     </ul>
@@ -207,8 +207,8 @@
                         </div>
                         <div class="fs-12 text-muted mt-2">
                             @string.Format(L["Team.PointsTowardNext"],
-                                           nextEligibleDt.ToString("N0"),
-                                           nextThresholdDt.ToString("N0"),
+                                           NumeroCorto.Cantidad(nextEligibleDt),
+                                           NumeroCorto.Cantidad(nextThresholdDt),
                                            _rankData.NextRankName ?? "—")
                         </div>
                     }
@@ -237,15 +237,15 @@
                     <ul class="list-unstyled mb-3">
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span>@L["Team.EligibleCurrentRank"]</span>
-                            <span class="fw-semibold">@(_rankData?.CurrentRankEligibleEnrollmentPoints.ToString("N0") ?? "—")</span>
+                            <span class="fw-semibold">@(_rankData is null ? "—" : NumeroCorto.Cantidad(_rankData.CurrentRankEligibleEnrollmentPoints))</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="fw-semibold">@L["Team.EligibleNextRank"]</span>
-                            <span class="fw-bold text-success fs-16">@(_rankData?.NextRankEligibleEnrollmentPoints.ToString("N0") ?? "—")</span>
+                            <span class="fw-bold text-success fs-16">@(_rankData is null ? "—" : NumeroCorto.Cantidad(_rankData.NextRankEligibleEnrollmentPoints))</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2">
                             <span>@L["Team.TotalRaw"]</span>
-                            <span class="fw-semibold">@(_rankData?.EnrollmentPoints.ToString("N0") ?? "—")</span>
+                            <span class="fw-semibold">@(_rankData is null ? "—" : NumeroCorto.Cantidad(_rankData.EnrollmentPoints))</span>
                         </li>
                     </ul>
 
@@ -268,8 +268,8 @@
                         </div>
                         <div class="fs-12 text-muted mt-2">
                             @string.Format(L["Team.PointsTowardNext"],
-                                           nextEligibleEt.ToString("N0"),
-                                           nextThresholdEt.ToString("N0"),
+                                           NumeroCorto.Cantidad(nextEligibleEt),
+                                           NumeroCorto.Cantidad(nextThresholdEt),
                                            _rankData.NextRankName ?? "—")
                         </div>
                     }
@@ -381,7 +381,7 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-body fw-semibold">@m.QualificationPoints.ToString("N0")</td>
+                                    <td class="text-body fw-semibold">@NumeroCorto.Cantidad(m.QualificationPoints)</td>
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             @if ((_rankData?.CurrentRankDualTeamPoints ?? 0) > 0)
@@ -699,7 +699,7 @@
             </div>
             <div class="fs-12 text-muted mt-1">
                 @string.Format(L["Team.LegPointsTowardNext"],
-                               leg.NextRankEligiblePoints.ToString("N0"),
+                               NumeroCorto.Cantidad(leg.NextRankEligiblePoints),
                                nextRankName)
             </div>
         }
@@ -712,7 +712,7 @@
     private static string FormatPair(int? eligible, int? threshold)
     {
         if (threshold is null || threshold.Value == 0) return "—";
-        return $"{eligible ?? 0:N0} / {threshold.Value:N0}";
+        return $"{NumeroCorto.Cantidad(eligible ?? 0)} / {NumeroCorto.Cantidad(threshold.Value)}";
     }
 
     // Progress bar percentage, clamped to 0..100 and rounded to whole numbers

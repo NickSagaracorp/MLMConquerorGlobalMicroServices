@@ -58,7 +58,7 @@
                 </div>
                 <div class="col-12">
                     <div class="text-muted">@L["AnnualFee.TokensAvailable"]</div>
-                    <div class="fw-medium annual-fee-tokens">@_overview.AvailableFeeTokens</div>
+                    <div class="fw-medium annual-fee-tokens">@NumeroCorto.Cantidad(_overview.AvailableFeeTokens)</div>
                 </div>
             </div>
 
@@ -208,7 +208,7 @@
 
     private string Detail(string method) => method switch
     {
-        AnnualFeeMethods.Token             => $"({_overview?.AvailableFeeTokens ?? 0})",
+        AnnualFeeMethods.Token             => $"({NumeroCorto.Cantidad(_overview?.AvailableFeeTokens ?? 0)})",
         AnnualFeeMethods.CommissionBalance => _funds is null ? string.Empty : $"({Money.Usd(_funds.CommissionBalance)})",
         AnnualFeeMethods.EWallet           => _funds is { HasEWallet: true } ? $"({Money.Usd(_funds.EWalletBalance)})" : string.Empty,
         _                                  => string.Empty

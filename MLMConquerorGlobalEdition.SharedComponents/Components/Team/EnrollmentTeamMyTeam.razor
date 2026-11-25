@@ -202,7 +202,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(((EnrollmentMyTeamMemberDto)context).QualificationPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad(((EnrollmentMyTeamMemberDto)context).QualificationPoints))
                         </Template>
                     </GridColumn>
 
@@ -215,7 +215,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(((EnrollmentMyTeamMemberDto)context).EnrollmentTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad(((EnrollmentMyTeamMemberDto)context).EnrollmentTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -228,7 +228,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(((EnrollmentMyTeamMemberDto)context).LeftTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad((long)((EnrollmentMyTeamMemberDto)context).LeftTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -241,7 +241,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(((EnrollmentMyTeamMemberDto)context).RightTeamPoints.ToString("N0"))
+                            @(NumeroCorto.Cantidad((long)((EnrollmentMyTeamMemberDto)context).RightTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -331,16 +331,16 @@
             </div>
 
             <div class="form-group mb-4">
-                <strong>@L["Team.QualificationPointsLabel"]</strong> @(_selected.QualificationPoints.ToString("N0"))
+                <strong>@L["Team.QualificationPointsLabel"]</strong> @(NumeroCorto.Cantidad(_selected.QualificationPoints))
             </div>
             <div class="form-group mb-4">
-                <strong>@L["Team.EnrollmentTeamPointsLabel"]</strong> @(_selected.EnrollmentTeamPoints.ToString("N0"))
+                <strong>@L["Team.EnrollmentTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad(_selected.EnrollmentTeamPoints))
             </div>
             <div class="form-group mb-4">
-                <strong>@L["Team.LeftTeamPointsLabel"]</strong> @(_selected.LeftTeamPoints.ToString("N0"))
+                <strong>@L["Team.LeftTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad((long)_selected.LeftTeamPoints))
             </div>
             <div class="form-group mb-4">
-                <strong>@L["Team.RightTeamPointsLabel"]</strong> @(_selected.RightTeamPoints.ToString("N0"))
+                <strong>@L["Team.RightTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad((long)_selected.RightTeamPoints))
             </div>
 
             @if (_selected.MembershipStatus == "Cancelled")

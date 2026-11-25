@@ -155,7 +155,7 @@
                                     }
                                     else
                                     {
-                                        @_leftLegPoints.ToString("N0")
+                                        @NumeroCorto.Cantidad(_leftLegPoints)
                                     }
                                 </h3>
                             </div>
@@ -183,7 +183,7 @@
                                     }
                                     else
                                     {
-                                        @_rightLegPoints.ToString("N0")
+                                        @NumeroCorto.Cantidad(_rightLegPoints)
                                     }
                                 </h3>
                             </div>
@@ -382,7 +382,7 @@
                                             @if (sel.FloatingSubtreeSize > 0)
                                             {
                                                 <span class="text-muted ms-1" style="font-size:11px">
-                                                    @string.Format(L["Team.SubtreeSuffix"], sel.FloatingSubtreeSize)
+                                                    @string.Format(L["Team.SubtreeSuffix"], NumeroCorto.Cantidad(sel.FloatingSubtreeSize))
                                                 </span>
                                             }
                                         </div>
@@ -782,7 +782,7 @@
             <div class="member-footer" style="white-space:normal;word-break:break-word">@node.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildRootPointsTooltip(node.Points, node.PersonalPoints)">
-                @node.Points.ToString("N0") @L["Common.Pts"]
+                @NumeroCorto.Cantidad(node.Points) @L["Common.Pts"]
             </div>
         </div>
 
@@ -846,7 +846,7 @@
             <div class="member-footer" style="white-space:normal;word-break:break-word">@child.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildPointsTooltip(child.Points, child.PersonalPoints)">
-                @((child.Points + child.PersonalPoints).ToString("N0")) @L["Common.Pts"]
+                @NumeroCorto.Cantidad(child.Points + child.PersonalPoints) @L["Common.Pts"]
             </div>
             @if (AllowUnplacement)
             {
@@ -906,7 +906,7 @@
             <div class="member-footer" style="white-space:normal;word-break:break-word">@gc.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildPointsTooltip(gc.Points, gc.PersonalPoints)">
-                @((gc.Points + gc.PersonalPoints).ToString("N0")) @L["Common.Pts"]
+                @NumeroCorto.Cantidad(gc.Points + gc.PersonalPoints) @L["Common.Pts"]
             </div>
             @if (gc.HasLeft || gc.HasRight)
             {
@@ -969,8 +969,8 @@
                 </div>
                 <div class="fs-12 text-white opacity-75 mt-2">
                     @string.Format(L["Team.PointsTowardNext"],
-                                   Math.Min(legPoints, _nextRankLegCap).ToString("N0"),
-                                   _nextRankLegCap.ToString("N0"),
+                                   NumeroCorto.Cantidad(Math.Min(legPoints, _nextRankLegCap)),
+                                   NumeroCorto.Cantidad(_nextRankLegCap),
                                    _nextRankName)
                 </div>
             </div>
@@ -1058,9 +1058,9 @@
     private string BuildPointsTooltip(int downlinePts, int personalPts)
     {
         var contribution = downlinePts + personalPts;
-        return string.Format(L["Team.PointsTooltipLine1"], contribution.ToString("N0")) + "\n" +
-               string.Format(L["Team.PointsTooltipLine2"], personalPts.ToString("N0")) + "\n" +
-               string.Format(L["Team.PointsTooltipLine3"], downlinePts.ToString("N0"));
+        return string.Format(L["Team.PointsTooltipLine1"], NumeroCorto.Cantidad(contribution)) + "\n" +
+               string.Format(L["Team.PointsTooltipLine2"], NumeroCorto.Cantidad(personalPts)) + "\n" +
+               string.Format(L["Team.PointsTooltipLine3"], NumeroCorto.Cantidad(downlinePts));
     }
 
     /// <summary>
@@ -1069,8 +1069,8 @@
     /// </summary>
     private string BuildRootPointsTooltip(int downlinePts, int personalPts)
     {
-        return string.Format(L["Team.RootPointsTooltipLine1"], downlinePts.ToString("N0")) + "\n" +
-               string.Format(L["Team.RootPointsTooltipLine2"], personalPts.ToString("N0"));
+        return string.Format(L["Team.RootPointsTooltipLine1"], NumeroCorto.Cantidad(downlinePts)) + "\n" +
+               string.Format(L["Team.RootPointsTooltipLine2"], NumeroCorto.Cantidad(personalPts));
     }
 
     private class DualTreeStatsDto

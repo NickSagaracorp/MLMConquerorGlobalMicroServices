@@ -23,7 +23,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Presidential.TotalBonusEarned"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_count</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_count)">@NumeroCorto.Cantidad(_count, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -39,7 +39,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Presidential.TotalAmountEarned"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalAmount.ToString("C")</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Monto(_totalAmount)">@NumeroCorto.Monto(_totalAmount, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -98,7 +98,7 @@
                                 };
                                 <tr>
                                     <td class="text-body">@item.EarnedDate.ToString("MM/dd/yyyy")</td>
-                                    <td class="text-body">@item.Amount.ToString("C")</td>
+                                    <td class="text-body">@NumeroCorto.Monto(item.Amount)</td>
                                     <td class="text-body">0</td>
                                     <td><span class="@statusBadgeClass">@item.Status</span></td>
                                 </tr>
@@ -112,7 +112,7 @@
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @NumeroCorto.Cantidad(_total) @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
@@ -146,6 +146,9 @@
 </div>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;

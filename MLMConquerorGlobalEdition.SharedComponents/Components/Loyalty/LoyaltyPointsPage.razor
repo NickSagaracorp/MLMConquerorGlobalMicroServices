@@ -11,13 +11,13 @@
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.TotalPoints"]" Value="@_totalPoints.ToString("N0")" Icon="ri-heart-line" Color="danger" />
+        <StatCard Title="@L["Loyalty.TotalPoints"]" Value="@NumeroCorto.Cantidad((long)_totalPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_totalPoints)" Icon="ri-heart-line" Color="danger" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.UnlockedPoints"]" Value="@_unlockedPoints.ToString("N0")" Icon="ri-lock-unlock-line" Color="success" />
+        <StatCard Title="@L["Loyalty.UnlockedPoints"]" Value="@NumeroCorto.Cantidad((long)_unlockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_unlockedPoints)" Icon="ri-lock-unlock-line" Color="success" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.LockedPoints"]" Value="@_lockedPoints.ToString("N0")" Icon="ri-lock-line" Color="warning" />
+        <StatCard Title="@L["Loyalty.LockedPoints"]" Value="@NumeroCorto.Cantidad((long)_lockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_lockedPoints)" Icon="ri-lock-line" Color="warning" />
     </div>
 </div>
 
@@ -53,7 +53,7 @@
                         {
                             <tr>
                                 <td>@MonthLabel(lp)</td>
-                                <td>@lp.PointsEarned.ToString("N0")</td>
+                                <td>@NumeroCorto.Cantidad((long)lp.PointsEarned)</td>
                                 <td>@(lp.IsLocked ? L["Common.Yes"].Value : L["Common.No"].Value)</td>
                                 <td>@(lp.MissedPayment ? L["Loyalty.MissedYes"].Value : L["Common.No"].Value)</td>
                                 <td><StatusBadge Status="@(lp.IsLocked ? L["Loyalty.StatusLocked"].Value : L["Loyalty.StatusUnlocked"].Value)" /></td>
@@ -103,6 +103,9 @@
 </div>
 
 @code {
+    // Tarjetas angostas: el valor va completo si cabe en 7 caracteres y abreviado si no (1M, $105.2M).
+    private const int AnchoDeTarjeta = 7;
+
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
     /// <summary>Raíz del API; el componente llama a <c>{ApiBaseUrl}/loyalty</c>.</summary>
