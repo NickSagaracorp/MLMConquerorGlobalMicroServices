@@ -54,6 +54,26 @@ public class FiltrosSinMinusculasTests
         lista.ApplyFilters(PorCorreo("equal", "ESC-1@EXAMPLE.COM"), baseSinMayusculas: true)
             .Should().ContainSingle();
     }
+
+    [Fact]
+    public void And_pesa_mas_que_or_como_antes()
+    {
+        var lista = new List<MemberProfile>
+        {
+            new() { MemberId = "A", FirstName = "Ana",  LastName = "Garcia" },
+            new() { MemberId = "B", FirstName = "Luis", LastName = "Lopez"  },
+            new() { MemberId = "C", FirstName = "Luis", LastName = "Perez"  },
+        }.AsQueryable();
+        var filtros = new List<GridFilter>
+        {
+            new() { Field = nameof(MemberProfile.FirstName), Operator = "equal",    Value = "Ana" },
+            new() { Field = nameof(MemberProfile.FirstName), Operator = "equal",    Value = "Luis",  Logic = "or" },
+            new() { Field = nameof(MemberProfile.LastName),  Operator = "contains", Value = "ope",   Logic = "and" },
+        };
+
+        // Ana || (Luis && contiene "ope")
+        lista.ApplyFilters(filtros).Select(m => m.MemberId).Should().BeEquivalentTo("A", "B");
+    }
 }
 
 /// <summary>
@@ -89,5 +109,24 @@ public class ContieneBinarioEnSqlServerTests
             .ToQueryString();
 
         sql.Should().NotContain("BIN2").And.NotContain("LIKE N'%");
+    }
+
+    [SqlServerFact]
+    public async Task Contiene_unido_con_or_tambien_compara_en_binario()
+    {
+        await using var db = SqlServerTestDb.Db();
+        var correo = await db.MemberProfiles.AsNoTracking().Where(m => m.Email.Length > 8)
+            .Select(m => m.Email).FirstOrDefaultAsync();
+        if (correo is null) return;
+
+        var filtros = new List<GridFilter>
+        {
+            new() { Field = nameof(MemberProfile.Email), Operator = "contains", Value = "zzqqxx-no-existe" },
+            new() { Field = nameof(MemberProfile.Email), Operator = "contains", Value = correo.Substring(2, 5).ToUpperInvariant(), Logic = "or" },
+        };
+        var consulta = db.MemberProfiles.AsNoTracking().ApplyFilters(filtros, baseSinMayusculas: true);
+
+        consulta.ToQueryString().Should().Contain("COLLATE Latin1_General_100_BIN2").And.Contain(" OR ");
+        (await consulta.Select(m => m.Email).Take(5000).ToListAsync()).Should().Contain(correo);
     }
 }

@@ -193,14 +193,22 @@ public static class GridQueryableExtensions
 
         var sinMinusculas = (baseSinMayusculas ?? BaseSinDistincionDeMayusculas) && source.Provider is not EnumerableQuery;
 
-        // "Contiene" y "termina en" de texto no pueden usar índice: en SQL Server van aparte, comparando en mayúsculas
-        // con intercalación binaria (ver FiltroBinario). Solo cuando todos los filtros se unen con "and": con un "or"
-        // de por medio, aplicarlos por separado cambiaría el resultado, y se quedan en el predicado de siempre.
-        var todosConY = filters.All(f => !string.Equals(f.Logic, "or", StringComparison.OrdinalIgnoreCase));
-        var binarios  = new List<(PropertyInfo Prop, string Op, string Valor)>();
-
-        var predicate = new StringBuilder();
-        var values    = new List<object?>();
+        // "Contiene" y "termina en" de texto no pueden usar índice: en SQL Server se comparan en mayúsculas con
+        // intercalación binaria (ver FiltroBinario). El predicado se arma como árbol de expresiones para que esas
+        // cláusulas convivan con las demás también cuando se unen con "or", con la misma precedencia que antes
+        // ("and" pesa más que "or": a || b && c es a || (b && c)).
+        var x      = Expression.Parameter(typeof(T), "x");
+        var values = new List<object?>();
+        // Cada grupo es una cadena de "and"; los grupos se unen con "or". Las cláusulas de texto se traducen al final,
+        // cuando ya están todos los valores (@0, @1, …), por eso se guardan como funciones.
+        var grupos = new List<List<Func<Expression>>>();
+        object?[]? parametros = null;
+        Expression Traducir(string texto)
+        {
+            parametros ??= values.ToArray();
+            var lambda = DynamicExpressionParser.ParseLambda(typeof(T), typeof(bool), texto, parametros);
+            return new CambioDeParametro(lambda.Parameters[0], x).Visit(lambda.Body);
+        }
 
         foreach (var f in filters)
         {
@@ -208,30 +216,38 @@ public static class GridQueryableExtensions
             if (prop is null) continue;
 
             var filtro = sinMinusculas ? ConPrefijoSiEsCorto(prop, f) : f;
+            Func<Expression> condicion;
 
-            if (sinMinusculas && todosConY && prop.PropertyType == typeof(string) && !string.IsNullOrEmpty(filtro.Value)
+            if (sinMinusculas && prop.PropertyType == typeof(string) && !string.IsNullOrEmpty(filtro.Value)
                 && filtro.Operator?.ToLowerInvariant() is "contains" or "endswith" or null)
             {
-                binarios.Add((prop, (filtro.Operator ?? "contains").ToLowerInvariant(), filtro.Value!));
-                continue;
+                var binario = FiltroBinario(x, prop, (filtro.Operator ?? "contains").ToLowerInvariant(), filtro.Value!);
+                condicion = () => binario;
+            }
+            else
+            {
+                var clause = BuildClause(prop, filtro, values, sinMinusculas);
+                if (clause is null) continue;
+                condicion = () => Traducir(clause);
             }
 
-            var clause = BuildClause(prop, filtro, values, sinMinusculas);
-            if (clause is null) continue;
-
-            if (predicate.Length > 0)
-                predicate.Append(string.Equals(f.Logic, "or", StringComparison.OrdinalIgnoreCase) ? " || " : " && ");
-
-            predicate.Append('(').Append(clause).Append(')');
+            if (grupos.Count == 0 || string.Equals(f.Logic, "or", StringComparison.OrdinalIgnoreCase))
+                grupos.Add(new List<Func<Expression>>());
+            grupos[^1].Add(condicion);
         }
 
-        if (predicate.Length > 0)
-            source = source.Where(predicate.ToString(), values.ToArray());
+        if (grupos.Count == 0) return source;
 
-        foreach (var (prop, op, valor) in binarios)
-            source = source.Where(FiltroBinario<T>(prop, op, valor));
+        var cuerpo = grupos
+            .Select(g => g.Select(c => c()).Aggregate(Expression.AndAlso))
+            .Aggregate(Expression.OrElse);
 
-        return source;
+        return source.Where(Expression.Lambda<Func<T, bool>>(cuerpo, x));
+    }
+
+    private sealed class CambioDeParametro(ParameterExpression de, ParameterExpression a) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == de ? a : node;
     }
 
     /// <summary>Intercalación con la que se compara "contiene" en SQL Server: binaria, sobre el texto en mayúsculas.</summary>
@@ -258,9 +274,8 @@ public static class GridQueryableExtensions
     /// 0,4–0,6 s y el apellido de 0,6–1,1 s a 0,16–0,23 s. Las mayúsculas a los dos lados mantienen la búsqueda sin
     /// distinguir mayúsculas. El valor va como parámetro, no como literal, para que SQL Server reutilice el plan.
     /// </summary>
-    private static Expression<Func<T, bool>> FiltroBinario<T>(PropertyInfo prop, string op, string valor)
+    private static Expression FiltroBinario(ParameterExpression x, PropertyInfo prop, string op, string valor)
     {
-        var x       = Expression.Parameter(typeof(T), "x");
         var columna = Expression.Property(x, prop);
         var upper   = Expression.Call(columna, typeof(string).GetMethod(nameof(string.ToUpper), Type.EmptyTypes)!);
         var collate = Expression.Call(
@@ -275,8 +290,7 @@ public static class GridQueryableExtensions
         var metodo  = op == "endswith" ? nameof(string.EndsWith) : nameof(string.Contains);
         var compara = Expression.Call(collate, typeof(string).GetMethod(metodo, new[] { typeof(string) })!, buscado);
 
-        var cuerpo = Expression.AndAlso(Expression.NotEqual(columna, Expression.Constant(null, typeof(string))), compara);
-        return Expression.Lambda<Func<T, bool>>(cuerpo, x);
+        return Expression.AndAlso(Expression.NotEqual(columna, Expression.Constant(null, typeof(string))), compara);
     }
 
     /// <summary>Envoltorio para que EF trate el valor buscado como parámetro y no como literal en el SQL.</summary>
