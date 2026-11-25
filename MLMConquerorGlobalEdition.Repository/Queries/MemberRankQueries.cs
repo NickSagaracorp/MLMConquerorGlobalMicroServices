@@ -35,6 +35,19 @@ public sealed class MemberRankSince
 /// </summary>
 public static class MemberRankQueries
 {
+    /// <summary>Rango de por vida de cada miembro (ver <see cref="LifetimeRankSinceRows"/>), en una pasada.</summary>
+    internal const string SqlDeRangoDePorVida = """
+        SELECT x.MemberId, x.SortOrder, MIN(x.RankDefinitionId) AS RankDefinitionId, MIN(x.AchievedAt) AS Since
+        FROM (
+            SELECT h.MemberId, d.SortOrder, h.RankDefinitionId, h.AchievedAt,
+                   MAX(d.SortOrder) OVER (PARTITION BY h.MemberId) AS Maximo
+            FROM MemberRankHistories AS h
+            INNER JOIN RankDefinitions AS d ON d.Id = h.RankDefinitionId
+        ) AS x
+        WHERE x.SortOrder = x.Maximo
+        GROUP BY x.MemberId, x.SortOrder
+        """;
+
     /// <summary>Las filas que son el rango vigente de su miembro: una por miembro con historial.</summary>
     public static IQueryable<MemberRankHistory> CurrentRankRows(this AppDbContext db) =>
         db.MemberRankHistories.AsNoTracking()
@@ -122,6 +135,12 @@ public static class MemberRankQueries
     /// </summary>
     public static IQueryable<MemberRankSince> LifetimeRankSinceRows(this AppDbContext db)
     {
+        // En SQL Server, una sola pasada con MAX() OVER (PARTITION BY MemberId): la forma LINQ (agrupar, unir al máximo
+        // y volver a agrupar) recorre el historial dos veces y une por MemberId nvarchar(900). Con 216k filas de
+        // historial, 3,5 s de CPU frente a 1,6 s; mismo resultado (comprobado con EXCEPT sobre la base de escala).
+        if (db.Database.IsRelational())
+            return db.Database.SqlQueryRaw<MemberRankSince>(SqlDeRangoDePorVida);
+
         var rows = from r in db.MemberRankHistories.AsNoTracking()
                    join d in db.RankDefinitions.AsNoTracking() on r.RankDefinitionId equals d.Id
                    select new { r.MemberId, r.RankDefinitionId, d.SortOrder, r.AchievedAt };

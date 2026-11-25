@@ -15,6 +15,12 @@ public interface IEarningsRankingService
 
     Task<IReadOnlyList<EarningsRankRowView>> GetAllAsync(DateTime cutoff, int? windowDays, string? search,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Recalcula el ranking de (corte, ventana) aunque esté en caché y lo deja guardado <see cref="EarningsRankingService.PrecalculadoDura"/>.
+    /// Lo usa el precálculo en segundo plano para que la pantalla no espere el cálculo completo.
+    /// </summary>
+    Task PrecalcularAsync(DateTime cutoff, int? windowDays, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -33,6 +39,23 @@ public class EarningsRankingService : IEarningsRankingService
     public static readonly int[] AllowedWindows = { 30, 90, 180, 365 };
     public const int DefaultWindow = 180;
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// Lo que dura un ranking que dejó el precálculo: más que su intervalo, para que entre dos vueltas la pantalla
+    /// siempre lo encuentre hecho. El precálculo lo reescribe antes de que venza.
+    /// </summary>
+    public static readonly TimeSpan PrecalculadoDura = TimeSpan.FromMinutes(25);
+
+    private static long _ultimoUso;
+
+    /// <summary>
+    /// Tiempo desde la última página o exportación pedida (reloj monótono del proceso: solo mide lo transcurrido);
+    /// null si nunca se pidió. El precálculo deja de recalcular cuando nadie usa el reporte.
+    /// </summary>
+    public static TimeSpan? TiempoSinUso
+    {
+        get { var t = Interlocked.Read(ref _ultimoUso); return t == 0 ? null : TimeSpan.FromMilliseconds(Environment.TickCount64 - t); }
+    }
 
     // Cerrojos por tramos: un arreglo fijo evita que el diccionario de cerrojos crezca con cada clave (corte x ventana).
     private const int LockStripes = 32;
@@ -96,25 +119,31 @@ public class EarningsRankingService : IEarningsRankingService
                             || r.Email.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays, CancellationToken ct)
+    public async Task PrecalcularAsync(DateTime cutoff, int? windowDays, CancellationToken ct = default) =>
+        await RankingAsync(cutoff, windowDays, ct, recalcular: true);
+
+    private async Task<IReadOnlyList<EarningsRankRowView>> RankingAsync(DateTime cutoff, int? windowDays,
+        CancellationToken ct, bool recalcular = false)
     {
+        if (!recalcular) Interlocked.Exchange(ref _ultimoUso, Environment.TickCount64);
         var window = NormalizeWindow(windowDays);
         var day    = cutoff.Date;
         var today  = _clock.Now.Date;
         if (day > today) day = today;
         var key = $"reports:earnings:{day:yyyyMMdd}:{window?.ToString() ?? "all"}";
 
-        if (TryGetCached(key, out var cached)) return cached;
+        if (!recalcular && TryGetCached(key, out var cached)) return cached;
 
         var gate = Locks[(uint)key.GetHashCode() % LockStripes];
         await gate.WaitAsync(ct);
         try
         {
-            if (TryGetCached(key, out cached)) return cached;
+            if (!recalcular && TryGetCached(key, out cached)) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
             var token  = CurrentToken();
             var ranked = await ComputeAsync(day, window, ct);
-            _cache.Set(key, ranked, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
+            _cache.Set(key, ranked, new MemoryCacheEntryOptions
+                    { AbsoluteExpirationRelativeToNow = recalcular ? PrecalculadoDura : CacheFor }
                 .AddExpirationToken(new CancellationChangeToken(token)));
             return ranked;
         }

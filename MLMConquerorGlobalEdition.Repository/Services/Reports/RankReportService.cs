@@ -18,6 +18,9 @@ public interface IRankReportService
 
     /// <summary>Todas las filas que cumplen el filtro (exportación).</summary>
     Task<IReadOnlyList<RankReportRowView>> GetAllAsync(RankReportFilter filter, CancellationToken ct = default);
+
+    /// <summary>Recalcula la lista del modo aunque esté en caché y la deja guardada <see cref="RankReportService.PrecalculadoDura"/>.</summary>
+    Task PrecalcularAsync(RankReportMode mode, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -36,6 +39,20 @@ public class RankReportService : IRankReportService
     };
 
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(10);
+
+    /// <summary>Lo que dura una lista que dejó el precálculo (más que su intervalo; ver EarningsRankingService).</summary>
+    public static readonly TimeSpan PrecalculadoDura = TimeSpan.FromMinutes(25);
+
+    private static long _ultimoUso;
+
+    /// <summary>
+    /// Tiempo desde la última página o exportación pedida (reloj monótono del proceso: solo mide lo transcurrido);
+    /// null si nunca se pidió. El precálculo deja de recalcular cuando nadie usa el reporte.
+    /// </summary>
+    public static TimeSpan? TiempoSinUso
+    {
+        get { var t = Interlocked.Read(ref _ultimoUso); return t == 0 ? null : TimeSpan.FromMilliseconds(Environment.TickCount64 - t); }
+    }
 
     // Un cerrojo por modo: un Lifetime en frio no hace esperar al Current (cada uno calcula su propia lista).
     private static readonly SemaphoreSlim[] Gates =
@@ -141,16 +158,22 @@ public class RankReportService : IRankReportService
             .ToList();
     }
 
-    private async Task<IReadOnlyList<RankReportRowView>> ListAsync(RankReportMode mode, CancellationToken ct)
+    public async Task PrecalcularAsync(RankReportMode mode, CancellationToken ct = default) =>
+        await ListAsync(mode, ct, recalcular: true);
+
+    private async Task<IReadOnlyList<RankReportRowView>> ListAsync(RankReportMode mode, CancellationToken ct,
+        bool recalcular = false)
     {
+        if (!recalcular) Interlocked.Exchange(ref _ultimoUso, Environment.TickCount64);
         var key = $"reports:ranks:{mode}";
-        if (_cache.TryGetValue(key, out IReadOnlyList<RankReportRowView>? cached) && cached is not null) return cached;
+        IReadOnlyList<RankReportRowView>? cached;
+        if (!recalcular && _cache.TryGetValue(key, out cached) && cached is not null) return cached;
 
         var gate = GateOf(mode);
         await gate.WaitAsync(ct);
         try
         {
-            if (_cache.TryGetValue(key, out cached) && cached is not null) return cached;
+            if (!recalcular && _cache.TryGetValue(key, out cached) && cached is not null) return cached;
             // El token se toma ANTES de leer: una invalidacion durante el calculo deja la entrada ya vencida.
             var token  = CurrentToken();
             var source = await SourceQuery(_db, mode).ToListAsync(ct);
@@ -171,7 +194,8 @@ public class RankReportService : IRankReportService
                     Since            = r.Since
                 }).ToList().AsReadOnly();
 
-            _cache.Set(key, rows, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFor }
+            _cache.Set(key, rows, new MemoryCacheEntryOptions
+                    { AbsoluteExpirationRelativeToNow = recalcular ? PrecalculadoDura : CacheFor }
                 .AddExpirationToken(new CancellationChangeToken(token)));
             return rows;
         }
