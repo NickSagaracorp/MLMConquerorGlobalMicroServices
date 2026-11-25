@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
 @inject HttpClient Http
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
 
 <PageTitle>Recurring Billing States — Admin</PageTitle>
 
@@ -47,64 +48,59 @@
         </div>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else
-        {
-            <SfGrid TValue="StateDto" DataSource="@_items"
-                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn HeaderText="Member" Width="130">
-                        <Template><a href="/admin/members/@(((StateDto)context).MemberId)" class="text-primary"><code class="small">@(((StateDto)context).MemberId)</code></a></Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(StateDto.PlanName)" HeaderText="Plan" Width="180" />
-                    <GridColumn HeaderText="Purpose" Width="120" TextAlign="TextAlign.Center">
-                        <Template><span class="badge @(((StateDto)context).Purpose == "AnnualFee" ? "bg-info text-dark" : "bg-light text-dark")">@PurposeLabel(((StateDto)context).Purpose)</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Status" Width="160" TextAlign="TextAlign.Center">
-                        <Template><span class="badge @StatusBadge(((StateDto)context).Status)">@StatusLabel(((StateDto)context).Status)</span></Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(StateDto.BillingAnchorDate)" HeaderText="Anchor" Width="110" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(StateDto.LastSuccessfulBillingDate)" HeaderText="Last Success" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(StateDto.NextBillingDate)" HeaderText="Next Billing" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(StateDto.CurrentAttemptIndex)" HeaderText="Attempt #" Width="90" TextAlign="TextAlign.Center" />
-                    <GridColumn Field="@nameof(StateDto.NextAttemptDate)" HeaderText="Next Attempt" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(StateDto.LastAttemptAt)" HeaderText="Last Attempt (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
-                    <GridColumn HeaderText="Last Outcome" Width="120" TextAlign="TextAlign.Center">
-                        <Template>
-                            @{ var o = ((StateDto)context).LastAttemptOutcome; }
-                            <span class="badge @OutcomeBadge(o)">@(o ?? "—")</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Last Failure" Width="220">
-                        <Template><span class="small text-danger">@(((StateDto)context).LastFailureReason ?? "—")</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
-                        <Template>
-                            <button class="btn btn-sm btn-outline-warning py-0" @onclick="() => ConfirmBillNow((StateDto)context)" title="Bill now"><i class="ri-flashlight-line"></i> Bill now</button>
-                        </Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-
-            @if (_totalPages > 1)
-            {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount states — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
-                        </ul>
-                    </nav>
-                </div>
-            }
-        }
+        @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan
+           TODOS los estados (uno por miembro y plan), no solo la página cargada. Los controles de arriba van por
+           query string. Filtro de tipo Menu y no Excel, que pediría al servidor la lista de valores de la columna.
+           GridCargando tapa el grid mientras dura cada lectura. *@
+        <GridCargando Visible="_cargando" Texto="Loading billing states…">
+        <SfGrid TValue="StateDto" @ref="_grid"
+                AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="StateDto"
+                                   Http="Http"
+                                   Endpoint="api/v1/admin/billing/recurring-states/grid"
+                                   QueryStringProvider="BuildQueryString"
+                                   OnLoading="OnCargandoAsync"
+                                   OnServerError="OnServerErrorAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
+            <GridColumns>
+                <GridColumn Field="@nameof(StateDto.MemberId)" HeaderText="Member" Width="130">
+                    <Template><a href="/admin/members/@(((StateDto)context).MemberId)" class="text-primary"><code class="small">@(((StateDto)context).MemberId)</code></a></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StateDto.PlanName)" HeaderText="Plan" Width="180" />
+                @* Propósito y estado son enums: el servidor los compara por el nombre exacto, que no es la etiqueta que
+                   se ve. El estado se filtra con el desplegable de arriba; en estas columnas solo se ordena. *@
+                <GridColumn Field="@nameof(StateDto.Purpose)" HeaderText="Purpose" Width="120" TextAlign="TextAlign.Center" AllowFiltering="false">
+                    <Template><span class="badge @(((StateDto)context).Purpose == "AnnualFee" ? "bg-info text-dark" : "bg-light text-dark")">@PurposeLabel(((StateDto)context).Purpose)</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StateDto.Status)" HeaderText="Status" Width="160" TextAlign="TextAlign.Center" AllowFiltering="false">
+                    <Template><span class="badge @StatusBadge(((StateDto)context).Status)">@StatusLabel(((StateDto)context).Status)</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StateDto.BillingAnchorDate)" HeaderText="Anchor" Width="110" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                <GridColumn Field="@nameof(StateDto.LastSuccessfulBillingDate)" HeaderText="Last Success" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                <GridColumn Field="@nameof(StateDto.NextBillingDate)" HeaderText="Next Billing" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                <GridColumn Field="@nameof(StateDto.CurrentAttemptIndex)" HeaderText="Attempt #" Width="90" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(StateDto.NextAttemptDate)" HeaderText="Next Attempt" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                <GridColumn Field="@nameof(StateDto.LastAttemptAt)" HeaderText="Last Attempt (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
+                <GridColumn Field="@nameof(StateDto.LastAttemptOutcome)" HeaderText="Last Outcome" Width="120" TextAlign="TextAlign.Center">
+                    <Template>
+                        @{ var o = ((StateDto)context).LastAttemptOutcome; }
+                        <span class="badge @OutcomeBadge(o)">@(o ?? "—")</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StateDto.LastFailureReason)" HeaderText="Last Failure" Width="220">
+                    <Template><span class="small text-danger">@(((StateDto)context).LastFailureReason ?? "—")</span></Template>
+                </GridColumn>
+                <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                    <Template>
+                        <button class="btn btn-sm btn-outline-warning py-0" @onclick="() => ConfirmBillNow((StateDto)context)" title="Bill now"><i class="ri-flashlight-line"></i> Bill now</button>
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+        </GridCargando>
     </div>
     <div class="card-footer bg-light small text-muted">
         Read-only view of the recurring billing engine. <strong>Bill now</strong> forces an immediate billing attempt and can revive a Stopped state.
@@ -137,27 +133,20 @@
 }
 
 @code {
-    private List<StateDto> _items = new();
+    private SfGrid<StateDto>? _grid;
+    private bool _cargando;
     private List<PlanItem> _plans = new();
-    private bool _loading = true;
     private bool _saving;
     private string? _alertMsg;
     private bool _alertIsError;
     private string _statusFilter = string.Empty;
     private int _planFilter;
     private string _memberFilter = string.Empty;
-    private int _page = 1;
-    private const int PageSize = 25;
-    private int _totalCount;
-    private int _totalPages = 1;
     private bool _showBillNowConfirm;
     private StateDto? _billNowItem;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadPlans();
-        await LoadAsync();
-    }
+    // El grid se carga solo por el adaptador; aquí solo hacen falta los planes del desplegable.
+    protected override async Task OnInitializedAsync() => await LoadPlans();
 
     private async Task LoadPlans()
     {
@@ -169,30 +158,44 @@
         catch { /* non-critical */ }
     }
 
-    private async Task LoadAsync()
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; StateHasChanged();
-        try
-        {
-            var url = $"api/v1/admin/billing/recurring-states?page={_page}&pageSize={PageSize}";
-            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={Uri.EscapeDataString(_statusFilter)}";
-            if (_planFilter > 0) url += $"&planId={_planFilter}";
-            if (!string.IsNullOrWhiteSpace(_memberFilter)) url += $"&memberId={Uri.EscapeDataString(_memberFilter.Trim())}";
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<StateDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items = resp.Data.Items.ToList();
-                _totalCount = resp.Data.TotalCount;
-                _totalPages = resp.Data.TotalPages;
-            }
-            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load billing states."; _alertIsError = true; }
-        }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task Search() { _page = 1; await LoadAsync(); }
-    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        _alertMsg = errorCode is null ? "Failed to load billing states." : $"Failed to load billing states ({errorCode}).";
+        _alertIsError = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Query string que ServerGridAdaptor añade al endpoint en cada lectura; se evalúa en cada lectura, así que siempre
+    /// lleva lo que hay en los controles de arriba. Van como query params para que se apliquen sobre la tabla antes de
+    /// proyectar y no como filtros de columna.
+    /// </summary>
+    private string? BuildQueryString()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_statusFilter)) parts.Add($"status={Uri.EscapeDataString(_statusFilter)}");
+        if (_planFilter > 0) parts.Add($"planId={_planFilter}");
+        if (!string.IsNullOrWhiteSpace(_memberFilter)) parts.Add($"memberId={Uri.EscapeDataString(_memberFilter.Trim())}");
+        return parts.Count == 0 ? null : string.Join("&", parts);
+    }
+
+    /// <summary>
+    /// "Search": vuelve a leer el grid con los controles de arriba. Si el grid no está en la primera página vuelve a
+    /// ella (eso ya lee): con el filtro nuevo la página en la que estaba puede no existir.
+    /// </summary>
+    private async Task Search()
+    {
+        _alertMsg = null;
+        if (_grid is null) return;
+        if (_grid.PageSettings?.CurrentPage > 1) await _grid.GoToPageAsync(1);
+        else await _grid.Refresh();
+    }
 
     private void ConfirmBillNow(StateDto s) { _billNowItem = s; _showBillNowConfirm = true; }
 
@@ -211,7 +214,8 @@
                     : "Bill-now completed.";
                 _alertIsError = false;
                 _showBillNowConfirm = false; _billNowItem = null;
-                await LoadAsync();
+                // Se relee la página actual para ver el estado ya actualizado.
+                if (_grid is not null) await _grid.Refresh();
             }
             else
             {
@@ -233,7 +237,8 @@
 
     // Enum-typed fields (Status, LastAttemptOutcome) arrive as enum NAMES from the API (JsonStringEnumConverter).
     // MembershipSubscriptionId es null en los estados de cuota anual: no tienen suscripción.
-    private record StateDto(string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
+    // Los nombres de las propiedades son los campos de filtro y orden que el grid manda al servidor.
+    public record StateDto(string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
         string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate, DateTime NextBillingDate,
         int CurrentAttemptIndex, DateTime NextAttemptDate, string Status, DateTime? LastAttemptAt,
         string? LastAttemptOutcome, string? LastFailureReason, string? Purpose = null);
@@ -243,5 +248,4 @@
     private static string PurposeLabel(string? p) => p == "AnnualFee" ? "Annual fee" : "Membership";
     private record BillNowResult(string BillingStateId, string Outcome, string? FundingSource, string? PaymentHistoryId, string? FailureReason);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }

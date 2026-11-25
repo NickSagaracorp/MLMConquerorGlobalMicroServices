@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IEncryptionService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService;
@@ -562,19 +563,12 @@ public class AdminBillingGatewayController : ControllerBase
         [FromQuery] int     pageSize     = 20,
         CancellationToken ct = default)
     {
-        var query = _db.GatewayChargeAttempts.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(memberId)) query = query.Where(a => a.MemberId == memberId);
-        if (!string.IsNullOrWhiteSpace(outcome))  query = query.Where(a => a.Outcome  == outcome);
+        var query = FiltrarIntentosDeCobro(memberId, outcome, processor: null);
 
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(a => a.AttemptedAtUtc)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(a => new ChargeAttemptDto(
-                a.Id, a.MemberId, a.CardProcessor, a.CardProcessor.ToString(),
-                a.FallbackStepIndex, a.PresentmentCurrency, a.OriginalAmountUsd,
-                a.ConvertedAmount, a.Outcome, a.GatewayTransactionId,
-                a.PaymentHistoryId, a.FailureReason, a.AttemptedAtUtc))
+        var items = await ProyectarIntentosDeCobro(query
+                .OrderByDescending(a => a.AttemptedAtUtc)
+                .Skip((page - 1) * pageSize).Take(pageSize))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<PagedResult<ChargeAttemptDto>>.Ok(new PagedResult<ChargeAttemptDto>
@@ -582,6 +576,91 @@ public class AdminBillingGatewayController : ControllerBase
             Items = items, TotalCount = total, Page = page, PageSize = pageSize
         }));
     }
+
+    /// <summary>
+    /// Filas por página como máximo en el grid de intentos de cobro: la tabla recibe una fila por cada intento contra
+    /// la pasarela (con un millón de miembros, millones de filas) y el grid no pinta bien más de 100. El selector de
+    /// tamaño del AdminWeb ofrece lo mismo.
+    /// </summary>
+    internal const int MaxChargeAttemptsPageSize = 100;
+
+    /// <summary>
+    /// POST /api/v1/admin/billing/charge-attempts/grid — lectura del grid de servidor del AdminWeb. Resultado,
+    /// procesador y miembro (los controles de la página) llegan por query string y se aplican sobre la tabla antes de
+    /// proyectar; filtros de columna, orden y página llegan en el cuerpo y cubren todos los intentos. Antes el
+    /// procesador se filtraba solo sobre la página cargada y el grid ordenaba solo esa página.
+    /// </summary>
+    [HttpPost("charge-attempts/grid")]
+    public async Task<IActionResult> GetChargeAttemptsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string?        memberId  = null,
+        [FromQuery] string?        outcome   = null,
+        [FromQuery] CardProcessor? processor = null,
+        CancellationToken ct = default)
+    {
+        var query = FiltrarIntentosDeCobro(memberId, outcome, processor);
+
+        // Sin orden pedido, el intento más reciente primero (como el GET). El Id desempata los del mismo instante
+        // (los pasos de fallback de un mismo cobro) para que el paginado sea estable.
+        if (request.Sorts is not { Count: > 0 })
+            request.Sorts = new List<GridSort>
+            {
+                new() { Field = nameof(ChargeAttemptDto.AttemptedAtUtc), Direction = "desc" },
+                new() { Field = nameof(ChargeAttemptDto.Id),             Direction = "desc" },
+            };
+
+        var result = await ProyectarIntentosDeCobro(query).ToGridResultAsync(
+            request, IntentosDeCobroBuscables, MaxChargeAttemptsPageSize, ct);
+
+        return Ok(ApiResponse<PagedResult<ChargeAttemptDto>>.Ok(result));
+    }
+
+    /// <summary>Columnas de texto en las que busca el término libre del grid de intentos de cobro.</summary>
+    private static readonly string[] IntentosDeCobroBuscables =
+    {
+        nameof(ChargeAttemptDto.MemberId),
+        nameof(ChargeAttemptDto.GatewayTransactionId),
+        nameof(ChargeAttemptDto.PaymentHistoryId),
+    };
+
+    /// <summary>Los filtros de la página, comunes al GET y al grid.</summary>
+    private IQueryable<GatewayChargeAttempt> FiltrarIntentosDeCobro(
+        string? memberId, string? outcome, CardProcessor? processor)
+    {
+        var query = _db.GatewayChargeAttempts.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(memberId))
+        {
+            var id = memberId.Trim();
+            query = query.Where(a => a.MemberId == id);
+        }
+        if (!string.IsNullOrWhiteSpace(outcome)) query = query.Where(a => a.Outcome == outcome);
+        if (processor.HasValue)                  query = query.Where(a => a.CardProcessor == processor.Value);
+
+        return query;
+    }
+
+    /// <summary>
+    /// Proyección asignando cada propiedad por nombre (no por constructor), para que EF componga encima el filtro y
+    /// el orden dinámicos del grid. ProcessorName es el nombre del enum: EF lo traduce a un CASE sobre la columna.
+    /// </summary>
+    private static IQueryable<ChargeAttemptDto> ProyectarIntentosDeCobro(IQueryable<GatewayChargeAttempt> query) =>
+        query.Select(a => new ChargeAttemptDto
+        {
+            Id                   = a.Id,
+            MemberId             = a.MemberId,
+            CardProcessor        = a.CardProcessor,
+            ProcessorName        = a.CardProcessor.ToString(),
+            FallbackStepIndex    = a.FallbackStepIndex,
+            PresentmentCurrency  = a.PresentmentCurrency,
+            OriginalAmountUsd    = a.OriginalAmountUsd,
+            ConvertedAmount      = a.ConvertedAmount,
+            Outcome              = a.Outcome,
+            GatewayTransactionId = a.GatewayTransactionId,
+            PaymentHistoryId     = a.PaymentHistoryId,
+            FailureReason        = a.FailureReason,
+            AttemptedAtUtc       = a.AttemptedAtUtc,
+        });
 
     // ── Exchange Rates ─────────────────────────────────────────────────────
 
@@ -679,12 +758,24 @@ public class AdminBillingGatewayController : ControllerBase
     public record RoutingCounterDto(
         string RouteBucketKey, CardProcessor CardProcessor, string ProcessorName, long AttemptCount);
 
-    public record ChargeAttemptDto(
-        long Id, string MemberId, CardProcessor CardProcessor, string ProcessorName,
-        int FallbackStepIndex, string PresentmentCurrency,
-        decimal OriginalAmountUsd, decimal ConvertedAmount,
-        string Outcome, string? GatewayTransactionId, string? PaymentHistoryId,
-        string? FailureReason, DateTime AttemptedAtUtc);
+    // Record con propiedades init y no posicional: el grid compone filtros y orden dinámicos sobre la proyección y EF
+    // solo traduce el acceso a una propiedad cuando la proyección la asigna por nombre. El JSON no cambia.
+    public record ChargeAttemptDto
+    {
+        public long Id { get; init; }
+        public string MemberId { get; init; } = string.Empty;
+        public CardProcessor CardProcessor { get; init; }
+        public string ProcessorName { get; init; } = string.Empty;
+        public int FallbackStepIndex { get; init; }
+        public string PresentmentCurrency { get; init; } = string.Empty;
+        public decimal OriginalAmountUsd { get; init; }
+        public decimal ConvertedAmount { get; init; }
+        public string Outcome { get; init; } = string.Empty;
+        public string? GatewayTransactionId { get; init; }
+        public string? PaymentHistoryId { get; init; }
+        public string? FailureReason { get; init; }
+        public DateTime AttemptedAtUtc { get; init; }
+    }
 
     public record ExchangeRateDto(string Currency, decimal Rate, DateTime FetchedAtUtc);
 }

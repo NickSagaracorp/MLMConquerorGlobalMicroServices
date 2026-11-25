@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.RecurringPerformance.PreviewPl
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -180,6 +181,13 @@ public class AdminRecurringBillingController : ControllerBase
 
     // ── Recurring States ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Filas por página como máximo en los grids de estados e intentos. Estas tablas crecen con cada miembro y cada
+    /// cobro (con un millón de miembros son millones de filas) y el grid no pinta bien más de 100; el selector de
+    /// tamaño del AdminWeb ofrece lo mismo.
+    /// </summary>
+    internal const int MaxGridPageSize = 100;
+
     /// <summary>GET /api/v1/admin/billing/recurring-states — paged, read-only.</summary>
     [HttpGet("recurring-states")]
     public async Task<IActionResult> GetStates(
@@ -190,24 +198,12 @@ public class AdminRecurringBillingController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var query = _db.SubscriptionBillingStates
-            .AsNoTracking()
-            .Include(s => s.Plan)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(memberId)) query = query.Where(s => s.MemberId == memberId);
-        if (status.HasValue)                       query = query.Where(s => s.Status == status.Value);
-        if (planId.HasValue)                       query = query.Where(s => s.RecurringBillingPlanId == planId.Value);
+        var query = FiltrarEstados(memberId, status, planId);
 
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(s => s.LastAttemptAt ?? s.CreationDate)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(s => new RecurringStateDto(
-                s.Id, s.MemberId, s.MembershipSubscriptionId, s.RecurringBillingPlanId,
-                s.Plan!.Name, s.BillingAnchorDate, s.LastSuccessfulBillingDate,
-                s.NextBillingDate, s.CurrentAttemptIndex, s.NextAttemptDate,
-                s.Status, s.LastAttemptAt, s.LastAttemptOutcome, s.LastFailureReason, s.Purpose))
+        var items = await ProyectarEstados(query
+                .OrderByDescending(s => s.LastAttemptAt ?? s.CreationDate)
+                .Skip((page - 1) * pageSize).Take(pageSize))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<PagedResult<RecurringStateDto>>.Ok(new PagedResult<RecurringStateDto>
@@ -215,6 +211,84 @@ public class AdminRecurringBillingController : ControllerBase
             Items = items, TotalCount = total, Page = page, PageSize = pageSize
         }));
     }
+
+    /// <summary>
+    /// POST /api/v1/admin/billing/recurring-states/grid — lectura del grid de servidor del AdminWeb. El grid manda
+    /// en el cuerpo la página, los filtros de columna y el orden, y así filtran y ordenan sobre TODA la tabla y no
+    /// solo sobre la página cargada. Estado, plan y miembro (los controles de arriba de la página) siguen llegando
+    /// por query string y se aplican antes de proyectar, sobre las columnas de la tabla.
+    /// </summary>
+    [HttpPost("recurring-states/grid")]
+    public async Task<IActionResult> GetStatesGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string? memberId = null,
+        [FromQuery] RecurringBillingStatus? status = null,
+        [FromQuery] int? planId = null,
+        CancellationToken ct = default)
+    {
+        var query = FiltrarEstados(memberId, status, planId);
+
+        // Sin orden pedido por el grid, lo más reciente primero: el último intento y, si nunca se intentó, el alta
+        // del estado (el mismo orden del GET). Va antes de proyectar porque la fecha de alta no viaja en el DTO; si
+        // el usuario ordena por una columna, ToGridResultAsync lo reemplaza. El Id desempata para que el paginado
+        // sea estable y una fila no salte de una página a otra.
+        if (request.Sorts is not { Count: > 0 })
+            query = query.OrderByDescending(s => s.LastAttemptAt ?? s.CreationDate).ThenByDescending(s => s.Id);
+
+        var result = await ProyectarEstados(query).ToGridResultAsync(
+            request, EstadosBuscables, MaxGridPageSize, ct);
+
+        return Ok(ApiResponse<PagedResult<RecurringStateDto>>.Ok(result));
+    }
+
+    /// <summary>Columnas de texto en las que busca el término libre del grid de estados.</summary>
+    private static readonly string[] EstadosBuscables =
+    {
+        nameof(RecurringStateDto.MemberId),
+        nameof(RecurringStateDto.PlanName),
+        nameof(RecurringStateDto.MembershipSubscriptionId),
+    };
+
+    /// <summary>Los filtros de la página (miembro, estado, plan), comunes al GET y al grid.</summary>
+    private IQueryable<SubscriptionBillingState> FiltrarEstados(
+        string? memberId, RecurringBillingStatus? status, int? planId)
+    {
+        var query = _db.SubscriptionBillingStates.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(memberId))
+        {
+            var id = memberId.Trim();
+            query = query.Where(s => s.MemberId == id);
+        }
+        if (status.HasValue) query = query.Where(s => s.Status == status.Value);
+        if (planId.HasValue) query = query.Where(s => s.RecurringBillingPlanId == planId.Value);
+
+        return query;
+    }
+
+    /// <summary>
+    /// Proyección al DTO asignando cada propiedad por nombre (no por constructor): así EF puede componer encima los
+    /// filtros y el orden dinámicos del grid y traducirlos a las columnas de la tabla.
+    /// </summary>
+    private static IQueryable<RecurringStateDto> ProyectarEstados(IQueryable<SubscriptionBillingState> query) =>
+        query.Select(s => new RecurringStateDto
+        {
+            Id                        = s.Id,
+            MemberId                  = s.MemberId,
+            MembershipSubscriptionId  = s.MembershipSubscriptionId,
+            RecurringBillingPlanId    = s.RecurringBillingPlanId,
+            PlanName                  = s.Plan!.Name,
+            BillingAnchorDate         = s.BillingAnchorDate,
+            LastSuccessfulBillingDate = s.LastSuccessfulBillingDate,
+            NextBillingDate           = s.NextBillingDate,
+            CurrentAttemptIndex       = s.CurrentAttemptIndex,
+            NextAttemptDate           = s.NextAttemptDate,
+            Status                    = s.Status,
+            LastAttemptAt             = s.LastAttemptAt,
+            LastAttemptOutcome        = s.LastAttemptOutcome,
+            LastFailureReason         = s.LastFailureReason,
+            Purpose                   = s.Purpose,
+        });
 
     // ── Recurring Attempts ──────────────────────────────────────────────────
 
@@ -230,23 +304,12 @@ public class AdminRecurringBillingController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var query = _db.RecurringBillingAttempts.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(memberId)) query = query.Where(a => a.MemberId == memberId);
-        if (outcome.HasValue)       query = query.Where(a => a.Outcome == outcome.Value);
-        if (fundingSource.HasValue) query = query.Where(a => a.FundingSource == fundingSource.Value);
-        if (fromDate.HasValue)      query = query.Where(a => a.AttemptedAt >= fromDate.Value);
-        if (toDate.HasValue)        query = query.Where(a => a.AttemptedAt <= toDate.Value);
+        var query = FiltrarIntentos(memberId, outcome, fundingSource, fromDate, toDate);
 
         var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(a => a.AttemptedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(a => new RecurringAttemptDto(
-                a.Id, a.SubscriptionBillingStateId, a.MemberId, a.ProductId,
-                a.AttemptIndex, a.AttemptedAt, a.Amount, a.FundingSource, a.Outcome,
-                a.PaymentHistoryId, a.OrderId, a.TokenTransactionId,
-                a.CommissionDeductionEarningId, a.GatewayChargeAttemptId, a.FailureReason))
+        var items = await ProyectarIntentos(query
+                .OrderByDescending(a => a.AttemptedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<PagedResult<RecurringAttemptDto>>.Ok(new PagedResult<RecurringAttemptDto>
@@ -254,6 +317,88 @@ public class AdminRecurringBillingController : ControllerBase
             Items = items, TotalCount = total, Page = page, PageSize = pageSize
         }));
     }
+
+    /// <summary>
+    /// POST /api/v1/admin/billing/recurring-attempts/grid — lectura del grid de servidor del AdminWeb. Resultado,
+    /// fuente de fondos, miembro y rango de fechas (los controles de la página) llegan por query string y se aplican
+    /// antes de proyectar; filtros de columna, orden y página llegan en el cuerpo y cubren toda la tabla.
+    /// </summary>
+    [HttpPost("recurring-attempts/grid")]
+    public async Task<IActionResult> GetAttemptsGrid(
+        [FromBody] GridDataRequest request,
+        [FromQuery] string? memberId = null,
+        [FromQuery] RecurringAttemptOutcome? outcome = null,
+        [FromQuery] RecurringFundingSource? fundingSource = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        CancellationToken ct = default)
+    {
+        var query = FiltrarIntentos(memberId, outcome, fundingSource, fromDate, toDate);
+
+        // Sin orden pedido, el intento más reciente primero (como el GET). El Id desempata los del mismo instante,
+        // que el motor registra en lote, para que una fila no salte de página al paginar.
+        if (request.Sorts is not { Count: > 0 })
+            request.Sorts = new List<GridSort>
+            {
+                new() { Field = nameof(RecurringAttemptDto.AttemptedAt), Direction = "desc" },
+                new() { Field = nameof(RecurringAttemptDto.Id),          Direction = "desc" },
+            };
+
+        var result = await ProyectarIntentos(query).ToGridResultAsync(
+            request, IntentosBuscables, MaxGridPageSize, ct);
+
+        return Ok(ApiResponse<PagedResult<RecurringAttemptDto>>.Ok(result));
+    }
+
+    /// <summary>Columnas de texto en las que busca el término libre del grid de intentos.</summary>
+    private static readonly string[] IntentosBuscables =
+    {
+        nameof(RecurringAttemptDto.MemberId),
+        nameof(RecurringAttemptDto.ProductId),
+        nameof(RecurringAttemptDto.OrderId),
+        nameof(RecurringAttemptDto.PaymentHistoryId),
+    };
+
+    /// <summary>Los filtros de la página, comunes al GET y al grid.</summary>
+    private IQueryable<RecurringBillingAttempt> FiltrarIntentos(
+        string? memberId, RecurringAttemptOutcome? outcome, RecurringFundingSource? fundingSource,
+        DateTime? fromDate, DateTime? toDate)
+    {
+        var query = _db.RecurringBillingAttempts.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(memberId))
+        {
+            var id = memberId.Trim();
+            query = query.Where(a => a.MemberId == id);
+        }
+        if (outcome.HasValue)       query = query.Where(a => a.Outcome == outcome.Value);
+        if (fundingSource.HasValue) query = query.Where(a => a.FundingSource == fundingSource.Value);
+        if (fromDate.HasValue)      query = query.Where(a => a.AttemptedAt >= fromDate.Value);
+        if (toDate.HasValue)        query = query.Where(a => a.AttemptedAt <= toDate.Value);
+
+        return query;
+    }
+
+    /// <summary>Proyección asignando por nombre, para que EF componga encima el filtro y el orden del grid.</summary>
+    private static IQueryable<RecurringAttemptDto> ProyectarIntentos(IQueryable<RecurringBillingAttempt> query) =>
+        query.Select(a => new RecurringAttemptDto
+        {
+            Id                           = a.Id,
+            SubscriptionBillingStateId   = a.SubscriptionBillingStateId,
+            MemberId                     = a.MemberId,
+            ProductId                    = a.ProductId,
+            AttemptIndex                 = a.AttemptIndex,
+            AttemptedAt                  = a.AttemptedAt,
+            Amount                       = a.Amount,
+            FundingSource                = a.FundingSource,
+            Outcome                      = a.Outcome,
+            PaymentHistoryId             = a.PaymentHistoryId,
+            OrderId                      = a.OrderId,
+            TokenTransactionId           = a.TokenTransactionId,
+            CommissionDeductionEarningId = a.CommissionDeductionEarningId,
+            GatewayChargeAttemptId       = a.GatewayChargeAttemptId,
+            FailureReason                = a.FailureReason,
+        });
 
     // ── Bill Now ────────────────────────────────────────────────────────────
 
@@ -449,19 +594,45 @@ public class AdminRecurringBillingController : ControllerBase
 
     public record PlanProductFormDto(string ProductId, int? TokenTypeIdOverride);
 
-    public record RecurringStateDto(
-        string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
-        string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate,
-        DateTime NextBillingDate, int CurrentAttemptIndex, DateTime NextAttemptDate,
-        RecurringBillingStatus Status, DateTime? LastAttemptAt, string? LastAttemptOutcome,
-        string? LastFailureReason, BillingStatePurpose Purpose);
+    // Records con propiedades init y no posicionales: el grid compone filtros y orden dinámicos sobre la proyección
+    // y EF solo traduce el acceso a una propiedad cuando la proyección la asigna por nombre. El JSON no cambia.
+    public record RecurringStateDto
+    {
+        public string Id { get; init; } = string.Empty;
+        public string MemberId { get; init; } = string.Empty;
+        public string? MembershipSubscriptionId { get; init; }
+        public int RecurringBillingPlanId { get; init; }
+        public string PlanName { get; init; } = string.Empty;
+        public DateTime BillingAnchorDate { get; init; }
+        public DateTime? LastSuccessfulBillingDate { get; init; }
+        public DateTime NextBillingDate { get; init; }
+        public int CurrentAttemptIndex { get; init; }
+        public DateTime NextAttemptDate { get; init; }
+        public RecurringBillingStatus Status { get; init; }
+        public DateTime? LastAttemptAt { get; init; }
+        public string? LastAttemptOutcome { get; init; }
+        public string? LastFailureReason { get; init; }
+        public BillingStatePurpose Purpose { get; init; }
+    }
 
-    public record RecurringAttemptDto(
-        long Id, string SubscriptionBillingStateId, string MemberId, string ProductId,
-        int AttemptIndex, DateTime AttemptedAt, decimal Amount,
-        RecurringFundingSource FundingSource, RecurringAttemptOutcome Outcome,
-        string? PaymentHistoryId, string? OrderId, long? TokenTransactionId,
-        string? CommissionDeductionEarningId, long? GatewayChargeAttemptId, string? FailureReason);
+    public record RecurringAttemptDto
+    {
+        public long Id { get; init; }
+        public string SubscriptionBillingStateId { get; init; } = string.Empty;
+        public string MemberId { get; init; } = string.Empty;
+        public string ProductId { get; init; } = string.Empty;
+        public int AttemptIndex { get; init; }
+        public DateTime AttemptedAt { get; init; }
+        public decimal Amount { get; init; }
+        public RecurringFundingSource FundingSource { get; init; }
+        public RecurringAttemptOutcome Outcome { get; init; }
+        public string? PaymentHistoryId { get; init; }
+        public string? OrderId { get; init; }
+        public long? TokenTransactionId { get; init; }
+        public string? CommissionDeductionEarningId { get; init; }
+        public long? GatewayChargeAttemptId { get; init; }
+        public string? FailureReason { get; init; }
+    }
 
     public record RecurringBillingProcessorResultDto(
         string BillingStateId, string Outcome, string? FundingSource,

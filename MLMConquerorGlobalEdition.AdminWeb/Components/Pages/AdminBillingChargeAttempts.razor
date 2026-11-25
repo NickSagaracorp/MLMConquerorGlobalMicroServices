@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
 @inject HttpClient Http
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
 
 <PageTitle>Charge Attempts — Admin</PageTitle>
 
@@ -44,63 +45,56 @@
         </div>
     </div>
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else
-        {
-            <SfGrid TValue="ChargeAttemptDto" DataSource="@_filtered"
-                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn Field="@nameof(ChargeAttemptDto.AttemptedAtUtc)" HeaderText="Attempted (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
-                    <GridColumn HeaderText="Member" Width="130">
-                        <Template><a href="/admin/members/@(((ChargeAttemptDto)context).MemberId)" class="text-primary"><code class="small">@(((ChargeAttemptDto)context).MemberId)</code></a></Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(ChargeAttemptDto.ProcessorName)" HeaderText="Processor" Width="160" />
-                    <GridColumn Field="@nameof(ChargeAttemptDto.FallbackStepIndex)" HeaderText="Step" Width="70" TextAlign="TextAlign.Center" />
-                    <GridColumn Field="@nameof(ChargeAttemptDto.PresentmentCurrency)" HeaderText="Currency" Width="90" TextAlign="TextAlign.Center" />
-                    <GridColumn HeaderText="USD Amount" Width="110" TextAlign="TextAlign.Right">
-                        <Template>$@(((ChargeAttemptDto)context).OriginalAmountUsd.ToString("F2"))</Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Converted" Width="110" TextAlign="TextAlign.Right">
-                        <Template>@(((ChargeAttemptDto)context).ConvertedAmount.ToString("F2"))</Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Outcome" Width="110" TextAlign="TextAlign.Center">
-                        <Template><span class="badge @OutcomeBadge(((ChargeAttemptDto)context).Outcome)">@(((ChargeAttemptDto)context).Outcome)</span></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Gateway Txn" Width="160">
-                        <Template><code class="small text-muted">@(((ChargeAttemptDto)context).GatewayTransactionId ?? "—")</code></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Payment History" Width="160">
-                        <Template><code class="small text-muted">@(((ChargeAttemptDto)context).PaymentHistoryId ?? "—")</code></Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="Failure Reason" Width="220">
-                        <Template><span class="small text-danger">@(((ChargeAttemptDto)context).FailureReason ?? "—")</span></Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-
-            @if (_totalPages > 1)
-            {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount attempts — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
-                        </ul>
-                    </nav>
-                </div>
-            }
-        }
+        @* Grid de servidor: filtros de columna, orden y página viajan al servidor por ServerGridAdaptor y abarcan
+           TODOS los intentos de cobro. Antes el procesador se filtraba en el navegador sobre la página cargada y el
+           filtro y el orden del grid solo veían esas filas. Los controles de arriba van por query string. Filtro de
+           tipo Menu y no Excel, que pediría al servidor la lista de valores de la columna sobre millones de filas.
+           GridCargando tapa el grid mientras dura cada lectura. *@
+        <GridCargando Visible="_cargando" Texto="Loading charge attempts…">
+        <SfGrid TValue="ChargeAttemptDto" @ref="_grid"
+                AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="ChargeAttemptDto"
+                                   Http="Http"
+                                   Endpoint="api/v1/admin/billing/charge-attempts/grid"
+                                   QueryStringProvider="BuildQueryString"
+                                   OnLoading="OnCargandoAsync"
+                                   OnServerError="OnServerErrorAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu" />
+            <GridColumns>
+                <GridColumn Field="@nameof(ChargeAttemptDto.AttemptedAtUtc)" HeaderText="Attempted (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
+                <GridColumn Field="@nameof(ChargeAttemptDto.MemberId)" HeaderText="Member" Width="130">
+                    <Template><a href="/admin/members/@(((ChargeAttemptDto)context).MemberId)" class="text-primary"><code class="small">@(((ChargeAttemptDto)context).MemberId)</code></a></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.ProcessorName)" HeaderText="Processor" Width="160" />
+                <GridColumn Field="@nameof(ChargeAttemptDto.FallbackStepIndex)" HeaderText="Step" Width="70" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(ChargeAttemptDto.PresentmentCurrency)" HeaderText="Currency" Width="90" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(ChargeAttemptDto.OriginalAmountUsd)" HeaderText="USD Amount" Width="110" TextAlign="TextAlign.Right">
+                    <Template>$@(((ChargeAttemptDto)context).OriginalAmountUsd.ToString("F2"))</Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.ConvertedAmount)" HeaderText="Converted" Width="110" TextAlign="TextAlign.Right">
+                    <Template>@(((ChargeAttemptDto)context).ConvertedAmount.ToString("F2"))</Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.Outcome)" HeaderText="Outcome" Width="110" TextAlign="TextAlign.Center">
+                    <Template><span class="badge @OutcomeBadge(((ChargeAttemptDto)context).Outcome)">@(((ChargeAttemptDto)context).Outcome)</span></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.GatewayTransactionId)" HeaderText="Gateway Txn" Width="160">
+                    <Template><code class="small text-muted">@(((ChargeAttemptDto)context).GatewayTransactionId ?? "—")</code></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.PaymentHistoryId)" HeaderText="Payment History" Width="160">
+                    <Template><code class="small text-muted">@(((ChargeAttemptDto)context).PaymentHistoryId ?? "—")</code></Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(ChargeAttemptDto.FailureReason)" HeaderText="Failure Reason" Width="220">
+                    <Template><span class="small text-danger">@(((ChargeAttemptDto)context).FailureReason ?? "—")</span></Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+        </GridCargando>
     </div>
     <div class="card-footer bg-light small text-muted">
-        Read-only chain-of-custody audit. Outcome and Member ID are filtered server-side; processor is filtered on the loaded page.
+        Read-only chain-of-custody audit. Outcome, processor, member, column filters, sorting and paging all run server-side over every attempt.
     </div>
 </div>
 
@@ -112,58 +106,57 @@
         ["CheckoutUS"] = "Checkout.com US", ["CheckoutUsLlc"] = "Checkout US LLC", ["Shift4"] = "Shift4", ["StripeEms"] = "Stripe EMS"
     };
 
-    private List<ChargeAttemptDto> _items = new();
-    private List<ChargeAttemptDto> _filtered = new();
-    private bool _loading = true;
+    private SfGrid<ChargeAttemptDto>? _grid;
+    private bool _cargando;
     private string? _alertMsg;
     private string _outcomeFilter = string.Empty;
     private string _processorFilter = string.Empty;
     private string _memberFilter = string.Empty;
-    private int _page = 1;
-    private const int PageSize = 50;
-    private int _totalCount;
-    private int _totalPages = 1;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    private async Task LoadAsync()
+    private async Task OnCargandoAsync(bool cargando)
     {
-        _loading = true; _alertMsg = null; StateHasChanged();
-        try
-        {
-            var url = $"api/v1/admin/billing/charge-attempts?page={_page}&pageSize={PageSize}";
-            if (!string.IsNullOrWhiteSpace(_outcomeFilter)) url += $"&outcome={Uri.EscapeDataString(_outcomeFilter)}";
-            if (!string.IsNullOrWhiteSpace(_memberFilter)) url += $"&memberId={Uri.EscapeDataString(_memberFilter.Trim())}";
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<ChargeAttemptDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items = resp.Data.Items.ToList();
-                _totalCount = resp.Data.TotalCount;
-                _totalPages = resp.Data.TotalPages;
-                ApplyClientFilter();
-            }
-            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load charge attempts."; }
-        }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
-        finally { _loading = false; }
+        _cargando = cargando;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private void ApplyClientFilter()
-        => _filtered = !string.IsNullOrEmpty(_processorFilter)
-            ? _items.Where(i => i.CardProcessor == _processorFilter).ToList()
-            : _items.ToList();
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        _alertMsg = errorCode is null ? "Failed to load charge attempts." : $"Failed to load charge attempts ({errorCode}).";
+        return InvokeAsync(StateHasChanged);
+    }
 
-    private async Task Search() { _page = 1; await LoadAsync(); }
+    /// <summary>
+    /// Query string que ServerGridAdaptor añade al endpoint en cada lectura; se evalúa en cada lectura, así que siempre
+    /// lleva lo que hay en los controles de arriba. El procesador viaja como nombre del enum, que el servidor compara con
+    /// la columna de la tabla.
+    /// </summary>
+    private string? BuildQueryString()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_outcomeFilter))   parts.Add($"outcome={Uri.EscapeDataString(_outcomeFilter)}");
+        if (!string.IsNullOrWhiteSpace(_processorFilter)) parts.Add($"processor={Uri.EscapeDataString(_processorFilter)}");
+        if (!string.IsNullOrWhiteSpace(_memberFilter))    parts.Add($"memberId={Uri.EscapeDataString(_memberFilter.Trim())}");
+        return parts.Count == 0 ? null : string.Join("&", parts);
+    }
 
-    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+    /// <summary>
+    /// "Search": vuelve a leer el grid con los controles de arriba. Si el grid no está en la primera página vuelve a
+    /// ella (eso ya lee): con el filtro nuevo la página en la que estaba puede no existir.
+    /// </summary>
+    private async Task Search()
+    {
+        _alertMsg = null;
+        if (_grid is null) return;
+        if (_grid.PageSettings?.CurrentPage > 1) await _grid.GoToPageAsync(1);
+        else await _grid.Refresh();
+    }
 
     private static string OutcomeBadge(string o) => o switch
     { "Success" => "bg-success", "Failed" => "bg-danger", "Scheduled" => "bg-warning text-dark", _ => "bg-secondary" };
 
     // CardProcessor comes back from the API as the enum name (JsonStringEnumConverter), e.g. "CheckoutUS".
-    private record ChargeAttemptDto(long Id, string MemberId, string CardProcessor, string ProcessorName,
+    // Los nombres de las propiedades son los campos de filtro y orden que el grid manda al servidor.
+    public record ChargeAttemptDto(long Id, string MemberId, string CardProcessor, string ProcessorName,
         int FallbackStepIndex, string PresentmentCurrency, decimal OriginalAmountUsd, decimal ConvertedAmount,
         string Outcome, string? GatewayTransactionId, string? PaymentHistoryId, string? FailureReason, DateTime AttemptedAtUtc);
-    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
-    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }
