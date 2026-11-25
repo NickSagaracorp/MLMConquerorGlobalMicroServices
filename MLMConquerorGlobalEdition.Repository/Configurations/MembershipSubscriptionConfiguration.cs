@@ -31,6 +31,10 @@ public class MembershipSubscriptionConfiguration : IEntityTypeConfiguration<Memb
         // El indice de la FK (IX_MembershipSubscriptions_MemberId) se declara aqui: si no, EF lo da por cubierto con el
         // filtrado y lo borra, y las consultas por miembro sin estado se quedarian sin indice.
         builder.HasIndex(s => s.MemberId);
+        // Grid de Subscriptions del admin: lo más nuevo primero sin ordenar el millón, y los contadores por estado
+        // ("por vencer": activas con EndDate cercana) sin recorrer la tabla.
+        builder.HasIndex(s => s.CreationDate).HasDatabaseName("IX_MembershipSubscriptions_CreationDate").IsDescending();
+        builder.HasIndex(s => new { s.SubscriptionStatus, s.EndDate }).HasDatabaseName("IX_MembershipSubscriptions_Status_EndDate");
         builder.HasIndex(new[] { nameof(MembershipSubscription.MemberId) }, "IX_MembershipSubscriptions_Activas")
             .HasFilter("[SubscriptionStatus] = 1");
     }

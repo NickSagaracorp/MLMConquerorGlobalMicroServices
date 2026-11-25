@@ -18,6 +18,9 @@ public class PaymentHistoryConfiguration : IEntityTypeConfiguration<PaymentHisto
         builder.Property(p => p.GatewayTransactionId).HasMaxLength(PaymentHistory.GatewayTransactionIdMaxLength);
 
         builder.HasIndex(p => p.OrderId);
+        // Grid de Payment History del admin: siempre filtra un rango de CreationDate y ordena por ella, lo más nuevo primero.
+        builder.HasIndex(p => p.CreationDate).HasDatabaseName("IX_PaymentHistories_CreationDate").IsDescending()
+            .IncludeProperties(p => p.TransactionStatus);
         builder.HasIndex(p => new { p.MemberId, p.TransactionStatus }).IncludeProperties(p => p.ProcessedAt);
         builder.HasIndex(p => p.GatewayTransactionId);
     }

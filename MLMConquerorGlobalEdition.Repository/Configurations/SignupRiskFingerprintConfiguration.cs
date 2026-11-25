@@ -31,5 +31,8 @@ public class SignupRiskFingerprintConfiguration : IEntityTypeConfiguration<Signu
         builder.HasIndex(x => new { x.VisitorId, x.CreationDate, x.Cleared });
         builder.HasIndex(x => new { x.IpAddress, x.CreationDate });
         builder.HasIndex(x => x.OrderId);
+        // Grid de altas marcadas del admin: lo más nuevo primero, por defecto solo lo no liberado.
+        builder.HasIndex(x => new { x.Cleared, x.CreationDate }).HasDatabaseName("IX_SignupRiskFingerprints_Cleared_CreationDate")
+            .IsDescending(false, true);
     }
 }

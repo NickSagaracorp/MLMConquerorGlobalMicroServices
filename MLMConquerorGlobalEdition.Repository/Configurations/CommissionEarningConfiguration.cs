@@ -13,6 +13,10 @@ public class CommissionEarningConfiguration : IEntityTypeConfiguration<Commissio
         builder.Property(x => x.Amount).HasPrecision(18, 4);
         builder.HasIndex(x => new { x.BeneficiaryMemberId, x.Status });
         builder.HasIndex(x => x.PeriodDate);
+        // Grid de comisiones del admin filtrado por estado (desplegable), lo más reciente primero.
+        builder.HasIndex(x => new { x.Status, x.EarnedDate }).HasDatabaseName("IX_CommissionEarnings_Status_EarnedDate")
+            .IsDescending(false, true)
+            .HasFilter("[IsDeleted] = 0");
         builder.HasIndex(x => new { x.SourceOrderId, x.CommissionTypeId }).IsUnique()
             .HasFilter("[SourceOrderId] IS NOT NULL");
         // Reportes Earnings: suma por beneficiario hasta una fecha. Sin este índice, el agrupado recorre la tabla entera.

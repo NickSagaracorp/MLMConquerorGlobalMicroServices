@@ -1619,6 +1619,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[SourceOrderId] IS NOT NULL");
 
+                    b.HasIndex("Status", "EarnedDate")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_CommissionEarnings_Status_EarnedDate")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.ToTable("CommissionEarnings");
                 });
 
@@ -7636,6 +7641,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("OrderId");
 
+                    b.HasIndex("Cleared", "CreationDate")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_SignupRiskFingerprints_Cleared_CreationDate");
+
                     b.HasIndex("IpAddress", "CreationDate");
 
                     b.HasIndex("VisitorId", "CreationDate", "Cleared");
@@ -9000,11 +9009,18 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreationDate")
+                        .IsDescending()
+                        .HasDatabaseName("IX_MembershipSubscriptions_CreationDate");
+
                     b.HasIndex("LastOrderId");
 
                     b.HasIndex("MemberId");
 
                     b.HasIndex("MembershipLevelId");
+
+                    b.HasIndex("SubscriptionStatus", "EndDate")
+                        .HasDatabaseName("IX_MembershipSubscriptions_Status_EndDate");
 
                     b.HasIndex(new[] { "MemberId" }, "IX_MembershipSubscriptions_Activas")
                         .HasFilter("[SubscriptionStatus] = 1");
@@ -9470,6 +9486,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreationDate")
+                        .IsDescending()
+                        .HasDatabaseName("IX_PaymentHistories_CreationDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CreationDate"), new[] { "TransactionStatus" });
 
                     b.HasIndex("GatewayTransactionId");
 

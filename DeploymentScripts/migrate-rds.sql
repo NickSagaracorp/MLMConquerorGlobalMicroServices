@@ -17275,3 +17275,56 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    CREATE INDEX [IX_SignupRiskFingerprints_Cleared_CreationDate] ON [SignupRiskFingerprints] ([Cleared], [CreationDate] DESC);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    CREATE INDEX [IX_PaymentHistories_CreationDate] ON [PaymentHistories] ([CreationDate] DESC) INCLUDE ([TransactionStatus]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    CREATE INDEX [IX_MembershipSubscriptions_CreationDate] ON [MembershipSubscriptions] ([CreationDate] DESC);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    CREATE INDEX [IX_MembershipSubscriptions_Status_EndDate] ON [MembershipSubscriptions] ([SubscriptionStatus], [EndDate]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_CommissionEarnings_Status_EarnedDate] ON [CommissionEarnings] ([Status], [EarnedDate] DESC) WHERE [IsDeleted] = 0');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261125005927_IndicesDeLosGridsGrandes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261125005927_IndicesDeLosGridsGrandes', N'10.0.11');
+END;
+
+COMMIT;
+GO
+
