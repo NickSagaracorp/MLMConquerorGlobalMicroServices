@@ -11,13 +11,13 @@
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.TotalPoints"]" Value="@NumeroCorto.Cantidad((long)_totalPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_totalPoints)" Icon="ri-heart-line" Color="danger" />
+        <StatCard Title="@L["Loyalty.TotalPoints"]" Value="@NumeroCorto.Cantidad(_totalPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_totalPoints)" Icon="ri-heart-line" Color="danger" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.UnlockedPoints"]" Value="@NumeroCorto.Cantidad((long)_unlockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_unlockedPoints)" Icon="ri-lock-unlock-line" Color="success" />
+        <StatCard Title="@L["Loyalty.UnlockedPoints"]" Value="@NumeroCorto.Cantidad(_unlockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_unlockedPoints)" Icon="ri-lock-unlock-line" Color="success" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="@L["Loyalty.LockedPoints"]" Value="@NumeroCorto.Cantidad((long)_lockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad((long)_lockedPoints)" Icon="ri-lock-line" Color="warning" />
+        <StatCard Title="@L["Loyalty.LockedPoints"]" Value="@NumeroCorto.Cantidad(_lockedPoints, AnchoDeTarjeta)" ValorCompleto="@NumeroCorto.Cantidad(_lockedPoints)" Icon="ri-lock-line" Color="warning" />
     </div>
 </div>
 
@@ -53,7 +53,7 @@
                         {
                             <tr>
                                 <td>@MonthLabel(lp)</td>
-                                <td>@NumeroCorto.Cantidad((long)lp.PointsEarned)</td>
+                                <td>@NumeroCorto.Cantidad(lp.PointsEarned)</td>
                                 <td>@(lp.IsLocked ? L["Common.Yes"].Value : L["Common.No"].Value)</td>
                                 <td>@(lp.MissedPayment ? L["Loyalty.MissedYes"].Value : L["Common.No"].Value)</td>
                                 <td><StatusBadge Status="@(lp.IsLocked ? L["Loyalty.StatusLocked"].Value : L["Loyalty.StatusUnlocked"].Value)" /></td>

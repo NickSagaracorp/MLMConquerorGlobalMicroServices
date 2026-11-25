@@ -20,6 +20,15 @@ public static class NumeroCorto
     /// <summary>Cantidad con separador de miles: 1,000,003.</summary>
     public static string Cantidad(long valor) => valor.ToString("N0", Cultura);
 
+    /// <summary>
+    /// Cantidad decimal (puntos, volumen) redondeada al entero, con separador de miles: 99.6 → 100, como hacía N0.
+    /// </summary>
+    public static string Cantidad(decimal valor) => valor.ToString("N0", Cultura);
+
+    /// <summary>Cantidad decimal que no pasa de <paramref name="maxCaracteres"/>, redondeada al entero si va completa.</summary>
+    public static string Cantidad(decimal valor, int maxCaracteres) =>
+        Ajustar(Math.Round(valor, MidpointRounding.AwayFromZero), "", Cantidad(valor), maxCaracteres);
+
     /// <summary>Cantidad que no pasa de <paramref name="maxCaracteres"/>: completa si cabe, abreviada si no.</summary>
     public static string Cantidad(long valor, int maxCaracteres) => Ajustar(valor, "", Cantidad(valor), maxCaracteres);
 

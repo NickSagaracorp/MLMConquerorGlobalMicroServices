@@ -38,4 +38,10 @@ public class NumeroCortoTests
     [InlineData(0, "$0.00")]
     public void El_monto_se_abrevia_solo_si_no_cabe(double valor, string esperado) =>
         NumeroCorto.Monto((decimal)valor, 7).Should().Be(esperado);
+
+    [Theory]
+    [InlineData(99.6, "100")]
+    [InlineData(1234.4, "1,234")]
+    public void Los_puntos_decimales_se_redondean_como_antes(double valor, string esperado) =>
+        NumeroCorto.Cantidad((decimal)valor).Should().Be(esperado);
 }

@@ -32,7 +32,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Reports.TotalPoints"]</span>
                                         @if (_statsLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad((long)_totalPoints)">@NumeroCorto.Cantidad((long)_totalPoints, AnchoDeTarjeta)</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_totalPoints)">@NumeroCorto.Cantidad(_totalPoints, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -48,7 +48,7 @@
                                     <div class="flex-grow-1 ms-2">
                                         <span>@L["Car.TotalEligiblePoints"]</span>
                                         @if (_statsLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad((long)_eligiblePoints)">@NumeroCorto.Cantidad((long)_eligiblePoints, AnchoDeTarjeta)</h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0" title="@NumeroCorto.Cantidad(_eligiblePoints)">@NumeroCorto.Cantidad(_eligiblePoints, AnchoDeTarjeta)</h3> }
                                     </div>
                                 </div>
                             </div>
@@ -110,7 +110,7 @@
                                 var ambLocal = amb;
                                 <tr class="row-click" @onclick="() => OpenBranchModalAsync(ambLocal)">
                                     <td class="text-primary fw-medium" style="cursor:pointer;">@amb.AmbassadorName</td>
-                                    <td class="text-body">@NumeroCorto.Cantidad((long)amb.TotalPoints)</td>
+                                    <td class="text-body">@NumeroCorto.Cantidad(amb.TotalPoints)</td>
                                     <td>
                                         <div style="position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%);">
                                             <div style="position:absolute;width:80%;height:80%;background-color:#ffffff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
@@ -436,7 +436,7 @@
     private async Task OpenBranchModalAsync(AmbassadorBreakdownItem amb)
     {
         _branchModalTitle       = amb.AmbassadorName;
-        _branchModalTotalPoints = NumeroCorto.Cantidad((long)amb.TotalPoints);
+        _branchModalTotalPoints = NumeroCorto.Cantidad(amb.TotalPoints);
         _branchDetail           = new BranchDetailDto();
         _branchModalVisible     = true;
         _branchLoading          = true;

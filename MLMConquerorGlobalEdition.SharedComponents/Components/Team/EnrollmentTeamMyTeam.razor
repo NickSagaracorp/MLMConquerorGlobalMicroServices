@@ -228,7 +228,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(NumeroCorto.Cantidad((long)((EnrollmentMyTeamMemberDto)context).LeftTeamPoints))
+                            @(NumeroCorto.Cantidad(((EnrollmentMyTeamMemberDto)context).LeftTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -241,7 +241,7 @@
                             </span>
                         </HeaderTemplate>
                         <Template>
-                            @(NumeroCorto.Cantidad((long)((EnrollmentMyTeamMemberDto)context).RightTeamPoints))
+                            @(NumeroCorto.Cantidad(((EnrollmentMyTeamMemberDto)context).RightTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -337,10 +337,10 @@
                 <strong>@L["Team.EnrollmentTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad(_selected.EnrollmentTeamPoints))
             </div>
             <div class="form-group mb-4">
-                <strong>@L["Team.LeftTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad((long)_selected.LeftTeamPoints))
+                <strong>@L["Team.LeftTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad(_selected.LeftTeamPoints))
             </div>
             <div class="form-group mb-4">
-                <strong>@L["Team.RightTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad((long)_selected.RightTeamPoints))
+                <strong>@L["Team.RightTeamPointsLabel"]</strong> @(NumeroCorto.Cantidad(_selected.RightTeamPoints))
             </div>
 
             @if (_selected.MembershipStatus == "Cancelled")

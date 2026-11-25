@@ -208,7 +208,7 @@
                                 HeaderText="@L["Reports.LeftTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Decimal">
                         <Template>
-                            @(NumeroCorto.Cantidad((long)((DualTeamMyTeamMemberDto)context).LeftTeamPoints))
+                            @(NumeroCorto.Cantidad(((DualTeamMyTeamMemberDto)context).LeftTeamPoints))
                         </Template>
                     </GridColumn>
 
@@ -216,7 +216,7 @@
                                 HeaderText="@L["Reports.RightTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
                                 Type="ColumnType.Decimal">
                         <Template>
-                            @(NumeroCorto.Cantidad((long)((DualTeamMyTeamMemberDto)context).RightTeamPoints))
+                            @(NumeroCorto.Cantidad(((DualTeamMyTeamMemberDto)context).RightTeamPoints))
                         </Template>
                     </GridColumn>
 
