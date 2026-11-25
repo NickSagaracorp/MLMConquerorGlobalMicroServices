@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 
@@ -135,12 +136,18 @@ public static class GenealogySubtree
                     "SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (INDEX(IX_GenealogyTree_Node_Vivo)) " +
                     "WHERE IsDeleted = 0 AND Node IS NOT NULL")
                 .SingleAsync(ct);
-        return db.Database.SqlQueryRaw<int>(
-                "SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (INDEX(IX_GenealogyTree_Node_Vivo)) " +
-                "WHERE IsDeleted = 0 AND Node >= CAST(@desde AS hierarchyid) AND Node < CAST(@hasta AS hierarchyid)",
-                new SqlParameter("@desde", SqlDbType.NVarChar, 4000) { Value = root.ToString() },
-                new SqlParameter("@hasta", SqlDbType.NVarChar, 4000) { Value = parent.GetDescendant(root, null).ToString() })
-            .SingleAsync(ct);
+        // Con un millón de nodos este COUNT lee 25.000 páginas (1,2 s de CPU) y la rejilla lo pedía en cada página:
+        // se guarda como los totales de los grids (GridQueryableExtensions.DuracionDeTotalesEnCache, 60 s).
+        var desde = root.ToString();
+        var hasta = parent.GetDescendant(root, null).ToString();
+        var clave = $"equipo|{db.Database.GetDbConnection().Database}|{desde}";
+        return GridQueryableExtensions.TotalGuardadoAsync(clave, recontar: false, () =>
+            db.Database.SqlQueryRaw<int>(
+                    "SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (INDEX(IX_GenealogyTree_Node_Vivo)) " +
+                    "WHERE IsDeleted = 0 AND Node >= CAST(@desde AS hierarchyid) AND Node < CAST(@hasta AS hierarchyid)",
+                    new SqlParameter("@desde", SqlDbType.NVarChar, 4000) { Value = desde },
+                    new SqlParameter("@hasta", SqlDbType.NVarChar, 4000) { Value = hasta })
+                .SingleAsync(ct));
     }
 
     /// <summary>

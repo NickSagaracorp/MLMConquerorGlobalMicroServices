@@ -62,11 +62,23 @@ public static class GridQueryableExtensions
             return await source.CountAsync(ct);
         }
 
+        return await TotalGuardadoAsync(clave, recontar, () => source.CountAsync(ct));
+    }
+
+    /// <summary>
+    /// Un total guardado <see cref="DuracionDeTotalesEnCache"/> bajo <paramref name="clave"/> (sin duración: se cuenta
+    /// siempre). Lo usan los grids y el tamaño de los equipos (GenealogySubtree.CountUnderAsync), que con un millón de
+    /// nodos cuesta más de un segundo y el grid lo pedía en cada página.
+    /// </summary>
+    public static async Task<int> TotalGuardadoAsync(string clave, bool recontar, Func<Task<int>> contar)
+    {
+        if (DuracionDeTotalesEnCache is not { } duracion) return await contar();
+
         var ahora = DateTime.UtcNow;
         if (!recontar && _totales.TryGetValue(clave, out var guardado) && guardado.Vence > ahora)
             return guardado.Total;
 
-        var total = await source.CountAsync(ct);
+        var total = await contar();
 
         if (_totales.Count >= MaximoDeTotalesGuardados)
             foreach (var vencido in _totales.Where(t => t.Value.Vence <= ahora).Select(t => t.Key).ToList())
