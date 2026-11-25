@@ -55,7 +55,7 @@ else if (_data is not null)
                     <div class="kpi-icon teal"><i class="ri-group-line"></i></div>
                     <span class="pill pill-teal">Active</span>
                 </div>
-                <div class="kpi-value" title="@_data.ActiveMembers.ToString("N0")">@Cantidad(_data.ActiveMembers)</div>
+                <div class="kpi-value" title="@NumeroCorto.Cantidad(_data.ActiveMembers)">@Cantidad(_data.ActiveMembers)</div>
                 <div class="kpi-label mt-1">Active Members</div>
                 <div class="kpi-sub mt-1">@_data.TotalMembers.ToString("N0") total</div>
             </div>
@@ -75,7 +75,7 @@ else if (_data is not null)
                         @(growthPct >= 0 ? "↑" : "↓") @Math.Abs(growthPct).ToString("N0")%
                     </span>
                 </div>
-                <div class="kpi-value" title="@_data.NewMembersThisMonth.ToString("N0")">@Cantidad(_data.NewMembersThisMonth)</div>
+                <div class="kpi-value" title="@NumeroCorto.Cantidad(_data.NewMembersThisMonth)">@Cantidad(_data.NewMembersThisMonth)</div>
                 <div class="kpi-label mt-1">New This Month</div>
                 <div class="kpi-sub mt-1">@_data.NewMembersLastMonth.ToString("N0") last month</div>
             </div>
@@ -95,9 +95,9 @@ else if (_data is not null)
                         @(revPct >= 0 ? "↑" : "↓") @Math.Abs(revPct).ToString("N0")%
                     </span>
                 </div>
-                <div class="kpi-value" title="$@_data.RevenueThisMonth.ToString("N2")">@Monto(_data.RevenueThisMonth)</div>
+                <div class="kpi-value" title="@NumeroCorto.Monto(_data.RevenueThisMonth)">@Monto(_data.RevenueThisMonth)</div>
                 <div class="kpi-label mt-1">Revenue MTD</div>
-                <div class="kpi-sub mt-1" title="$@_data.RevenueLastMonth.ToString("N2")">@Monto(_data.RevenueLastMonth) last mo.</div>
+                <div class="kpi-sub mt-1" title="@NumeroCorto.Monto(_data.RevenueLastMonth)">@Monto(_data.RevenueLastMonth) last mo.</div>
             </div>
         </div>
 
@@ -111,9 +111,9 @@ else if (_data is not null)
                         <span class="pill pill-amber">Pending</span>
                     }
                 </div>
-                <div class="kpi-value" title="$@_data.CommissionsPending.ToString("N2")">@Monto(_data.CommissionsPending)</div>
+                <div class="kpi-value" title="@NumeroCorto.Monto(_data.CommissionsPending)">@Monto(_data.CommissionsPending)</div>
                 <div class="kpi-label mt-1">Commissions Pending</div>
-                <div class="kpi-sub mt-1" title="$@_data.CommissionsPaidThisMonth.ToString("N2")">@Monto(_data.CommissionsPaidThisMonth) paid MTD</div>
+                <div class="kpi-sub mt-1" title="@NumeroCorto.Monto(_data.CommissionsPaidThisMonth)">@Monto(_data.CommissionsPaidThisMonth) paid MTD</div>
             </div>
         </div>
 
@@ -124,12 +124,12 @@ else if (_data is not null)
                     <div class="kpi-icon @(_data.TicketsCritical > 0 ? "red" : "blue")"><i class="ri-customer-service-2-line"></i></div>
                     @if (_data.TicketsCritical > 0)
                     {
-                        <span class="pill pill-red">@_data.TicketsCritical critical</span>
+                        <span class="pill pill-red">@NumeroCorto.Cantidad(_data.TicketsCritical) critical</span>
                     }
                 </div>
-                <div class="kpi-value">@(_data.TicketsOpen + _data.TicketsInProgress)</div>
+                <div class="kpi-value">@Cantidad(_data.TicketsOpen + _data.TicketsInProgress)</div>
                 <div class="kpi-label mt-1">Active Tickets</div>
-                <div class="kpi-sub mt-1">@_data.TicketsResolvedThisMonth resolved MTD</div>
+                <div class="kpi-sub mt-1">@NumeroCorto.Cantidad(_data.TicketsResolvedThisMonth) resolved MTD</div>
             </div>
         </div>
 
@@ -140,12 +140,12 @@ else if (_data is not null)
                     <div class="kpi-icon @(_data.PaymentsFailed > 0 ? "red" : "green")"><i class="ri-bank-card-line"></i></div>
                     @if (_data.PaymentsFailed > 0)
                     {
-                        <span class="pill pill-red">@_data.PaymentsFailed failed</span>
+                        <span class="pill pill-red">@NumeroCorto.Cantidad(_data.PaymentsFailed) failed</span>
                     }
                 </div>
-                <div class="kpi-value">@_data.PaymentsPending</div>
+                <div class="kpi-value" title="@NumeroCorto.Cantidad(_data.PaymentsPending)">@Cantidad(_data.PaymentsPending)</div>
                 <div class="kpi-label mt-1">Pending Payments</div>
-                <div class="kpi-sub mt-1">@_data.ActiveSubscriptions active subs</div>
+                <div class="kpi-sub mt-1">@NumeroCorto.Cantidad(_data.ActiveSubscriptions) active subs</div>
             </div>
         </div>
     </div>
@@ -168,14 +168,14 @@ else if (_data is not null)
                     }
                     <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
                         <span><span class="pill pill-green me-1">Active</span></span>
-                        <span class="fw-semibold">@_data.ActiveMembers <span class="text-muted fw-normal">(@((_data.ActiveMembers * 100 / total).ToString("N0"))%)</span></span>
+                        <span class="fw-semibold">@NumeroCorto.Cantidad(_data.ActiveMembers) <span class="text-muted fw-normal">(@((_data.ActiveMembers * 100 / total).ToString("N0"))%)</span></span>
                     </div>
                     <div class="progress mb-3" style="height:5px">
                         <div class="progress-bar prog-teal" style="width:@(_data.ActiveMembers * 100 / total)%"></div>
                     </div>
                     <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
                         <span><span class="pill pill-gray me-1">Inactive</span></span>
-                        <span class="fw-semibold">@_data.InactiveMembers <span class="text-muted fw-normal">(@((_data.InactiveMembers * 100 / total).ToString("N0"))%)</span></span>
+                        <span class="fw-semibold">@NumeroCorto.Cantidad(_data.InactiveMembers) <span class="text-muted fw-normal">(@((_data.InactiveMembers * 100 / total).ToString("N0"))%)</span></span>
                     </div>
                     <div class="progress mb-3" style="height:5px">
                         <div class="progress-bar prog-gray" style="width:@(_data.InactiveMembers * 100 / total)%"></div>
@@ -184,7 +184,7 @@ else if (_data is not null)
                     {
                         <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
                             <span><span class="pill pill-amber me-1">Suspended</span></span>
-                            <span class="fw-semibold">@_data.SuspendedMembers</span>
+                            <span class="fw-semibold">@NumeroCorto.Cantidad(_data.SuspendedMembers)</span>
                         </div>
                         <div class="progress mb-3" style="height:5px">
                             <div class="progress-bar prog-amber" style="width:@(_data.SuspendedMembers * 100 / total)%"></div>
@@ -194,7 +194,7 @@ else if (_data is not null)
                     {
                         <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
                             <span><span class="pill pill-red me-1">Terminated</span></span>
-                            <span class="fw-semibold">@_data.TerminatedMembers</span>
+                            <span class="fw-semibold">@NumeroCorto.Cantidad(_data.TerminatedMembers)</span>
                         </div>
                         <div class="progress mb-3" style="height:5px">
                             <div class="progress-bar prog-red" style="width:@(_data.TerminatedMembers * 100 / total)%"></div>
@@ -226,19 +226,19 @@ else if (_data is not null)
                     <p class="section-title">Growth Pulse</p>
                     <div class="stat-row">
                         <span class="stat-label">Today</span>
-                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersToday</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@NumeroCorto.Cantidad(_data.NewMembersToday)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">This Week</span>
-                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersThisWeek</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@NumeroCorto.Cantidad(_data.NewMembersThisWeek)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">This Month</span>
-                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersThisMonth</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@NumeroCorto.Cantidad(_data.NewMembersThisMonth)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Last Month</span>
-                        <span class="stat-value text-muted">@_data.NewMembersLastMonth</span>
+                        <span class="stat-value text-muted">@NumeroCorto.Cantidad(_data.NewMembersLastMonth)</span>
                     </div>
                 </div>
             </div>
@@ -261,20 +261,20 @@ else if (_data is not null)
                                 <span class="delta @(pct2 >= 0 ? "delta-up" : "delta-down")">@(pct2 >= 0 ? "↑" : "↓") @Math.Abs(pct2).ToString("N0")%</span>
                             }
                         </div>
-                        <div style="font-size:1.6rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">$@_data.RevenueThisMonth.ToString("N2")</div>
-                        <div class="kpi-sub">Last month: $@_data.RevenueLastMonth.ToString("N2")</div>
+                        <div style="font-size:1.6rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">@NumeroCorto.Monto(_data.RevenueThisMonth)</div>
+                        <div class="kpi-sub">Last month: @NumeroCorto.Monto(_data.RevenueLastMonth)</div>
                     </div>
 
                     <div class="mb-4">
                         <div class="stat-label mb-1">Revenue This Year</div>
-                        <div style="font-size:1.2rem;font-weight:700;color:#1a202c;">$@_data.RevenueThisYear.ToString("N2")</div>
+                        <div style="font-size:1.2rem;font-weight:700;color:#1a202c;">@NumeroCorto.Monto(_data.RevenueThisYear)</div>
                     </div>
 
                     <div class="mb-4">
                         <div class="stat-label mb-1">Orders This Month</div>
                         <div class="d-flex align-items-baseline gap-2">
-                            <span style="font-size:1.2rem;font-weight:700;color:#1a202c;">@_data.OrdersThisMonth</span>
-                            <span class="kpi-sub">orders · avg $@_data.AvgOrderValueThisMonth.ToString("N2")</span>
+                            <span style="font-size:1.2rem;font-weight:700;color:#1a202c;">@NumeroCorto.Cantidad(_data.OrdersThisMonth)</span>
+                            <span class="kpi-sub">orders · avg @NumeroCorto.Monto(_data.AvgOrderValueThisMonth)</span>
                         </div>
                     </div>
 
@@ -283,15 +283,15 @@ else if (_data is not null)
 
                     <div class="stat-row">
                         <span class="stat-label">Paid All Time</span>
-                        <span class="fw-semibold" style="color:#16a34a;">$@_data.CommissionsPaidAllTime.ToString("N2")</span>
+                        <span class="fw-semibold" style="color:#16a34a;">@NumeroCorto.Monto(_data.CommissionsPaidAllTime)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Paid This Month</span>
-                        <span class="stat-value">$@_data.CommissionsPaidThisMonth.ToString("N2")</span>
+                        <span class="stat-value">@NumeroCorto.Monto(_data.CommissionsPaidThisMonth)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Pending Payout</span>
-                        <span class="fw-semibold" style="color:#dc2626;">$@_data.CommissionsPending.ToString("N2")</span>
+                        <span class="fw-semibold" style="color:#dc2626;">@NumeroCorto.Monto(_data.CommissionsPending)</span>
                     </div>
                 </div>
             </div>
@@ -308,22 +308,22 @@ else if (_data is not null)
                 <div class="panel-body">
                     <div class="stat-row">
                         <span class="stat-label">Open</span>
-                        <span class="pill pill-teal">@_data.TicketsOpen</span>
+                        <span class="pill pill-teal">@NumeroCorto.Cantidad(_data.TicketsOpen)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">In Progress</span>
-                        <span class="pill pill-blue">@_data.TicketsInProgress</span>
+                        <span class="pill pill-blue">@NumeroCorto.Cantidad(_data.TicketsInProgress)</span>
                     </div>
                     @if (_data.TicketsCritical > 0)
                     {
                         <div class="stat-row">
                             <span class="stat-label">Critical</span>
-                            <span class="pill pill-red">@_data.TicketsCritical</span>
+                            <span class="pill pill-red">@NumeroCorto.Cantidad(_data.TicketsCritical)</span>
                         </div>
                     }
                     <div class="stat-row">
                         <span class="stat-label">Resolved MTD</span>
-                        <span class="pill pill-green">@_data.TicketsResolvedThisMonth</span>
+                        <span class="pill pill-green">@NumeroCorto.Cantidad(_data.TicketsResolvedThisMonth)</span>
                     </div>
                 </div>
             </div>
@@ -337,15 +337,15 @@ else if (_data is not null)
                 <div class="panel-body">
                     <div class="stat-row">
                         <span class="stat-label">Total Codes</span>
-                        <span class="stat-value">@_data.TokenCodesTotal</span>
+                        <span class="stat-value">@NumeroCorto.Cantidad(_data.TokenCodesTotal)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Available</span>
-                        <span class="pill pill-green">@_data.TokenCodesAvailable</span>
+                        <span class="pill pill-green">@NumeroCorto.Cantidad(_data.TokenCodesAvailable)</span>
                     </div>
                     <div class="stat-row">
                         <span class="stat-label">Used</span>
-                        <span class="pill pill-gray">@_data.TokenCodesUsed</span>
+                        <span class="pill pill-gray">@NumeroCorto.Cantidad(_data.TokenCodesUsed)</span>
                     </div>
                     @if (_data.TokenCodesTotal > 0)
                     {
@@ -368,20 +368,20 @@ else if (_data is not null)
                 <div class="panel-body">
                     <div class="stat-row">
                         <span class="stat-label">Active</span>
-                        <span class="pill pill-green">@_data.ActiveSubscriptions</span>
+                        <span class="pill pill-green">@NumeroCorto.Cantidad(_data.ActiveSubscriptions)</span>
                     </div>
                     @if (_data.ExpiringSubscriptions30Days > 0)
                     {
                         <div class="stat-row">
                             <span class="stat-label">Expiring (30d)</span>
-                            <span class="pill pill-amber">@_data.ExpiringSubscriptions30Days</span>
+                            <span class="pill pill-amber">@NumeroCorto.Cantidad(_data.ExpiringSubscriptions30Days)</span>
                         </div>
                     }
                     @if (_data.CancelledSubscriptionsThisMonth > 0)
                     {
                         <div class="stat-row">
                             <span class="stat-label">Cancelled MTD</span>
-                            <span class="pill pill-red">@_data.CancelledSubscriptionsThisMonth</span>
+                            <span class="pill pill-red">@NumeroCorto.Cantidad(_data.CancelledSubscriptionsThisMonth)</span>
                         </div>
                     }
                 </div>
@@ -445,28 +445,28 @@ else if (_data is not null)
                             <!-- Revenue (range) -->
                             <div class="col-6 col-md-4 col-xl-2">
                                 <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid #16a34a;">
-                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">$@_fin.TotalRevenue.ToString("N2")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">@NumeroCorto.Monto(_fin.TotalRevenue)</div>
                                     <div class="kpi-label mt-1">Revenue (range)</div>
                                 </div>
                             </div>
                             <!-- Commissions Paid (range) -->
                             <div class="col-6 col-md-4 col-xl-2">
                                 <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid #00BFA5;">
-                                    <div style="font-size:1.5rem;font-weight:700;color:#00BFA5;letter-spacing:-.02em;">$@_fin.TotalCommissionsPaid.ToString("N2")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:#00BFA5;letter-spacing:-.02em;">@NumeroCorto.Monto(_fin.TotalCommissionsPaid)</div>
                                     <div class="kpi-label mt-1">Commissions Paid</div>
                                 </div>
                             </div>
                             <!-- Commissions Pending (range) -->
                             <div class="col-6 col-md-4 col-xl-2">
                                 <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @(_fin.TotalCommissionsPending > 0 ? "#d97706" : "#94a3b8");">
-                                    <div style="font-size:1.5rem;font-weight:700;color:@(_fin.TotalCommissionsPending > 0 ? "#d97706" : "#94a3b8");letter-spacing:-.02em;">$@_fin.TotalCommissionsPending.ToString("N2")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(_fin.TotalCommissionsPending > 0 ? "#d97706" : "#94a3b8");letter-spacing:-.02em;">@NumeroCorto.Monto(_fin.TotalCommissionsPending)</div>
                                     <div class="kpi-label mt-1">Commissions Pending</div>
                                 </div>
                             </div>
                             <!-- Net Cash Flow (range) -->
                             <div class="col-6 col-md-4 col-xl-2">
                                 <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @NetColor;">
-                                    <div style="font-size:1.5rem;font-weight:700;color:@NetColor;letter-spacing:-.02em;">$@_fin.NetCashFlow.ToString("N2")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:@NetColor;letter-spacing:-.02em;">@NumeroCorto.Monto(_fin.NetCashFlow)</div>
                                     <div class="kpi-label mt-1">Net Cash Flow</div>
                                 </div>
                             </div>
@@ -580,7 +580,7 @@ else if (_data is not null)
                                         @lvl.LevelName
                                         @if (lvl.IsFree) { <span class="pill pill-green ms-1" style="font-size:10px;">Free</span> }
                                     </span>
-                                    <span class="pill pill-teal">@lvl.ActiveCount</span>
+                                    <span class="pill pill-teal">@NumeroCorto.Cantidad(lvl.ActiveCount)</span>
                                 </div>
                                 <div class="progress" style="height:5px">
                                     <div class="progress-bar prog-teal" style="width:@(maxCount > 0 ? (lvl.ActiveCount * 100 / maxCount) : 0)%"></div>
@@ -590,7 +590,7 @@ else if (_data is not null)
                         <div style="border-top:1px solid #f0f2f5;margin:12px 0;"></div>
                         <div class="d-flex justify-content-between" style="font-size:13px;">
                             <span class="text-muted">Total Active Subscriptions</span>
-                            <span class="fw-bold" style="color:#1a202c;">@_data.ActiveSubscriptions</span>
+                            <span class="fw-bold" style="color:#1a202c;">@NumeroCorto.Cantidad(_data.ActiveSubscriptions)</span>
                         </div>
                     }
                 </div>
@@ -606,7 +606,7 @@ else if (_data is not null)
                 <div class="panel-header">
                     <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-user-star-line"></i></div>
                     <h6 class="flex-grow-1">Active Ambassadors by Membership Level</h6>
-                    <span class="pill pill-teal">@_data.AmbassadorsByLevel.Sum(x => x.Count) total</span>
+                    <span class="pill pill-teal">@NumeroCorto.Cantidad(_data.AmbassadorsByLevel.Sum(x => x.Count)) total</span>
                 </div>
                 <div class="panel-body">
                     @if (!_data.AmbassadorsByLevel.Any())
@@ -689,13 +689,13 @@ else if (_data is not null)
                             </div>
                             <div class="col-6 col-md-4 col-lg-2">
                                 <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid #16a34a;">
-                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">$@br.RevenueCollected.ToString("N0")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">@NumeroCorto.Monto(br.RevenueCollected)</div>
                                     <div class="kpi-label mt-1">Collected</div>
                                 </div>
                             </div>
                             <div class="col-6 col-md-4 col-lg-2">
                                 <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid @(br.RevenueMissed > 0 ? "#dc2626" : "#94a3b8");">
-                                    <div style="font-size:1.5rem;font-weight:700;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#94a3b8");">$@br.RevenueMissed.ToString("N0")</div>
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#94a3b8");">@NumeroCorto.Monto(br.RevenueMissed)</div>
                                     <div class="kpi-label mt-1">Missed Revenue</div>
                                 </div>
                             </div>
@@ -747,13 +747,13 @@ else if (_data is not null)
                                             var rateColor = lvlRate >= 90 ? "#16a34a" : lvlRate >= 70 ? "#d97706" : "#dc2626";
                                             <tr>
                                                 <td class="fw-semibold">@lvl.LevelName</td>
-                                                <td style="text-align:right;">$@lvl.RenewalPrice.ToString("N2")</td>
-                                                <td style="text-align:center;font-weight:700;">@lvl.DueCount</td>
-                                                <td style="text-align:center;color:#16a34a;font-weight:600;">@lvl.SuccessCount</td>
-                                                <td style="text-align:center;color:@(lvl.FailedCount > 0 ? "#dc2626" : "#adb5bd");font-weight:@(lvl.FailedCount > 0 ? "600" : "400");">@(lvl.FailedCount > 0 ? lvl.FailedCount.ToString() : "—")</td>
-                                                <td style="text-align:center;color:@(lvl.PendingCount > 0 ? "#d97706" : "#adb5bd");font-weight:@(lvl.PendingCount > 0 ? "600" : "400");">@(lvl.PendingCount > 0 ? lvl.PendingCount.ToString() : "—")</td>
-                                                <td style="text-align:right;color:#16a34a;">$@lvl.RevenueCollected.ToString("N2")</td>
-                                                <td style="text-align:right;color:@(lvl.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(lvl.RevenueMissed > 0 ? "$" + lvl.RevenueMissed.ToString("N2") : "—")</td>
+                                                <td style="text-align:right;">@NumeroCorto.Monto(lvl.RenewalPrice)</td>
+                                                <td style="text-align:center;font-weight:700;">@NumeroCorto.Cantidad(lvl.DueCount)</td>
+                                                <td style="text-align:center;color:#16a34a;font-weight:600;">@NumeroCorto.Cantidad(lvl.SuccessCount)</td>
+                                                <td style="text-align:center;color:@(lvl.FailedCount > 0 ? "#dc2626" : "#adb5bd");font-weight:@(lvl.FailedCount > 0 ? "600" : "400");">@(lvl.FailedCount > 0 ? NumeroCorto.Cantidad(lvl.FailedCount) : "—")</td>
+                                                <td style="text-align:center;color:@(lvl.PendingCount > 0 ? "#d97706" : "#adb5bd");font-weight:@(lvl.PendingCount > 0 ? "600" : "400");">@(lvl.PendingCount > 0 ? NumeroCorto.Cantidad(lvl.PendingCount) : "—")</td>
+                                                <td style="text-align:right;color:#16a34a;">@NumeroCorto.Monto(lvl.RevenueCollected)</td>
+                                                <td style="text-align:right;color:@(lvl.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(lvl.RevenueMissed > 0 ? NumeroCorto.Monto(lvl.RevenueMissed) : "—")</td>
                                                 <td style="text-align:center;color:@rateColor;font-weight:700;">@(lvl.DueCount > 0 ? lvlRate + "%" : "—")</td>
                                             </tr>
                                         }
@@ -762,12 +762,12 @@ else if (_data is not null)
                                         <tr style="background:#f8fafc;font-weight:700;">
                                             <td>Total</td>
                                             <td></td>
-                                            <td style="text-align:center;">@br.TotalDue</td>
-                                            <td style="text-align:center;color:#16a34a;">@br.TotalSuccessful</td>
-                                            <td style="text-align:center;color:@(br.TotalFailed > 0 ? "#dc2626" : "#adb5bd");">@(br.TotalFailed > 0 ? br.TotalFailed.ToString() : "—")</td>
-                                            <td style="text-align:center;color:@(br.TotalPending > 0 ? "#d97706" : "#adb5bd");">@(br.TotalPending > 0 ? br.TotalPending.ToString() : "—")</td>
-                                            <td style="text-align:right;color:#16a34a;">$@br.RevenueCollected.ToString("N2")</td>
-                                            <td style="text-align:right;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(br.RevenueMissed > 0 ? "$" + br.RevenueMissed.ToString("N2") : "—")</td>
+                                            <td style="text-align:center;">@NumeroCorto.Cantidad(br.TotalDue)</td>
+                                            <td style="text-align:center;color:#16a34a;">@NumeroCorto.Cantidad(br.TotalSuccessful)</td>
+                                            <td style="text-align:center;color:@(br.TotalFailed > 0 ? "#dc2626" : "#adb5bd");">@(br.TotalFailed > 0 ? NumeroCorto.Cantidad(br.TotalFailed) : "—")</td>
+                                            <td style="text-align:center;color:@(br.TotalPending > 0 ? "#d97706" : "#adb5bd");">@(br.TotalPending > 0 ? NumeroCorto.Cantidad(br.TotalPending) : "—")</td>
+                                            <td style="text-align:right;color:#16a34a;">@NumeroCorto.Monto(br.RevenueCollected)</td>
+                                            <td style="text-align:right;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(br.RevenueMissed > 0 ? NumeroCorto.Monto(br.RevenueMissed) : "—")</td>
                                             <td style="text-align:center;"><span class="pill @srClass">@br.SuccessRate.ToString("N1")%</span></td>
                                         </tr>
                                     </tfoot>
@@ -923,9 +923,9 @@ else if (_data is not null)
                                                 @for (int mo = 1; mo <= currentMonth; mo++)
                                                 {
                                                     var val = lookup.TryGetValue(mo, out var ld2) && ld2.TryGetValue(lvl, out var sd2) && sd2.TryGetValue(st, out var sc2) ? sc2 : 0;
-                                                    <td class="text-center @(val > 0 ? "fw-semibold" : "text-muted")">@(val > 0 ? val.ToString() : "—")</td>
+                                                    <td class="text-center @(val > 0 ? "fw-semibold" : "text-muted")">@(val > 0 ? NumeroCorto.Cantidad(val) : "—")</td>
                                                 }
-                                                <td class="text-center fw-bold">@rowTotal</td>
+                                                <td class="text-center fw-bold">@NumeroCorto.Cantidad(rowTotal)</td>
                                             </tr>
                                         }
                                     }
@@ -983,11 +983,11 @@ else if (_data is not null)
                                         <div class="d-flex gap-3 flex-wrap" style="font-size:11px;color:#8695AA;">
                                             @if (reg.ActiveCountryCount > 0)
                                             {
-                                                <span><i class="ri-flag-line me-1"></i>@reg.ActiveCountryCount @(reg.ActiveCountryCount == 1 ? "country" : "countries")</span>
+                                                <span><i class="ri-flag-line me-1"></i>@NumeroCorto.Cantidad(reg.ActiveCountryCount) @(reg.ActiveCountryCount == 1 ? "country" : "countries")</span>
                                             }
                                             @if (reg.ActiveCount > 0 && regionTotal > 0)
                                             {
-                                                <span><i class="ri-group-line me-1"></i>@reg.ActiveCount active</span>
+                                                <span><i class="ri-group-line me-1"></i>@NumeroCorto.Cantidad(reg.ActiveCount) active</span>
                                             }
                                         </div>
                                     </div>
@@ -1007,7 +1007,7 @@ else if (_data is not null)
                 <div class="panel-header">
                     <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-earth-line"></i></div>
                     <h6 class="flex-grow-1">Active Members by Country</h6>
-                    <span class="pill pill-teal">@_data.MembersByCountry.Count countries</span>
+                    <span class="pill pill-teal">@NumeroCorto.Cantidad(_data.MembersByCountry.Count) countries</span>
                     <span class="pill pill-green">@_data.MembersByCountry.Sum(x => x.ActiveCount).ToString("N0") members</span>
                 </div>
                 <div style="padding:0;">
@@ -1081,7 +1081,7 @@ else if (_data is not null)
                             <div class="px-3 pb-3">
                                 <details>
                                     <summary style="color:#00BFA5;font-size:13px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:4px;">
-                                        <i class="ri-arrow-down-s-line"></i>Show all @_data.MembersByCountry.Count countries
+                                        <i class="ri-arrow-down-s-line"></i>Show all @NumeroCorto.Cantidad(_data.MembersByCountry.Count) countries
                                     </summary>
                                     <div class="table-responsive mt-2">
                                         <table class="clean-table w-100">
@@ -1114,19 +1114,11 @@ else if (_data is not null)
 }
 
 @code {
-    // Las tarjetas KPI son estrechas (seis por fila): a partir del millón el monto se abrevia ($61.35M) y el valor
-    // completo queda en el title de la tarjeta. Por debajo se muestra entero, como antes.
-    private static string Monto(decimal valor) => Abreviado(valor, "$", 1_000_000m);
-    private static string Cantidad(long valor) => Abreviado(valor, "", 10_000_000m);
-
-    private static string Abreviado(decimal valor, string prefijo, decimal desde)
-    {
-        var abs = Math.Abs(valor);
-        var signo = valor < 0 ? "-" : "";
-        if (abs < desde) return signo + prefijo + abs.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
-        var (div, sufijo) = abs >= 1_000_000_000m ? (1_000_000_000m, "B") : (1_000_000m, "M");
-        return signo + prefijo + (abs / div).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + sufijo;
-    }
+    // Las tarjetas KPI son estrechas (seis por fila): el valor va completo si cabe en 7 caracteres y, si no, abreviado
+    // (1M, $105.2M); el valor completo queda en el title de la tarjeta.
+    private const int AnchoDeTarjeta = 7;
+    private static string Monto(decimal valor) => NumeroCorto.Monto(valor, AnchoDeTarjeta);
+    private static string Cantidad(long valor) => NumeroCorto.Cantidad(valor, AnchoDeTarjeta);
 
     private CeoDashboardDto? _data;
     private bool _loading = true;
