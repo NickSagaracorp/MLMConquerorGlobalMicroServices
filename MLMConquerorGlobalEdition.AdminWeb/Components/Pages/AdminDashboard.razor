@@ -49,7 +49,7 @@ else if (_data is not null)
     <div class="row g-3 mb-4">
 
         <!-- Active Members -->
-        <div class="col-6 col-md-4 col-xl-2">
+        <div class="col-6 col-md-4 col-xl">
             <div class="kpi-card h-100">
                 <div class="d-flex align-items-start justify-content-between mb-3">
                     <div class="kpi-icon teal"><i class="ri-group-line"></i></div>
@@ -62,7 +62,7 @@ else if (_data is not null)
         </div>
 
         <!-- New This Month -->
-        <div class="col-6 col-md-4 col-xl-2">
+        <div class="col-6 col-md-4 col-xl">
             <div class="kpi-card h-100">
                 @{
                     var growthPct = _data.NewMembersLastMonth > 0
@@ -82,7 +82,7 @@ else if (_data is not null)
         </div>
 
         <!-- Revenue MTD -->
-        <div class="col-6 col-md-4 col-xl-2">
+        <div class="col-6 col-md-4 col-xl">
             <div class="kpi-card h-100">
                 @{
                     var revPct = _data.RevenueLastMonth > 0
@@ -102,7 +102,7 @@ else if (_data is not null)
         </div>
 
         <!-- Commissions Pending -->
-        <div class="col-6 col-md-4 col-xl-2">
+        <div class="col-6 col-md-4 col-xl">
             <div class="kpi-card h-100">
                 <div class="d-flex align-items-start justify-content-between mb-3">
                     <div class="kpi-icon @(_data.CommissionsPending > 0 ? "amber" : "teal")"><i class="ri-time-line"></i></div>
@@ -117,24 +117,8 @@ else if (_data is not null)
             </div>
         </div>
 
-        <!-- Active Tickets -->
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="kpi-card h-100">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="kpi-icon @(_data.TicketsCritical > 0 ? "red" : "blue")"><i class="ri-customer-service-2-line"></i></div>
-                    @if (_data.TicketsCritical > 0)
-                    {
-                        <span class="pill pill-red">@NumeroCorto.Cantidad(_data.TicketsCritical) critical</span>
-                    }
-                </div>
-                <div class="kpi-value">@Cantidad(_data.TicketsOpen + _data.TicketsInProgress)</div>
-                <div class="kpi-label mt-1">Active Tickets</div>
-                <div class="kpi-sub mt-1">@NumeroCorto.Cantidad(_data.TicketsResolvedThisMonth) resolved MTD</div>
-            </div>
-        </div>
-
         <!-- Pending Payments -->
-        <div class="col-6 col-md-4 col-xl-2">
+        <div class="col-6 col-md-4 col-xl">
             <div class="kpi-card h-100">
                 <div class="d-flex align-items-start justify-content-between mb-3">
                     <div class="kpi-icon @(_data.PaymentsFailed > 0 ? "red" : "green")"><i class="ri-bank-card-line"></i></div>
@@ -150,7 +134,7 @@ else if (_data is not null)
         </div>
     </div>
 
-    <!-- ══ ROW 2 — MEMBERS + FINANCIAL + SUPPORT ═══════════════════════════ -->
+    <!-- ══ ROW 2 — MEMBERS + FINANCIAL + OPS ═══════════════════════════ -->
     <div class="row g-3 mb-4">
 
         <!-- Members Panel -->
@@ -297,37 +281,8 @@ else if (_data is not null)
             </div>
         </div>
 
-        <!-- Support + Ops Panel -->
+        <!-- Ops Panel -->
         <div class="col-12 col-lg-3">
-            <!-- Support Queue -->
-            <div class="panel-card mb-3">
-                <div class="panel-header">
-                    <div class="kpi-icon blue" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-customer-service-2-line"></i></div>
-                    <h6>Support Queue</h6>
-                </div>
-                <div class="panel-body">
-                    <div class="stat-row">
-                        <span class="stat-label">Open</span>
-                        <span class="pill pill-teal">@NumeroCorto.Cantidad(_data.TicketsOpen)</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">In Progress</span>
-                        <span class="pill pill-blue">@NumeroCorto.Cantidad(_data.TicketsInProgress)</span>
-                    </div>
-                    @if (_data.TicketsCritical > 0)
-                    {
-                        <div class="stat-row">
-                            <span class="stat-label">Critical</span>
-                            <span class="pill pill-red">@NumeroCorto.Cantidad(_data.TicketsCritical)</span>
-                        </div>
-                    }
-                    <div class="stat-row">
-                        <span class="stat-label">Resolved MTD</span>
-                        <span class="pill pill-green">@NumeroCorto.Cantidad(_data.TicketsResolvedThisMonth)</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Token Activity -->
             <div class="panel-card mb-3">
                 <div class="panel-header">
