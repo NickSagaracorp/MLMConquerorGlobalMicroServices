@@ -132,6 +132,7 @@ public static class AccountSurfaceExtensions
         // mantener la misma familia deja las cuatro juntas en el inventario de rutas del portal.
         endpoints.MapPost("/account/two-factor/channel",  (Delegate)AccountEndpoints.SetTwoFactorChannelAsync).DisableAntiforgery().RequireAuthorization();
         endpoints.MapPost("/account/two-factor/disable",  (Delegate)AccountEndpoints.DisableTwoFactorAsync).DisableAntiforgery().RequireAuthorization();
+        endpoints.MapPost("/account/two-factor/authenticator", (Delegate)AccountEndpoints.ConfirmAuthenticatorEnrollmentAsync).DisableAntiforgery().RequireAuthorization();
 
         // GET y no POST: lo pide un <a href> de PersonalData.razor. Hace de intermediaria porque el
         // endpoint de la API exige Bearer y el navegador no lo lleva en un enlace normal.

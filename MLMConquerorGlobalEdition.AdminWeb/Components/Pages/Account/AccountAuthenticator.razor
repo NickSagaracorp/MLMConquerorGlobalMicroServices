@@ -1,0 +1,54 @@
+@page "/admin/account/security/authenticator"
+@attribute [Authorize]
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
+
+@* Alta de la aplicación autenticadora desde una sesión ya iniciada: QR, clave y primer código.
+
+   Es la misma pantalla que el enrolamiento forzado del login, montada dentro del área de cuenta:
+   aquella vive en la puerta y su credencial es la cookie del enrolamiento; esta vive detrás de la
+   sesión y su credencial es el token de acceso. El componente es el mismo, cambian el formulario
+   al que postea y la salida.
+
+   Solo la primera alta. Con un autenticador ya enrolado no se pinta nada y se vuelve al panel:
+   abrir el alta sobre una cuenta enrolada reemplazaría la clave en ese momento y el autenticador
+   del móvil dejaría de valer sin que el usuario hubiese confirmado nada.
+
+   Sin @@rendermode, como el resto del área de cuenta: SSR estático. *@
+
+<PageTitle>@L["Enroll.Title"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.SecuritySection">
+    @if (_material is not null)
+    {
+        <div style="max-width:420px">
+            <MLMConquerorGlobalEdition.SharedComponents.Components.Account.EnrollAuthenticator
+                FormAction="/account/two-factor/authenticator"
+                QrCodePngDataUri="@_material.QrCodePngDataUri"
+                SharedKey="@_material.SharedKey"
+                ErrorCode="@Error"
+                CancelUrl="/admin/account/security" />
+        </div>
+    }
+</AdminAccountShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private TwoFactorPageData.EnrollmentMaterial? _material;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _material = await PageData.BeginAuthenticatorEnrollmentAsync();
+
+        // Ya enrolado, sin sesión válida o la API no respondió: en los tres casos no hay QR que
+        // enseñar, y el panel del segundo factor dice en qué estado está la cuenta.
+        if (_material is null)
+            Navigation.NavigateTo("/admin/account/security", forceLoad: false);
+    }
+}

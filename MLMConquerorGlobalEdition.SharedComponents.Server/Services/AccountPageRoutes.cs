@@ -81,6 +81,16 @@ public sealed record AccountPageRoutes
     public required string SecurityPage { get; init; }
 
     /// <summary>
+    /// Alta del autenticador desde la sesión: QR, clave y primer código. Vuelve aquí el código
+    /// fallido.
+    /// </summary>
+    /// <remarks>
+    /// Opcional: un portal que no monte esa pantalla la deja en null y el manejador vuelve al
+    /// panel del segundo factor con el error, en vez de mandar a una ruta que no existe.
+    /// </remarks>
+    public string? AuthenticatorPage { get; init; }
+
+    /// <summary>
     /// Pantalla de datos personales, a la que vuelve la descarga cuando falla.
     /// </summary>
     /// <remarks>

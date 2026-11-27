@@ -364,6 +364,38 @@ public static class AccountEndpoints
     }
 
     /// <summary>
+    /// Cierra el alta del autenticador con el primer código de la aplicación del usuario.
+    /// </summary>
+    /// <remarks>
+    /// Acaba en el login, como confirmar el teléfono: al activar el segundo factor la API revoca
+    /// el refresco, porque una sesión abierta antes de existir el factor no debe seguir
+    /// renovándose sin haberlo pasado. Entrar de nuevo es además la prueba de que la aplicación
+    /// genera bien los códigos. Ver <see cref="KillAndBackToLoginAsync"/>.
+    ///
+    /// Con un código malo no se toca nada y se vuelve a la pantalla del QR, que sigue siendo el
+    /// mismo mientras el alta no se confirme.
+    /// </remarks>
+    public static async Task<IResult> ConfirmAuthenticatorEnrollmentAsync(
+        [FromForm] CodeForm?          form,
+        AuthApiGateway                api,
+        HttpContext                   httpContext,
+        [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
+        CancellationToken             ct)
+    {
+        form ??= new();
+
+        var outcome = await api.CallAsync(
+            HttpMethod.Post, "api/v1/auth/account/two-factor/enroll/confirm",
+            new { Code = form.Code ?? string.Empty }, authenticated: true, ct);
+
+        return outcome.Success
+            ? await KillAndBackToLoginAsync(httpContext, api, challengeCookies, sessionTokens, routes, ct)
+            : Failure(routes.AuthenticatorPage ?? routes.SecurityPage, outcome.ErrorCodeOr("CODE_INVALID"));
+    }
+
+    /// <summary>
     /// Sirve el archivo de datos personales al navegador.
     /// </summary>
     /// <remarks>

@@ -219,6 +219,88 @@ public class AccountTwoFactorEndpointsTests
     }
 
     // ===========================================================================================
+    //  Alta del autenticador desde la sesión
+    // ===========================================================================================
+
+    /// <summary>
+    /// Activar el autenticador acaba en el login: la API revoca el refresco al activar el segundo
+    /// factor, y entrar de nuevo es lo que demuestra que la aplicación genera bien los códigos.
+    /// </summary>
+    [Fact]
+    public async Task Autenticador_CuandoSeConfirma_MataLaSesionYVaAlLogin()
+    {
+        string? ruta     = null;
+        string? cuerpo   = null;
+        var     contexto = Contexto();
+
+        var gateway = Gateway(new HandlerFalso(peticion =>
+        {
+            // La primera llamada es la del alta; después PortalSignOut llama al logout.
+            ruta   ??= peticion.RequestUri?.AbsolutePath;
+            cuerpo ??= peticion.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"success":true,"data":true}""", Encoding.UTF8, "application/json")
+            };
+        }));
+
+        var resultado = await AccountEndpoints.ConfirmAuthenticatorEnrollmentAsync(
+            new AccountEndpoints.CodeForm("123456"), gateway, contexto,
+            RutasConAutenticador(), Cookies(), Almacen(), default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        ruta.Should().Be("/api/v1/auth/account/two-factor/enroll/confirm",
+            "es la ruta con sesión; la del login exige el token del enrolamiento forzado");
+        cuerpo.Should().Contain("123456");
+        destino.Should().Be(LoginConAviso);
+        contexto.User.Identity?.IsAuthenticated.Should().NotBe(true);
+    }
+
+    /// <summary>Un código malo no cierra nada: vuelve a la pantalla del QR con el error.</summary>
+    [Fact]
+    public async Task Autenticador_ConCodigoMalo_VuelveALaPantallaDelQr()
+    {
+        var contexto = Contexto();
+
+        var resultado = await AccountEndpoints.ConfirmAuthenticatorEnrollmentAsync(
+            new AccountEndpoints.CodeForm("000000"),
+            GatewayQueResponde(
+                """{"success":false,"errorCode":"CODE_INVALID"}""", HttpStatusCode.BadRequest),
+            contexto, RutasConAutenticador(), Cookies(), Almacen(), default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be("/admin/account/security/authenticator?error=CODE_INVALID");
+        contexto.User.Identity?.IsAuthenticated.Should().BeTrue(
+            "el alta no ocurrió, así que la sesión sigue viva");
+    }
+
+    /// <summary>
+    /// Un portal que no monta la pantalla del QR deja la ruta en null; el error vuelve entonces
+    /// al panel del segundo factor y no a una URL que no existe.
+    /// </summary>
+    [Fact]
+    public async Task Autenticador_SinPantallaPropia_VuelveAlPanel()
+    {
+        var contexto = Contexto();
+
+        var resultado = await AccountEndpoints.ConfirmAuthenticatorEnrollmentAsync(
+            form: null,
+            GatewayQueResponde(
+                """{"success":false,"errorCode":"CODE_INVALID"}""", HttpStatusCode.BadRequest),
+            contexto, Rutas("/account/security"), Cookies(), Almacen(), default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be("/account/security?error=CODE_INVALID");
+    }
+
+    private static AccountPageRoutes RutasConAutenticador() =>
+        Rutas("/admin/account/security") with { AuthenticatorPage = "/admin/account/security/authenticator" };
+
+    // ===========================================================================================
     //  Con SignupAPI caída, ninguno de los dos revienta
     // ===========================================================================================
 
@@ -234,6 +316,10 @@ public class AccountTwoFactorEndpointsTests
 
             contexto => AccountEndpoints.DisableTwoFactorAsync(
                 GatewayCaido(), contexto, rutas, Cookies(), Almacen(), default),
+
+            contexto => AccountEndpoints.ConfirmAuthenticatorEnrollmentAsync(
+                new AccountEndpoints.CodeForm("123456"), GatewayCaido(), contexto, rutas,
+                Cookies(), Almacen(), default),
         };
 
         foreach (var manejador in manejadores)

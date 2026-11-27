@@ -129,6 +129,44 @@ public sealed class AccountPageData
             ChallengeCookies.Read(_httpContextAccessor.HttpContext, _challengeCookies.Phone));
 
     /// <summary>
+    /// Abre el alta del autenticador para el usuario de la sesión y devuelve el QR y la clave, o
+    /// null si no se puede ofrecer.
+    /// </summary>
+    /// <remarks>
+    /// SOLO LA PRIMERA ALTA. Con un autenticador ya enrolado devuelve null sin llamar a la API:
+    /// sobre una cuenta enrolada, abrir el alta reemplaza la clave en ese mismo momento —el
+    /// autenticador del móvil deja de valer antes de que el usuario confirme nada— y cada recarga
+    /// generaría otra. Basta con entrar a la URL de la pantalla para provocarlo, así que la
+    /// comprobación va aquí y no en el botón del panel.
+    ///
+    /// Repetir la llamada durante un alta en curso es inofensivo: la API conserva la clave
+    /// mientras el enrolamiento no se haya confirmado, así que volver tras un código fallido
+    /// enseña el mismo QR que el usuario ya escaneó.
+    /// </remarks>
+    public async Task<TwoFactorPageData.EnrollmentMaterial?> BeginAuthenticatorEnrollmentAsync(
+        CancellationToken ct = default)
+    {
+        var status = await GetStatusAsync(ct);
+        if (status is null || status.TwoFactorEnrolledAt is not null)
+            return null;
+
+        var outcome = await _api.CallAsync<TwoFactorPageData.EnrollmentMaterial>(
+            HttpMethod.Post, "api/v1/auth/account/two-factor/enroll/begin",
+            body: null, authenticated: true, ct);
+
+        if (!outcome.Success || outcome.Data is null ||
+            string.IsNullOrWhiteSpace(outcome.Data.QrCodePngDataUri))
+        {
+            _logger.LogWarning(
+                "No se pudo abrir el alta del autenticador ({ErrorCode}).",
+                outcome.ErrorCodeOr(AuthApiGateway.Unreachable));
+            return null;
+        }
+
+        return outcome.Data;
+    }
+
+    /// <summary>
     /// ¿El rol del usuario le obliga a tener segundo factor? Si sí, el panel no ofrece apagarlo.
     /// </summary>
     /// <remarks>

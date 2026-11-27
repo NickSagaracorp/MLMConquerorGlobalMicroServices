@@ -30,12 +30,15 @@
    Mismo patrón que "quitar teléfono" en el perfil, y por el mismo motivo — quedarse sin segundo
    factor por un clic de más es justo lo que no puede pasar.
 
-   LO QUE SIGUE SIN OFRECERSE, y ahora sí por lo que dice: activar o volver a enrolar el
-   autenticador desde una sesión ya iniciada. La API tiene las rutas
-   —POST /api/v1/auth/account/two-factor/enroll/begin y /enroll/confirm, ambas con [Authorize]—
-   pero el portal no monta todavía la pantalla que enseña el QR ni el endpoint que confirma el
-   código, así que EnrollUrl y ReEnrollConfirmUrl van sin valor y el componente, que trata una
-   ruta ausente como "esta acción no se ofrece", no pinta botones que llevarían a un 404. *@
+   ACTIVAR EL AUTENTICADOR SE OFRECE desde aquí: EnrollUrl lleva a la pantalla del QR
+   (AccountAuthenticator), que abre el alta con el token de la sesión y postea el primer código a
+   /account/two-factor/authenticator. Es el mismo enlace que pinta el canal "Authenticator" cuando
+   aún no tiene destino.
+
+   VOLVER A ENROLAR SIGUE SIN OFRECERSE, y ReEnrollConfirmUrl va sin valor a propósito: sobre una
+   cuenta ya enrolada, abrir el alta reemplaza la clave en ese mismo momento, así que el
+   autenticador del móvil dejaría de valer antes de confirmar el nuevo, y quien abandone la
+   pantalla a medias se queda sin códigos válidos. *@
 
 <PageTitle>@L["TwoFactorPanel.Title"]</PageTitle>
 
@@ -50,6 +53,7 @@
                         EnrolledAt="@_status.TwoFactorEnrolledAt"
                         RequiredByRole="@_requiredByRole"
                         PhoneSetupUrl="@PhoneSetupUrl"
+                        EnrollUrl="/admin/account/security/authenticator"
                         ChangeChannelAction="/account/two-factor/channel"
                         DisableConfirmUrl="/admin/account/security?confirm=disable-2fa"
                         ConfirmDisable="@(Confirm == DisableConfirmation)"
